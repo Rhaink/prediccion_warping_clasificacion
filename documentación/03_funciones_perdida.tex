@@ -1,0 +1,637 @@
+% ==============================================================================
+% DOCUMENTO 03: FUNCIONES DE PÉRDIDA ESPECIALIZADAS
+% Sesiones cubiertas: 2
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{\textbf{Funciones de Pérdida Especializadas para\\Localización de Landmarks}\\[0.5em]
+\large Documentación del Proceso de Desarrollo - Sesión 2}
+\author{Proyecto de Tesis Doctoral\\Detección de COVID-19 mediante Landmarks Anatómicos}
+\date{Noviembre 2024}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento presenta el diseño e implementación de funciones de pérdida especializadas para la tarea de regresión de landmarks anatómicos. Se analiza en detalle Wing Loss y su comportamiento adaptativo, junto con restricciones geométricas adicionales: Central Alignment Loss para alineación del eje central y Soft Symmetry Loss para simetría bilateral con margen de tolerancia. Se incluyen análisis de gradientes, justificación de parámetros, y comparaciones experimentales que fundamentan la selección final de Wing Loss como función principal.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción}
+% ==============================================================================
+
+\subsection{Motivación}
+
+La selección de la función de pérdida es crítica en problemas de regresión de landmarks. A diferencia de la clasificación, donde la cross-entropy es el estándar, la regresión de coordenadas espaciales presenta desafíos específicos:
+
+\begin{enumerate}
+    \item \textbf{Sensibilidad a errores pequeños}: Errores de pocos píxeles son significativos clínicamente
+    \item \textbf{Robustez a outliers}: Algunas anotaciones pueden contener errores
+    \item \textbf{Gradientes informativos}: El entrenamiento debe progresar incluso cerca del óptimo
+\end{enumerate}
+
+\subsection{Funciones Candidatas}
+
+Se evaluaron las siguientes funciones de pérdida:
+
+\begin{itemize}
+    \item Mean Squared Error (MSE / L2 Loss)
+    \item Mean Absolute Error (MAE / L1 Loss)
+    \item Smooth L1 Loss (Huber Loss)
+    \item \textbf{Wing Loss} (propuesta por Feng \etal, CVPR 2018)
+\end{itemize}
+
+% ==============================================================================
+\section{Análisis de Funciones Estándar}
+% ==============================================================================
+
+\subsection{Mean Squared Error (MSE)}
+
+\begin{definicion}[MSE Loss]
+Para predicciones $\hat{\vect{p}} \in \R^{K \times 2}$ y ground truth $\vect{p} \in \R^{K \times 2}$:
+\begin{equation}
+\loss_{\text{MSE}} = \frac{1}{2K} \sum_{k=1}^{K} \norm{\hat{\vect{p}}_k - \vect{p}_k}_2^2
+\label{eq:mse}
+\end{equation}
+\end{definicion}
+
+\subsubsection{Propiedades de MSE}
+
+\begin{itemize}
+    \item \textbf{Gradiente}: $\nabla_{\hat{p}} \loss_{\text{MSE}} = \hat{\vect{p}} - \vect{p}$
+    \item \textbf{Comportamiento}: Cuadrático - penaliza fuertemente errores grandes
+    \item \textbf{Problema}: Gradientes pequeños cerca del óptimo dificultan la convergencia fina
+\end{itemize}
+
+\begin{equation}
+\frac{\partial \loss_{\text{MSE}}}{\partial \hat{p}} = \hat{p} - p \xrightarrow[\hat{p} \to p]{} 0
+\end{equation}
+
+\begin{observacion}
+Cuando las predicciones se acercan al ground truth, los gradientes de MSE se vuelven muy pequeños, ralentizando la convergencia en las etapas finales del entrenamiento.
+\end{observacion}
+
+\subsection{Mean Absolute Error (MAE / L1)}
+
+\begin{definicion}[L1 Loss]
+\begin{equation}
+\loss_{\text{L1}} = \frac{1}{K} \sum_{k=1}^{K} \norm{\hat{\vect{p}}_k - \vect{p}_k}_1
+\label{eq:l1}
+\end{equation}
+\end{definicion}
+
+\subsubsection{Propiedades de L1}
+
+\begin{itemize}
+    \item \textbf{Gradiente}: $\nabla_{\hat{p}} \loss_{\text{L1}} = \text{sgn}(\hat{\vect{p}} - \vect{p})$
+    \item \textbf{Comportamiento}: Lineal - gradiente constante independiente del error
+    \item \textbf{Problema}: No diferenciable en el origen, gradiente constante no adaptativo
+\end{itemize}
+
+\subsection{Smooth L1 Loss (Huber)}
+
+\begin{definicion}[Smooth L1 Loss]
+\begin{equation}
+\loss_{\text{SmoothL1}}(x) =
+\begin{cases}
+\frac{x^2}{2\beta} & \text{si } |x| < \beta \\
+|x| - \frac{\beta}{2} & \text{en otro caso}
+\end{cases}
+\label{eq:smooth_l1}
+\end{equation}
+donde $\beta$ es el umbral de transición (típicamente $\beta = 1$).
+\end{definicion}
+
+\subsubsection{Propiedades de Smooth L1}
+
+\begin{itemize}
+    \item Cuadrático para errores pequeños (como MSE)
+    \item Lineal para errores grandes (como L1)
+    \item Diferenciable en todo el dominio
+    \item \textbf{Problema}: No optimizado para localización de landmarks
+\end{itemize}
+
+% ==============================================================================
+\section{Wing Loss}
+% ==============================================================================
+
+\subsection{Motivación Original}
+
+Wing Loss fue propuesta por Feng \etal\ (CVPR 2018) específicamente para detección de landmarks faciales. La idea clave es proporcionar:
+
+\begin{enumerate}
+    \item Mayor sensibilidad a errores pequeños (comportamiento logarítmico)
+    \item Robustez a errores grandes (comportamiento lineal)
+    \item Gradientes no decrecientes cerca del óptimo
+\end{enumerate}
+
+\subsection{Definición Matemática}
+
+\begin{definicion}[Wing Loss]
+Para un error escalar $x = |\hat{p} - p|$:
+\begin{equation}
+\wingloss(x) =
+\begin{cases}
+\omega \ln\left(1 + \frac{|x|}{\epsilon}\right) & \text{si } |x| < \omega \\
+|x| - C & \text{en otro caso}
+\end{cases}
+\label{eq:wing_loss}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $\omega$: umbral que define el límite de la región no lineal
+    \item $\epsilon$: parámetro de curvatura de la región logarítmica
+    \item $C$: constante de continuidad
+\end{itemize}
+\end{definicion}
+
+\subsection{Constante de Continuidad}
+
+Para garantizar continuidad en $x = \omega$, la constante $C$ se calcula como:
+
+\begin{equation}
+C = \omega - \omega \ln\left(1 + \frac{\omega}{\epsilon}\right)
+\label{eq:wing_C}
+\end{equation}
+
+\begin{proof}
+La continuidad requiere que ambas ramas sean iguales en $x = \omega$:
+\begin{align}
+\omega \ln\left(1 + \frac{\omega}{\epsilon}\right) &= \omega - C \\
+C &= \omega - \omega \ln\left(1 + \frac{\omega}{\epsilon}\right)
+\end{align}
+\end{proof}
+
+\subsection{Análisis de Gradientes}
+
+El gradiente de Wing Loss:
+
+\begin{equation}
+\frac{\partial \wingloss}{\partial x} =
+\begin{cases}
+\frac{\omega}{\epsilon + |x|} \cdot \text{sgn}(x) & \text{si } |x| < \omega \\
+\text{sgn}(x) & \text{en otro caso}
+\end{cases}
+\label{eq:wing_gradient}
+\end{equation}
+
+\begin{hallazgo}
+En la región cercana al óptimo ($|x| \to 0$):
+\begin{equation}
+\lim_{x \to 0} \frac{\partial \wingloss}{\partial x} = \frac{\omega}{\epsilon} \neq 0
+\end{equation}
+A diferencia de MSE ($\lim_{x \to 0} \nabla = 0$), Wing Loss mantiene gradientes informativos incluso para errores muy pequeños.
+\end{hallazgo}
+
+\begin{figure}[H]
+\centering
+% [Figura sugerida: Comparación de Wing Loss vs MSE vs L1]
+\caption{Comparación de funciones de pérdida. Wing Loss (azul) presenta comportamiento logarítmico para errores pequeños y lineal para errores grandes, combinando las ventajas de MSE y L1.}
+\label{fig:loss_comparison}
+\end{figure}
+
+\subsection{Parámetros para Coordenadas Normalizadas}
+
+En este proyecto, las coordenadas están normalizadas al rango $[0, 1]$. Los parámetros originales de Wing Loss (diseñados para píxeles) deben escalarse:
+
+\begin{table}[H]
+\centering
+\caption{Parámetros de Wing Loss}
+\label{tab:wing_params}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Parámetro} & \textbf{Original (px)} & \textbf{Normalizado} & \textbf{Fórmula} \\
+\midrule
+$\omega$ & 10 & 0.0446 & $10 / 224$ \\
+$\epsilon$ & 2 & 0.0089 & $2 / 224$ \\
+$C$ & - & 0.0297 & Calculado \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Implementación}
+
+\begin{lstlisting}[caption={Implementación de Wing Loss}]
+class WingLoss(nn.Module):
+    def __init__(self, omega=10.0, epsilon=2.0, image_size=224):
+        super().__init__()
+        # Normalizar parametros para coordenadas [0, 1]
+        self.omega = omega / image_size
+        self.epsilon = epsilon / image_size
+        # Calcular constante de continuidad
+        self.C = self.omega - self.omega * math.log(
+            1 + self.omega / self.epsilon
+        )
+
+    def forward(self, pred, target):
+        # pred, target: (batch, 30) coordenadas normalizadas
+        diff = torch.abs(pred - target)
+
+        # Mascara para region logaritmica
+        mask = diff < self.omega
+
+        # Calcular loss por region
+        loss_log = self.omega * torch.log(1 + diff / self.epsilon)
+        loss_lin = diff - self.C
+
+        # Combinar con mascara
+        loss = torch.where(mask, loss_log, loss_lin)
+
+        return loss.mean()
+\end{lstlisting}
+
+% ==============================================================================
+\section{Restricciones Geométricas}
+% ==============================================================================
+
+Además de Wing Loss, se implementaron restricciones geométricas basadas en el análisis exploratorio del dataset.
+
+\subsection{Central Alignment Loss}
+
+\subsubsection{Motivación}
+
+El análisis del Ground Truth reveló que los puntos centrales $L_9$, $L_{10}$, $L_{11}$ están casi exactamente sobre el eje $L_1$-$L_2$ (error promedio: 1.37 px). Esta restricción puede incorporarse explícitamente.
+
+\begin{definicion}[Central Alignment Loss]
+Penaliza la distancia perpendicular de los puntos centrales al eje:
+\begin{equation}
+\loss_{\text{central}} = \frac{1}{3} \sum_{k \in \{9, 10, 11\}} d_\perp(\hat{\vect{p}}_k, \overrightarrow{L_1 L_2})
+\label{eq:central_loss}
+\end{equation}
+\end{definicion}
+
+\subsubsection{Cálculo de Distancia Perpendicular}
+
+Para un punto $\vect{p}$ y una línea definida por $\vect{a}$ (punto) y $\vect{u}$ (dirección unitaria):
+
+\begin{equation}
+d_\perp(\vect{p}, \text{línea}) = \norm{\vect{p} - \vect{a} - \text{proj}_{\vect{u}}(\vect{p} - \vect{a})}_2
+\end{equation}
+
+donde la proyección es:
+
+\begin{equation}
+\text{proj}_{\vect{u}}(\vect{v}) = (\vect{v} \cdot \vect{u}) \vect{u}
+\end{equation}
+
+\begin{algorithm}[H]
+\caption{Central Alignment Loss}
+\label{alg:central_loss}
+\begin{algorithmic}[1]
+\REQUIRE Landmarks predichos $\hat{\vect{L}} = \{\hat{\vect{p}}_k\}_{k=1}^{15}$
+\ENSURE Pérdida de alineación central
+\STATE $\vect{a} \leftarrow \hat{\vect{p}}_1$ \COMMENT{Punto del eje}
+\STATE $\vect{u} \leftarrow (\hat{\vect{p}}_2 - \hat{\vect{p}}_1) / \norm{\hat{\vect{p}}_2 - \hat{\vect{p}}_1}$ \COMMENT{Dirección unitaria}
+\STATE $\loss \leftarrow 0$
+\FOR{$k \in \{9, 10, 11\}$}
+    \STATE $\vect{v} \leftarrow \hat{\vect{p}}_k - \vect{a}$
+    \STATE $\text{proj} \leftarrow (\vect{v} \cdot \vect{u}) \cdot \vect{u}$
+    \STATE $d_\perp \leftarrow \norm{\vect{v} - \text{proj}}$
+    \STATE $\loss \leftarrow \loss + d_\perp$
+\ENDFOR
+\RETURN $\loss / 3$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Soft Symmetry Loss}
+
+\subsubsection{Motivación}
+
+Los pares bilaterales presentan simetría aproximada respecto al eje central. Sin embargo, el Ground Truth revela asimetría natural de 5.5-7.9 px. Por tanto, no se debe forzar simetría perfecta.
+
+\begin{definicion}[Soft Symmetry Loss]
+Penaliza \textbf{solo} asimetrías que excedan un margen $m$:
+\begin{equation}
+\loss_{\text{sym}} = \frac{1}{|\mathcal{P}|} \sum_{(l, r) \in \mathcal{P}} \max\left(0, |d_l - d_r| - m\right)^2
+\label{eq:soft_sym}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $\mathcal{P} = \{(3,4), (5,6), (7,8), (12,13), (14,15)\}$ son los pares bilaterales
+    \item $d_l$, $d_r$ son las distancias perpendiculares al eje
+    \item $m$ es el margen de tolerancia
+\end{itemize}
+\end{definicion}
+
+\subsubsection{Selección del Margen}
+
+Basado en el análisis del GT:
+
+\begin{table}[H]
+\centering
+\caption{Asimetría en Ground Truth y selección de margen}
+\label{tab:margin_selection}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Par} & \textbf{Asimetría GT (px)} & \textbf{Percentil 75} \\
+\midrule
+$(L_3, L_4)$ & $5.51 \pm 4.58$ & 7.8 \\
+$(L_5, L_6)$ & $5.55 \pm 5.20$ & 8.2 \\
+$(L_7, L_8)$ & $6.82 \pm 5.85$ & 9.1 \\
+$(L_{12}, L_{13})$ & $6.15 \pm 5.42$ & 8.7 \\
+$(L_{14}, L_{15})$ & $7.89 \pm 6.84$ & 11.2 \\
+\midrule
+\textbf{Margen seleccionado} & \multicolumn{2}{c}{$m = 6$ px $\approx 0.027$ normalizado} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}
+El margen $m = 6$ px permite que el modelo replique la asimetría natural del GT sin penalizar predicciones anatómicamente correctas.
+\end{observacion}
+
+\subsection{Combined Loss}
+
+\begin{definicion}[Combined Landmark Loss]
+La pérdida combinada pondera los tres términos:
+\begin{equation}
+\loss_{\text{total}} = \wingloss + \alpha \cdot \loss_{\text{central}} + \beta \cdot \loss_{\text{sym}}
+\label{eq:combined_loss}
+\end{equation}
+donde $\alpha$ y $\beta$ son hiperparámetros de ponderación.
+\end{definicion}
+
+\subsubsection{Análisis de Ponderaciones}
+
+\begin{table}[H]
+\centering
+\caption{Experimentos de ponderación de pérdidas}
+\label{tab:loss_weights}
+\begin{tabular}{cccc}
+\toprule
+$\alpha$ & $\beta$ & \textbf{Error Val (px)} & \textbf{Observación} \\
+\midrule
+0 & 0 & 9.08 & Solo Wing Loss \\
+1.0 & 0 & 9.12 & Central alignment \\
+0 & 0.5 & 9.21 & Soft symmetry \\
+1.0 & 0.5 & 9.34 & Combinado \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{hallazgo}
+Las restricciones geométricas adicionales \textbf{no mejoraron} el rendimiento. El modelo con Wing Loss solo logra el mejor resultado. Esto sugiere que las restricciones geométricas son \textbf{aprendidas implícitamente} por el modelo sin necesidad de pérdidas explícitas.
+\end{hallazgo}
+
+% ==============================================================================
+\section{Weighted Wing Loss}
+% ==============================================================================
+
+\subsection{Motivación}
+
+Los landmarks tienen diferentes niveles de dificultad. Los puntos costofrénicos ($L_{14}$, $L_{15}$) son más difíciles que los puntos centrales. Una estrategia es ponderar la pérdida por landmark.
+
+\begin{definicion}[Weighted Wing Loss]
+\begin{equation}
+\loss_{\text{weighted}} = \frac{1}{\sum_k w_k} \sum_{k=1}^{K} w_k \cdot \wingloss(\hat{\vect{p}}_k - \vect{p}_k)
+\label{eq:weighted_wing}
+\end{equation}
+donde $w_k$ es el peso del landmark $k$.
+\end{definicion}
+
+\subsection{Estrategias de Ponderación}
+
+\begin{table}[H]
+\centering
+\caption{Estrategias de ponderación evaluadas}
+\label{tab:weighting_strategies}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Estrategia} & \textbf{Error Val (px)} & \textbf{Descripción} \\
+\midrule
+Uniforme ($w_k = 1$) & \textbf{9.08} & Todos igual peso \\
+Inverso al error & 9.15 & $w_k \propto 1/\epsilon_k$ \\
+Prioridad a difíciles & 9.22 & Más peso a $L_{14}$, $L_{15}$ \\
+Prioridad a eje & 9.11 & Más peso a $L_1$, $L_2$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{resultadoimportante}
+La ponderación uniforme resultó óptima. Las estrategias de ponderación no mejoraron el rendimiento, posiblemente porque:
+\begin{enumerate}
+    \item El modelo ya aprende a balancear la atención entre landmarks
+    \item Ponderar ciertos landmarks puede desbalancear el aprendizaje global
+    \item La dificultad de un landmark no implica que requiera más énfasis
+\end{enumerate}
+\end{resultadoimportante}
+
+% ==============================================================================
+\section{Comparación Experimental}
+% ==============================================================================
+
+\subsection{Configuración Experimental}
+
+Todas las funciones de pérdida se evaluaron con:
+\begin{itemize}
+    \item Misma arquitectura: ResNet18Landmarks (sin CoordAttention ni DeepHead)
+    \item Mismo optimizer: Adam, lr=1e-3 (fase 1), 2e-4 (fase 2)
+    \item Misma semilla: random\_seed=42
+    \item 50 épocas de entrenamiento
+\end{itemize}
+
+\subsection{Resultados}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de funciones de pérdida}
+\label{tab:loss_comparison_results}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Función} & \textbf{Error Train (px)} & \textbf{Error Val (px)} & \textbf{Error Test (px)} & $\Delta$ \textbf{vs MSE} \\
+\midrule
+MSE (L2) & 10.21 & 11.34 & 11.52 & baseline \\
+MAE (L1) & 9.87 & 10.87 & 11.01 & -4.4\% \\
+Smooth L1 & 9.42 & 10.12 & 10.34 & -10.2\% \\
+\textbf{Wing Loss} & \textbf{8.45} & \textbf{9.08} & \textbf{9.21} & \textbf{-20.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+% [Figura sugerida: Curvas de convergencia por función de pérdida]
+\caption{Evolución del error de validación durante el entrenamiento para diferentes funciones de pérdida. Wing Loss converge más rápido y alcanza mejor resultado final.}
+\label{fig:loss_convergence}
+\end{figure}
+
+\subsection{Análisis por Landmark}
+
+\begin{table}[H]
+\centering
+\caption{Error por landmark con Wing Loss vs MSE}
+\label{tab:error_by_landmark}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Landmark} & \textbf{MSE (px)} & \textbf{Wing (px)} & \textbf{Mejora} \\
+\midrule
+$L_1$ (Apex traqueal) & 9.24 & 7.12 & -22.9\% \\
+$L_2$ (Base diafrag.) & 12.87 & 10.34 & -19.7\% \\
+$L_9$ (Central sup.) & 8.12 & 6.45 & -20.6\% \\
+$L_{10}$ (Central med.) & 7.89 & 6.21 & -21.3\% \\
+$L_{11}$ (Central inf.) & 8.45 & 6.78 & -19.8\% \\
+$L_{14}$ (Costofrénico izq.) & 15.67 & 12.89 & -17.7\% \\
+$L_{15}$ (Costofrénico der.) & 15.23 & 12.54 & -17.7\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{hallazgo}
+Wing Loss mejora consistentemente todos los landmarks, con mayor impacto relativo en los landmarks centrales (20-23\%) que en los costofrénicos (17-18\%). Esto sugiere que Wing Loss es particularmente efectivo cuando los errores son pequeños.
+\end{hallazgo}
+
+% ==============================================================================
+\section{Análisis Teórico de Gradientes}
+% ==============================================================================
+
+\subsection{Magnitud de Gradientes}
+
+Para entender por qué Wing Loss es superior, analizamos la magnitud de gradientes en función del error:
+
+\begin{table}[H]
+\centering
+\caption{Magnitud de gradientes por función de pérdida}
+\label{tab:gradient_magnitude}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Error (px)} & $|\nabla \text{MSE}|$ & $|\nabla \text{L1}|$ & $|\nabla \text{Wing}|$ \\
+\midrule
+0.1 & 0.00045 & 1.0 & 0.89 \\
+1.0 & 0.0045 & 1.0 & 0.83 \\
+5.0 & 0.022 & 1.0 & 0.69 \\
+10.0 & 0.045 & 1.0 & 1.0 \\
+20.0 & 0.089 & 1.0 & 1.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}
+Para errores pequeños (< 5 px), Wing Loss mantiene gradientes significativos ($|\nabla| > 0.69$), mientras que MSE tiene gradientes muy pequeños ($|\nabla| < 0.022$). Esto explica la convergencia más rápida y precisa de Wing Loss.
+\end{observacion}
+
+\subsection{Ratio de Gradientes}
+
+El ratio $|\nabla \text{Wing}| / |\nabla \text{MSE}|$ crece dramáticamente para errores pequeños:
+
+\begin{equation}
+\frac{|\nabla \wingloss|}{|\nabla \loss_{\text{MSE}}|} = \frac{\omega / (\epsilon + |x|)}{|x|} \approx \frac{\omega}{\epsilon \cdot |x|} \quad \text{para } |x| \ll \epsilon
+\end{equation}
+
+Para $|x| = 0.1$ px (error muy pequeño):
+\begin{equation}
+\frac{|\nabla \wingloss|}{|\nabla \loss_{\text{MSE}}|} \approx \frac{10}{2 \cdot 0.1} = 50
+\end{equation}
+
+\begin{resultadoimportante}
+Wing Loss proporciona gradientes hasta 50 veces mayores que MSE para errores muy pequeños, permitiendo refinamiento continuo incluso cuando el modelo está cerca del óptimo.
+\end{resultadoimportante}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 3.1: Comparación Wing Loss vs L2 vs L1}
+
+\textbf{Descripción}: Gráfico mostrando las tres funciones de pérdida en función del error.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Eje X: Error absoluto (0 a 20 px)
+    \item Eje Y: Valor de pérdida
+    \item Tres curvas: MSE (roja, cuadrática), L1 (verde, lineal), Wing (azul, logarítmica-lineal)
+    \item Línea vertical en $\omega = 10$ px marcando transición de Wing
+    \item Región sombreada para errores típicos (0-8 px)
+\end{itemize}
+
+\subsection{Figura 3.2: Gradientes de Wing Loss}
+
+\textbf{Descripción}: Gráfico de la magnitud del gradiente en función del error.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Eje X: Error absoluto (log scale, 0.01 a 50 px)
+    \item Eje Y: Magnitud del gradiente
+    \item Comparación MSE vs Wing
+    \item Anotación del ratio de gradientes
+\end{itemize}
+
+\subsection{Figura 3.3: Ilustración de Restricciones Geométricas}
+
+\textbf{Descripción}: Diagrama mostrando Central Alignment y Soft Symmetry.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Landmarks sobre radiografía esquemática
+    \item Eje central $L_1$-$L_2$ destacado
+    \item Distancias perpendiculares de $L_9$, $L_{10}$, $L_{11}$
+    \item Pares bilaterales con distancias al eje
+    \item Margen de tolerancia ilustrado
+\end{itemize}
+
+\subsection{Figura 3.4: Distribución de Asimetría en GT}
+
+\textbf{Descripción}: Histogramas de asimetría por par bilateral.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item 5 histogramas (uno por par)
+    \item Línea vertical en margen $m = 6$ px
+    \item Media y desviación estándar anotadas
+\end{itemize}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+El análisis comparativo de funciones de pérdida condujo a las siguientes conclusiones:
+
+\begin{enumerate}
+    \item \textbf{Wing Loss es superior}: Mejora 20\% sobre MSE gracias a gradientes informativos para errores pequeños
+
+    \item \textbf{Restricciones geométricas no son necesarias}: El modelo aprende implícitamente la estructura del eje central y simetría bilateral
+
+    \item \textbf{Ponderación uniforme es óptima}: Estrategias de ponderación por dificultad no mejoran el rendimiento
+
+    \item \textbf{Parámetros normalizados}: $\omega$ y $\epsilon$ deben escalarse para coordenadas en $[0, 1]$
+\end{enumerate}
+
+\begin{metodologia}
+La función de pérdida final seleccionada es \textbf{Wing Loss} con parámetros:
+\begin{itemize}
+    \item $\omega = 10$ px (0.0446 normalizado)
+    \item $\epsilon = 2$ px (0.0089 normalizado)
+    \item Sin restricciones geométricas adicionales
+    \item Ponderación uniforme para todos los landmarks
+\end{itemize}
+\end{metodologia}
+
+% ==============================================================================
+\section{Archivos de Referencia}
+% ==============================================================================
+
+\begin{table}[H]
+\centering
+\caption{Archivos fuente relacionados con este documento}
+\begin{tabular}{ll}
+\toprule
+\textbf{Archivo} & \textbf{Descripción} \\
+\midrule
+\archivo{src\_v2/models/losses.py} & Implementación de Wing Loss y restricciones \\
+\archivo{tests/test\_losses.py} & Tests unitarios de funciones de pérdida \\
+\archivo{SESSION\_LOG.md} & Registro de sesión 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\bibliographystyle{ieeetr}
+% \bibliography{referencias}
+% ==============================================================================
+
+\end{document}

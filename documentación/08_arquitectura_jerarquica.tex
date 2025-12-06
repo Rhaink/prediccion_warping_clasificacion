@@ -1,0 +1,543 @@
+% ==============================================================================
+% DOCUMENTACIÓN CIENTÍFICA - ARQUITECTURA JERÁRQUICA (EXPLORACIÓN)
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% Sesiones cubiertas: 13-14
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{Arquitectura Jerárquica para Predicción de Landmarks:\\Exploración y Análisis de Resultados Negativos}
+\author{Documentación del Proceso de Desarrollo}
+\date{Sesiones: 13-14}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento presenta la exploración de una arquitectura jerárquica alternativa
+para la predicción de landmarks anatómicos. Basada en los descubrimientos
+geométricos del proceso de etiquetado (eje central L1-L2 y posiciones relativas),
+la arquitectura propuesta predice primero el eje y luego los parámetros relativos
+de cada landmark. Aunque la idea era prometedora, el modelo jerárquico corregido
+logró solo 6.83 píxeles vs 3.71 del modelo directo. Se documentan los tres bugs
+críticos encontrados (posiciones $t$ incorrectas, rango insuficiente, signos
+invertidos), su corrección, y el análisis que explica por qué las restricciones
+geométricas explícitas no superan al modelo directo que las aprende implícitamente.
+Este es un resultado negativo científicamente valioso que valida el enfoque
+de regresión directa.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción y Motivación}
+% ==============================================================================
+
+\subsection{Hipótesis de Partida}
+
+Los descubrimientos geométricos de la Sesión 19 revelaron una estructura
+altamente regular en el proceso de etiquetado manual:
+
+\begin{itemize}
+    \item El eje L1-L2 define una línea casi perfectamente vertical
+    \item L9, L10, L11 dividen el eje en \textbf{exactamente 4 partes} ($t = 0.25, 0.50, 0.75$)
+    \item Los landmarks bilaterales se ubican a distancias perpendiculares del eje
+    \item El error de alineación de los centrales al eje es solo 1.3 px
+\end{itemize}
+
+\begin{quote}
+\textit{Hipótesis}: Si el proceso de etiquetado sigue esta estructura paramétrica,
+un modelo que la explote explícitamente debería superar al modelo de regresión
+directa que debe aprender estas relaciones implícitamente.
+\end{quote}
+
+\subsection{Objetivo de la Arquitectura Jerárquica}
+
+Diseñar un modelo que prediga landmarks en dos etapas:
+\begin{enumerate}
+    \item \textbf{Etapa 1}: Predecir el eje central (L1, L2) $\to$ 4 valores
+    \item \textbf{Etapa 2}: Predecir parámetros relativos al eje $\to$ 18 valores
+\end{enumerate}
+
+Los landmarks finales se reconstruyen matemáticamente desde estos parámetros,
+garantizando que las restricciones geométricas se satisfagan por construcción.
+
+% ==============================================================================
+\section{Diseño de la Arquitectura}
+% ==============================================================================
+
+\subsection{Parametrización de Landmarks}
+
+La parametrización de landmarks relativa al eje se define como:
+
+\begin{definicion}[Coordenadas del Eje]
+El eje central se define por dos puntos:
+\begin{equation}
+\text{Eje} = \{L_1, L_2\} \in \R^4
+\label{eq:axis_coords}
+\end{equation}
+donde $L_1 = (x_1, y_1)$ es el ápice superior y $L_2 = (x_2, y_2)$ es el ápice
+inferior de la columna vertebral torácica.
+\end{definicion}
+
+\begin{definicion}[Parámetro $t$ (Posición en el Eje)]
+Para un punto $P$ sobre el eje, su posición se parametriza como:
+\begin{equation}
+P(t) = L_1 + t \cdot (L_2 - L_1), \quad t \in [0, 1]
+\label{eq:t_parameter}
+\end{equation}
+donde $t=0$ corresponde a $L_1$ y $t=1$ corresponde a $L_2$.
+\end{definicion}
+
+\begin{definicion}[Distancia Perpendicular]
+Para landmarks no centrales, se define la distancia perpendicular al eje:
+\begin{equation}
+\vect{d} = (P - P_{base}) \cdot \vect{u}^\perp
+\label{eq:perp_distance}
+\end{equation}
+donde $\vect{u}^\perp$ es el vector unitario perpendicular al eje.
+\end{definicion}
+
+\subsection{Salidas del Modelo}
+
+\begin{table}[htbp]
+\centering
+\caption{Parametrización de la arquitectura jerárquica}
+\label{tab:hierarchical_params}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Tipo} & \textbf{Landmarks} & \textbf{Parámetros} & \textbf{Cantidad} \\
+\midrule
+Eje & L1, L2 & $x_1, y_1, x_2, y_2$ & 4 \\
+Centrales & L9, L10, L11 & $\Delta t_9, \Delta t_{10}, \Delta t_{11}$ & 3 \\
+Bilaterales & 5 pares & $t_i, d_{left}, d_{right}$ & 15 \\
+\midrule
+& & \textbf{Total} & \textbf{22} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Arquitectura de Red}
+
+\begin{lstlisting}[language=Python, caption={Estructura de HierarchicalLandmarkModel}]
+class HierarchicalLandmarkModel(nn.Module):
+    def __init__(self, hidden_dim=512, dropout=0.3):
+        # Backbone compartido
+        self.backbone = ResNet18_layers()  # Sin FC
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+
+        # Cabeza para eje (L1, L2) -> 4 valores
+        self.axis_head = nn.Sequential(
+            nn.Linear(512, hidden_dim),
+            nn.GroupNorm(32, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, 4),
+            nn.Sigmoid()
+        )
+
+        # Cabeza para parametros relativos -> 18 valores
+        # Input: features (512) + axis (4) = 516
+        self.relative_head = nn.Sequential(
+            nn.Linear(516, hidden_dim),
+            nn.GroupNorm(32, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.GroupNorm(16, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim // 2, 18)
+        )
+\end{lstlisting}
+
+\subsection{Reconstrucción de Landmarks}
+
+El proceso de reconstrucción convierte los 22 parámetros a 30 coordenadas:
+
+\begin{algorithm}[H]
+\caption{Reconstrucción de Landmarks desde Parámetros}
+\label{alg:reconstruct}
+\begin{algorithmic}[1]
+\REQUIRE $L_1, L_2 \in \R^2$, params $\in \R^{18}$
+\ENSURE landmarks $\in \R^{15 \times 2}$
+\STATE $\vect{v}_{axis} \leftarrow L_2 - L_1$
+\STATE $\ell \leftarrow \|\vect{v}_{axis}\|$
+\STATE $\hat{\vect{u}} \leftarrow \vect{v}_{axis} / \ell$
+\STATE $\hat{\vect{u}}^\perp \leftarrow (-\hat{u}_y, \hat{u}_x)$ \COMMENT{Rotación 90°}
+\STATE landmarks[0] $\leftarrow L_1$
+\STATE landmarks[1] $\leftarrow L_2$
+\STATE \COMMENT{Landmarks centrales}
+\FOR{$i \in \{8, 9, 10\}$}
+    \STATE $t \leftarrow t_{base}[i] + \tanh(\Delta t_i) \cdot 0.1$
+    \STATE landmarks[$i$] $\leftarrow L_1 + t \cdot \vect{v}_{axis}$
+\ENDFOR
+\STATE \COMMENT{Landmarks bilaterales}
+\FORALL{par $(idx_L, idx_R)$ con parámetros $(t, d_L, d_R)$}
+    \STATE $P_{base} \leftarrow L_1 + t \cdot \vect{v}_{axis}$
+    \STATE landmarks[$idx_L$] $\leftarrow P_{base} + \sigma(d_L) \cdot 0.7 \cdot \hat{\vect{u}}^\perp \cdot \ell$
+    \STATE landmarks[$idx_R$] $\leftarrow P_{base} - \sigma(d_R) \cdot 0.7 \cdot \hat{\vect{u}}^\perp \cdot \ell$
+\ENDFOR
+\RETURN landmarks
+\end{algorithmic}
+\end{algorithm}
+
+% ==============================================================================
+\section{Sesión 13: Implementación Inicial}
+% ==============================================================================
+
+\subsection{Entrenamiento}
+
+El modelo jerárquico se entrenó con los mismos hiperparámetros que el modelo
+directo:
+
+\begin{table}[htbp]
+\centering
+\caption{Configuración de entrenamiento del modelo jerárquico}
+\label{tab:hier_training}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Épocas & 100 \\
+Backbone LR & $2 \times 10^{-5}$ \\
+Head LR & $2 \times 10^{-4}$ \\
+Loss & Wing Loss \\
+CLAHE & clip=2.0, tile=4 \\
+Dropout & 0.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Resultado Inicial: Fallo Catastrófico}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparación inicial: jerárquico vs directo}
+\label{tab:initial_failure}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Modelo} & \textbf{Error Test} & \textbf{Status} \\
+\midrule
+Regresión directa (ensemble) & 3.71 px & Óptimo \\
+Jerárquico (inicial) & \textbf{46.6 px} & \textcolor{red}{Fallo} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}
+El error de 46.6 px (12× peor que el modelo directo) indicaba la presencia
+de bugs críticos en la implementación, no un fallo del concepto.
+\end{observacion}
+
+% ==============================================================================
+\section{Sesión 14: Debugging y Corrección}
+% ==============================================================================
+
+\subsection{Bug 1: Posiciones $t$ Incorrectas para L12, L13}
+
+\textbf{Problema}: Los valores $t_{base}$ para los pares bilaterales estaban
+hardcodeados incorrectamente.
+
+\begin{table}[htbp]
+\centering
+\caption{Corrección de posiciones $t$ para pares bilaterales}
+\label{tab:t_correction}
+\begin{tabular}{lccl}
+\toprule
+\textbf{Par} & \textbf{$t$ Incorrecto} & \textbf{$t$ Correcto} & \textbf{Ubicación Real} \\
+\midrule
+L3, L4 & 0.25 & 0.25 & OK \\
+L5, L6 & 0.50 & 0.50 & OK \\
+L7, L8 & 0.75 & 0.75 & OK \\
+L12, L13 & \textcolor{red}{0.10} & \textcolor{green!50!black}{0.00} & En L1 \\
+L14, L15 & \textcolor{red}{0.90} & \textcolor{green!50!black}{1.00} & En L2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[language=Python, caption={Corrección de bilateral\_t\_base}]
+# ANTES (incorrecto)
+bilateral_t_base = [0.25, 0.50, 0.75, 0.10, 0.90]
+
+# DESPUES (correcto)
+bilateral_t_base = [0.25, 0.50, 0.75, 0.00, 1.00]
+\end{lstlisting}
+
+\subsection{Bug 2: Rango de Distancias Perpendiculares Insuficiente}
+
+\textbf{Problema}: Las distancias perpendiculares predichas estaban limitadas
+a $[0, 0.5]$, pero las distancias reales en el ground truth alcanzan hasta 0.65.
+
+\begin{equation}
+d_{max}^{predicho} = \sigma(\cdot) \times 0.5 = 0.5 \quad < \quad d_{max}^{GT} = 0.65
+\label{eq:range_bug}
+\end{equation}
+
+\begin{lstlisting}[language=Python, caption={Corrección del rango de distancias}]
+# ANTES (insuficiente)
+d_left = torch.sigmoid(params[...]) * 0.5
+
+# DESPUES (correcto)
+d_left = torch.sigmoid(params[...]) * 0.7
+\end{lstlisting}
+
+\subsection{Bug 3: Vector Perpendicular Invertido}
+
+\textbf{Problema}: Los signos del vector perpendicular estaban invertidos,
+causando que los landmarks izquierdos aparecieran a la derecha y viceversa.
+
+\begin{equation}
+\begin{aligned}
+\text{Incorrecto: } & P_{left} = P_{base} - d \cdot \hat{\vect{u}}^\perp \\
+\text{Correcto: } & P_{left} = P_{base} + d \cdot \hat{\vect{u}}^\perp
+\end{aligned}
+\label{eq:sign_bug}
+\end{equation}
+
+\begin{lstlisting}[language=Python, caption={Corrección de signos}]
+# ANTES (invertido)
+landmarks[:, left_idx] = base_point - d_left * perp_unit * axis_len
+landmarks[:, right_idx] = base_point + d_right * perp_unit * axis_len
+
+# DESPUES (correcto)
+landmarks[:, left_idx] = base_point + d_left * perp_unit * axis_len
+landmarks[:, right_idx] = base_point - d_right * perp_unit * axis_len
+\end{lstlisting}
+
+\subsection{Scripts de Debugging}
+
+Se crearon tres scripts para diagnosticar los problemas:
+
+\begin{table}[htbp]
+\centering
+\caption{Scripts de debugging creados}
+\label{tab:debug_scripts}
+\begin{tabular}{ll}
+\toprule
+\textbf{Script} & \textbf{Propósito} \\
+\midrule
+\archivo{debug\_hierarchical.py} & Analizar parámetros geométricos del GT \\
+\archivo{test\_reconstruct.py} & Verificar reconstrucción con parámetros conocidos \\
+\archivo{test\_hierarchical\_forward.py} & Test de forward pass del modelo \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Resultados Post-Corrección}
+% ==============================================================================
+
+\subsection{Mejora Dramática}
+
+\begin{table}[htbp]
+\centering
+\caption{Resultado del modelo jerárquico corregido}
+\label{tab:corrected_results}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Métrica} & \textbf{Antes (bug)} & \textbf{Después} & \textbf{Mejora} \\
+\midrule
+Error Test & 46.6 px & \textbf{6.83 px} & \textbf{7× mejor} \\
+Normal & - & 5.98 px & - \\
+COVID & - & 7.44 px & - \\
+Viral & - & 8.01 px & - \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Comparación Final}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparación final: jerárquico vs directo}
+\label{tab:final_comparison}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Modelo} & \textbf{Error Test} & \textbf{vs Baseline} & \textbf{Resultado} \\
+\midrule
+\textbf{Regresión directa (ensemble 4)} & \textbf{3.71 px} & -59\% & \checkmark\checkmark \\
+Jerárquico corregido & 6.83 px & -25\% & Funciona \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{resultadoimportante}[title={El modelo directo supera al jerárquico}]
+A pesar de que la arquitectura jerárquica explota la estructura geométrica
+conocida, el modelo de regresión directa logra un error 45\% menor
+(3.71 vs 6.83 px). Este es un \textbf{resultado negativo científicamente
+valioso}.
+\end{resultadoimportante}
+
+% ==============================================================================
+\section{Análisis: ¿Por qué el Modelo Directo es Mejor?}
+% ==============================================================================
+
+\subsection{Hipótesis 1: Restricciones Redundantes}
+
+El modelo de regresión directa ya aprende implícitamente las restricciones
+geométricas durante el entrenamiento, haciendo que las restricciones explícitas
+del modelo jerárquico sean redundantes.
+
+\begin{observacion}
+El análisis de las predicciones del modelo directo muestra que:
+\begin{itemize}
+    \item L9, L10, L11 predichos están a solo 0.0025 de distancia del eje
+    (mejor que el GT con 0.0044)
+    \item La simetría se preserva dentro del margen esperado
+    \item Las proporciones $t$ se mantienen aproximadamente
+\end{itemize}
+\end{observacion}
+
+\subsection{Hipótesis 2: Propagación de Error}
+
+En la arquitectura jerárquica, los errores se propagan:
+
+\begin{equation}
+\epsilon_{landmark} = f(\epsilon_{axis}, \epsilon_{params})
+\label{eq:error_propagation}
+\end{equation}
+
+Un error en la predicción del eje (L1, L2) afecta a \textbf{todos} los demás
+landmarks, amplificando el error total.
+
+\subsection{Hipótesis 3: Capacidad de Representación}
+
+El modelo directo tiene 30 grados de libertad independientes, mientras que
+el jerárquico tiene solo 22 parámetros con restricciones. Esta limitación
+puede impedir ajustar pequeñas desviaciones del ground truth que no siguen
+exactamente la estructura paramétrica idealizada.
+
+\subsection{Conclusión del Análisis}
+
+\begin{hallazgo}[title={Valor del resultado negativo}]
+Este experimento demuestra que:
+\begin{enumerate}
+    \item Las restricciones geométricas del etiquetado son aprendidas
+    implícitamente por el modelo de regresión directa
+    \item Imponer restricciones explícitas no mejora el rendimiento
+    \item El modelo directo es más robusto a variaciones en el GT
+    \item La simplicidad arquitectónica es preferible cuando funciona
+\end{enumerate}
+\end{hallazgo}
+
+% ==============================================================================
+\section{Lecciones Aprendidas}
+% ==============================================================================
+
+\subsection{Sobre Debugging de Modelos Geométricos}
+
+\begin{enumerate}
+    \item \textbf{Verificar parámetros contra GT}: Antes de entrenar,
+    verificar que los parámetros hardcodeados corresponden al análisis real.
+
+    \item \textbf{Probar reconstrucción con GT}: Usar parámetros extraídos
+    del ground truth para verificar que la reconstrucción funciona.
+
+    \item \textbf{Visualizar predicciones}: Los errores geométricos son
+    evidentes visualmente (landmarks en posiciones incorrectas).
+\end{enumerate}
+
+\subsection{Sobre Diseño de Arquitecturas}
+
+\begin{enumerate}
+    \item \textbf{No asumir que restricciones mejoran}: Las restricciones
+    explícitas pueden limitar la capacidad del modelo.
+
+    \item \textbf{Preferir simplicidad}: Un modelo que funciona bien no
+    necesita complicaciones adicionales.
+
+    \item \textbf{Medir antes de optimizar}: Verificar que el problema
+    existe antes de implementar soluciones complejas.
+\end{enumerate}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 8.1: Arquitectura Jerárquica}
+\textit{Descripción}: Diagrama mostrando:
+\begin{itemize}
+    \item Backbone compartido
+    \item Bifurcación a axis\_head y relative\_head
+    \item Bloque de reconstrucción
+    \item Salida de 30 coordenadas
+\end{itemize}
+
+\subsection{Figura 8.2: Parametrización Geométrica}
+\textit{Descripción}: Diagrama anatómico mostrando:
+\begin{itemize}
+    \item Eje L1-L2 con parámetro $t$ marcado
+    \item Landmarks centrales en $t = 0.25, 0.50, 0.75$
+    \item Distancias perpendiculares $d_{left}$, $d_{right}$
+    \item Vector perpendicular $\hat{u}^\perp$
+\end{itemize}
+
+\subsection{Figura 8.3: Comparación de Errores}
+\textit{Descripción}: Gráfico de barras comparando:
+\begin{itemize}
+    \item Jerárquico con bugs: 46.6 px
+    \item Jerárquico corregido: 6.83 px
+    \item Regresión directa: 3.71 px
+\end{itemize}
+
+\subsection{Figura 8.4: Visualización de Bugs}
+\textit{Descripción}: Grid de imágenes mostrando predicciones:
+\begin{itemize}
+    \item Con bug de $t$: L12, L13 desplazados
+    \item Con bug de rango: landmarks ``aplastados''
+    \item Con bug de signos: izquierda/derecha invertidos
+    \item Corregido: landmarks correctos
+\end{itemize}
+
+% ==============================================================================
+\section{Archivos Fuente}
+% ==============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Archivos de implementación de arquitectura jerárquica}
+\label{tab:source_files}
+\begin{tabular}{ll}
+\toprule
+\textbf{Archivo} & \textbf{Contenido} \\
+\midrule
+\archivo{src\_v2/models/hierarchical.py} & HierarchicalLandmarkModel \\
+\archivo{scripts/train\_hierarchical.py} & Script de entrenamiento \\
+\archivo{scripts/debug\_hierarchical.py} & Análisis de parámetros GT \\
+\archivo{scripts/test\_reconstruct.py} & Verificación de reconstrucción \\
+\archivo{scripts/test\_hierarchical\_forward.py} & Test de forward pass \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+\begin{enumerate}
+    \item \textbf{Arquitectura jerárquica funciona}: Tras corregir bugs,
+    logra 6.83 px (25\% mejor que baseline).
+
+    \item \textbf{Modelo directo es superior}: Con 3.71 px, supera al
+    jerárquico por 45\%.
+
+    \item \textbf{Restricciones geométricas son redundantes}: El modelo
+    directo las aprende implícitamente.
+
+    \item \textbf{Debugging requiere herramientas específicas}: Scripts
+    para analizar parámetros y verificar reconstrucción son esenciales.
+
+    \item \textbf{Resultado negativo es valioso}: Documenta que la
+    complejidad adicional no garantiza mejora.
+
+    \item \textbf{Bugs sutiles causan fallos catastróficos}: Errores de
+    0.1 en $t$ o 0.2 en rango causaron 12× peor rendimiento.
+
+    \item \textbf{Validación del enfoque simple}: La regresión directa
+    con ensemble es la solución óptima para este problema.
+\end{enumerate}
+
+\end{document}

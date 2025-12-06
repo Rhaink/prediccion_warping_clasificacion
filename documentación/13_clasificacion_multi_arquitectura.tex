@@ -1,0 +1,630 @@
+% ==============================================================================
+% DOCUMENTACIÓN CIENTÍFICA - CLASIFICACIÓN MULTI-ARQUITECTURA
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% Sesiones cubiertas: 22-23, 31
+% Nivel: Doctoral/Científico - Completo y Detallado
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{Evaluación Comparativa de Arquitecturas CNN\\para Clasificación de Neumonía:\\
+Análisis Original vs. Geométricamente Normalizado}
+\author{Documentación del Proceso de Desarrollo}
+\date{Sesiones: 22-23, 31}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento presenta una evaluación sistemática de 7 arquitecturas de
+redes neuronales convolucionales para la clasificación de radiografías de
+tórax en tres categorías: Normal, COVID-19 y Neumonía Viral. Se compara
+el rendimiento de cada arquitectura entrenada en el dataset original
+versus el dataset geométricamente normalizado mediante warping. Los resultados
+demuestran que 6 de 7 arquitecturas logran mayor accuracy en imágenes
+originales que en warpeadas, con una diferencia promedio del 4.2\%.
+MobileNetV2 alcanza el mejor rendimiento absoluto (98.96\% en original),
+mientras que ResNet-18 muestra la mayor sensibilidad a la normalización
+geométrica (gap del 10.42\%). La excepción notable es AlexNet, que mejora
+en el dataset warpeado, posiblemente debido a su limitada capacidad para
+aprender patrones complejos. Este análisis sugiere la presencia de
+\textit{shortcut learning} relacionado con características del dataset
+más que con deficiencias arquitecturales específicas.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción y Motivación}
+% ==============================================================================
+
+\subsection{Objetivo del Estudio Comparativo}
+
+El estudio multi-arquitectura tiene dos objetivos principales:
+
+\begin{enumerate}
+    \item \textbf{Encontrar la mejor arquitectura}: Identificar qué red CNN
+    logra el mejor rendimiento para la tarea de clasificación de neumonía
+
+    \item \textbf{Evaluar el impacto de la normalización}: Determinar si
+    la normalización geométrica mejora, empeora o no afecta el rendimiento
+    de clasificación
+\end{enumerate}
+
+\subsection{Hipótesis a Evaluar}
+
+\begin{hipotesis}[H1: Alto rendimiento en original]
+Las arquitecturas CNN entrenadas en el dataset original lograrán accuracy
+superior al 90\%, debido a la presencia de patrones discriminativos
+(potencialmente incluyendo shortcuts).
+\end{hipotesis}
+
+\begin{hipotesis}[H2: Rendimiento ``honesto'' en warped]
+El dataset warpeado, al eliminar variabilidad geométrica irrelevante,
+mostrará rendimiento entre 85-92\%, reflejando la dificultad intrínseca
+del problema sin shortcuts.
+\end{hipotesis}
+
+\begin{hipotesis}[H3: Gap consistente entre arquitecturas]
+Si el gap (original $-$ warped) es consistente entre arquitecturas,
+el fenómeno es atribuible al dataset (shortcuts) más que a características
+específicas de cada modelo.
+\end{hipotesis}
+
+% ==============================================================================
+\section{Arquitecturas Evaluadas}
+% ==============================================================================
+
+\subsection{Selección de Arquitecturas}
+
+Se seleccionaron 7 arquitecturas representativas que cubren diferentes
+paradigmas de diseño y épocas del desarrollo de CNNs:
+
+\begin{table}[htbp]
+\centering
+\caption{Arquitecturas CNN evaluadas}
+\label{tab:architectures}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Arquitectura} & \textbf{Paradigma} & \textbf{Parámetros} & \textbf{Año} \\
+\midrule
+AlexNet & Clásica profunda & 57M & 2012 \\
+VGG-16 & Muy profunda uniforme & 134M & 2014 \\
+ResNet-18 & Conexiones residuales & 11M & 2015 \\
+ResNet-50 & Residual profunda & 23.5M & 2015 \\
+DenseNet-121 & Conexiones densas & 7M & 2016 \\
+MobileNetV2 & Eficiente (depthwise) & 2.2M & 2018 \\
+EfficientNet-B0 & Compound scaling & 4M & 2019 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Descripción de Arquitecturas}
+
+\subsubsection{AlexNet (2012)}
+
+Arquitectura pionera que demostró la viabilidad de CNNs profundas:
+\begin{itemize}
+    \item 8 capas con pesos entrenables (5 conv + 3 FC)
+    \item Introdujo ReLU, dropout, data augmentation
+    \item 57M parámetros pero arquitectura relativamente simple
+\end{itemize}
+
+\subsubsection{VGG-16 (2014)}
+
+Arquitectura uniforme con filtros pequeños:
+\begin{itemize}
+    \item 16 capas con pesos (13 conv + 3 FC)
+    \item Todos los filtros de $3 \times 3$
+    \item 134M parámetros, muy costosa computacionalmente
+\end{itemize}
+
+\subsubsection{ResNet-18/50 (2015)}
+
+Introdujo las conexiones residuales:
+\begin{equation}
+\vect{y} = \mathcal{F}(\vect{x}, \{W_i\}) + \vect{x}
+\end{equation}
+\begin{itemize}
+    \item Permite entrenar redes muy profundas
+    \item ResNet-18: 11M params, ResNet-50: 23.5M params
+    \item Ampliamente usado como backbone en transfer learning
+\end{itemize}
+
+\subsubsection{DenseNet-121 (2016)}
+
+Conexiones densas entre todas las capas:
+\begin{equation}
+\vect{x}_l = H_l([\vect{x}_0, \vect{x}_1, \ldots, \vect{x}_{l-1}])
+\end{equation}
+\begin{itemize}
+    \item Reutilización de features a través de concatenación
+    \item 7M parámetros, eficiente en uso de parámetros
+    \item Excelente para imágenes médicas
+\end{itemize}
+
+\subsubsection{MobileNetV2 (2018)}
+
+Arquitectura eficiente para dispositivos móviles:
+\begin{itemize}
+    \item Convoluciones depthwise separables
+    \item Inverted residual blocks
+    \item Solo 2.2M parámetros, muy rápida
+\end{itemize}
+
+\subsubsection{EfficientNet-B0 (2019)}
+
+Compound scaling de profundidad, ancho y resolución:
+\begin{equation}
+\text{depth} = \alpha^\phi, \quad \text{width} = \beta^\phi, \quad \text{resolution} = \gamma^\phi
+\end{equation}
+\begin{itemize}
+    \item Búsqueda arquitectural automática (NAS)
+    \item 4M parámetros, estado del arte en eficiencia
+\end{itemize}
+
+% ==============================================================================
+\section{Metodología Experimental}
+% ==============================================================================
+
+\subsection{Configuración de Entrenamiento}
+
+\begin{table}[htbp]
+\centering
+\caption{Parámetros de entrenamiento}
+\label{tab:training_params}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Épocas máximas & 100 \\
+Early stopping patience & 10 \\
+Métrica de early stopping & F1-score (val) \\
+Batch size & 32 \\
+Optimizer & Adam \\
+Learning rate inicial & $10^{-4}$ \\
+LR scheduler & ReduceLROnPlateau \\
+Weight decay & $10^{-4}$ \\
+Loss function & CrossEntropy con class weights \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Transfer Learning}
+
+Todas las arquitecturas fueron inicializadas con pesos pre-entrenados en
+ImageNet:
+
+\begin{enumerate}
+    \item \textbf{Fase 1}: Backbone congelado, solo entrenar clasificador (10 épocas)
+    \item \textbf{Fase 2}: Fine-tuning completo de toda la red
+\end{enumerate}
+
+\subsection{Adaptación para 3 Clases}
+
+La capa de clasificación final fue reemplazada:
+\begin{equation}
+\text{FC}_{\text{original}}(d_{\text{feat}}, 1000) \to \text{FC}_{\text{nuevo}}(d_{\text{feat}}, 3)
+\end{equation}
+
+donde $d_{\text{feat}}$ es la dimensión del feature vector de cada arquitectura.
+
+\subsection{Class Weights}
+
+Dado el desbalance de clases:
+\begin{equation}
+w_c = \frac{N_{\text{total}}}{k \cdot N_c}
+\end{equation}
+
+\begin{table}[htbp]
+\centering
+\caption{Class weights aplicados}
+\label{tab:class_weights_clf}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Clase} & \textbf{$N$ (train)} & \textbf{Weight} \\
+\midrule
+Normal & 350 & 0.68 \\
+COVID & 229 & 1.04 \\
+Viral & 138 & 1.73 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Data Augmentation}
+
+\begin{table}[htbp]
+\centering
+\caption{Transformaciones de data augmentation}
+\label{tab:augmentation}
+\begin{tabular}{lll}
+\toprule
+\textbf{Transformación} & \textbf{Parámetro} & \textbf{Probabilidad} \\
+\midrule
+Flip horizontal & -- & 0.5 \\
+Rotación & $\pm 10°$ & 0.5 \\
+Affine & translate 5\%, scale 95-105\% & 0.5 \\
+Color jitter & brillo/contraste $\pm 10\%$ & 0.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Métricas de Evaluación}
+
+\begin{enumerate}
+    \item \textbf{Accuracy}: Proporción de predicciones correctas
+    \begin{equation}
+    \text{Accuracy} = \frac{1}{N}\sum_{c=1}^{C} \text{TP}_c = \frac{\sum_{i=1}^{N} \mathbb{1}[\hat{y}_i = y_i]}{N}
+    \end{equation}
+    donde $C$ es el número de clases y $\text{TP}_c$ son los verdaderos positivos de la clase $c$.
+
+    \item \textbf{F1-Score macro}: Media de F1 por clase
+    \begin{equation}
+    \text{F1} = \frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}
+    \end{equation}
+
+    \item \textbf{Matriz de confusión}: Distribución de errores por clase
+\end{enumerate}
+
+% ==============================================================================
+\section{Resultados}
+% ==============================================================================
+
+\subsection{Comparación de Accuracy}
+
+\begin{table}[htbp]
+\centering
+\caption{Resultados de accuracy y F1-score en test set (n=96)}
+\label{tab:results_accuracy}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modelo} & \textbf{Acc. Original} & \textbf{Acc. Warped} & \textbf{F1 Orig.} & \textbf{F1 Warp.} \\
+\midrule
+\textbf{MobileNetV2} & \textbf{98.96\%} & 92.71\% & 98.74\% & 92.99\% \\
+ResNet-18 & 95.83\% & 85.42\% & 96.02\% & 85.61\% \\
+EfficientNet-B0 & 95.83\% & 91.67\% & 95.65\% & 92.50\% \\
+DenseNet-121 & 94.79\% & 89.58\% & 95.16\% & 90.46\% \\
+ResNet-50 & 93.75\% & 89.58\% & 94.19\% & 90.42\% \\
+VGG-16 & 93.75\% & 90.62\% & 93.89\% & 91.22\% \\
+AlexNet & 86.46\% & \textbf{90.62\%} & 87.02\% & 91.17\% \\
+\midrule
+\textbf{Promedio} & \textbf{94.2\%} & \textbf{90.0\%} & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis del Gap Original-Warped}
+
+\begin{table}[htbp]
+\centering
+\caption{Gap de accuracy entre original y warped}
+\label{tab:gap_analysis}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Modelo} & \textbf{Gap (Orig $-$ Warp)} & \textbf{Interpretación} \\
+\midrule
+ResNet-18 & +10.42\% & Mayor sensibilidad a shortcuts \\
+MobileNetV2 & +6.25\% & Sensibilidad moderada \\
+DenseNet-121 & +5.21\% & Sensibilidad moderada \\
+EfficientNet-B0 & +4.17\% & Sensibilidad baja \\
+ResNet-50 & +4.17\% & Sensibilidad baja \\
+VGG-16 & +3.12\% & Sensibilidad muy baja \\
+AlexNet & \textbf{-4.17\%} & \textbf{Mejor en warped (anomalía)} \\
+\midrule
+\textbf{Promedio} & \textbf{+4.17\%} & Gap consistente \\
+\textbf{Std} & 4.1\% & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{resultadoimportante}[title={Gap consistente indica shortcut learning}]
+El gap promedio de 4.17\% (std=4.1\%) entre datasets es relativamente
+consistente entre arquitecturas, sugiriendo que el fenómeno está relacionado
+con características del dataset (shortcuts) más que con propiedades
+específicas de los modelos.
+\end{resultadoimportante}
+
+\subsection{Validación de Hipótesis}
+
+\begin{table}[htbp]
+\centering
+\caption{Validación de hipótesis experimentales}
+\label{tab:hypothesis_validation}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Hipótesis} & \textbf{Condición} & \textbf{Resultado} & \textbf{Validada} \\
+\midrule
+H1: Original $>$ 90\% & 6/7 modelos & 6/7 (86\% AlexNet) & Sí \\
+H2: Warped 85-92\% & 7/7 modelos & 7/7 cumple & Sí \\
+H3: Gap consistente & std $<$ 5\% & std = 4.1\% & Sí \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Caso Anómalo: AlexNet}
+
+AlexNet presenta un comportamiento opuesto al resto de arquitecturas:
+mejor rendimiento en warped (+4.17\%).
+
+\begin{hallazgo}[title={Hipótesis sobre anomalía de AlexNet}]
+Posibles explicaciones:
+\begin{enumerate}
+    \item \textbf{Capacidad limitada}: Solo 8 capas con pesos, posiblemente
+    insuficiente para aprender shortcuts complejos
+    \item \textbf{Features de bajo nivel}: Los shortcuts pueden requerir
+    features de alto nivel que AlexNet no captura efectivamente
+    \item \textbf{Regularización implícita}: La simplicidad de la arquitectura
+    actúa como regularizador contra overfitting a artefactos
+\end{enumerate}
+\end{hallazgo}
+
+% ==============================================================================
+\section{Análisis por Arquitectura}
+% ==============================================================================
+
+\subsection{MobileNetV2: Mejor Rendimiento Absoluto}
+
+\begin{table}[htbp]
+\centering
+\caption{Desglose de rendimiento de MobileNetV2}
+\label{tab:mobilenet_detail}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{Original} & \textbf{Warped} \\
+\midrule
+Accuracy & 98.96\% & 92.71\% \\
+F1-score & 98.74\% & 92.99\% \\
+Precision (macro) & 98.8\% & 93.1\% \\
+Recall (macro) & 98.7\% & 93.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+MobileNetV2 destaca por:
+\begin{itemize}
+    \item Menor número de parámetros (2.2M) con alto rendimiento
+    \item Inverted residual blocks eficientes
+    \item Buena transferencia desde ImageNet
+\end{itemize}
+
+\subsection{ResNet-18: Mayor Sensibilidad}
+
+ResNet-18 muestra el mayor gap (10.42\%), sugiriendo mayor dependencia
+de shortcuts. Paradójicamente, es la arquitectura más usada como backbone
+en el modelo de landmarks del proyecto.
+
+\begin{observacion}[Implicación para el proyecto]
+Aunque ResNet-18 muestra mayor sensibilidad a shortcuts en clasificación,
+su uso en el modelo de landmarks (regresión de coordenadas) puede ser
+apropiado dado que la tarea de regresión no se beneficia de los mismos
+shortcuts de clasificación.
+\end{observacion}
+
+\subsection{EfficientNet-B0: Balance Óptimo}
+
+EfficientNet-B0 presenta el mejor trade-off:
+\begin{itemize}
+    \item Alto rendimiento (95.83\% original, 91.67\% warped)
+    \item Gap moderado (4.17\%)
+    \item Solo 4M parámetros
+\end{itemize}
+
+% ==============================================================================
+\section{Implicaciones para Shortcut Learning}
+% ==============================================================================
+
+\subsection{Definición de Shortcut Learning}
+
+\begin{definicion}[Shortcut Learning]
+Fenómeno donde los modelos de deep learning aprenden a resolver tareas
+utilizando ``atajos'' (shortcuts) no genuinos en lugar de características
+semánticamente relevantes \citep{geirhos2020shortcut}.
+\end{definicion}
+
+En nuestro contexto, posibles shortcuts incluyen:
+\begin{itemize}
+    \item Artefactos de adquisición correlacionados con diagnóstico
+    \item Marcadores de texto o equipamiento en las radiografías
+    \item Características de posicionamiento del paciente
+    \item Parámetros de procesamiento de imagen específicos por institución
+\end{itemize}
+
+\subsection{Evidencia de Shortcuts en Nuestro Dataset}
+
+\begin{enumerate}
+    \item \textbf{Gap consistente}: 6/7 arquitecturas muestran el mismo patrón
+    \item \textbf{Mejor en original}: El dataset original contiene ``algo''
+    que facilita la clasificación
+    \item \textbf{El warping elimina información}: La normalización geométrica
+    elimina algunas características que los modelos explotaban
+\end{enumerate}
+
+\begin{hallazgo}[title={El problema es de datos, no de arquitectura}]
+La consistencia del gap entre arquitecturas de diseños muy diferentes
+(desde AlexNet 2012 hasta EfficientNet 2019) indica que el shortcut learning
+es un problema del dataset, no una deficiencia de arquitecturas específicas.
+Cualquier CNN con suficiente capacidad aprenderá estos shortcuts.
+\end{hallazgo}
+
+\subsection{Interpretación de Resultados}
+
+\begin{table}[htbp]
+\centering
+\caption{Interpretación de rendimiento por dataset}
+\label{tab:interpretation}
+\begin{tabular}{lll}
+\toprule
+\textbf{Dataset} & \textbf{Rendimiento} & \textbf{Interpretación} \\
+\midrule
+Original & $\sim$94\% & Aprende shortcuts + patología (posiblemente) \\
+Warped & $\sim$90\% & Rendimiento más ``honesto'' sin shortcuts geométricos \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 13.1: Comparación de Accuracy por Arquitectura}
+
+\begin{figuradescripcion}
+\textbf{Título}: Accuracy en test set: Original vs. Warped por arquitectura
+
+\textbf{Contenido}: Gráfico de barras agrupadas.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Eje X: 7 arquitecturas ordenadas por accuracy en original
+    \item Eje Y: Accuracy (\%)
+    \item Barras azules: Dataset original
+    \item Barras naranjas: Dataset warped
+    \item Línea de referencia en 90\%
+\end{itemize}
+
+\textbf{Anotaciones}: Delta (gap) sobre cada par de barras
+\end{figuradescripcion}
+
+\subsection{Figura 13.2: Gap Original-Warped}
+
+\begin{figuradescripcion}
+\textbf{Título}: Diferencia de accuracy (Original $-$ Warped) por arquitectura
+
+\textbf{Contenido}: Gráfico de barras horizontales.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Barras ordenadas por magnitud del gap
+    \item AlexNet resaltado (único negativo)
+    \item Línea vertical en 0
+    \item Media y std indicados
+\end{itemize}
+\end{figuradescripcion}
+
+\subsection{Figura 13.3: Matrices de Confusión}
+
+\begin{figuradescripcion}
+\textbf{Título}: Matrices de confusión: mejor modelo en cada dataset
+
+\textbf{Contenido}: 2 matrices lado a lado.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Izquierda: MobileNetV2 en Original (98.96\%)
+    \item Derecha: MobileNetV2 en Warped (92.71\%)
+    \item Heatmap con valores absolutos y porcentajes
+    \item Clases: Normal, COVID, Viral
+\end{itemize}
+
+\textbf{Observación clave}: Mostrar qué errores introduce el warping
+\end{figuradescripcion}
+
+\subsection{Figura 13.4: Eficiencia vs. Accuracy}
+
+\begin{figuradescripcion}
+\textbf{Título}: Trade-off entre número de parámetros y accuracy
+
+\textbf{Contenido}: Scatter plot.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Eje X: Millones de parámetros (log scale)
+    \item Eje Y: Accuracy (\%)
+    \item Puntos por arquitectura, dos colores (original/warped)
+    \item MobileNetV2 y EfficientNet-B0 resaltados como óptimos
+\end{itemize}
+\end{figuradescripcion}
+
+% ==============================================================================
+\section{Archivos Fuente y Reproducibilidad}
+% ==============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Archivos de implementación del estudio multi-arquitectura}
+\label{tab:source_files_multiarch}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\toprule
+\textbf{Archivo} & \textbf{Contenido} \\
+\midrule
+\archivo{scripts/train\_all\_architectures.py} & Script de entrenamiento multi-arquitectura:\\
+& \quad - Carga de 7 arquitecturas pretrained\\
+& \quad - Configuración de transfer learning\\
+& \quad - Loop de entrenamiento con early stopping\\
+& \quad - Guardado de métricas y checkpoints\\
+\midrule
+\archivo{scripts/train\_classifier.py} & Clasificador para dataset warped\\
+\midrule
+\archivo{scripts/train\_classifier\_original.py} & Clasificador para dataset original\\
+\midrule
+\archivo{outputs/classifier\_comparison/} & Resultados comparativos:\\
+& \quad - comparison\_chart.png\\
+& \quad - comparison\_table.csv\\
+& \quad - Checkpoints de modelos\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Discusión}
+% ==============================================================================
+
+\subsection{Limitaciones del Estudio}
+
+\begin{enumerate}
+    \item \textbf{Tamaño del test set}: Con solo 96 muestras, las diferencias
+    de $\pm$5\% pueden no ser estadísticamente significativas
+
+    \item \textbf{Single random seed}: Los resultados podrían variar con
+    diferentes inicializaciones
+
+    \item \textbf{Hiperparámetros fijos}: No se optimizaron hiperparámetros
+    por arquitectura
+
+    \item \textbf{Dataset específico}: Resultados pueden no generalizar
+    a otros datasets de radiografía
+\end{enumerate}
+
+\subsection{Implicaciones Prácticas}
+
+\begin{enumerate}
+    \item \textbf{Para clasificación pura}: MobileNetV2 o EfficientNet-B0
+    ofrecen el mejor balance rendimiento/eficiencia
+
+    \item \textbf{Para robustez}: El dataset warped proporciona rendimiento
+    más confiable, potencialmente menos dependiente de artefactos
+
+    \item \textbf{Para interpretabilidad}: El menor gap de AlexNet sugiere
+    que puede ser útil para estudios de interpretabilidad
+\end{enumerate}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+\begin{enumerate}
+    \item \textbf{MobileNetV2 logra el mejor rendimiento absoluto}: 98.96\%
+    accuracy en el dataset original, con solo 2.2M parámetros.
+
+    \item \textbf{El gap Original-Warped es consistente}: Promedio 4.17\%,
+    std 4.1\%, indicando que el fenómeno es del dataset, no de arquitecturas.
+
+    \item \textbf{6/7 arquitecturas muestran el mismo patrón}: Mejor
+    rendimiento en original, consistente con shortcut learning.
+
+    \item \textbf{AlexNet es la excepción}: Mejor en warped, posiblemente
+    por capacidad limitada para aprender shortcuts complejos.
+
+    \item \textbf{ResNet-18 es más sensible}: Gap del 10.42\%, sugiriendo
+    mayor dependencia de características geométricas.
+
+    \item \textbf{El warping no mejora la clasificación directa}: Pero
+    proporciona un baseline más ``honesto'' del problema.
+
+    \item \textbf{Las hipótesis fueron validadas}: El estudio confirma
+    la presencia de shortcuts y cuantifica su impacto.
+\end{enumerate}
+
+\end{document}

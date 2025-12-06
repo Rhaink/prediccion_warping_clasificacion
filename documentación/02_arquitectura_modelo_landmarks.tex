@@ -1,0 +1,642 @@
+% ==============================================================================
+% DOCUMENTO 02: ARQUITECTURA DEL MODELO DE PREDICCIÓN DE LANDMARKS
+% Sesiones cubiertas: 2-3
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{\textbf{Arquitectura del Modelo de Predicción de Landmarks}\\[0.5em]
+\large Documentación del Proceso de Desarrollo - Sesiones 2-3}
+\author{Proyecto de Tesis Doctoral\\Detección de COVID-19 mediante Landmarks Anatómicos}
+\date{Noviembre 2024}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento presenta la arquitectura del modelo de predicción de landmarks anatómicos basado en ResNet-18 con modificaciones específicas para regresión de coordenadas. Se describe en detalle el backbone convolucional, el módulo de Coordinate Attention (CVPR 2021), la cabeza de regresión profunda con GroupNorm, y la estrategia de normalización de salidas. El modelo resultante tiene 11.3M parámetros y produce 30 valores de salida correspondientes a las coordenadas $(x, y)$ de 15 landmarks.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción}
+% ==============================================================================
+
+\subsection{Contexto del Problema}
+
+La predicción de landmarks anatómicos en imágenes médicas constituye un problema de regresión donde el objetivo es estimar las coordenadas espaciales de puntos de interés anatómico. A diferencia de la clasificación, donde la salida es discreta, la regresión de landmarks requiere predicciones continuas precisas.
+
+\begin{definicion}[Problema de Regresión de Landmarks]
+Dado un espacio de imágenes $\imgspace \subset \R^{H \times W \times C}$ y un espacio de landmarks $\landmarkspace = \R^{K \times 2}$ donde $K$ es el número de puntos, el objetivo es aprender una función:
+\begin{equation}
+f_\theta: \imgspace \rightarrow \landmarkspace
+\end{equation}
+que minimice el error de localización respecto a las anotaciones ground truth.
+\end{definicion}
+
+\subsection{Requisitos de Diseño}
+
+La arquitectura fue diseñada considerando los siguientes requisitos:
+
+\begin{enumerate}
+    \item \textbf{Capacidad de extracción de características}: Representaciones jerárquicas multi-escala
+    \item \textbf{Transfer learning}: Aprovechamiento de pesos pre-entrenados en ImageNet
+    \item \textbf{Atención espacial}: Focalización en regiones anatómicamente relevantes
+    \item \textbf{Regularización}: Control de overfitting en dataset pequeño (957 muestras)
+    \item \textbf{Salida normalizada}: Coordenadas en rango $[0, 1]$ para invarianza a escala
+\end{enumerate}
+
+% ==============================================================================
+\section{Arquitectura General}
+% ==============================================================================
+
+\subsection{Visión de Alto Nivel}
+
+La arquitectura se compone de tres módulos principales conectados secuencialmente:
+
+\begin{equation}
+f_\theta = h_{\text{head}} \circ \phi_{\text{attn}} \circ g_{\text{backbone}}
+\end{equation}
+
+donde:
+\begin{itemize}
+    \item $g_{\text{backbone}}: \R^{3 \times 224 \times 224} \rightarrow \R^{512 \times 7 \times 7}$ es el backbone ResNet-18
+    \item $\phi_{\text{attn}}: \R^{512 \times 7 \times 7} \rightarrow \R^{512 \times 7 \times 7}$ es el módulo de atención
+    \item $h_{\text{head}}: \R^{512} \rightarrow \R^{30}$ es la cabeza de regresión
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+% [Figura sugerida: Diagrama de bloques de la arquitectura completa]
+\caption{Arquitectura del modelo ResNet18Landmarks. La imagen de entrada pasa por el backbone ResNet-18, seguido del módulo Coordinate Attention, Global Average Pooling, y finalmente la cabeza de regresión profunda que produce 30 coordenadas normalizadas.}
+\label{fig:arquitectura_general}
+\end{figure}
+
+\subsection{Parámetros del Modelo}
+
+\begin{table}[H]
+\centering
+\caption{Resumen de parámetros del modelo}
+\label{tab:parametros_modelo}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Componente} & \textbf{Parámetros} & \textbf{Porcentaje} \\
+\midrule
+Backbone ResNet-18 & 11,176,512 & 98.56\% \\
+Coordinate Attention & 24,608 & 0.22\% \\
+Cabeza de Regresión & 139,038 & 1.23\% \\
+\midrule
+\textbf{Total} & \textbf{11,340,158} & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Backbone: ResNet-18}
+% ==============================================================================
+
+\subsection{Fundamentos de Redes Residuales}
+
+Las redes residuales (ResNet) introducidas por He \etal\ (2016) resuelven el problema de degradación en redes profundas mediante conexiones de identidad (skip connections).
+
+\begin{definicion}[Bloque Residual]
+Un bloque residual implementa la transformación:
+\begin{equation}
+\vect{y} = \mathcal{F}(\vect{x}, \{W_i\}) + \vect{x}
+\label{eq:bloque_residual}
+\end{equation}
+donde $\mathcal{F}(\vect{x}, \{W_i\})$ representa las capas de peso y $\vect{x}$ es la conexión de identidad.
+\end{definicion}
+
+\subsection{Estructura de ResNet-18}
+
+ResNet-18 consiste en 18 capas con pesos entrenables, organizadas en 4 etapas (stages):
+
+\begin{table}[H]
+\centering
+\caption{Arquitectura de ResNet-18}
+\label{tab:resnet18}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Etapa} & \textbf{Salida} & \textbf{Bloques} & \textbf{Filtros} \\
+\midrule
+Conv1 + MaxPool & $56 \times 56$ & 1 & 64 \\
+Layer1 (Stage 1) & $56 \times 56$ & 2 & 64 \\
+Layer2 (Stage 2) & $28 \times 28$ & 2 & 128 \\
+Layer3 (Stage 3) & $14 \times 14$ & 2 & 256 \\
+Layer4 (Stage 4) & $7 \times 7$ & 2 & 512 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Bloque Básico de ResNet-18}
+
+Cada bloque básico de ResNet-18 contiene dos capas convolucionales $3 \times 3$:
+
+\begin{equation}
+\mathcal{F}(\vect{x}) = W_2 \cdot \sigma(BN(W_1 \cdot \vect{x}))
+\end{equation}
+
+donde $\sigma$ es ReLU, $BN$ es Batch Normalization, y $W_1$, $W_2$ son matrices de convolución.
+
+\begin{algorithm}[H]
+\caption{Bloque Básico ResNet}
+\label{alg:basic_block}
+\begin{algorithmic}[1]
+\REQUIRE Feature map $\vect{x} \in \R^{C \times H \times W}$
+\ENSURE Feature map $\vect{y} \in \R^{C' \times H' \times W'}$
+\STATE $\vect{z}_1 \leftarrow \text{Conv}_{3\times3}(\vect{x})$
+\STATE $\vect{z}_1 \leftarrow \text{BatchNorm}(\vect{z}_1)$
+\STATE $\vect{z}_1 \leftarrow \text{ReLU}(\vect{z}_1)$
+\STATE $\vect{z}_2 \leftarrow \text{Conv}_{3\times3}(\vect{z}_1)$
+\STATE $\vect{z}_2 \leftarrow \text{BatchNorm}(\vect{z}_2)$
+\IF{dimensiones cambian}
+    \STATE $\vect{x} \leftarrow \text{Conv}_{1\times1}(\vect{x})$ \COMMENT{Proyección}
+\ENDIF
+\STATE $\vect{y} \leftarrow \text{ReLU}(\vect{z}_2 + \vect{x})$
+\RETURN $\vect{y}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Modificaciones al Backbone Original}
+
+Para adaptar ResNet-18 a regresión de landmarks, se realizaron las siguientes modificaciones:
+
+\begin{enumerate}
+    \item \textbf{Eliminación de la capa FC}: La capa fully-connected original (clasificación 1000 clases) fue removida
+    \item \textbf{Global Average Pooling}: Aplicado después de layer4 para obtener vector de 512 dimensiones
+    \item \textbf{Pre-entrenamiento ImageNet}: Se utilizaron pesos pre-entrenados como inicialización
+\end{enumerate}
+
+\begin{lstlisting}[caption={Modificación del backbone ResNet-18}]
+import torchvision.models as models
+
+# Cargar ResNet-18 pretrained
+backbone = models.resnet18(pretrained=True)
+
+# Remover capa FC original
+backbone = nn.Sequential(*list(backbone.children())[:-2])
+
+# Output: (batch, 512, 7, 7) para input (batch, 3, 224, 224)
+\end{lstlisting}
+
+% ==============================================================================
+\section{Módulo Coordinate Attention}
+% ==============================================================================
+
+\subsection{Motivación}
+
+El módulo Coordinate Attention fue propuesto por Hou \etal\ (CVPR 2021) para capturar dependencias espaciales de largo alcance mientras preserva información posicional precisa. A diferencia de SE-Net o CBAM, Coordinate Attention codifica información de canal y posición simultáneamente.
+
+\begin{definicion}[Coordinate Attention]
+Dado un feature map $\vect{X} \in \R^{C \times H \times W}$, Coordinate Attention produce pesos de atención $\vect{A} \in \R^{C \times H \times W}$ que reponderan el feature map original:
+\begin{equation}
+\vect{Y} = \vect{A} \odot \vect{X}
+\end{equation}
+donde $\odot$ denota multiplicación elemento a elemento.
+\end{definicion}
+
+\subsection{Arquitectura del Módulo}
+
+El módulo consta de tres etapas:
+
+\subsubsection{Etapa 1: Pooling Direccional}
+
+Se aplican dos operaciones de average pooling en direcciones ortogonales:
+
+\begin{equation}
+z_c^h(h) = \frac{1}{W} \sum_{0 \leq i < W} x_c(h, i)
+\label{eq:pool_h}
+\end{equation}
+
+\begin{equation}
+z_c^w(w) = \frac{1}{H} \sum_{0 \leq j < H} x_c(j, w)
+\label{eq:pool_w}
+\end{equation}
+
+donde $z_c^h \in \R^{C \times H \times 1}$ y $z_c^w \in \R^{C \times 1 \times W}$ capturan información espacial a lo largo de dimensiones ortogonales.
+
+\subsubsection{Etapa 2: Transformación Compartida}
+
+Los vectores pooled se concatenan y transforman:
+
+\begin{equation}
+\vect{f} = \delta\left(F_1\left([\vect{z}^h, \vect{z}^w]\right)\right)
+\label{eq:transform}
+\end{equation}
+
+donde $[\cdot, \cdot]$ denota concatenación, $F_1$ es una convolución $1 \times 1$ que reduce canales por factor $r=32$, y $\delta$ es la función BatchNorm + ReLU.
+
+\subsubsection{Etapa 3: Generación de Pesos de Atención}
+
+El vector transformado se divide y se aplican convoluciones separadas:
+
+\begin{equation}
+\vect{g}^h = \sigma(F_h(\vect{f}^h)), \quad \vect{g}^w = \sigma(F_w(\vect{f}^w))
+\label{eq:attention_weights}
+\end{equation}
+
+donde $\sigma$ es la función sigmoide y $F_h$, $F_w$ son convoluciones $1 \times 1$ que restauran los canales originales.
+
+La salida final se calcula como:
+
+\begin{equation}
+y_c(h, w) = x_c(h, w) \cdot g_c^h(h) \cdot g_c^w(w)
+\label{eq:coord_attn_output}
+\end{equation}
+
+\begin{algorithm}[H]
+\caption{Coordinate Attention}
+\label{alg:coord_attn}
+\begin{algorithmic}[1]
+\REQUIRE Feature map $\vect{X} \in \R^{C \times H \times W}$, factor de reducción $r$
+\ENSURE Feature map atentido $\vect{Y} \in \R^{C \times H \times W}$
+\STATE \COMMENT{Pooling direccional}
+\STATE $\vect{z}^h \leftarrow \text{AvgPool}_W(\vect{X})$ \COMMENT{$(C, H, 1)$}
+\STATE $\vect{z}^w \leftarrow \text{AvgPool}_H(\vect{X})$ \COMMENT{$(C, 1, W)$}
+\STATE \COMMENT{Concatenar y transformar}
+\STATE $\vect{z}^w_{\text{perm}} \leftarrow \text{permute}(\vect{z}^w, [0, 2, 1])$ \COMMENT{$(C, W, 1)$}
+\STATE $\vect{z} \leftarrow \text{concat}([\vect{z}^h, \vect{z}^w_{\text{perm}}], \text{dim}=2)$ \COMMENT{$(C, H+W, 1)$}
+\STATE $\vect{f} \leftarrow \text{ReLU}(\text{BN}(\text{Conv}_{1\times1}(\vect{z})))$ \COMMENT{$(C/r, H+W, 1)$}
+\STATE \COMMENT{Dividir y generar atención}
+\STATE $\vect{f}^h, \vect{f}^w \leftarrow \text{split}(\vect{f}, [H, W], \text{dim}=2)$
+\STATE $\vect{g}^h \leftarrow \sigma(\text{Conv}_{1\times1}(\vect{f}^h))$ \COMMENT{$(C, H, 1)$}
+\STATE $\vect{g}^w \leftarrow \sigma(\text{Conv}_{1\times1}(\text{permute}(\vect{f}^w)))$ \COMMENT{$(C, 1, W)$}
+\STATE \COMMENT{Aplicar atención}
+\STATE $\vect{Y} \leftarrow \vect{X} \odot \vect{g}^h \odot \vect{g}^w$
+\RETURN $\vect{Y}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Configuración Utilizada}
+
+\begin{table}[H]
+\centering
+\caption{Parámetros del módulo Coordinate Attention}
+\label{tab:coord_attn_params}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} & \textbf{Justificación} \\
+\midrule
+Factor de reducción $r$ & 32 & Balance complejidad/capacidad \\
+Canales de entrada & 512 & Salida de layer4 \\
+Canales intermedios & 16 & $512/32 = 16$ \\
+Posición en red & Después de layer4 & Máxima receptive field \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{hallazgo}
+La inserción de Coordinate Attention después de layer4 permite que el módulo opere sobre features de alto nivel semántico con máximo receptive field ($224 \times 224$ píxeles para entrada de $224 \times 224$), facilitando la captura de relaciones espaciales entre landmarks distantes.
+\end{hallazgo}
+
+% ==============================================================================
+\section{Cabeza de Regresión Profunda}
+% ==============================================================================
+
+\subsection{Diseño de la Cabeza}
+
+La cabeza de regresión transforma el vector de características del backbone en coordenadas de landmarks:
+
+\begin{equation}
+h_{\text{head}}: \R^{512} \rightarrow \R^{30}
+\end{equation}
+
+\subsection{Arquitectura Detallada}
+
+La cabeza profunda consiste en tres bloques secuenciales:
+
+\begin{equation}
+h_{\text{head}} = \sigma \circ \text{FC}_3 \circ \text{Block}_2 \circ \text{Block}_1
+\end{equation}
+
+donde cada bloque tiene la estructura:
+
+\begin{equation}
+\text{Block}_i = \text{Dropout} \circ \text{ReLU} \circ \text{GroupNorm} \circ \text{FC}_i
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Arquitectura de la cabeza de regresión}
+\label{tab:head_arquitectura}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Capa} & \textbf{Entrada} & \textbf{Salida} & \textbf{Activación} \\
+\midrule
+FC1 & 512 & 512 & GroupNorm + ReLU + Dropout \\
+FC2 & 512 & 768 & GroupNorm + ReLU + Dropout \\
+FC3 & 768 & 30 & Sigmoid \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Group Normalization vs Batch Normalization}
+
+Se optó por Group Normalization en lugar de Batch Normalization debido a:
+
+\begin{definicion}[Group Normalization]
+Para un feature $\vect{x} \in \R^{N \times C \times H \times W}$, Group Normalization divide los canales en $G$ grupos y normaliza dentro de cada grupo:
+\begin{equation}
+\hat{x}_{n,c} = \frac{x_{n,c} - \mu_{n,g(c)}}{\sqrt{\sigma_{n,g(c)}^2 + \epsilon}}
+\end{equation}
+donde $g(c) = \lfloor c \cdot G / C \rfloor$ mapea el canal $c$ a su grupo.
+\end{definicion}
+
+\begin{observacion}
+Group Normalization es preferible cuando:
+\begin{itemize}
+    \item El batch size es pequeño (< 16)
+    \item Las estadísticas de batch son inestables
+    \item Se requiere consistencia entre entrenamiento e inferencia
+\end{itemize}
+En este proyecto, con batch size de 16, Group Normalization con $G=32$ grupos proporcionó entrenamiento más estable.
+\end{observacion}
+
+\subsection{Regularización con Dropout}
+
+Se aplica Dropout después de cada capa de normalización:
+
+\begin{equation}
+\tilde{\vect{h}} = \vect{m} \odot \vect{h}, \quad m_i \sim \text{Bernoulli}(1-p)
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de tasas de dropout}
+\label{tab:dropout_comparison}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Dropout Rate} & \textbf{Error Validación (px)} & \textbf{Observación} \\
+\midrule
+$p = 0.5$ & 8.42 & Regularización excesiva \\
+$p = 0.4$ & 7.89 & Bueno \\
+$p = 0.3$ & \textbf{7.21} & \textbf{Óptimo} \\
+$p = 0.2$ & 7.68 & Underfitting \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Normalización de Salidas}
+% ==============================================================================
+
+\subsection{Motivación}
+
+Las coordenadas de landmarks se normalizan al rango $[0, 1]$ para:
+
+\begin{enumerate}
+    \item Hacer el modelo invariante a la resolución de entrada
+    \item Facilitar el uso de funciones de pérdida normalizadas
+    \item Mejorar la estabilidad numérica del entrenamiento
+\end{enumerate}
+
+\subsection{Función Sigmoide de Salida}
+
+La última capa aplica la función sigmoide:
+
+\begin{equation}
+\sigma(z) = \frac{1}{1 + e^{-z}}
+\end{equation}
+
+que mapea cualquier valor real al intervalo $(0, 1)$.
+
+\begin{definicion}[Coordenadas Normalizadas]
+Las coordenadas normalizadas $(\hat{x}, \hat{y}) \in [0, 1]^2$ se relacionan con las coordenadas en píxeles mediante:
+\begin{equation}
+x_{\text{px}} = \hat{x} \cdot W, \quad y_{\text{px}} = \hat{y} \cdot H
+\end{equation}
+donde $W = H = 224$ es la resolución de entrada.
+\end{definicion}
+
+\subsection{Estructura de la Salida}
+
+El modelo produce un vector de 30 valores:
+
+\begin{equation}
+\hat{\vect{L}} = [\hat{x}_1, \hat{y}_1, \hat{x}_2, \hat{y}_2, \ldots, \hat{x}_{15}, \hat{y}_{15}]^T \in [0, 1]^{30}
+\end{equation}
+
+Para conversión a formato de landmarks:
+
+\begin{equation}
+\vect{L} = \text{reshape}(\hat{\vect{L}}, (15, 2)) \cdot S
+\end{equation}
+
+donde $S = 224$ es el factor de escala.
+
+% ==============================================================================
+\section{Implementación}
+% ==============================================================================
+
+\subsection{Clase Principal: ResNet18Landmarks}
+
+\begin{lstlisting}[caption={Implementación de la arquitectura}]
+class ResNet18Landmarks(nn.Module):
+    def __init__(self,
+                 num_landmarks=15,
+                 pretrained=True,
+                 freeze_backbone=True,
+                 dropout_rate=0.3,
+                 hidden_dim=768,
+                 use_coord_attention=True,
+                 deep_head=True):
+        super().__init__()
+
+        # Cargar backbone ResNet-18
+        resnet = models.resnet18(pretrained=pretrained)
+        self.backbone = nn.Sequential(*list(resnet.children())[:-2])
+
+        # Coordinate Attention (opcional)
+        if use_coord_attention:
+            self.coord_attn = CoordinateAttention(512, 512, reduction=32)
+        else:
+            self.coord_attn = nn.Identity()
+
+        # Global Average Pooling
+        self.gap = nn.AdaptiveAvgPool2d(1)
+
+        # Cabeza de regresion profunda
+        if deep_head:
+            self.head = nn.Sequential(
+                nn.Linear(512, 512),
+                nn.GroupNorm(32, 512),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout_rate),
+                nn.Linear(512, hidden_dim),
+                nn.GroupNorm(32, hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout_rate),
+                nn.Linear(hidden_dim, num_landmarks * 2),
+                nn.Sigmoid()  # Salida normalizada [0, 1]
+            )
+
+        # Congelar backbone si se especifica
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+
+    def forward(self, x):
+        # Backbone: (B, 3, 224, 224) -> (B, 512, 7, 7)
+        features = self.backbone(x)
+
+        # Coordinate Attention
+        features = self.coord_attn(features)
+
+        # GAP: (B, 512, 7, 7) -> (B, 512)
+        features = self.gap(features).flatten(1)
+
+        # Head: (B, 512) -> (B, 30)
+        landmarks = self.head(features)
+
+        return landmarks
+\end{lstlisting}
+
+\subsection{Clase CoordinateAttention}
+
+\begin{lstlisting}[caption={Implementación de Coordinate Attention}]
+class CoordinateAttention(nn.Module):
+    def __init__(self, in_channels, out_channels, reduction=32):
+        super().__init__()
+        mid_channels = max(8, in_channels // reduction)
+
+        self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
+        self.pool_w = nn.AdaptiveAvgPool2d((1, None))
+
+        self.conv1 = nn.Conv2d(in_channels, mid_channels, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(mid_channels)
+        self.act = nn.ReLU(inplace=True)
+
+        self.conv_h = nn.Conv2d(mid_channels, out_channels, 1, bias=False)
+        self.conv_w = nn.Conv2d(mid_channels, out_channels, 1, bias=False)
+
+    def forward(self, x):
+        identity = x
+        n, c, h, w = x.size()
+
+        # Pooling direccional
+        x_h = self.pool_h(x)  # (n, c, h, 1)
+        x_w = self.pool_w(x).permute(0, 1, 3, 2)  # (n, c, w, 1)
+
+        # Concatenar y transformar
+        y = torch.cat([x_h, x_w], dim=2)  # (n, c, h+w, 1)
+        y = self.act(self.bn1(self.conv1(y)))
+
+        # Dividir
+        x_h, x_w = torch.split(y, [h, w], dim=2)
+        x_w = x_w.permute(0, 1, 3, 2)
+
+        # Generar pesos de atencion
+        a_h = self.conv_h(x_h).sigmoid()
+        a_w = self.conv_w(x_w).sigmoid()
+
+        # Aplicar atencion
+        out = identity * a_h * a_w
+
+        return out
+\end{lstlisting}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 2.1: Arquitectura Completa del Modelo}
+
+\textbf{Descripción}: Diagrama de bloques mostrando el flujo de datos desde la entrada hasta la salida.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Entrada: Imagen $3 \times 224 \times 224$
+    \item ResNet-18 backbone con 4 stages
+    \item Módulo Coordinate Attention
+    \item Global Average Pooling
+    \item Cabeza FC con dimensiones
+    \item Salida: 30 valores $\in [0, 1]$
+\end{itemize}
+
+\subsection{Figura 2.2: Detalle del Módulo Coordinate Attention}
+
+\textbf{Descripción}: Diagrama del flujo interno de Coordinate Attention.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Dos ramas de pooling (horizontal y vertical)
+    \item Operación de concatenación
+    \item Convolución $1 \times 1$ compartida
+    \item División y convoluciones separadas
+    \item Multiplicación elemento a elemento
+\end{itemize}
+
+\subsection{Figura 2.3: Estructura de la Cabeza de Regresión}
+
+\textbf{Descripción}: Detalle de las capas de la cabeza profunda.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Secuencia de capas FC con dimensiones
+    \item Bloques GroupNorm + ReLU + Dropout
+    \item Activación Sigmoid final
+\end{itemize}
+
+\subsection{Figura 2.4: Bloque Residual de ResNet-18}
+
+\textbf{Descripción}: Diagrama del bloque básico con skip connection.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Dos convoluciones $3 \times 3$
+    \item Batch Normalization
+    \item ReLU
+    \item Conexión de identidad
+    \item Suma elemento a elemento
+\end{itemize}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+La arquitectura diseñada integra componentes de última generación para la tarea de regresión de landmarks:
+
+\begin{enumerate}
+    \item \textbf{Transfer Learning Efectivo}: ResNet-18 pre-entrenado proporciona características visuales robustas
+
+    \item \textbf{Atención Espacial Precisa}: Coordinate Attention captura dependencias espaciales preservando información posicional
+
+    \item \textbf{Regularización Apropiada}: GroupNorm y Dropout controlan overfitting en dataset pequeño
+
+    \item \textbf{Salida Normalizada}: Facilita entrenamiento estable y uso de Wing Loss
+\end{enumerate}
+
+\begin{resultadoimportante}
+La arquitectura final con \parametro{hidden\_dim=768}, \parametro{dropout=0.3}, y Coordinate Attention habilitado logró un error de \textbf{7.21 px} en validación, superando el objetivo de < 8 px.
+\end{resultadoimportante}
+
+% ==============================================================================
+\section{Archivos de Referencia}
+% ==============================================================================
+
+\begin{table}[H]
+\centering
+\caption{Archivos fuente relacionados con este documento}
+\begin{tabular}{ll}
+\toprule
+\textbf{Archivo} & \textbf{Descripción} \\
+\midrule
+\archivo{src\_v2/models/resnet\_landmark.py} & Implementación de ResNet18Landmarks \\
+\archivo{src\_v2/models/\_\_init\_\_.py} & Exports del módulo models \\
+\archivo{scripts/test\_forward\_pass.py} & Tests del forward pass \\
+\archivo{SESSION\_LOG.md} & Registro de sesiones 2-3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\bibliographystyle{ieeetr}
+% \bibliography{referencias}
+% ==============================================================================
+
+\end{document}

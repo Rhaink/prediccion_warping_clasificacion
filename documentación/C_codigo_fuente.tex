@@ -1,0 +1,1087 @@
+% ==============================================================================
+% APÉNDICE C - CÓDIGO FUENTE DE FUNCIONES CLAVE
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% Nivel: Doctoral/Científico - Completo y Detallado
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{Apéndice C:\\
+Código Fuente de Funciones Clave}
+\author{Documentación del Proceso de Desarrollo}
+\date{Apéndice Técnico}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este apéndice presenta el código fuente de las funciones más importantes
+del proyecto. Se incluyen implementaciones de análisis Procrustes, GPA,
+warping piecewise affine, y utilidades de entrenamiento. El código está
+documentado con comentarios explicativos para facilitar su comprensión
+y reproducibilidad.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Análisis Procrustes}
+% ==============================================================================
+
+\subsection{Superposición Procrustes Ordinaria}
+
+\begin{lstlisting}[language=Python, caption={Implementación de Procrustes ordinario}]
+import numpy as np
+from scipy.linalg import svd, det
+
+def procrustes_analysis(X, Y, scaling=True, reflection=False):
+    """
+    Alinea la configuracion Y a la referencia X mediante
+    analisis Procrustes.
+
+    Parameters
+    ----------
+    X : ndarray, shape (k, m)
+        Configuracion de referencia (k landmarks, m dimensiones)
+    Y : ndarray, shape (k, m)
+        Configuracion a alinear
+    scaling : bool
+        Si True, permite escalado
+    reflection : bool
+        Si True, permite reflexiones
+
+    Returns
+    -------
+    Y_aligned : ndarray, shape (k, m)
+        Configuracion Y alineada a X
+    d : float
+        Distancia Procrustes (suma de cuadrados residual)
+    transform : dict
+        Diccionario con parametros de transformacion
+    """
+    k, m = X.shape
+
+    # Paso 1: Centrar ambas configuraciones
+    mu_X = X.mean(axis=0)
+    mu_Y = Y.mean(axis=0)
+    X_centered = X - mu_X
+    Y_centered = Y - mu_Y
+
+    # Paso 2: Normalizar escala (centroid size)
+    ss_X = np.sum(X_centered ** 2)
+    ss_Y = np.sum(Y_centered ** 2)
+    norm_X = np.sqrt(ss_X)
+    norm_Y = np.sqrt(ss_Y)
+
+    X_normalized = X_centered / norm_X
+    Y_normalized = Y_centered / norm_Y
+
+    # Paso 3: Calcular rotacion optima via SVD
+    # M = Y^T @ X
+    M = Y_normalized.T @ X_normalized
+    U, S, Vt = svd(M)
+
+    # Rotacion optima: R = V @ U^T
+    R = Vt.T @ U.T
+
+    # Verificar reflexion
+    if det(R) < 0 and not reflection:
+        # Corregir para obtener rotacion propia
+        Vt[-1, :] *= -1
+        S[-1] *= -1
+        R = Vt.T @ U.T
+
+    # Paso 4: Calcular escala optima
+    if scaling:
+        scale = S.sum()
+    else:
+        scale = 1.0
+
+    # Paso 5: Aplicar transformacion
+    Y_aligned = norm_X * scale * (Y_normalized @ R) + mu_X
+
+    # Calcular distancia Procrustes
+    d = np.sum((X_normalized - scale * Y_normalized @ R) ** 2)
+
+    transform = {
+        'rotation': R,
+        'scale': scale * norm_X / norm_Y,
+        'translation': mu_X - scale * (mu_Y @ R)
+    }
+
+    return Y_aligned, d, transform
+\end{lstlisting}
+
+% ==============================================================================
+\section{Análisis Generalizado de Procrustes (GPA)}
+% ==============================================================================
+
+\subsection{Implementación del GPA}
+
+\begin{lstlisting}[language=Python, caption={Implementación del algoritmo GPA}]
+import numpy as np
+from scipy.linalg import svd
+
+def generalized_procrustes_analysis(shapes, tol=1e-6, max_iter=100):
+    """
+    Calcula la forma canonica mediante GPA iterativo.
+
+    Parameters
+    ----------
+    shapes : ndarray, shape (n, k, m)
+        n configuraciones de k landmarks en m dimensiones
+    tol : float
+        Tolerancia de convergencia
+    max_iter : int
+        Maximo numero de iteraciones
+
+    Returns
+    -------
+    canonical : ndarray, shape (k, m)
+        Forma canonica (consenso)
+    aligned_shapes : ndarray, shape (n, k, m)
+        Formas alineadas al consenso
+    transforms : list of dict
+        Transformaciones aplicadas a cada forma
+    """
+    n, k, m = shapes.shape
+
+    # Paso 1: Centrar y normalizar todas las formas
+    aligned = np.zeros_like(shapes)
+    for i in range(n):
+        # Centrar
+        centered = shapes[i] - shapes[i].mean(axis=0)
+        # Normalizar (centroid size)
+        norm = np.sqrt(np.sum(centered ** 2))
+        aligned[i] = centered / norm
+
+    # Paso 2: Inicializar consenso con la primera forma
+    consensus = aligned[0].copy()
+
+    prev_error = np.inf
+    transforms = [None] * n
+
+    for iteration in range(max_iter):
+        # Paso 3: Alinear cada forma al consenso actual
+        for i in range(n):
+            # SVD de Y^T @ X
+            M = aligned[i].T @ consensus
+            U, S, Vt = svd(M)
+            R = Vt.T @ U.T
+
+            # Asegurar rotacion propia (no reflexion)
+            if np.linalg.det(R) < 0:
+                Vt[-1, :] *= -1
+                R = Vt.T @ U.T
+
+            # Aplicar rotacion
+            aligned[i] = aligned[i] @ R
+            transforms[i] = {'rotation': R, 'iteration': iteration}
+
+        # Paso 4: Calcular nuevo consenso (promedio)
+        consensus = aligned.mean(axis=0)
+
+        # Paso 5: Re-normalizar consenso
+        consensus = consensus / np.sqrt(np.sum(consensus ** 2))
+
+        # Paso 6: Calcular error de alineacion
+        error = 0
+        for i in range(n):
+            error += np.sum((aligned[i] - consensus) ** 2)
+        error /= n
+
+        # Verificar convergencia
+        if abs(prev_error - error) < tol:
+            print(f"GPA convergio en {iteration + 1} iteraciones")
+            break
+
+        prev_error = error
+
+    return consensus, aligned, transforms
+
+
+def compute_canonical_shape(landmarks_list, image_size=224):
+    """
+    Wrapper para calcular forma canonica en coordenadas de pixel.
+
+    Parameters
+    ----------
+    landmarks_list : list of ndarray
+        Lista de arrays (k, 2) con landmarks de cada imagen
+    image_size : int
+        Tamano de imagen para desnormalizar
+
+    Returns
+    -------
+    canonical_normalized : ndarray, shape (k, 2)
+        Forma canonica normalizada (centroide=0, escala=1)
+    canonical_pixels : ndarray, shape (k, 2)
+        Forma canonica en coordenadas de pixel
+    """
+    # Convertir lista a array 3D
+    shapes = np.array(landmarks_list)  # (n, k, 2)
+
+    # Ejecutar GPA
+    canonical_normalized, _, _ = generalized_procrustes_analysis(shapes)
+
+    # Convertir a coordenadas de pixel
+    # Escalar al tamano de imagen y centrar
+    center = image_size / 2
+    scale = image_size * 0.4  # Usar 40% del tamano como escala
+
+    canonical_pixels = canonical_normalized * scale + center
+
+    return canonical_normalized, canonical_pixels
+\end{lstlisting}
+
+% ==============================================================================
+\section{Triangulación de Delaunay}
+% ==============================================================================
+
+\subsection{Generación de Triangulación}
+
+\begin{lstlisting}[language=Python, caption={Triangulación Delaunay con puntos de borde}]
+import numpy as np
+from scipy.spatial import Delaunay
+
+def create_delaunay_triangulation(landmarks, image_size=224,
+                                   add_boundary=True):
+    """
+    Crea triangulacion Delaunay sobre landmarks.
+
+    Parameters
+    ----------
+    landmarks : ndarray, shape (k, 2)
+        Coordenadas de landmarks
+    image_size : int
+        Tamano de la imagen
+    add_boundary : bool
+        Si True, anade puntos en el borde de la imagen
+
+    Returns
+    -------
+    triangulation : Delaunay
+        Objeto de triangulacion scipy
+    points : ndarray, shape (n_points, 2)
+        Todos los puntos (landmarks + borde)
+    triangles : ndarray, shape (n_triangles, 3)
+        Indices de vertices de cada triangulo
+    """
+    points = landmarks.copy()
+
+    if add_boundary:
+        # Anadir 8 puntos en el borde
+        boundary_points = np.array([
+            [0, 0],                          # Esquina superior izquierda
+            [image_size // 2, 0],            # Centro superior
+            [image_size - 1, 0],             # Esquina superior derecha
+            [image_size - 1, image_size // 2],  # Centro derecho
+            [image_size - 1, image_size - 1],   # Esquina inferior derecha
+            [image_size // 2, image_size - 1],  # Centro inferior
+            [0, image_size - 1],             # Esquina inferior izquierda
+            [0, image_size // 2]             # Centro izquierdo
+        ])
+        points = np.vstack([points, boundary_points])
+
+    # Crear triangulacion
+    triangulation = Delaunay(points)
+
+    return triangulation, points, triangulation.simplices
+
+
+def get_internal_triangles(triangles, n_landmarks):
+    """
+    Filtra triangulos que solo usan landmarks anatomicos.
+
+    Parameters
+    ----------
+    triangles : ndarray, shape (n_triangles, 3)
+        Todos los triangulos
+    n_landmarks : int
+        Numero de landmarks anatomicos
+
+    Returns
+    -------
+    internal : ndarray
+        Triangulos internos (solo landmarks anatomicos)
+    """
+    # Un triangulo es interno si todos sus vertices son landmarks
+    mask = np.all(triangles < n_landmarks, axis=1)
+    return triangles[mask]
+\end{lstlisting}
+
+% ==============================================================================
+\section{Coordenadas Baricéntricas}
+% ==============================================================================
+
+\subsection{Cálculo de Coordenadas Baricéntricas}
+
+\begin{lstlisting}[language=Python, caption={Cálculo eficiente de coordenadas baricéntricas}]
+import numpy as np
+
+def compute_barycentric_coords(point, triangle):
+    """
+    Calcula coordenadas baricentricas de un punto respecto a un triangulo.
+
+    Parameters
+    ----------
+    point : tuple or ndarray
+        Coordenadas (x, y) del punto
+    triangle : ndarray, shape (3, 2)
+        Vertices del triangulo [(x1,y1), (x2,y2), (x3,y3)]
+
+    Returns
+    -------
+    lambdas : ndarray, shape (3,)
+        Coordenadas baricentricas (lambda1, lambda2, lambda3)
+    inside : bool
+        True si el punto esta dentro del triangulo
+    """
+    x, y = point
+    x1, y1 = triangle[0]
+    x2, y2 = triangle[1]
+    x3, y3 = triangle[2]
+
+    # Calcular determinante (2 * area del triangulo)
+    det = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3)
+
+    if abs(det) < 1e-10:
+        # Triangulo degenerado
+        return np.array([0, 0, 0]), False
+
+    # Coordenadas baricentricas
+    lambda1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / det
+    lambda2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det
+    lambda3 = 1.0 - lambda1 - lambda2
+
+    lambdas = np.array([lambda1, lambda2, lambda3])
+
+    # El punto esta dentro si todas las coordenadas son >= 0
+    inside = np.all(lambdas >= -1e-10)  # Pequena tolerancia
+
+    return lambdas, inside
+
+
+def compute_barycentric_vectorized(points, triangle):
+    """
+    Version vectorizada para multiples puntos.
+
+    Parameters
+    ----------
+    points : ndarray, shape (n, 2)
+        Coordenadas de n puntos
+    triangle : ndarray, shape (3, 2)
+        Vertices del triangulo
+
+    Returns
+    -------
+    lambdas : ndarray, shape (n, 3)
+        Coordenadas baricentricas de cada punto
+    inside : ndarray, shape (n,)
+        Mascara de puntos dentro del triangulo
+    """
+    x1, y1 = triangle[0]
+    x2, y2 = triangle[1]
+    x3, y3 = triangle[2]
+
+    det = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3)
+
+    if abs(det) < 1e-10:
+        n = len(points)
+        return np.zeros((n, 3)), np.zeros(n, dtype=bool)
+
+    x = points[:, 0]
+    y = points[:, 1]
+
+    lambda1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / det
+    lambda2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det
+    lambda3 = 1.0 - lambda1 - lambda2
+
+    lambdas = np.stack([lambda1, lambda2, lambda3], axis=1)
+    inside = np.all(lambdas >= -1e-10, axis=1)
+
+    return lambdas, inside
+\end{lstlisting}
+
+% ==============================================================================
+\section{Warping Piecewise Affine}
+% ==============================================================================
+
+\subsection{Implementación Completa del Warping}
+
+\begin{lstlisting}[language=Python, caption={Warping piecewise affine completo}]
+import numpy as np
+from scipy.spatial import Delaunay
+from scipy.ndimage import map_coordinates
+
+def compute_affine_transform(src_tri, dst_tri):
+    """
+    Calcula matriz de transformacion afin entre dos triangulos.
+
+    Parameters
+    ----------
+    src_tri : ndarray, shape (3, 2)
+        Triangulo fuente
+    dst_tri : ndarray, shape (3, 2)
+        Triangulo destino
+
+    Returns
+    -------
+    M : ndarray, shape (2, 3)
+        Matriz de transformacion afin [A | t]
+    """
+    # Construir sistema de ecuaciones
+    # dst = src @ A.T + t
+    # Resolver para A y t
+
+    src_h = np.hstack([src_tri, np.ones((3, 1))])  # (3, 3)
+
+    # Resolver src_h @ [a11, a21, t1].T = dst[:, 0]
+    # y     src_h @ [a12, a22, t2].T = dst[:, 1]
+
+    M = np.linalg.solve(src_h, dst_tri).T  # (2, 3)
+
+    return M
+
+
+def piecewise_affine_warp(image, src_landmarks, dst_landmarks,
+                           output_size=None):
+    """
+    Aplica warping piecewise affine a una imagen.
+
+    Parameters
+    ----------
+    image : ndarray, shape (H, W) or (H, W, C)
+        Imagen a transformar
+    src_landmarks : ndarray, shape (k, 2)
+        Landmarks en la imagen fuente
+    dst_landmarks : ndarray, shape (k, 2)
+        Landmarks en la imagen destino (forma canonica)
+    output_size : tuple, optional
+        Tamano de salida (H, W). Por defecto igual que entrada.
+
+    Returns
+    -------
+    warped : ndarray
+        Imagen warpeada
+    """
+    if output_size is None:
+        output_size = image.shape[:2]
+
+    H_out, W_out = output_size
+    H_in, W_in = image.shape[:2]
+
+    # Anadir puntos de borde
+    boundary = np.array([
+        [0, 0], [W_out//2, 0], [W_out-1, 0],
+        [W_out-1, H_out//2], [W_out-1, H_out-1],
+        [W_out//2, H_out-1], [0, H_out-1], [0, H_out//2]
+    ])
+
+    src_points = np.vstack([src_landmarks, boundary])
+    dst_points = np.vstack([dst_landmarks, boundary])
+
+    # Crear triangulacion sobre puntos destino
+    tri = Delaunay(dst_points)
+
+    # Crear grid de coordenadas de salida
+    y_coords, x_coords = np.mgrid[0:H_out, 0:W_out]
+    output_coords = np.stack([x_coords.ravel(), y_coords.ravel()], axis=1)
+
+    # Encontrar triangulo para cada pixel
+    triangle_indices = tri.find_simplex(output_coords)
+
+    # Inicializar mapa de coordenadas fuente
+    src_x = np.zeros(H_out * W_out)
+    src_y = np.zeros(H_out * W_out)
+
+    # Procesar cada triangulo
+    for tri_idx in range(len(tri.simplices)):
+        # Mascara de pixeles en este triangulo
+        mask = triangle_indices == tri_idx
+        if not np.any(mask):
+            continue
+
+        # Obtener vertices del triangulo
+        vertex_indices = tri.simplices[tri_idx]
+        dst_tri = dst_points[vertex_indices]
+        src_tri = src_points[vertex_indices]
+
+        # Calcular transformacion afin inversa (dst -> src)
+        M = compute_affine_transform(dst_tri, src_tri)
+
+        # Aplicar transformacion a pixeles de este triangulo
+        pixels = output_coords[mask]  # (n, 2)
+        pixels_h = np.hstack([pixels, np.ones((len(pixels), 1))])
+        src_pixels = pixels_h @ M.T  # (n, 2)
+
+        src_x[mask] = src_pixels[:, 0]
+        src_y[mask] = src_pixels[:, 1]
+
+    # Reshape a imagen
+    src_x = src_x.reshape(H_out, W_out)
+    src_y = src_y.reshape(H_out, W_out)
+
+    # Interpolar imagen fuente
+    if image.ndim == 2:
+        warped = map_coordinates(image, [src_y, src_x],
+                                  order=1, mode='constant', cval=0)
+    else:
+        # Imagen multicanal
+        warped = np.zeros((H_out, W_out, image.shape[2]))
+        for c in range(image.shape[2]):
+            warped[:, :, c] = map_coordinates(
+                image[:, :, c], [src_y, src_x],
+                order=1, mode='constant', cval=0
+            )
+
+    return warped
+\end{lstlisting}
+
+% ==============================================================================
+\section{Modelo de Predicción de Landmarks}
+% ==============================================================================
+
+\subsection{Definición del Modelo}
+
+\begin{lstlisting}[language=Python, caption={Modelo de regresión de landmarks}]
+import torch
+import torch.nn as nn
+from torchvision import models
+
+class LandmarkRegressor(nn.Module):
+    """
+    Red neuronal para prediccion de landmarks anatomicos.
+    """
+
+    def __init__(self, backbone='resnet18', num_landmarks=15,
+                 pretrained=True):
+        """
+        Parameters
+        ----------
+        backbone : str
+            Arquitectura del backbone
+        num_landmarks : int
+            Numero de landmarks a predecir
+        pretrained : bool
+            Usar pesos pre-entrenados de ImageNet
+        """
+        super().__init__()
+
+        self.num_landmarks = num_landmarks
+        self.output_dim = num_landmarks * 2  # (x, y) por landmark
+
+        # Cargar backbone
+        if backbone == 'resnet18':
+            self.backbone = models.resnet18(pretrained=pretrained)
+            in_features = self.backbone.fc.in_features
+            self.backbone.fc = nn.Identity()
+        elif backbone == 'resnet50':
+            self.backbone = models.resnet50(pretrained=pretrained)
+            in_features = self.backbone.fc.in_features
+            self.backbone.fc = nn.Identity()
+        elif backbone == 'efficientnet_b0':
+            self.backbone = models.efficientnet_b0(pretrained=pretrained)
+            in_features = self.backbone.classifier[1].in_features
+            self.backbone.classifier = nn.Identity()
+        elif backbone == 'densenet121':
+            self.backbone = models.densenet121(pretrained=pretrained)
+            in_features = self.backbone.classifier.in_features
+            self.backbone.classifier = nn.Identity()
+        else:
+            raise ValueError(f"Backbone no soportado: {backbone}")
+
+        # Cabeza de regresion
+        self.regressor = nn.Sequential(
+            nn.Linear(in_features, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, self.output_dim)
+        )
+
+    def forward(self, x):
+        """
+        Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor, shape (B, 3, H, W)
+            Batch de imagenes
+
+        Returns
+        -------
+        landmarks : torch.Tensor, shape (B, num_landmarks, 2)
+            Coordenadas predichas de landmarks
+        """
+        features = self.backbone(x)
+        output = self.regressor(features)
+
+        # Reshape a (B, num_landmarks, 2)
+        landmarks = output.view(-1, self.num_landmarks, 2)
+
+        return landmarks
+\end{lstlisting}
+
+\subsection{Función de Entrenamiento}
+
+\begin{lstlisting}[language=Python, caption={Loop de entrenamiento para landmarks}]
+import torch
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+
+def train_landmark_model(model, train_loader, val_loader,
+                          num_epochs=100, device='cuda'):
+    """
+    Entrena modelo de prediccion de landmarks.
+    """
+    model = model.to(device)
+
+    # Optimizador
+    optimizer = AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
+
+    # Scheduler
+    scheduler = CosineAnnealingWarmRestarts(
+        optimizer, T_0=10, T_mult=2, eta_min=1e-6
+    )
+
+    # Funcion de perdida
+    criterion = nn.MSELoss()
+
+    best_val_loss = float('inf')
+    patience_counter = 0
+    patience = 15
+
+    for epoch in range(num_epochs):
+        # Entrenamiento
+        model.train()
+        train_loss = 0
+
+        for images, landmarks in train_loader:
+            images = images.to(device)
+            landmarks = landmarks.to(device)
+
+            optimizer.zero_grad()
+            predictions = model(images)
+            loss = criterion(predictions, landmarks)
+            loss.backward()
+
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+            optimizer.step()
+            train_loss += loss.item()
+
+        train_loss /= len(train_loader)
+
+        # Validacion
+        model.eval()
+        val_loss = 0
+
+        with torch.no_grad():
+            for images, landmarks in val_loader:
+                images = images.to(device)
+                landmarks = landmarks.to(device)
+                predictions = model(images)
+                loss = criterion(predictions, landmarks)
+                val_loss += loss.item()
+
+        val_loss /= len(val_loader)
+
+        # Actualizar scheduler
+        scheduler.step()
+
+        # Early stopping
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            torch.save(model.state_dict(), 'best_model.pth')
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                print(f"Early stopping en epoca {epoch}")
+                break
+
+        print(f"Epoch {epoch}: train_loss={train_loss:.4f}, "
+              f"val_loss={val_loss:.4f}")
+
+    return model
+\end{lstlisting}
+
+% ==============================================================================
+\section{Modelo de Clasificación}
+% ==============================================================================
+
+\subsection{Definición del Clasificador}
+
+\begin{lstlisting}[language=Python, caption={Clasificador de COVID-19}]
+import torch
+import torch.nn as nn
+from torchvision import models
+
+class CovidClassifier(nn.Module):
+    """
+    Clasificador de COVID-19 basado en radiografias de torax.
+    """
+
+    def __init__(self, backbone='mobilenet_v2', num_classes=3,
+                 pretrained=True, dropout=0.5):
+        super().__init__()
+
+        self.num_classes = num_classes
+
+        # Cargar backbone
+        if backbone == 'mobilenet_v2':
+            self.backbone = models.mobilenet_v2(pretrained=pretrained)
+            in_features = self.backbone.classifier[1].in_features
+            self.backbone.classifier = nn.Sequential(
+                nn.Dropout(dropout),
+                nn.Linear(in_features, num_classes)
+            )
+        elif backbone == 'resnet18':
+            self.backbone = models.resnet18(pretrained=pretrained)
+            in_features = self.backbone.fc.in_features
+            self.backbone.fc = nn.Sequential(
+                nn.Dropout(dropout),
+                nn.Linear(in_features, num_classes)
+            )
+        elif backbone == 'efficientnet_b0':
+            self.backbone = models.efficientnet_b0(pretrained=pretrained)
+            in_features = self.backbone.classifier[1].in_features
+            self.backbone.classifier = nn.Sequential(
+                nn.Dropout(dropout),
+                nn.Linear(in_features, num_classes)
+            )
+        else:
+            raise ValueError(f"Backbone no soportado: {backbone}")
+
+    def forward(self, x):
+        return self.backbone(x)
+
+
+def train_classifier(model, train_loader, val_loader,
+                      num_epochs=50, device='cuda'):
+    """
+    Entrena clasificador de COVID-19.
+    """
+    model = model.to(device)
+
+    # Optimizador
+    optimizer = torch.optim.SGD(
+        model.parameters(), lr=1e-3, momentum=0.9,
+        weight_decay=1e-4, nesterov=True
+    )
+
+    # Scheduler
+    scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer, step_size=10, gamma=0.1
+    )
+
+    # Funcion de perdida con label smoothing
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+
+    best_val_acc = 0
+
+    for epoch in range(num_epochs):
+        # Entrenamiento
+        model.train()
+        train_loss = 0
+        correct = 0
+        total = 0
+
+        for images, labels in train_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            train_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total += labels.size(0)
+            correct += predicted.eq(labels).sum().item()
+
+        train_acc = 100. * correct / total
+
+        # Validacion
+        model.eval()
+        val_correct = 0
+        val_total = 0
+
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images = images.to(device)
+                labels = labels.to(device)
+                outputs = model(images)
+                _, predicted = outputs.max(1)
+                val_total += labels.size(0)
+                val_correct += predicted.eq(labels).sum().item()
+
+        val_acc = 100. * val_correct / val_total
+
+        scheduler.step()
+
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            torch.save(model.state_dict(), 'best_classifier.pth')
+
+        print(f"Epoch {epoch}: train_acc={train_acc:.2f}%, "
+              f"val_acc={val_acc:.2f}%")
+
+    return model
+\end{lstlisting}
+
+% ==============================================================================
+\section{Evaluación y Métricas}
+% ==============================================================================
+
+\subsection{Cálculo de Métricas}
+
+\begin{lstlisting}[language=Python, caption={Funciones de evaluación}]
+import numpy as np
+from sklearn.metrics import (accuracy_score, precision_recall_fscore_support,
+                             confusion_matrix, roc_auc_score)
+
+def evaluate_landmarks(predictions, ground_truth):
+    """
+    Evalua predicciones de landmarks.
+
+    Parameters
+    ----------
+    predictions : ndarray, shape (n, k, 2)
+        Landmarks predichos
+    ground_truth : ndarray, shape (n, k, 2)
+        Ground truth
+
+    Returns
+    -------
+    metrics : dict
+        Diccionario con metricas
+    """
+    # Error por imagen
+    errors = np.sqrt(np.sum((predictions - ground_truth) ** 2, axis=2))
+
+    # Metricas globales
+    mse = np.mean((predictions - ground_truth) ** 2)
+    mae = np.mean(np.abs(predictions - ground_truth))
+    med = np.mean(errors)  # Mean Euclidean Distance
+
+    # Error por landmark
+    error_per_landmark = np.mean(errors, axis=0)
+
+    return {
+        'mse': mse,
+        'mae': mae,
+        'med': med,
+        'error_per_landmark': error_per_landmark,
+        'std': np.std(errors)
+    }
+
+
+def evaluate_classification(predictions, ground_truth, num_classes=3):
+    """
+    Evalua predicciones de clasificacion.
+
+    Parameters
+    ----------
+    predictions : ndarray, shape (n,)
+        Predicciones de clase
+    ground_truth : ndarray, shape (n,)
+        Ground truth
+    num_classes : int
+        Numero de clases
+
+    Returns
+    -------
+    metrics : dict
+        Diccionario con metricas
+    """
+    accuracy = accuracy_score(ground_truth, predictions)
+
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        ground_truth, predictions, average='macro'
+    )
+
+    cm = confusion_matrix(ground_truth, predictions)
+
+    # Per-class metrics
+    precision_per_class, recall_per_class, f1_per_class, _ = \
+        precision_recall_fscore_support(
+            ground_truth, predictions, average=None
+        )
+
+    return {
+        'accuracy': accuracy,
+        'precision_macro': precision,
+        'recall_macro': recall,
+        'f1_macro': f1,
+        'confusion_matrix': cm,
+        'precision_per_class': precision_per_class,
+        'recall_per_class': recall_per_class,
+        'f1_per_class': f1_per_class
+    }
+
+
+def mcnemar_test(y_true, pred_a, pred_b):
+    """
+    Test de McNemar para comparar dos clasificadores.
+
+    Returns
+    -------
+    chi2 : float
+        Estadistico chi-cuadrado
+    p_value : float
+        Valor p
+    """
+    from scipy.stats import chi2
+
+    # Tabla de contingencia
+    # n01: A incorrecto, B correcto
+    # n10: A correcto, B incorrecto
+    correct_a = (pred_a == y_true)
+    correct_b = (pred_b == y_true)
+
+    n01 = np.sum(~correct_a & correct_b)
+    n10 = np.sum(correct_a & ~correct_b)
+
+    if n01 + n10 == 0:
+        return 0, 1.0
+
+    chi2_stat = (n01 - n10) ** 2 / (n01 + n10)
+    p_value = 1 - chi2.cdf(chi2_stat, df=1)
+
+    return chi2_stat, p_value
+\end{lstlisting}
+
+% ==============================================================================
+\section{Análisis de Robustez}
+% ==============================================================================
+
+\subsection{Aplicación de Perturbaciones}
+
+\begin{lstlisting}[language=Python, caption={Funciones de perturbación}]
+import cv2
+import numpy as np
+from PIL import Image
+import io
+
+def apply_jpeg_compression(image, quality):
+    """Aplica compresion JPEG."""
+    img_pil = Image.fromarray(image)
+    buffer = io.BytesIO()
+    img_pil.save(buffer, format='JPEG', quality=quality)
+    buffer.seek(0)
+    return np.array(Image.open(buffer))
+
+
+def apply_gaussian_blur(image, sigma):
+    """Aplica desenfoque gaussiano."""
+    kernel_size = int(6 * sigma + 1) | 1  # Asegurar impar
+    return cv2.GaussianBlur(image, (kernel_size, kernel_size), sigma)
+
+
+def apply_gaussian_noise(image, sigma):
+    """Anade ruido gaussiano."""
+    noise = np.random.normal(0, sigma, image.shape)
+    noisy = image.astype(float) + noise
+    return np.clip(noisy, 0, 255).astype(np.uint8)
+
+
+def apply_rotation(image, angle):
+    """Aplica rotacion."""
+    h, w = image.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    return cv2.warpAffine(image, M, (w, h))
+
+
+def apply_scale(image, scale_factor):
+    """Aplica escalado."""
+    h, w = image.shape[:2]
+    new_h, new_w = int(h * scale_factor), int(w * scale_factor)
+    resized = cv2.resize(image, (new_w, new_h))
+
+    # Recortar o rellenar para mantener tamano original
+    if scale_factor > 1:
+        start_h = (new_h - h) // 2
+        start_w = (new_w - w) // 2
+        return resized[start_h:start_h+h, start_w:start_w+w]
+    else:
+        result = np.zeros_like(image)
+        start_h = (h - new_h) // 2
+        start_w = (w - new_w) // 2
+        result[start_h:start_h+new_h, start_w:start_w+new_w] = resized
+        return result
+
+
+def evaluate_robustness(model, test_loader, perturbation_fn,
+                         param_values, device='cuda'):
+    """
+    Evalua robustez bajo perturbaciones.
+
+    Returns
+    -------
+    results : dict
+        Accuracy para cada nivel de perturbacion
+    """
+    model.eval()
+    results = {}
+
+    for param in param_values:
+        correct = 0
+        total = 0
+
+        with torch.no_grad():
+            for images, labels in test_loader:
+                # Aplicar perturbacion
+                images_np = images.numpy()
+                perturbed = np.array([
+                    perturbation_fn(img.transpose(1, 2, 0), param)
+                    for img in images_np
+                ])
+                perturbed = torch.from_numpy(
+                    perturbed.transpose(0, 3, 1, 2)
+                ).float()
+
+                perturbed = perturbed.to(device)
+                labels = labels.to(device)
+
+                outputs = model(perturbed)
+                _, predicted = outputs.max(1)
+                total += labels.size(0)
+                correct += predicted.eq(labels).sum().item()
+
+        results[param] = 100. * correct / total
+
+    return results
+\end{lstlisting}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+Este apéndice ha presentado el código fuente de las funciones clave del
+proyecto, incluyendo:
+
+\begin{enumerate}
+    \item \textbf{Análisis Procrustes}: Alineación de configuraciones de landmarks
+    \item \textbf{GPA}: Cálculo iterativo de forma canónica
+    \item \textbf{Triangulación}: Construcción de malla Delaunay
+    \item \textbf{Coordenadas baricéntricas}: Cálculo eficiente vectorizado
+    \item \textbf{Warping}: Implementación completa de piecewise affine
+    \item \textbf{Modelos}: Arquitecturas de landmarks y clasificación
+    \item \textbf{Evaluación}: Métricas y tests estadísticos
+    \item \textbf{Robustez}: Aplicación y evaluación de perturbaciones
+\end{enumerate}
+
+Todo el código está disponible en el repositorio del proyecto para
+facilitar la reproducibilidad.
+
+\end{document}

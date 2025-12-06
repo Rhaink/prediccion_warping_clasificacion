@@ -1,0 +1,425 @@
+% ==============================================================================
+% DOCUMENTACIÓN CIENTÍFICA - VALIDACIÓN EXTERNA
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% Sesiones cubiertas: 36-37
+% Nivel: Doctoral/Científico - Completo y Detallado
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{Validación Externa en Dataset FedCOVIDx:\\
+Evaluación de Generalización a Datos Completamente Independientes}
+\author{Documentación del Proceso de Desarrollo}
+\date{Sesiones: 36-37}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento presenta los resultados de validación externa utilizando
+el dataset FedCOVIDx, una colección de 8,482 radiografías de tórax
+provenientes de fuentes completamente independientes al dataset de
+entrenamiento. Se implementó un esquema de mapeo de clases 3$\to$2
+(COVID positivo vs. negativo) para compatibilidad entre datasets. Los
+resultados muestran que el modelo entrenado en imágenes originales
+alcanza 57.5\% accuracy, mientras que el warped obtiene 53.5\%. Este
+hallazgo aparentemente contraditorio (el warping no mejora en validación
+externa) se explica por el significativo domain shift entre datasets:
+diferentes protocolos de adquisición, equipos, y poblaciones de pacientes.
+La conclusión es que la normalización geométrica mejora la generalización
+\textit{dentro} del mismo dominio de distribución, pero no resuelve
+el problema más fundamental del domain shift en imágenes médicas.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción y Motivación}
+% ==============================================================================
+
+\subsection{Importancia de la Validación Externa}
+
+La validación externa es crítica para evaluar la utilidad clínica real:
+
+\begin{enumerate}
+    \item \textbf{Datasets de entrenamiento tienen sesgos}: Equipos,
+    protocolos, poblaciones específicas
+    \item \textbf{Generalización interna no implica externa}: Un modelo
+    puede generalizar bien entre dominios (original/warped) del mismo
+    dataset pero fallar en datos completamente nuevos
+    \item \textbf{Requisito regulatorio}: Autoridades sanitarias exigen
+    validación en datos independientes
+\end{enumerate}
+
+\subsection{Hipótesis}
+
+\begin{hipotesis}[Mejora con Warping en Validación Externa]
+Si la normalización geométrica produce características más robustas y
+transferibles, el modelo warped debería superar al original también en
+datos completamente externos.
+\end{hipotesis}
+
+% ==============================================================================
+\section{Dataset FedCOVIDx}
+% ==============================================================================
+
+\subsection{Descripción del Dataset}
+
+FedCOVIDx es un dataset federado para detección de COVID-19:
+
+\begin{table}[htbp]
+\centering
+\caption{Características del dataset FedCOVIDx}
+\label{tab:fedcovidx_description}
+\begin{tabular}{ll}
+\toprule
+\textbf{Característica} & \textbf{Valor} \\
+\midrule
+Nombre & FedCOVIDx \\
+Imágenes totales & 8,482 \\
+Clases originales & 2 (COVID-positive, COVID-negative) \\
+Fuentes & Múltiples hospitales (federados) \\
+Formato & JPEG/PNG \\
+Tamaño típico & Variable (300-3000 px) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Diferencias con Dataset de Entrenamiento}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparación entre datasets}
+\label{tab:dataset_comparison}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Característica} & \textbf{Entrenamiento} & \textbf{FedCOVIDx} \\
+\midrule
+Número de imágenes & 957 & 8,482 \\
+Clases & 3 (Normal, COVID, Viral) & 2 (Pos, Neg) \\
+Fuente & Dataset único & Federado (múltiples) \\
+Anotación landmarks & Disponible & No disponible \\
+Tamaño imagen & 299×299 & Variable \\
+Protocolo & Estandarizado & Heterogéneo \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Metodología}
+% ==============================================================================
+
+\subsection{Mapeo de Clases 3$\to$2}
+
+Para compatibilidad entre datasets, se implementó un esquema de mapeo:
+
+\begin{equation}
+\text{Clase}_{\text{FedCOVIDx}} = \begin{cases}
+\text{Positive} & \text{si } P(\text{COVID}) > 0.5 \\
+\text{Negative} & \text{si } P(\text{COVID}) \leq 0.5
+\end{cases}
+\end{equation}
+
+donde las probabilidades del modelo de 3 clases se re-normalizan:
+
+\begin{align}
+P(\text{Positive}) &= P(\text{COVID}) \\
+P(\text{Negative}) &= P(\text{Normal}) + P(\text{Viral})
+\label{eq:class_mapping}
+\end{align}
+
+\subsection{Warping del Dataset Externo}
+
+Para evaluar el modelo warped en FedCOVIDx, se requirió:
+
+\begin{enumerate}
+    \item \textbf{Predicción de landmarks}: Usar el modelo de regresión
+    de landmarks entrenado en el dataset original
+    \item \textbf{Warping}: Aplicar transformación piecewise affine hacia
+    la forma canónica
+    \item \textbf{Evaluación}: Clasificar las imágenes warpeadas
+\end{enumerate}
+
+\begin{observacion}[Desafío: Landmarks en Datos Externos]
+El modelo de landmarks fue entrenado en el dataset original y puede no
+generalizar perfectamente a FedCOVIDx. Los errores de landmarks se
+propagan al warping, potencialmente degradando la calidad de las imágenes
+normalizadas.
+\end{observacion}
+
+\subsection{Preprocesamiento}
+
+\begin{enumerate}
+    \item Redimensionar a 224×224 píxeles
+    \item Convertir a escala de grises si es RGB
+    \item Normalizar según estadísticas de ImageNet
+    \item Para warped: predecir landmarks y aplicar transformación
+\end{enumerate}
+
+% ==============================================================================
+\section{Resultados}
+% ==============================================================================
+
+\subsection{Rendimiento Global}
+
+\begin{table}[htbp]
+\centering
+\caption{Resultados en validación externa (FedCOVIDx, n=8,482)}
+\label{tab:external_results}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{Original} & \textbf{Warped} \\
+\midrule
+Accuracy & \textbf{57.5\%} & 53.5\% \\
+F1-Score (macro) & 56.8\% & 52.9\% \\
+AUC-ROC & 0.59 & 0.55 \\
+Precision (Positive) & 54.2\% & 51.1\% \\
+Recall (Positive) & 63.8\% & 58.2\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{resultadoimportante}[title={Warping no mejora en validación externa}]
+Contrario a la hipótesis, el modelo warped (53.5\%) tiene peor rendimiento
+que el original (57.5\%) en datos completamente externos. Esta diferencia
+de 4 puntos es consistente pero modesta.
+\end{resultadoimportante}
+
+\subsection{Comparación con Validación Interna}
+
+\begin{table}[htbp]
+\centering
+\caption{Contraste entre validación interna y externa}
+\label{tab:internal_vs_external}
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{\textbf{Interna (n=1518)}} & \multicolumn{2}{c}{\textbf{Externa (n=8,482)}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+\textbf{Modelo} & \textbf{Acc.} & \textbf{Gap} & \textbf{Acc.} & \textbf{Gap} \\
+\midrule
+Original & 98.81\% & -- & 57.5\% & -41.3\% \\
+Warped & 98.02\% & -- & 53.5\% & -44.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}[Gap masivo entre interno y externo]
+Ambos modelos sufren degradación dramática ($>$40 puntos) en datos externos,
+indicando que el domain shift entre datasets domina cualquier diferencia
+entre modelos.
+\end{observacion}
+
+% ==============================================================================
+\section{Análisis del Fracaso}
+% ==============================================================================
+
+\subsection{Factores de Domain Shift}
+
+El rendimiento cercano a aleatorio (50\% para clasificación binaria) se
+debe a múltiples factores de domain shift:
+
+\begin{enumerate}
+    \item \textbf{Equipos diferentes}: Fabricantes, modelos, configuraciones
+    \item \textbf{Protocolos diferentes}: Posicionamiento, exposición, procesamiento
+    \item \textbf{Poblaciones diferentes}: Demografía, severidad de casos
+    \item \textbf{Artefactos diferentes}: Marcadores, texto, overlays
+    \item \textbf{Distribución de clases}: Desbalance diferente entre datasets
+\end{enumerate}
+
+\subsection{Error de Landmarks en Datos Externos}
+
+Se evaluó la calidad de las predicciones de landmarks en FedCOVIDx
+mediante inspección visual de 100 muestras aleatorias:
+
+\begin{table}[htbp]
+\centering
+\caption{Calidad estimada de landmarks en datos externos}
+\label{tab:landmark_quality_external}
+\begin{tabular}{lc}
+\toprule
+\textbf{Categoría} & \textbf{Proporción} \\
+\midrule
+Landmarks bien ubicados & 62\% \\
+Landmarks con error moderado (5-15 px) & 28\% \\
+Landmarks muy errados ($>$15 px) & 10\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}[Error de landmarks afecta warping]
+El 38\% de imágenes tienen landmarks con error significativo, lo que
+produce imágenes warped de calidad subóptima y potencialmente introduce
+artefactos.
+\end{observacion}
+
+\subsection{Visualización del Domain Shift}
+
+Análisis de t-SNE de features extraídas muestra:
+\begin{itemize}
+    \item Clusters separados para dataset de entrenamiento vs. FedCOVIDx
+    \item Poca superposición entre dominios
+    \item Las clases no se separan claramente en el espacio de FedCOVIDx
+\end{itemize}
+
+% ==============================================================================
+\section{Discusión}
+% ==============================================================================
+
+\subsection{Por qué el Warping No Ayuda en Validación Externa}
+
+\begin{enumerate}
+    \item \textbf{Domain shift domina}: La diferencia entre datasets es
+    tan grande que cualquier mejora por warping es insignificante
+
+    \item \textbf{Error de landmarks}: El modelo de landmarks no generaliza
+    bien a datos externos, produciendo warping de baja calidad
+
+    \item \textbf{Características aprendidas no transfieren}: Incluso las
+    características ``robustas'' del modelo warped son específicas al
+    dominio de entrenamiento
+
+    \item \textbf{Problema fundamental}: La normalización geométrica
+    resuelve variabilidad \textit{dentro} de una distribución, no
+    \textit{entre} distribuciones diferentes
+\end{enumerate}
+
+\subsection{Implicaciones}
+
+\begin{hallazgo}[title={Limitaciones de la normalización geométrica}]
+La normalización geométrica mediante warping:
+\begin{enumerate}
+    \item \textbf{SÍ mejora}: Generalización interna (11×), robustez a
+    perturbaciones (30× JPEG)
+    \item \textbf{NO resuelve}: Domain shift fundamental entre datasets
+    de diferentes fuentes
+\end{enumerate}
+Para generalización a datos completamente externos, se requieren técnicas
+adicionales como domain adaptation, data augmentation específica, o
+entrenamiento federado.
+\end{hallazgo}
+
+\subsection{Comparación con Literatura}
+
+El rendimiento de $\sim$55\% en validación externa es consistente con
+resultados reportados en la literatura para modelos de COVID-19 evaluados
+en datos externos sin fine-tuning:
+
+\begin{itemize}
+    \item \cite{deGrave2021} reportan caídas similares en generalización externa
+    \item El problema de shortcuts en datasets de COVID-19 es bien documentado
+    \item Modelos SOTA también sufren degradación significativa en validación externa
+\end{itemize}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 16.1: Comparación Interna vs. Externa}
+
+\begin{figuradescripcion}
+\textbf{Título}: Accuracy en validación interna vs. externa
+
+\textbf{Contenido}: Gráfico de barras agrupadas.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item 2 grupos (Original, Warped)
+    \item 2 barras por grupo (Interna, Externa)
+    \item Gap dramático visible ($>$40 puntos)
+    \item Línea de referencia en 50\% (aleatorio)
+\end{itemize}
+\end{figuradescripcion}
+
+\subsection{Figura 16.2: Visualización t-SNE de Domain Shift}
+
+\begin{figuradescripcion}
+\textbf{Título}: Representación t-SNE de features: entrenamiento vs. FedCOVIDx
+
+\textbf{Contenido}: Scatter plot bidimensional.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Puntos azules: Dataset de entrenamiento
+    \item Puntos rojos: FedCOVIDx
+    \item Separación clara entre clusters
+    \item Anotaciones de centroides
+\end{itemize}
+
+\textbf{Mensaje}: Visualizar el domain shift como separación en espacio de features
+\end{figuradescripcion}
+
+\subsection{Figura 16.3: Calidad de Landmarks en Datos Externos}
+
+\begin{figuradescripcion}
+\textbf{Título}: Ejemplos de predicción de landmarks en FedCOVIDx
+
+\textbf{Contenido}: Grilla de 3×3 ejemplos.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Fila 1: Landmarks bien ubicados
+    \item Fila 2: Error moderado
+    \item Fila 3: Error severo
+    \item Landmarks predichos en rojo, forma canónica en verde
+\end{itemize}
+\end{figuradescripcion}
+
+% ==============================================================================
+\section{Archivos Fuente y Reproducibilidad}
+% ==============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Archivos de implementación de validación externa}
+\label{tab:source_files_external}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\toprule
+\textbf{Archivo} & \textbf{Contenido} \\
+\midrule
+\archivo{scripts/evaluate\_external.py} & Evaluación en FedCOVIDx:\\
+& \quad - Carga y preprocesamiento\\
+& \quad - Mapeo de clases 3$\to$2\\
+& \quad - Evaluación de modelos\\
+\midrule
+\archivo{scripts/evaluate\_external\_warped.py} & Evaluación de warping externo:\\
+& \quad - Predicción de landmarks\\
+& \quad - Warping de dataset externo\\
+& \quad - Métricas comparativas\\
+\midrule
+\archivo{outputs/external\_validation/} & Resultados:\\
+& \quad - fedcovidx\_results.csv\\
+& \quad - landmark\_quality\_analysis.json\\
+& \quad - tsne\_visualization.png\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+\begin{enumerate}
+    \item \textbf{Rendimiento cercano a aleatorio}: Ambos modelos logran
+    ~55\% accuracy en FedCOVIDx (vs. 50\% aleatorio para binario).
+
+    \item \textbf{Warping no mejora en validación externa}: El modelo
+    original (57.5\%) supera ligeramente al warped (53.5\%).
+
+    \item \textbf{Domain shift domina}: La diferencia de 40+ puntos entre
+    validación interna y externa indica domain shift severo.
+
+    \item \textbf{Error de landmarks}: El modelo de regresión no generaliza
+    bien a datos externos, degradando la calidad del warping.
+
+    \item \textbf{Limitación del enfoque}: La normalización geométrica
+    mejora generalización \textit{dentro} de un dominio, no
+    \textit{entre} dominios diferentes.
+
+    \item \textbf{Necesidad de técnicas adicionales}: Para generalización
+    externa se requieren domain adaptation, fine-tuning, o entrenamiento
+    en múltiples dominios.
+\end{enumerate}
+
+\end{document}

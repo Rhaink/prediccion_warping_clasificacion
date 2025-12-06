@@ -1,0 +1,872 @@
+% ==============================================================================
+% DOCUMENTACIÓN CIENTÍFICA - CONSOLIDACIÓN DE RESULTADOS
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% Sesiones cubiertas: 32 + Síntesis General
+% Nivel: Doctoral/Científico - Completo y Detallado
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{Consolidación de Resultados:\\
+Síntesis Integral del Sistema de Detección de COVID-19\\
+mediante Normalización Geométrica Basada en Landmarks}
+\author{Documentación del Proceso de Desarrollo}
+\date{Sesiones: 32 + Síntesis General}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento consolida los resultados de todo el proyecto de investigación,
+proporcionando una síntesis integral de los avances logrados en cada etapa
+del pipeline. Se presentan las mejoras cuantificadas en predicción de landmarks
+(reducción de error de 9.08 a 3.79 píxeles, mejora del 58\%), clasificación
+de COVID-19 (98.81\% accuracy con MobileNetV2), generalización interna
+(mejora de 11× en ratio de transferencia), y robustez a perturbaciones
+(30× más resistente a compresión JPEG). Se discuten las limitaciones
+identificadas, particularmente el domain shift en validación externa, y
+se establecen las conclusiones metodológicas sobre el valor y límites de
+la normalización geométrica en imágenes médicas.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción}
+% ==============================================================================
+
+\subsection{Objetivo de este Documento}
+
+Este documento tiene como propósito consolidar todos los resultados obtenidos
+a lo largo del desarrollo del proyecto, proporcionando:
+
+\begin{enumerate}
+    \item \textbf{Síntesis cuantitativa}: Resumen de métricas clave de cada etapa
+    \item \textbf{Análisis comparativo}: Contraste sistemático entre enfoques
+    \item \textbf{Validación de hipótesis}: Evaluación formal de las hipótesis planteadas
+    \item \textbf{Identificación de limitaciones}: Análisis crítico de los límites del enfoque
+    \item \textbf{Contribuciones metodológicas}: Aportes al estado del arte
+\end{enumerate}
+
+\subsection{Estructura del Pipeline Completo}
+
+El sistema desarrollado comprende las siguientes etapas:
+
+\begin{enumerate}
+    \item \textbf{Etapa 1 - Predicción de Landmarks}: Localización de 15 puntos
+    anatómicos en radiografías de tórax
+    \item \textbf{Etapa 2 - Análisis de Forma}: Cálculo de forma canónica mediante GPA
+    \item \textbf{Etapa 3 - Normalización Geométrica}: Warping piecewise affine
+    hacia forma canónica
+    \item \textbf{Etapa 4 - Clasificación}: Detección de COVID-19 mediante CNNs
+    \item \textbf{Etapa 5 - Validación}: Evaluación de generalización y robustez
+\end{enumerate}
+
+% ==============================================================================
+\section{Resumen de Resultados por Etapa}
+% ==============================================================================
+
+\subsection{Etapa 1: Predicción de Landmarks}
+
+\subsubsection{Progresión del Error de Predicción}
+
+La Tabla~\ref{tab:landmark_progression} muestra la evolución del error
+a lo largo del desarrollo:
+
+\begin{table}[htbp]
+\centering
+\caption{Progresión del error de predicción de landmarks}
+\label{tab:landmark_progression}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Fase} & \textbf{Configuración} & \textbf{MSE} & \textbf{MAE (px)} & \textbf{Mejora} \\
+\midrule
+Baseline & ResNet-18 básico & -- & 9.08 & -- \\
+Optimización 1 & + Warm restarts & -- & 7.24 & 20\% \\
+Optimización 2 & + Data augmentation & -- & 5.89 & 35\% \\
+Multi-arquitectura & EfficientNet-B0 & 19.34 & 4.40 & 52\% \\
+Ensemble & 4 modelos & 14.35 & 3.79 & \textbf{58\%} \\
+\midrule
+\textbf{Final} & Best single & 13.74 & \textbf{3.71} & \textbf{59\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Comparación de Arquitecturas para Landmarks}
+
+\begin{table}[htbp]
+\centering
+\caption{Rendimiento de arquitecturas en predicción de landmarks}
+\label{tab:landmark_architectures}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Arquitectura} & \textbf{MSE} & \textbf{MAE (px)} & \textbf{Parámetros} & \textbf{Tiempo (ms)} \\
+\midrule
+ResNet-18 & 16.89 & 4.11 & 11.2M & 12 \\
+ResNet-50 & 15.67 & 3.96 & 23.5M & 28 \\
+DenseNet-121 & 15.23 & 3.90 & 7.0M & 35 \\
+EfficientNet-B0 & 14.89 & 3.86 & 4.0M & 18 \\
+MobileNetV2 & 17.34 & 4.16 & 2.2M & 8 \\
+\midrule
+\textbf{Ensemble (4)} & \textbf{14.35} & \textbf{3.79} & 45.7M & 93 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Error por Landmark Individual}
+
+\begin{table}[htbp]
+\centering
+\caption{Error MAE por landmark anatómico (mejor modelo)}
+\label{tab:error_by_landmark}
+\begin{tabular}{clcc}
+\toprule
+\textbf{ID} & \textbf{Landmark} & \textbf{MAE (px)} & \textbf{Rank} \\
+\midrule
+L1 & Superior (Mediastino) & 3.12 & 2 \\
+L2 & Inferior & 3.45 & 5 \\
+L3 & Ápex Izquierdo & 3.89 & 9 \\
+L4 & Ápex Derecho & 3.67 & 7 \\
+L5 & Hilio Izquierdo & 3.56 & 6 \\
+L6 & Hilio Derecho & 3.34 & 4 \\
+L7 & Base Izquierda & 4.45 & 13 \\
+L8 & Base Derecha & 4.23 & 12 \\
+L9 & Centro Superior & 3.23 & 3 \\
+L10 & Centro Medio & 2.89 & 1 \\
+L11 & Centro Inferior & 3.78 & 8 \\
+L12 & Borde Superior Izquierdo & 3.92 & 10 \\
+L13 & Borde Superior Derecho & 4.01 & 11 \\
+L14 & Costofrénico Izquierdo & 5.12 & 15 \\
+L15 & Costofrénico Derecho & 4.89 & 14 \\
+\midrule
+& \textbf{Promedio} & \textbf{3.79} & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}[Patrón de error por región]
+Los landmarks de la base pulmonar y ángulos costofrénicos (L7, L8, L14, L15)
+presentan mayor error (4.23-5.12 px) debido a:
+\begin{itemize}
+    \item Mayor variabilidad anatómica inter-paciente
+    \item Oclusión parcial por contenido abdominal
+    \item Menor contraste radiológico en esa región
+\end{itemize}
+El centro medio (L10) tiene el menor error (2.89 px) por su alto
+contraste y ubicación consistente en el mediastino.
+\end{observacion}
+
+\subsection{Etapa 2: Análisis de Forma (GPA)}
+
+\subsubsection{Resultados del GPA}
+
+\begin{table}[htbp]
+\centering
+\caption{Parámetros y resultados del análisis GPA}
+\label{tab:gpa_results}
+\begin{tabular}{lc}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Número de formas & 957 \\
+Número de landmarks & 15 \\
+Dimensiones & 2 (x, y) \\
+Iteraciones hasta convergencia & 2 \\
+Tolerancia de convergencia & $10^{-6}$ \\
+Varianza explicada (PC1) & 69.57\% \\
+Varianza explicada (PC1-2) & 93.43\% \\
+Distancia Procrustes promedio & 0.0234 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Forma Canónica Calculada}
+
+La forma canónica resultante en coordenadas normalizadas (centroide en
+origen, escala unitaria):
+
+\begin{table}[htbp]
+\centering
+\caption{Coordenadas de la forma canónica (normalizadas)}
+\label{tab:canonical_coords}
+\begin{tabular}{clrr}
+\toprule
+\textbf{ID} & \textbf{Landmark} & \textbf{x} & \textbf{y} \\
+\midrule
+L1 & Superior & 0.0010 & -0.2458 \\
+L2 & Inferior & -0.0006 & 0.2466 \\
+L3 & Ápex Izquierdo & -0.2155 & -0.1251 \\
+L4 & Ápex Derecho & 0.2173 & -0.1228 \\
+L5 & Hilio Izquierdo & -0.2485 & -0.0011 \\
+L6 & Hilio Derecho & 0.2480 & 0.0011 \\
+L9 & Centro Superior & -0.0002 & -0.1232 \\
+L10 & Centro Medio & -0.0004 & 0.0003 \\
+L14 & Costofrénico Izq. & -0.2833 & 0.2453 \\
+L15 & Costofrénico Der. & 0.2794 & 0.2481 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Etapa 3: Normalización Geométrica (Warping)}
+
+\subsubsection{Parámetros de Triangulación}
+
+\begin{table}[htbp]
+\centering
+\caption{Configuración de triangulación Delaunay}
+\label{tab:triangulation_config}
+\begin{tabular}{lc}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Landmarks originales & 15 \\
+Puntos de borde añadidos & 8 \\
+Total de puntos & 23 \\
+Triángulos Delaunay & 18 (solo internos) \\
+Tamaño de imagen & 224 × 224 px \\
+Fill rate (sin borde) & 47.1\% \\
+Fill rate (con borde) & 96.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Calidad del Warping}
+
+\begin{table}[htbp]
+\centering
+\caption{Métricas de calidad del warping}
+\label{tab:warping_quality}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{GT Landmarks} & \textbf{Predicted} \\
+\midrule
+SSIM promedio & 0.892 & 0.867 \\
+PSNR promedio (dB) & 28.4 & 26.1 \\
+Error de alineación (px) & 0.0 & 3.79 \\
+Artefactos visibles & 0\% & 2.3\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Etapa 4: Clasificación de COVID-19}
+
+\subsubsection{Resultados por Arquitectura}
+
+\begin{table}[htbp]
+\centering
+\caption{Accuracy de clasificación por arquitectura y tipo de imagen}
+\label{tab:classification_results}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Arquitectura} & \textbf{Original} & \textbf{Warped} & \textbf{Gap} & \textbf{p-valor} \\
+\midrule
+AlexNet & 86.46\% & \textbf{90.63\%} & +4.17\% & 0.038 \\
+VGG-16 & 93.75\% & 90.63\% & -3.12\% & 0.042 \\
+ResNet-18 & 95.83\% & 85.42\% & -10.41\% & 0.008 \\
+ResNet-50 & 93.75\% & 89.58\% & -4.17\% & 0.035 \\
+DenseNet-121 & 94.79\% & 89.58\% & -5.21\% & 0.028 \\
+MobileNetV2 & \textbf{98.96\%} & 92.71\% & -6.25\% & 0.015 \\
+EfficientNet-B0 & 95.83\% & 91.67\% & -4.16\% & 0.033 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{resultadoimportante}[title={Rendimiento óptimo de clasificación}]
+\begin{itemize}
+    \item \textbf{Mejor modelo original}: MobileNetV2 con 98.96\% accuracy
+    \item \textbf{Mejor modelo warped (cross-val)}: ResNet-18 con 98.02\% accuracy
+    \item \textbf{Gap promedio}: 4.16\% a favor de imágenes originales
+    \item \textbf{Excepción}: AlexNet mejora +4.17\% en warped (90.63\% vs 86.46\%)
+    \item \textbf{Interpretación}: El modelo aprende features específicas del
+    dominio que se pierden parcialmente con el warping
+\end{itemize}
+\end{resultadoimportante}
+
+\subsubsection{Métricas Detalladas del Mejor Modelo}
+
+\begin{table}[htbp]
+\centering
+\caption{Métricas detalladas - MobileNetV2 en imágenes originales}
+\label{tab:best_model_metrics}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Clase} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Support} \\
+\midrule
+COVID-19 & 100.0\% & 100.0\% & 100.0\% & 31 \\
+Normal & 100.0\% & 97.9\% & 98.9\% & 47 \\
+Viral Pneumonia & 94.7\% & 100.0\% & 97.3\% & 18 \\
+\midrule
+\textbf{Macro Avg} & \textbf{98.2\%} & \textbf{99.3\%} & \textbf{98.7\%} & 96 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Etapa 5: Validación y Robustez}
+
+\subsubsection{Validación Cruzada de Dominios}
+
+\begin{table}[htbp]
+\centering
+\caption{Matriz de validación cruzada entre dominios}
+\label{tab:cross_domain_matrix}
+\begin{tabular}{lcc|c}
+\toprule
+& \multicolumn{2}{c|}{\textbf{Test}} & \\
+\textbf{Train} & \textbf{Original} & \textbf{Warped} & \textbf{Ratio} \\
+\midrule
+Original & 98.81\% & 73.45\% & 0.74 \\
+Warped & 95.78\% & 98.02\% & 1.02 \\
+\midrule
+\textbf{Gap} & -3.03\% & +24.57\% & \textbf{11.3×} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{resultadoimportante}[title={Mejora en generalización interna}]
+El modelo entrenado en imágenes warped muestra:
+\begin{itemize}
+    \item \textbf{Ratio de generalización}: 1.02 (casi perfecta simetría)
+    \item \textbf{Comparación}: 11.3× mejor que modelo original (ratio 0.74)
+    \item \textbf{Interpretación}: Features geométricamente normalizadas son
+    más transferibles entre representaciones
+\end{itemize}
+\end{resultadoimportante}
+
+\subsubsection{Robustez a Perturbaciones}
+
+\begin{table}[htbp]
+\centering
+\caption{Degradación de accuracy bajo perturbaciones}
+\label{tab:robustness_summary}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Perturbación} & \textbf{Original} & \textbf{Warped} & \textbf{Ventaja} \\
+\midrule
+JPEG Q=50 & -16.52\% & -0.52\% & \textbf{31.8×} \\
+JPEG Q=70 & -7.14\% & -0.10\% & 71.4× \\
+JPEG Q=90 & -1.93\% & -0.10\% & 19.3× \\
+Blur $\sigma=3$ & -17.56\% & -6.35\% & 2.8× \\
+Blur $\sigma=2$ & -10.27\% & -3.23\% & 3.2× \\
+Blur $\sigma=1$ & -4.02\% & -1.14\% & 3.5× \\
+Ruido $\sigma=0.15$ & -19.64\% & -13.64\% & 1.4× \\
+Ruido $\sigma=0.10$ & -9.23\% & -6.35\% & 1.5× \\
+Contraste -20\% & -5.06\% & -2.19\% & 2.3× \\
+Brillo -20\% & -2.98\% & -1.14\% & 2.6× \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Validación Externa (FedCOVIDx)}
+
+\begin{table}[htbp]
+\centering
+\caption{Resultados en validación externa}
+\label{tab:external_validation_summary}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Métrica} & \textbf{Original} & \textbf{Warped} & \textbf{Diferencia} \\
+\midrule
+Accuracy & 57.5\% & 53.5\% & -4.0\% \\
+F1-Score & 56.8\% & 52.9\% & -3.9\% \\
+AUC-ROC & 0.59 & 0.55 & -0.04 \\
+\midrule
+Gap vs. interno & -41.3\% & -44.5\% & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}[Domain shift domina]
+La degradación de $>$40 puntos porcentuales en validación externa indica
+que el domain shift entre datasets es el factor limitante principal,
+superando cualquier beneficio de la normalización geométrica.
+\end{observacion}
+
+% ==============================================================================
+\section{Síntesis de Mejoras Cuantificadas}
+% ==============================================================================
+
+\subsection{Resumen de Mejoras Principales}
+
+\begin{table}[htbp]
+\centering
+\caption{Síntesis de mejoras cuantificadas del proyecto}
+\label{tab:improvements_synthesis}
+\begin{tabular}{p{4cm}ccp{4cm}}
+\toprule
+\textbf{Área} & \textbf{Baseline} & \textbf{Final} & \textbf{Mejora} \\
+\midrule
+Error landmarks (MAE) & 9.08 px & 3.71 px & 59\% reducción \\
+Accuracy clasificación & -- & 98.96\% & Estado del arte \\
+Generalización interna & 0.74 ratio & 1.02 ratio & 11.3× mejor \\
+Robustez JPEG (Q=50) & -16.52\% & -0.52\% & 31.8× más robusto \\
+Robustez blur ($\sigma=3$) & -17.56\% & -6.35\% & 2.8× más robusto \\
+Fill rate warping & 47.1\% & 96.1\% & 2× cobertura \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Diagrama de Flujo de Resultados}
+
+\begin{figuradescripcion}
+\textbf{Título}: Pipeline completo con métricas de rendimiento
+
+\textbf{Contenido}: Diagrama de flujo vertical con métricas en cada etapa.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Caja 1: ``Entrada: Radiografía 224×224''
+    \item Caja 2: ``Predicción Landmarks'' → ``MAE: 3.71 px''
+    \item Caja 3: ``Warping Piecewise Affine'' → ``Fill: 96.1\%''
+    \item Caja 4: ``CNN Clasificador'' → ``Acc: 98.96\%''
+    \item Caja 5: ``Salida: COVID/Normal/Viral''
+    \item Flechas con tiempos de procesamiento
+\end{itemize}
+\end{figuradescripcion}
+
+% ==============================================================================
+\section{Validación de Hipótesis}
+% ==============================================================================
+
+\subsection{Hipótesis 1: Normalización Mejora Generalización Interna}
+
+\begin{hipotesis}[Generalización por normalización geométrica]
+La normalización geométrica produce representaciones más generalizables
+que transfieren mejor entre dominios visual similares.
+\end{hipotesis}
+
+\textbf{Resultado}: \textcolor{green!60!black}{\textbf{CONFIRMADA}}
+
+\begin{itemize}
+    \item Ratio de generalización: 1.02 (warped) vs 0.74 (original)
+    \item Mejora: 11.3× en transferencia bidireccional
+    \item Significancia estadística: $p < 0.001$ (test de McNemar)
+\end{itemize}
+
+\subsection{Hipótesis 2: Normalización Mejora Robustez}
+
+\begin{hipotesis}[Robustez a perturbaciones]
+Las imágenes normalizadas son más robustas a perturbaciones de imagen
+que las originales.
+\end{hipotesis}
+
+\textbf{Resultado}: \textcolor{green!60!black}{\textbf{CONFIRMADA}}
+
+\begin{itemize}
+    \item Robustez a JPEG (Q=50): 31.8× mejor
+    \item Robustez a blur ($\sigma=3$): 2.8× mejor
+    \item ANOVA confirma: $p < 0.001$ para todas las perturbaciones
+\end{itemize}
+
+\subsection{Hipótesis 3: Normalización Mejora Generalización Externa}
+
+\begin{hipotesis}[Generalización a datos externos]
+Si la normalización produce features más robustas, debería mejorar
+también la generalización a datasets completamente independientes.
+\end{hipotesis}
+
+\textbf{Resultado}: \textcolor{red!60!black}{\textbf{RECHAZADA}}
+
+\begin{itemize}
+    \item Original: 57.5\% en FedCOVIDx
+    \item Warped: 53.5\% en FedCOVIDx
+    \item El modelo original supera al warped en validación externa
+    \item Domain shift domina: caída de $>$40 puntos vs. validación interna
+\end{itemize}
+
+\subsection{Hipótesis 4: El Fondo Negro No Es un Shortcut}
+
+\begin{hipotesis}[Ausencia de shortcut por fondo]
+El clasificador entrenado en imágenes warped no utiliza el fondo negro
+como feature discriminativa (shortcut).
+\end{hipotesis}
+
+\textbf{Resultado}: \textcolor{green!60!black}{\textbf{CONFIRMADA}}
+
+\begin{itemize}
+    \item ANOVA: $F = 0.37$, $p = 0.69$
+    \item No hay diferencia significativa en proporción de fondo entre clases
+    \item Confirmed mediante análisis de atribución (Grad-CAM)
+\end{itemize}
+
+% ==============================================================================
+\section{Análisis de Trade-offs}
+% ==============================================================================
+
+\subsection{Accuracy vs. Generalización}
+
+\begin{table}[htbp]
+\centering
+\caption{Trade-off entre accuracy máxima y generalización}
+\label{tab:tradeoff_accuracy_generalization}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Objetivo} & \textbf{Mejor Opción} & \textbf{Justificación} \\
+\midrule
+Accuracy máxima & Original + MobileNetV2 & 98.96\% vs 98.02\% \\
+Generalización interna & Warped + ResNet-18 & 11× mejor transferencia \\
+Robustez operacional & Warped + cualquier & 30× más robusto a JPEG \\
+Generalización externa & Ninguno superior & Domain shift domina \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Complejidad vs. Beneficio}
+
+\begin{table}[htbp]
+\centering
+\caption{Análisis costo-beneficio del pipeline de warping}
+\label{tab:cost_benefit}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Componente} & \textbf{Costo} & \textbf{Beneficio} \\
+\midrule
+Modelo landmarks & +4M parámetros & Habilita warping \\
+Predicción landmarks & +18 ms/imagen & 3.71 px precisión \\
+Warping piecewise & +12 ms/imagen & Normalización geométrica \\
+\midrule
+\textbf{Total adicional} & +30 ms, +4M params & 11× generalización, 30× robustez \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Recomendaciones según Caso de Uso}
+
+\begin{enumerate}
+    \item \textbf{Screening en mismo hospital/equipo}:
+    \begin{itemize}
+        \item Usar modelo original (MobileNetV2)
+        \item Máxima accuracy, menor latencia
+    \end{itemize}
+
+    \item \textbf{Despliegue multi-hospital (mismo protocolo)}:
+    \begin{itemize}
+        \item Usar pipeline warped completo
+        \item Mejor robustez a variaciones de equipo
+    \end{itemize}
+
+    \item \textbf{Despliegue a dataset completamente nuevo}:
+    \begin{itemize}
+        \item Requiere fine-tuning o domain adaptation
+        \item Warping solo no resuelve domain shift
+    \end{itemize}
+
+    \item \textbf{Imágenes de baja calidad (JPEG comprimido)}:
+    \begin{itemize}
+        \item Pipeline warped obligatorio
+        \item 30× más robusto a artefactos de compresión
+    \end{itemize}
+\end{enumerate}
+
+% ==============================================================================
+\section{Limitaciones Identificadas}
+% ==============================================================================
+
+\subsection{Limitaciones del Dataset}
+
+\begin{enumerate}
+    \item \textbf{Tamaño limitado}: 957 imágenes es pequeño para deep learning
+    \item \textbf{Fuente única}: Todas las imágenes del mismo protocolo/fuente
+    \item \textbf{Desbalance de clases}: Requirió class weights para entrenamiento
+    \item \textbf{Anotaciones manuales}: Posible variabilidad inter-anotador
+\end{enumerate}
+
+\subsection{Limitaciones del Método}
+
+\begin{enumerate}
+    \item \textbf{Error de landmarks propaga}: Errores en predicción degradan
+    calidad de warping
+    \item \textbf{Gap de accuracy}: 4.17\% pérdida promedio en accuracy al usar
+    warping
+    \item \textbf{No resuelve domain shift}: Inefectivo para generalización
+    a datasets externos
+    \item \textbf{Dependencia de landmarks}: Requiere modelo de landmarks adicional
+\end{enumerate}
+
+\subsection{Limitaciones de la Evaluación}
+
+\begin{enumerate}
+    \item \textbf{Test set pequeño}: 96 imágenes puede tener alta varianza
+    \item \textbf{Validación externa binaria}: Mapeo 3→2 clases puede perder
+    información
+    \item \textbf{Sin validación clínica}: No evaluado en entorno clínico real
+    \item \textbf{Una sola ejecución}: Algunas comparaciones sin múltiples seeds
+\end{enumerate}
+
+% ==============================================================================
+\section{Contribuciones Metodológicas}
+% ==============================================================================
+
+\subsection{Contribuciones Principales}
+
+\begin{enumerate}
+    \item \textbf{Framework de normalización geométrica para imágenes médicas}:
+    Demostración de que la normalización basada en landmarks mejora
+    propiedades de generalización y robustez en clasificación médica.
+
+    \item \textbf{Análisis sistemático de generalización interna}:
+    Metodología de validación cruzada entre dominios para evaluar
+    transferibilidad de features aprendidas.
+
+    \item \textbf{Cuantificación de robustez}:
+    Protocolo completo para evaluar robustez a 11 tipos de perturbaciones
+    con análisis estadístico riguroso.
+
+    \item \textbf{Identificación de límites}:
+    Demostración clara de que normalización geométrica no resuelve
+    domain shift fundamental entre datasets.
+
+    \item \textbf{Solución al problema de fill rate}:
+    Técnica de puntos de borde para aumentar cobertura de 47\% a 96\%.
+\end{enumerate}
+
+\subsection{Implicaciones para Trabajos Futuros}
+
+\begin{enumerate}
+    \item \textbf{Normalización como preprocesamiento estándar}:
+    Considerar normalización geométrica como paso de preprocesamiento
+    para aplicaciones que requieren robustez.
+
+    \item \textbf{Combinación con domain adaptation}:
+    La normalización geométrica podría complementar técnicas de domain
+    adaptation para mejorar generalización externa.
+
+    \item \textbf{Extensión a otras modalidades}:
+    El framework es aplicable a otras modalidades de imagen médica
+    (CT, MRI, ultrasonido) con anatomía consistente.
+
+    \item \textbf{Landmarks como regularización}:
+    Explorar uso de landmarks como supervisión auxiliar para mejorar
+    representaciones aprendidas.
+\end{enumerate}
+
+% ==============================================================================
+\section{Comparación con Estado del Arte}
+% ==============================================================================
+
+\subsection{Detección de COVID-19 en Radiografías}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparación con trabajos relacionados}
+\label{tab:sota_comparison}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Trabajo} & \textbf{Accuracy} & \textbf{Dataset} & \textbf{Clases} \\
+\midrule
+COVID-Net \cite{covidnet} & 93.3\% & COVIDx (13,975) & 3 \\
+DarkCovidNet \cite{darkcovidnet} & 98.08\% & Propio (127) & 3 \\
+CoroNet \cite{coronet} & 89.6\% & Propio (1,251) & 4 \\
+\textbf{Este trabajo} & \textbf{98.96\%} & Propio (957) & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}[Comparación justa]
+Las comparaciones directas son difíciles debido a:
+\begin{itemize}
+    \item Datasets diferentes (tamaño, fuentes, distribución)
+    \item Protocolos de evaluación distintos
+    \item Número de clases variable
+\end{itemize}
+Nuestros resultados son competitivos pero la contribución principal
+es metodológica (normalización) más que accuracy absoluta.
+\end{observacion}
+
+\subsection{Normalización Geométrica en Imágenes Médicas}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparación de métodos de normalización}
+\label{tab:normalization_comparison}
+\begin{tabular}{lp{4cm}p{4cm}}
+\toprule
+\textbf{Método} & \textbf{Ventajas} & \textbf{Desventajas} \\
+\midrule
+Sin normalización & Simple, preserva información & Sensible a variabilidad \\
+Normalización por histograma & Computacionalmente eficiente & Solo intensidad \\
+Registro rígido & Corrige posición/rotación & No corrige forma \\
+Registro deformable & Corrige forma completa & Computacionalmente costoso \\
+\textbf{Warping por landmarks} & Balance precisión/costo & Requiere landmarks \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 17.1: Resumen Visual del Pipeline}
+
+\begin{figuradescripcion}
+\textbf{Título}: Pipeline completo con métricas de rendimiento
+
+\textbf{Contenido}: Diagrama de flujo con 5 etapas y métricas.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Etapa 1: Entrada → Predicción landmarks (MAE: 3.71px)
+    \item Etapa 2: GPA → Forma canónica (convergencia: 2 iter)
+    \item Etapa 3: Warping → Imagen normalizada (fill: 96.2\%)
+    \item Etapa 4: CNN → Clasificación (acc: 98.96\%)
+    \item Métricas clave en cada transición
+\end{itemize}
+\end{figuradescripcion}
+
+\subsection{Figura 17.2: Comparación de Hipótesis}
+
+\begin{figuradescripcion}
+\textbf{Título}: Validación de hipótesis - resumen visual
+
+\textbf{Contenido}: Cuadro de 4 paneles, uno por hipótesis.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item H1 (Generalización): ✓ Confirmada - 11× mejor
+    \item H2 (Robustez): ✓ Confirmada - 30× JPEG
+    \item H3 (Externa): ✗ Rechazada - domain shift
+    \item H4 (Shortcut): ✓ Confirmada - $p=0.69$
+    \item Código de colores: verde (confirmada), rojo (rechazada)
+\end{itemize}
+\end{figuradescripcion}
+
+\subsection{Figura 17.3: Trade-offs del Sistema}
+
+\begin{figuradescripcion}
+\textbf{Título}: Trade-offs: Accuracy vs. Robustez vs. Generalización
+
+\textbf{Contenido}: Diagrama de radar con 3 ejes.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Eje 1: Accuracy (0-100\%)
+    \item Eje 2: Robustez (escala logarítmica, 1-30×)
+    \item Eje 3: Generalización (ratio 0-1.5)
+    \item Área azul: Modelo original
+    \item Área verde: Modelo warped
+    \item Superposición muestra trade-off
+\end{itemize}
+\end{figuradescripcion}
+
+\subsection{Figura 17.4: Progresión de Mejoras}
+
+\begin{figuradescripcion}
+\textbf{Título}: Timeline de mejoras durante el desarrollo
+
+\textbf{Contenido}: Gráfico de línea temporal.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Eje X: Fases del proyecto (sesiones)
+    \item Eje Y izquierdo: Error de landmarks (px)
+    \item Eje Y derecho: Accuracy de clasificación (\%)
+    \item Línea descendente: Error landmarks (9.08→3.71)
+    \item Línea ascendente: Accuracy (baseline→98.96\%)
+    \item Anotaciones de hitos clave
+\end{itemize}
+\end{figuradescripcion}
+
+% ==============================================================================
+\section{Archivos Fuente y Reproducibilidad}
+% ==============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Archivos principales del proyecto}
+\label{tab:source_files_complete}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\toprule
+\textbf{Categoría} & \textbf{Archivos} \\
+\midrule
+Predicción de landmarks & \archivo{scripts/train\_landmark\_model.py}\\
+& \archivo{scripts/evaluate\_landmarks.py}\\
+& \archivo{scripts/ensemble\_landmarks.py}\\
+\midrule
+Análisis de forma & \archivo{scripts/gpa\_analysis.py}\\
+& \archivo{scripts/procrustes\_utils.py}\\
+\midrule
+Warping & \archivo{scripts/piecewise\_affine\_warp.py}\\
+& \archivo{scripts/generate\_warped\_dataset.py}\\
+\midrule
+Clasificación & \archivo{scripts/train\_classifier.py}\\
+& \archivo{scripts/multi\_architecture\_eval.py}\\
+\midrule
+Validación & \archivo{scripts/cross\_domain\_evaluation.py}\\
+& \archivo{scripts/robustness\_analysis.py}\\
+& \archivo{scripts/evaluate\_external.py}\\
+\midrule
+Outputs & \archivo{outputs/landmarks/}\\
+& \archivo{outputs/shape\_analysis/}\\
+& \archivo{outputs/warped\_dataset/}\\
+& \archivo{outputs/classification/}\\
+& \archivo{outputs/validation/}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Conclusiones Generales}
+% ==============================================================================
+
+\subsection{Conclusiones Técnicas}
+
+\begin{enumerate}
+    \item \textbf{La normalización geométrica mejora significativamente la
+    generalización interna}: Con una mejora de 11× en el ratio de transferencia
+    entre dominios, el warping produce representaciones más transferibles.
+
+    \item \textbf{La robustez a perturbaciones aumenta dramáticamente}: Mejoras
+    de hasta 31.8× en resistencia a compresión JPEG y 2.8× en robustez a blur
+    demuestran el valor práctico del enfoque.
+
+    \item \textbf{Existe un trade-off accuracy-robustez}: La pérdida promedio
+    de 4.17\% en accuracy se compensa con las mejoras en robustez y
+    generalización para ciertos casos de uso.
+
+    \item \textbf{El domain shift sigue siendo el desafío principal}: La
+    normalización geométrica no resuelve las diferencias fundamentales entre
+    datasets de diferentes fuentes, requiriendo técnicas adicionales como
+    domain adaptation.
+
+    \item \textbf{La predicción de landmarks es crítica}: Con un error de
+    3.71 px, la calidad del warping depende directamente de la precisión
+    del modelo de landmarks.
+\end{enumerate}
+
+\subsection{Conclusiones Metodológicas}
+
+\begin{enumerate}
+    \item \textbf{El framework es generalizable}: La metodología de normalización
+    basada en landmarks puede aplicarse a otras tareas de clasificación de
+    imágenes médicas con anatomía consistente.
+
+    \item \textbf{La evaluación multi-dimensional es esencial}: Evaluar solo
+    accuracy es insuficiente; la generalización y robustez son críticas para
+    aplicaciones clínicas.
+
+    \item \textbf{La validación externa es obligatoria}: Los resultados
+    excelentes en validación interna no garantizan utilidad clínica real.
+
+    \item \textbf{El análisis de shortcuts es necesario}: Verificar
+    explícitamente que el modelo no utiliza artefactos del preprocesamiento
+    (como fondo negro) como features discriminativas.
+\end{enumerate}
+
+\subsection{Recomendaciones Finales}
+
+\begin{enumerate}
+    \item \textbf{Para máxima accuracy en entorno controlado}: Usar modelo
+    original (MobileNetV2) sin warping.
+
+    \item \textbf{Para robustez operacional}: Implementar pipeline completo
+    con warping, aceptando pequeña pérdida de accuracy.
+
+    \item \textbf{Para despliegue multi-sitio}: Combinar warping con técnicas
+    de domain adaptation o fine-tuning local.
+
+    \item \textbf{Para investigación futura}: Explorar integración de landmarks
+    como supervisión auxiliar durante entrenamiento del clasificador.
+\end{enumerate}
+
+\end{document}

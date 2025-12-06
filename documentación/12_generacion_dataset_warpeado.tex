@@ -1,0 +1,777 @@
+% ==============================================================================
+% DOCUMENTACIÓN CIENTÍFICA - GENERACIÓN DEL DATASET WARPEADO
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% Sesiones cubiertas: 21, 25
+% Nivel: Doctoral/Científico - Completo y Detallado
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{Generación del Dataset Geométricamente Normalizado:\\
+Pipeline de Transformación y Organización de Datos}
+\author{Documentación del Proceso de Desarrollo}
+\date{Sesiones: 21, 25}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento describe el proceso de generación del dataset de radiografías
+de tórax geométricamente normalizadas mediante warping piecewise affine.
+Se detalla el pipeline de transformación que convierte las 957 imágenes
+originales del dataset COVID-19 Radiography en imágenes normalizadas a una
+forma canónica común. Se discuten dos enfoques: el warping de solo el área
+pulmonar (18 triángulos de Delaunay, fill rate 47.1\%) y el warping con
+cobertura completa (23 puntos incluyendo bordes, fill rate 96.1\%).
+El documento presenta las decisiones de diseño para el uso de landmarks
+ground truth en train/val versus landmarks predichos en test, la estructura
+de organización compatible con frameworks de deep learning, y las métricas
+de calidad del proceso de transformación. El dataset resultante preserva
+la estratificación original (train: 717, val: 144, test: 96 imágenes) y
+está preparado para entrenamiento y evaluación de clasificadores de
+neumonía COVID-19 vs. viral vs. normal.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción y Objetivos}
+% ==============================================================================
+
+\subsection{Motivación del Dataset Warpeado}
+
+El dataset warpeado tiene dos propósitos fundamentales en el proyecto:
+
+\begin{enumerate}
+    \item \textbf{Normalización geométrica}: Eliminar variabilidad anatómica
+    inter-paciente para que el clasificador se enfoque en patrones patológicos
+    (consolidaciones, opacidades, infiltrados) en lugar de diferencias de forma
+
+    \item \textbf{Evaluación de hipótesis}: Permitir comparación empírica
+    entre clasificadores entrenados en imágenes originales versus normalizadas,
+    para cuantificar el beneficio de la normalización geométrica
+\end{enumerate}
+
+\subsection{Fuentes de Landmarks para Warping}
+
+Un aspecto crítico del diseño es la fuente de landmarks para realizar el
+warping:
+
+\begin{table}[htbp]
+\centering
+\caption{Fuente de landmarks por split del dataset}
+\label{tab:landmark_sources}
+\begin{tabular}{lll}
+\toprule
+\textbf{Split} & \textbf{Fuente de Landmarks} & \textbf{Justificación} \\
+\midrule
+Train (717) & Ground Truth & Disponibles, máxima precisión \\
+Val (144) & Ground Truth & Disponibles, consistencia con train \\
+Test (96) & Predicciones del modelo & Simula escenario de inferencia \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{hallazgo}[title={Decisión de diseño: GT para train/val, predicciones para test}]
+Para train/val se usan landmarks ground truth porque:
+\begin{enumerate}
+    \item Están disponibles y son más precisos
+    \item Eliminan ruido del modelo de landmarks durante entrenamiento
+    \item El clasificador aprende de imágenes warpeadas óptimamente
+\end{enumerate}
+Para test se usan predicciones porque:
+\begin{enumerate}
+    \item Simula el escenario real de inferencia (sin GT disponible)
+    \item Evalúa el pipeline completo end-to-end
+    \item Los errores del modelo de landmarks (~3.79 px) se propagan al warping
+\end{enumerate}
+\end{hallazgo}
+
+% ==============================================================================
+\section{Estructura del Dataset Original}
+% ==============================================================================
+
+\subsection{Composición del Dataset}
+
+El dataset COVID-19 Radiography Database contiene radiografías de tórax
+clasificadas en tres categorías diagnósticas:
+
+\begin{table}[htbp]
+\centering
+\caption{Distribución del dataset por categoría y split}
+\label{tab:dataset_distribution}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Categoría} & \textbf{Train} & \textbf{Val} & \textbf{Test} & \textbf{Total} \\
+\midrule
+Normal & 351 & 70 & 47 & 468 \\
+COVID-19 & 229 & 46 & 31 & 306 \\
+Viral Pneumonia & 137 & 28 & 18 & 183 \\
+\midrule
+\textbf{Total} & \textbf{717} & \textbf{144} & \textbf{96} & \textbf{957} \\
+\textbf{Proporción} & 74.9\% & 15.0\% & 10.0\% & 100\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}[Desbalance de Clases]
+El dataset presenta desbalance significativo:
+\begin{itemize}
+    \item Normal: 48.8\% (clase mayoritaria)
+    \item COVID-19: 32.0\% (clase objetivo principal)
+    \item Viral Pneumonia: 19.2\% (clase minoritaria)
+\end{itemize}
+Este desbalance debe considerarse durante el entrenamiento del clasificador
+mediante técnicas como class weights o oversampling.
+\end{observacion}
+
+\subsection{Especificaciones de Imagen}
+
+\begin{table}[htbp]
+\centering
+\caption{Especificaciones técnicas de las imágenes}
+\label{tab:image_specs}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Tamaño original & 299 $\times$ 299 píxeles \\
+Tamaño procesado & 224 $\times$ 224 píxeles \\
+Profundidad de color & 8 bits (escala de grises) \\
+Formato & PNG \\
+Canales & 1 (grayscale) \\
+Rango de valores & [0, 255] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Landmarks Ground Truth}
+
+Cada imagen tiene asociados 15 landmarks anatómicos anotados manualmente:
+
+\begin{table}[htbp]
+\centering
+\caption{Resumen de landmarks anatómicos}
+\label{tab:landmarks_summary}
+\begin{tabular}{lllc}
+\toprule
+\textbf{ID} & \textbf{Nombre} & \textbf{Región} & \textbf{Variabilidad ($\sigma$)} \\
+\midrule
+L1 & Superior & Mediastino sup. & Baja \\
+L2 & Inferior & Vértebra inf. & Baja \\
+L3, L4 & Ápices & Pulmonar sup. & Media \\
+L5, L6 & Hilios & Pulmonar medio & Media \\
+L7, L8 & Bases & Pulmonar inf. & Media \\
+L9, L10, L11 & Centrales & Eje medial & Muy baja \\
+L12, L13 & Bordes sup. & Clavículas & Alta \\
+L14, L15 & Costofrénicos & Ángulos inf. & Muy alta \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Pipeline de Generación del Dataset Warpeado}
+% ==============================================================================
+
+\subsection{Diagrama de Flujo}
+
+El proceso de generación del dataset warpeado sigue el siguiente pipeline:
+
+\begin{enumerate}
+    \item \textbf{Carga de datos}:
+    \begin{itemize}
+        \item Forma canónica desde \texttt{canonical\_shape\_gpa.json}
+        \item Triángulos de Delaunay desde \texttt{canonical\_delaunay\_triangles.json}
+        \item Landmarks GT desde \texttt{all\_landmarks.npz}
+        \item Predicciones (para test) desde \texttt{test\_predictions.npz}
+    \end{itemize}
+
+    \item \textbf{Iteración por split} (train, val, test):
+    \begin{itemize}
+        \item Seleccionar fuente de landmarks (GT o predicciones)
+        \item Procesar cada imagen del split
+    \end{itemize}
+
+    \item \textbf{Por cada imagen}:
+    \begin{itemize}
+        \item Cargar imagen original (grayscale)
+        \item Redimensionar a 224 $\times$ 224 si necesario
+        \item Aplicar warping piecewise affine
+        \item Calcular métricas de calidad (fill rate)
+        \item Guardar imagen warpeada
+    \end{itemize}
+
+    \item \textbf{Post-procesamiento}:
+    \begin{itemize}
+        \item Generar estadísticas globales
+        \item Crear visualizaciones de verificación
+        \item Guardar configuración del proceso
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Algoritmo de Generación}
+
+\begin{algorithm}[H]
+\caption{Generación del Dataset Warpeado}
+\label{alg:generate_warped_dataset}
+\begin{algorithmic}[1]
+\REQUIRE $\mathcal{D} = \{(I_i, L_i, c_i, s_i)\}_{i=1}^{957}$: dataset original, $L_{\text{can}}$: forma canónica, $\mathcal{T}$: triángulos de Delaunay
+\ENSURE $\mathcal{D}_{\text{warped}} = \{(I'_i, c_i, s_i)\}_{i=1}^{957}$: dataset warpeado
+\STATE \COMMENT{Crear estructura de directorios}
+\FORALL{$s \in \{\text{train}, \text{val}, \text{test}\}$}
+    \FORALL{$c \in \{\text{Normal}, \text{COVID}, \text{Viral}\}$}
+        \STATE CrearDirectorio($\text{output}/s/c$)
+    \ENDFOR
+\ENDFOR
+\STATE \COMMENT{Procesar cada split}
+\FORALL{split $s$ en $\{\text{train}, \text{val}, \text{test}\}$}
+    \STATE \COMMENT{Seleccionar fuente de landmarks}
+    \IF{$s \in \{\text{train}, \text{val}\}$}
+        \STATE $L_{\text{source}} \leftarrow L_{\text{GT}}$
+    \ELSE
+        \STATE $L_{\text{source}} \leftarrow L_{\text{pred}}$
+    \ENDIF
+    \STATE \COMMENT{Procesar imágenes del split}
+    \FORALL{$(I_i, L_i, c_i)$ en split $s$}
+        \STATE $I_i \leftarrow$ Cargar($I_i$)
+        \IF{$\text{size}(I_i) \neq 224$}
+            \STATE $I_i \leftarrow$ Redimensionar($I_i$, $224 \times 224$)
+        \ENDIF
+        \STATE \COMMENT{Aplicar warping}
+        \STATE $I'_i \leftarrow$ PiecewiseAffineWarp($I_i$, $L_i$, $L_{\text{can}}$, $\mathcal{T}$)
+        \STATE \COMMENT{Calcular métricas}
+        \STATE $\text{fill\_rate}_i \leftarrow 1 - \frac{\#\{p : I'_i(p) = 0\}}{224^2}$
+        \STATE \COMMENT{Guardar}
+        \STATE Guardar($I'_i$, $\text{output}/s/c_i/\text{nombre}_i$\_warped.png)
+    \ENDFOR
+\ENDFOR
+\RETURN $\mathcal{D}_{\text{warped}}$, estadísticas
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Dos Modalidades de Warping}
+
+\subsubsection{Modalidad 1: Solo Área Pulmonar}
+
+En esta modalidad, se usa únicamente la triangulación de Delaunay sobre
+los 15 landmarks anatómicos (18 triángulos), sin puntos de borde adicionales.
+
+\begin{table}[htbp]
+\centering
+\caption{Características del warping de solo área pulmonar}
+\label{tab:lung_only_warp}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Puntos de control & 15 (landmarks anatómicos) \\
+Número de triángulos & 18 \\
+Fill rate promedio & 47.1\% \\
+Área warpeada & Región pulmonar central \\
+Área no warpeada & Bordes (negro) \\
+use\_full\_coverage & False \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Ventajas}:
+\begin{itemize}
+    \item Focaliza la atención del modelo en el área clínicamente relevante
+    \item Elimina información irrelevante (fondo, clavículas periféricas)
+    \item Menor tamaño de datos efectivo para procesar
+\end{itemize}
+
+\textbf{Desventajas}:
+\begin{itemize}
+    \item Pérdida de información anatómica periférica
+    \item Posible pérdida de ángulos costofrénicos completos
+    \item Fondo negro puede introducir artefactos en el aprendizaje
+\end{itemize}
+
+\subsubsection{Modalidad 2: Cobertura Completa}
+
+En esta modalidad, se añaden 8 puntos de borde (4 esquinas + 4 puntos medios)
+para garantizar cobertura casi total de la imagen.
+
+\begin{table}[htbp]
+\centering
+\caption{Características del warping con cobertura completa}
+\label{tab:full_coverage_warp}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Puntos de control & 23 (15 landmarks + 8 borde) \\
+Número de triángulos & $\sim$34 (variable) \\
+Fill rate promedio & 96.1\% \\
+Área warpeada & Imagen casi completa \\
+Área no warpeada & Mínima ($\sim$4\%) \\
+use\_full\_coverage & True \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Ventajas}:
+\begin{itemize}
+    \item Preserva toda la información anatómica
+    \item Evita artefactos de bordes negros
+    \item Compatible con CNNs que esperan imágenes completas
+\end{itemize}
+
+\textbf{Desventajas}:
+\begin{itemize}
+    \item Los bordes se preservan sin deformación (puntos fijos)
+    \item Mayor carga computacional
+\end{itemize}
+
+% ==============================================================================
+\section{Métricas de Calidad del Warping}
+% ==============================================================================
+
+\subsection{Fill Rate}
+
+\begin{definicion}[Fill Rate]
+El fill rate cuantifica la proporción de la imagen destino que recibe
+contenido válido del warping:
+\begin{equation}
+\text{Fill Rate} = 1 - \frac{N_{\text{negro}}}{N_{\text{total}}}
+= 1 - \frac{\sum_{i,j} \mathbb{1}[I'(i,j) = 0]}{224 \times 224}
+\label{eq:fill_rate_def}
+\end{equation}
+donde $N_{\text{negro}}$ es el número de píxeles con valor 0 y
+$N_{\text{total}} = 224^2 = 50,176$ es el total de píxeles.
+\end{definicion}
+
+\subsection{Resultados de Fill Rate por Modalidad}
+
+\begin{table}[htbp]
+\centering
+\caption{Estadísticas de fill rate por modalidad de warping}
+\label{tab:fill_rate_comparison}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modalidad} & \textbf{Media (\%)} & \textbf{Std (\%)} & \textbf{Mín (\%)} & \textbf{Máx (\%)} \\
+\midrule
+Solo área pulmonar & 47.1 & 3.2 & 38.9 & 54.7 \\
+Cobertura completa & 96.1 & 1.4 & 93.2 & 98.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Fill Rate por Categoría (Modalidad Solo Pulmonar)}
+
+\begin{table}[htbp]
+\centering
+\caption{Fill rate por categoría diagnóstica}
+\label{tab:fill_rate_by_category}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Categoría} & \textbf{$n$} & \textbf{Fill Rate (\%)} & \textbf{Std (\%)} \\
+\midrule
+Normal & 468 & 47.3 & 3.0 \\
+COVID-19 & 306 & 46.8 & 3.4 \\
+Viral Pneumonia & 183 & 47.0 & 3.3 \\
+\midrule
+\textbf{Total} & \textbf{957} & \textbf{47.1} & \textbf{3.2} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}[Uniformidad del Fill Rate]
+El fill rate es estadísticamente indistinguible entre categorías,
+confirmando que:
+\begin{enumerate}
+    \item La forma anatómica no difiere significativamente entre categorías
+    (consistente con análisis GPA)
+    \item El warping no introduce sesgo por categoría
+    \item Las patologías no afectan la geometría detectable
+\end{enumerate}
+\end{observacion}
+
+% ==============================================================================
+\section{Estructura del Dataset Resultante}
+% ==============================================================================
+
+\subsection{Organización de Directorios}
+
+El dataset warpeado se organiza siguiendo la convención de ImageFolder
+de PyTorch/torchvision:
+
+\begin{verbatim}
+outputs/warped_dataset/
+├── train/
+│   ├── Normal/
+│   │   ├── image_001_warped.png
+│   │   ├── image_002_warped.png
+│   │   └── ... (351 imágenes)
+│   ├── COVID/
+│   │   └── ... (229 imágenes)
+│   └── Viral_Pneumonia/
+│       └── ... (137 imágenes)
+├── val/
+│   ├── Normal/
+│   │   └── ... (70 imágenes)
+│   ├── COVID/
+│   │   └── ... (46 imágenes)
+│   └── Viral_Pneumonia/
+│       └── ... (28 imágenes)
+└── test/
+    ├── Normal/
+    │   └── ... (47 imágenes)
+    ├── COVID/
+    │   └── ... (31 imágenes)
+    └── Viral_Pneumonia/
+        └── ... (18 imágenes)
+\end{verbatim}
+
+\subsection{Convención de Nomenclatura}
+
+Las imágenes warpeadas siguen la convención:
+\begin{equation}
+\texttt{<nombre\_original>\_warped.png}
+\end{equation}
+
+Por ejemplo: \texttt{Normal-1234\_warped.png}
+
+\subsection{Metadatos del Proceso}
+
+Se genera un archivo de configuración JSON con metadatos del proceso:
+
+\begin{verbatim}
+{
+    "canonical_shape_file": "canonical_shape_gpa.json",
+    "triangles_file": "canonical_delaunay_triangles.json",
+    "num_triangles": 18,
+    "num_landmarks": 15,
+    "image_size": 224,
+    "interpolation": "bilinear",
+    "border_mode": "reflect_101",
+    "fill_rate_mean": 0.471,
+    "fill_rate_std": 0.032,
+    "images_processed": 957,
+    "source_gt_splits": ["train", "val"],
+    "source_pred_splits": ["test"],
+    "date": "2024-11-28",
+    "session": 21
+}
+\end{verbatim}
+
+% ==============================================================================
+\section{Verificación y Validación}
+% ==============================================================================
+
+\subsection{Verificación Visual}
+
+Se generan imágenes de verificación para confirmar el correcto funcionamiento
+del warping:
+
+\begin{enumerate}
+    \item \textbf{Grilla de comparación}: Matriz mostrando original vs.
+    warped para muestras representativas de cada categoría
+
+    \item \textbf{Superposición de landmarks}: Imágenes warpeadas con
+    landmarks canónicos superpuestos para verificar alineación
+
+    \item \textbf{Verificación de máscara}: Visualización del área cubierta
+    por los triángulos de Delaunay
+\end{enumerate}
+
+\subsection{Bug Corregido: Escalado de Landmarks}
+
+Durante el desarrollo se identificó y corrigió un bug importante:
+
+\begin{problema}[Bug de Escalado]
+Inicialmente, el script aplicaba un factor de escalado $224/299$ a los
+landmarks, asumiendo que estaban en escala 299 (tamaño de imagen original).
+Sin embargo, los landmarks en \texttt{all\_landmarks.npz} ya estaban
+normalizados a escala 224 durante la extracción.
+
+\textbf{Síntoma}: Landmarks desplazados hacia el centro de la imagen.
+
+\textbf{Solución}: Eliminar el escalado innecesario, usar landmarks
+directamente.
+
+\textbf{Verificación}: Imágenes \texttt{verification.png} y
+\texttt{mask\_verification.png} confirman warping correcto post-corrección.
+\end{problema}
+
+\subsection{Validación Estadística}
+
+\begin{enumerate}
+    \item \textbf{Conteo de imágenes}: Verificar que el número de imágenes
+    generadas coincide con el esperado (957 total)
+
+    \item \textbf{Distribución de categorías}: Confirmar que se preserva
+    la estratificación original
+
+    \item \textbf{Integridad de archivos}: Verificar que todas las imágenes
+    se guardan correctamente y son legibles
+
+    \item \textbf{Rango de valores}: Confirmar que los píxeles están en
+    rango [0, 255]
+\end{enumerate}
+
+% ==============================================================================
+\section{Consideraciones para Entrenamiento}
+% ==============================================================================
+
+\subsection{Class Weights para Desbalance}
+
+Dado el desbalance de clases, se recomienda usar class weights durante
+el entrenamiento:
+
+\begin{equation}
+w_c = \frac{N_{\text{total}}}{k \cdot N_c}
+\end{equation}
+
+donde $N_c$ es el número de muestras de la clase $c$ y $k$ es el número
+de clases.
+
+\begin{table}[htbp]
+\centering
+\caption{Class weights recomendados}
+\label{tab:class_weights}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Clase} & \textbf{$N_c$ (train)} & \textbf{Proporción} & \textbf{Weight} \\
+\midrule
+Normal & 350 & 48.8\% & 0.68 \\
+COVID & 229 & 31.9\% & 1.04 \\
+Viral & 138 & 19.2\% & 1.73 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Data Augmentation}
+
+Las siguientes transformaciones son seguras para imágenes warpeadas:
+
+\begin{itemize}
+    \item \textbf{Flip horizontal}: Aplicable con cuidado (la forma canónica
+    ya está normalizada)
+    \item \textbf{Rotación pequeña}: $\pm 5°$ para variabilidad
+    \item \textbf{Jitter de brillo/contraste}: Preserva estructura geométrica
+    \item \textbf{Normalización}: Necesaria para transfer learning
+\end{itemize}
+
+\textbf{Precaución}: Evitar transformaciones geométricas agresivas que
+contrarresten la normalización aplicada.
+
+\subsection{Compatibilidad con Frameworks}
+
+El dataset es directamente compatible con:
+
+\begin{itemize}
+    \item \textbf{PyTorch}: \texttt{torchvision.datasets.ImageFolder}
+    \item \textbf{TensorFlow/Keras}: \texttt{tf.keras.preprocessing.image\_dataset\_from\_directory}
+    \item \textbf{Cualquier framework}: Estructura estándar de directorios
+    por clase
+\end{itemize}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 12.1: Pipeline de Generación}
+
+\begin{figuradescripcion}
+\textbf{Título}: Pipeline de generación del dataset warpeado
+
+\textbf{Contenido}: Diagrama de flujo mostrando las etapas del proceso:
+\begin{enumerate}
+    \item Dataset original (957 imágenes)
+    \item Carga de forma canónica y triángulos
+    \item Selección de fuente de landmarks (GT vs. predicciones)
+    \item Warping piecewise affine
+    \item Dataset warpeado organizado por splits y categorías
+\end{enumerate}
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Cajas con iconos representando datos
+    \item Flechas indicando flujo
+    \item Bifurcación para train/val (GT) vs. test (predicciones)
+\end{itemize}
+\end{figuradescripcion}
+
+\subsection{Figura 12.2: Comparación de Modalidades de Warping}
+
+\begin{figuradescripcion}
+\textbf{Título}: Comparación: solo área pulmonar vs. cobertura completa
+
+\textbf{Contenido}: Matriz de 2 filas $\times$ 4 columnas:
+\begin{itemize}
+    \item Fila 1: Warping solo área pulmonar (fill rate 47\%)
+    \item Fila 2: Warping cobertura completa (fill rate 96\%)
+    \item Columnas: Original, Máscara, Warped, Diferencia
+\end{itemize}
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Áreas negras claramente visibles en fila 1
+    \item Cobertura casi completa en fila 2
+    \item Anotaciones con fill rate
+\end{itemize}
+\end{figuradescripcion}
+
+\subsection{Figura 12.3: Grilla de Ejemplos Warpeados}
+
+\begin{figuradescripcion}
+\textbf{Título}: Ejemplos de imágenes warpeadas por categoría
+
+\textbf{Contenido}: Grilla de 3 filas (categorías) $\times$ 6 columnas (ejemplos):
+\begin{itemize}
+    \item Fila 1: Normal (6 ejemplos)
+    \item Fila 2: COVID (6 ejemplos)
+    \item Fila 3: Viral Pneumonia (6 ejemplos)
+\end{itemize}
+
+\textbf{Observación clave}: Todas las imágenes tienen la misma forma geométrica
+(forma canónica) pero diferente textura/patología.
+\end{figuradescripcion}
+
+\subsection{Figura 12.4: Distribución de Fill Rates}
+
+\begin{figuradescripcion}
+\textbf{Título}: Distribución de fill rates en el dataset
+
+\textbf{Contenido}: Histograma de fill rates para las 957 imágenes.
+
+\textbf{Elementos visuales}:
+\begin{itemize}
+    \item Barras del histograma (20 bins)
+    \item Línea vertical en la media
+    \item Histogramas superpuestos por categoría (diferentes colores)
+\end{itemize}
+
+\textbf{Anotaciones}: Media, std, rango
+\end{figuradescripcion}
+
+\subsection{Figura 12.5: Estructura de Directorios}
+
+\begin{figuradescripcion}
+\textbf{Título}: Organización del dataset warpeado
+
+\textbf{Contenido}: Diagrama de árbol de directorios con conteo de imágenes.
+
+\textbf{Formato}: Representación visual del filesystem mostrando:
+\begin{itemize}
+    \item Directorio raíz \texttt{warped\_dataset/}
+    \item Subdirectorios por split
+    \item Subdirectorios por categoría
+    \item Conteo de archivos en cada hoja
+\end{itemize}
+\end{figuradescripcion}
+
+% ==============================================================================
+\section{Archivos Fuente y Reproducibilidad}
+% ==============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Archivos de implementación del pipeline de generación}
+\label{tab:source_files_generation}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\toprule
+\textbf{Archivo} & \textbf{Contenido} \\
+\midrule
+\archivo{scripts/generate\_warped\_dataset.py} & Script principal de generación:\\
+& \quad - \texttt{load\_all\_landmarks()}: Carga GT completo\\
+& \quad - \texttt{process\_split()}: Procesa un split\\
+& \quad - \texttt{generate\_summary\_statistics()}: Métricas\\
+\midrule
+\archivo{outputs/predictions/\\all\_landmarks.npz} & Landmarks GT de 957 imágenes:\\
+& \quad - train\_landmarks: (717, 15, 2)\\
+& \quad - val\_landmarks: (144, 15, 2)\\
+& \quad - test\_landmarks: (96, 15, 2)\\
+\midrule
+\archivo{outputs/predictions/\\test\_predictions.npz} & Predicciones del ensemble (96 test)\\
+\midrule
+\archivo{outputs/warped\_dataset/} & Dataset warpeado resultante:\\
+& \quad - train/, val/, test/\\
+& \quad - warp\_config.json: Configuración\\
+& \quad - statistics.json: Métricas globales\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Discusión}
+% ==============================================================================
+
+\subsection{Elección de Modalidad}
+
+Para el proyecto se optó por la modalidad de \textbf{solo área pulmonar}
+porque:
+
+\begin{enumerate}
+    \item \textbf{Focalización clínica}: Las patologías de interés (COVID,
+    neumonía viral) se manifiestan principalmente en el parénquima pulmonar
+
+    \item \textbf{Reducción de ruido}: Elimina información irrelevante que
+    podría confundir al clasificador
+
+    \item \textbf{Evaluación de hipótesis}: El fondo negro permite evaluar
+    si el clasificador aprende de características genuinas vs. artefactos
+\end{enumerate}
+
+\subsection{Impacto del Error de Landmarks en Test}
+
+Las predicciones del modelo de landmarks tienen un error de $\sim$3.79 px.
+Este error se propaga al warping de las imágenes de test:
+
+\begin{itemize}
+    \item La forma canónica no se alcanza perfectamente
+    \item Existe variabilidad residual en las imágenes warpeadas de test
+    \item Sin embargo, esta variabilidad simula el escenario real de inferencia
+\end{itemize}
+
+\begin{hallazgo}[title={El pipeline completo es evaluable en test}]
+Usar predicciones para test (en lugar de GT) permite evaluar el rendimiento
+del sistema completo: modelo de landmarks + warping + clasificador. Esta
+es la métrica relevante para aplicación práctica.
+\end{hallazgo}
+
+\subsection{Limitaciones}
+
+\begin{enumerate}
+    \item \textbf{Dependencia de GT para train/val}: El clasificador se
+    entrena con warping ``perfecto'' pero se evalúa con warping ``imperfecto''
+
+    \item \textbf{Fill rate variable}: El 47.1\% de fill rate introduce
+    áreas negras que podrían afectar features aprendidas
+
+    \item \textbf{Información perdida}: Los ángulos costofrénicos no están
+    completamente representados en algunos casos
+\end{enumerate}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+\begin{enumerate}
+    \item \textbf{Dataset warpeado generado exitosamente}: Las 957 imágenes
+    fueron procesadas y organizadas en estructura compatible con frameworks
+    de deep learning.
+
+    \item \textbf{Estratificación preservada}: La distribución train/val/test
+    y la proporción de categorías se mantienen idénticas al dataset original.
+
+    \item \textbf{Decisión de diseño justificada}: Usar GT para train/val y
+    predicciones para test permite entrenar con warping óptimo mientras se
+    evalúa el pipeline completo.
+
+    \item \textbf{Fill rate consistente}: El fill rate de 47.1\% es uniforme
+    entre categorías, confirmando que el warping no introduce sesgo.
+
+    \item \textbf{Bug de escalado corregido}: El descubrimiento y corrección
+    del bug de escalado fue crítico para la correcta generación del dataset.
+
+    \item \textbf{Dataset listo para clasificación}: La estructura de
+    directorios permite uso inmediato con \texttt{ImageFolder} y frameworks
+    estándar de deep learning.
+\end{enumerate}
+
+\end{document}

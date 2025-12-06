@@ -1,0 +1,85 @@
+# =============================================================================
+# .gitignore para Proyecto de Tesis: COVID-19 Detection via Anatomical Landmarks
+# =============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Virtual Environment ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Datasets (muy grandes, >32GB) ---
+data/dataset/
+data/coordenadas/
+
+# --- Checkpoints de modelos (>136GB) ---
+checkpoints/
+
+# --- Outputs de experimentos (>5GB) ---
+outputs/
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Pytest ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Logs y temporales ---
+*.log
+*.tmp
+*.bak
+
+# --- LaTeX auxiliares ---
+documentación/*.aux
+documentación/*.fdb_latexmk
+documentación/*.fls
+documentación/*.log
+documentación/*.out
+documentación/*.toc
+documentación/*.synctex.gz
+documentación/*.bbl
+documentación/*.blg
+
+# --- Claude Code ---
+.claude/
+
+# --- Archivos de sesion (prompts internos) ---
+PROMPT_SESION_*.md
+SESSION_LOG.md
+session*_summary.md

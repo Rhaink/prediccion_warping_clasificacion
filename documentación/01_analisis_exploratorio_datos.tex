@@ -1,0 +1,569 @@
+% ==============================================================================
+% DOCUMENTO 01: ANÁLISIS EXPLORATORIO DE DATOS
+% Sesiones cubiertas: 0-1
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{\textbf{Análisis Exploratorio del Conjunto de Datos}\\[0.5em]
+\large Documentación del Proceso de Desarrollo - Sesiones 0-1}
+\author{Proyecto de Tesis Doctoral\\Detección de COVID-19 mediante Landmarks Anatómicos}
+\date{Noviembre 2024}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento presenta el análisis exploratorio inicial del conjunto de datos utilizado para el desarrollo del sistema de detección de landmarks anatómicos en radiografías de tórax. Se describe la estructura del dataset COVID-19 Radiography, la definición formal de los 15 landmarks anatómicos, el análisis estadístico de distribución de coordenadas, y la verificación de calidad de las anotaciones manuales realizadas por radiólogos expertos.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción}
+% ==============================================================================
+
+El análisis exploratorio de datos constituye una etapa fundamental en cualquier proyecto de aprendizaje automático. En el contexto de imágenes médicas, esta fase adquiere especial relevancia debido a la necesidad de comprender las características intrínsecas del dominio clínico y las particularidades de las anotaciones realizadas por expertos.
+
+\subsection{Contexto del Proyecto}
+
+El sistema desarrollado tiene como objetivo la detección automática de 15 puntos anatómicos de referencia (landmarks) en radiografías de tórax posteroanterior (PA). Estos landmarks definen estructuras anatómicas clave que permiten:
+
+\begin{enumerate}
+    \item Normalizar geométricamente las imágenes para eliminar variabilidad no relacionada con la patología
+    \item Facilitar la comparación entre radiografías de diferentes pacientes
+    \item Proporcionar información estructural para sistemas de clasificación
+\end{enumerate}
+
+\subsection{Objetivos del Análisis Exploratorio}
+
+Los objetivos específicos de esta etapa fueron:
+
+\begin{itemize}
+    \item Caracterizar la distribución de clases en el conjunto de datos
+    \item Definir formalmente los 15 landmarks anatómicos
+    \item Analizar la distribución estadística de las coordenadas de landmarks
+    \item Verificar la calidad y consistencia de las anotaciones manuales
+    \item Identificar posibles sesgos o problemas en los datos
+\end{itemize}
+
+% ==============================================================================
+\section{Descripción del Conjunto de Datos}
+% ==============================================================================
+
+\subsection{Fuente de Datos}
+
+El conjunto de datos principal proviene del \textit{COVID-19 Radiography Database}, un recurso público ampliamente utilizado en la investigación de diagnóstico asistido por computadora para COVID-19.
+
+\begin{definicion}[Conjunto de Datos]
+Sea $\mathcal{D} = \{(\vect{I}_i, \vect{L}_i, y_i)\}_{i=1}^{N}$ el conjunto de datos, donde:
+\begin{itemize}
+    \item $\vect{I}_i \in \R^{H \times W \times C}$ es la imagen de radiografía
+    \item $\vect{L}_i = \{(x_k^{(i)}, y_k^{(i)})\}_{k=1}^{K}$ son las coordenadas de $K=15$ landmarks
+    \item $y_i \in \mathcal{Y} = \{\text{COVID}, \text{Normal}, \text{Viral Pneumonia}\}$ es la etiqueta de clase
+\end{itemize}
+\end{definicion}
+
+\subsection{Composición del Dataset}
+
+El conjunto de datos anotado con landmarks comprende $N = 957$ imágenes de radiografías de tórax, distribuidas en tres categorías clínicas:
+
+\begin{table}[H]
+\centering
+\caption{Distribución de clases en el conjunto de datos}
+\label{tab:distribucion_clases}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Categoría} & \textbf{Cantidad} & \textbf{Proporción} & \textbf{Características} \\
+\midrule
+COVID-19 & 306 & 31.97\% & Opacidades en vidrio esmerilado \\
+Normal & 468 & 48.90\% & Sin hallazgos patológicos \\
+Viral Pneumonia & 183 & 19.12\% & Infiltrados intersticiales \\
+\midrule
+\textbf{Total} & \textbf{957} & \textbf{100\%} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La distribución de clases presenta un desbalance moderado, con la clase Normal siendo la mayoritaria. Formalmente:
+
+\begin{equation}
+P(\text{COVID}) = \frac{306}{957} \approx 0.320, \quad
+P(\text{Normal}) = \frac{468}{957} \approx 0.489, \quad
+P(\text{VP}) = \frac{183}{957} \approx 0.191
+\label{eq:distribucion_clases}
+\end{equation}
+
+\subsection{Características de las Imágenes}
+
+Las imágenes presentan las siguientes características técnicas:
+
+\begin{itemize}
+    \item \textbf{Resolución original}: $299 \times 299$ píxeles
+    \item \textbf{Profundidad de color}: 8 bits por canal (escala de grises convertida a RGB)
+    \item \textbf{Formato}: PNG
+    \item \textbf{Proyección}: Posteroanterior (PA)
+\end{itemize}
+
+% ==============================================================================
+\section{Definición de Landmarks Anatómicos}
+% ==============================================================================
+
+\subsection{Sistema de 15 Puntos de Referencia}
+
+Se definieron 15 landmarks anatómicos ($K = 15$) que capturan la estructura geométrica de la caja torácica y los campos pulmonares. Estos puntos fueron seleccionados por su:
+
+\begin{enumerate}
+    \item Reproducibilidad en la identificación visual
+    \item Relevancia anatómica para el análisis de patologías pulmonares
+    \item Capacidad para definir transformaciones geométricas
+\end{enumerate}
+
+\begin{definicion}[Landmark Anatómico]
+Un landmark $\landmark{k}$ es un punto $(x_k, y_k) \in [0, W] \times [0, H]$ que corresponde a una estructura anatómica identificable y reproducible en radiografías de tórax.
+\end{definicion}
+
+\subsection{Nomenclatura y Ubicación Anatómica}
+
+\begin{table}[H]
+\centering
+\caption{Definición de los 15 landmarks anatómicos}
+\label{tab:landmarks}
+\begin{tabular}{clll}
+\toprule
+\textbf{ID} & \textbf{Nombre} & \textbf{Ubicación Anatómica} & \textbf{Tipo} \\
+\midrule
+$L_1$ & Apex traqueal & Punto superior del eje central & Central \\
+$L_2$ & Base diafragmática & Punto inferior del eje central & Central \\
+$L_3$ & Apex pulmonar izquierdo & Vértice superior pulmón izquierdo & Bilateral \\
+$L_4$ & Apex pulmonar derecho & Vértice superior pulmón derecho & Bilateral \\
+$L_5$ & Hilio izquierdo & Raíz del pulmón izquierdo & Bilateral \\
+$L_6$ & Hilio derecho & Raíz del pulmón derecho & Bilateral \\
+$L_7$ & Base pulmonar izquierda & Borde inferior pulmón izquierdo & Bilateral \\
+$L_8$ & Base pulmonar derecha & Borde inferior pulmón derecho & Bilateral \\
+$L_9$ & Punto central superior & División 1/4 del eje $L_1$-$L_2$ & Central \\
+$L_{10}$ & Punto central medio & División 1/2 del eje $L_1$-$L_2$ & Central \\
+$L_{11}$ & Punto central inferior & División 3/4 del eje $L_1$-$L_2$ & Central \\
+$L_{12}$ & Borde costal superior izq. & Unión costoclavicular izquierda & Bilateral \\
+$L_{13}$ & Borde costal superior der. & Unión costoclavicular derecha & Bilateral \\
+$L_{14}$ & Ángulo costofrénico izq. & Seno costofrénico izquierdo & Bilateral \\
+$L_{15}$ & Ángulo costofrénico der. & Seno costofrénico derecho & Bilateral \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Clasificación Estructural de Landmarks}
+
+Los landmarks se organizan en dos categorías estructurales:
+
+\subsubsection{Eje Central}
+
+El eje central está definido por los puntos $L_1$ y $L_2$, que determinan una línea vertical aproximada a través del mediastino:
+
+\begin{equation}
+\text{Eje Central} = \{L_1, L_2, L_9, L_{10}, L_{11}\}
+\end{equation}
+
+Los puntos $L_9$, $L_{10}$, $L_{11}$ dividen teóricamente el eje en cuatro segmentos iguales:
+
+\begin{equation}
+t_k = \frac{k}{4}, \quad k \in \{1, 2, 3\}
+\label{eq:division_eje}
+\end{equation}
+
+donde $t \in [0, 1]$ es el parámetro de posición sobre el eje ($t=0$ corresponde a $L_1$ y $t=1$ a $L_2$).
+
+\subsubsection{Pares Bilaterales}
+
+Los landmarks bilaterales forman pares simétricos respecto al eje central:
+
+\begin{equation}
+\text{Pares Bilaterales} = \{(L_3, L_4), (L_5, L_6), (L_7, L_8), (L_{12}, L_{13}), (L_{14}, L_{15})\}
+\end{equation}
+
+Para cada par $(L_l, L_r)$, donde $l$ denota izquierdo y $r$ denota derecho, se espera simetría aproximada respecto al eje central.
+
+% ==============================================================================
+\section{Análisis Estadístico de Coordenadas}
+% ==============================================================================
+
+\subsection{Estadísticas Descriptivas por Landmark}
+
+Para cada landmark $\landmark{k}$, se calcularon las estadísticas descriptivas de sus coordenadas sobre el conjunto completo de $N = 957$ muestras:
+
+\begin{equation}
+\bar{x}_k = \frac{1}{N}\sum_{i=1}^{N} x_k^{(i)}, \quad
+\bar{y}_k = \frac{1}{N}\sum_{i=1}^{N} y_k^{(i)}
+\end{equation}
+
+\begin{equation}
+\sigma_{x_k} = \sqrt{\frac{1}{N-1}\sum_{i=1}^{N} (x_k^{(i)} - \bar{x}_k)^2}, \quad
+\sigma_{y_k} = \sqrt{\frac{1}{N-1}\sum_{i=1}^{N} (y_k^{(i)} - \bar{y}_k)^2}
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Estadísticas descriptivas de coordenadas de landmarks (en píxeles)}
+\label{tab:estadisticas_landmarks}
+\begin{tabular}{ccccccc}
+\toprule
+\textbf{Landmark} & $\bar{x}$ & $\sigma_x$ & $\bar{y}$ & $\sigma_y$ & \textbf{Rango X} & \textbf{Rango Y} \\
+\midrule
+$L_1$ & 150.1 & 12.6 & 38.6 & 17.5 & [103, 201] & [0, 140] \\
+$L_2$ & 149.4 & 11.9 & 236.3 & 29.4 & [98, 210] & [89, 294] \\
+$L_3$ & 63.6 & 16.4 & 87.1 & 16.8 & [5, 150] & [23, 159] \\
+$L_4$ & 236.4 & 15.7 & 88.0 & 16.4 & [164, 285] & [33, 168] \\
+$L_5$ & 50.6 & 16.1 & 136.9 & 19.3 & [0, 135] & [42, 187] \\
+$L_6$ & 248.6 & 15.1 & 137.7 & 18.7 & [178, 294] & [61, 196] \\
+$L_7$ & 42.9 & 16.9 & 186.2 & 24.2 & [0, 126] & [61, 238] \\
+$L_8$ & 255.6 & 15.4 & 187.2 & 23.6 & [173, 294] & [79, 248] \\
+$L_9$ & 149.6 & 11.3 & 87.8 & 15.6 & [107, 196] & [33, 164] \\
+$L_{10}$ & 149.5 & 10.6 & 137.4 & 17.7 & [103, 192] & [51, 192] \\
+$L_{11}$ & 149.3 & 10.8 & 186.8 & 22.9 & [103, 201] & [70, 243] \\
+$L_{12}$ & 104.7 & 15.6 & 38.2 & 17.9 & [33, 168] & [0, 135] \\
+$L_{13}$ & 196.9 & 15.2 & 38.6 & 17.8 & [131, 257] & [0, 140] \\
+$L_{14}$ & 36.7 & 17.6 & 235.7 & 30.5 & [0, 121] & [79, 294] \\
+$L_{15}$ & 261.0 & 16.1 & 236.8 & 29.8 & [173, 294] & [98, 294] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis de Variabilidad}
+
+La variabilidad de los landmarks se cuantifica mediante el coeficiente de variación:
+
+\begin{equation}
+CV_k = \frac{\sqrt{\sigma_{x_k}^2 + \sigma_{y_k}^2}}{\sqrt{\bar{x}_k^2 + \bar{y}_k^2}}
+\end{equation}
+
+\begin{observacion}
+Los landmarks con mayor variabilidad son $L_{14}$ y $L_{15}$ (ángulos costofrénicos), mientras que los landmarks centrales $L_9$, $L_{10}$, $L_{11}$ presentan la menor variabilidad. Esta observación es consistente con la anatomía: los ángulos costofrénicos son más susceptibles a variaciones en la posición del diafragma y técnica de adquisición.
+\end{observacion}
+
+\subsection{Análisis de Correlación entre Landmarks}
+
+Se calculó la matriz de correlación entre las coordenadas de landmarks para identificar dependencias estructurales. Para cada par de landmarks $(k, l)$, se analizaron las correlaciones entre sus coordenadas homólogas:
+
+\begin{equation}
+\rho_{x_k, x_l} = \frac{\text{Cov}(x_k, x_l)}{\sigma_{x_k} \sigma_{x_l}}, \quad
+\rho_{y_k, y_l} = \frac{\text{Cov}(y_k, y_l)}{\sigma_{y_k} \sigma_{y_l}}
+\end{equation}
+
+La correlación global entre landmarks se resume como $\rho_{k,l} = \frac{1}{2}(\rho_{x_k, x_l} + \rho_{y_k, y_l})$.
+
+\begin{hallazgo}
+Se identificaron correlaciones significativas ($|\rho| > 0.7$) entre:
+\begin{itemize}
+    \item Landmarks del eje central ($L_1$, $L_2$, $L_9$, $L_{10}$, $L_{11}$): $\rho \approx 0.85$
+    \item Pares bilaterales simétricos: $\rho \approx 0.78$
+    \item Coordenadas Y de landmarks inferiores ($L_7$, $L_8$, $L_{14}$, $L_{15}$): $\rho \approx 0.82$
+\end{itemize}
+\end{hallazgo}
+
+% ==============================================================================
+\section{Estructura del Archivo de Coordenadas}
+% ==============================================================================
+
+\subsection{Formato del CSV Maestro}
+
+Las anotaciones se almacenan en el archivo \archivo{data/coordenadas/coordenadas\_maestro.csv} con la siguiente estructura:
+
+\begin{lstlisting}[caption={Estructura del archivo de coordenadas}]
+# Columnas del CSV maestro
+# indice, L1_x, L1_y, L2_x, L2_y, ..., L15_x, L15_y, image_name
+
+# Ejemplo de fila:
+# 0, 149.2, 42.1, 150.1, 238.5, ..., 250.3, 227.9, COVID-1.png
+\end{lstlisting}
+
+\subsection{Extracción de Categoría}
+
+La categoría clínica se extrae del nombre del archivo de imagen:
+
+\begin{equation}
+\text{category}(I) =
+\begin{cases}
+\text{COVID} & \text{si } \texttt{image\_name} \text{ contiene ``COVID''} \\
+\text{Normal} & \text{si } \texttt{image\_name} \text{ contiene ``Normal''} \\
+\text{Viral\_Pneumonia} & \text{si } \texttt{image\_name} \text{ contiene ``Viral''} \\
+\end{cases}
+\end{equation}
+
+% ==============================================================================
+\section{Verificación de Calidad de Anotaciones}
+% ==============================================================================
+
+\subsection{Metodología de Anotación}
+
+Las anotaciones fueron realizadas manualmente por radiólogos expertos siguiendo un protocolo estandarizado:
+
+\begin{enumerate}
+    \item Identificación del eje central mediante $L_1$ y $L_2$
+    \item Ubicación de puntos centrales intermedios ($L_9$, $L_{10}$, $L_{11}$)
+    \item Marcado de pares bilaterales en orden descendente
+    \item Revisión de simetría y consistencia anatómica
+\end{enumerate}
+
+\subsection{Métricas de Consistencia}
+
+Para evaluar la consistencia de las anotaciones, se calcularon las siguientes métricas:
+
+\subsubsection{Verticalidad del Eje Central}
+
+El ángulo del eje $L_1$-$L_2$ respecto a la vertical:
+
+\begin{equation}
+\theta_{\text{eje}} = \arctan\left(\frac{x_{L_2} - x_{L_1}}{y_{L_2} - y_{L_1}}\right)
+\end{equation}
+
+\begin{resultadoimportante}
+El ángulo promedio del eje central es $\bar{\theta} = -0.21° \pm 4.00°$, confirmando que el eje es \textbf{casi perfectamente vertical} en las anotaciones.
+\end{resultadoimportante}
+
+\subsubsection{Posición de Puntos Centrales}
+
+La posición relativa de $L_9$, $L_{10}$, $L_{11}$ sobre el eje:
+
+\begin{equation}
+t_k^{\text{real}} = \frac{\text{proj}_{L_1 L_2}(L_k)}{|L_2 - L_1|}
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Posición de puntos centrales sobre el eje}
+\label{tab:posicion_central}
+\begin{tabular}{cccc}
+\toprule
+\textbf{Landmark} & $t$ \textbf{teórico} & $t$ \textbf{real} $\pm \sigma$ & \textbf{Error} \\
+\midrule
+$L_9$ & 0.25 & $0.249 \pm 0.010$ & $<1\%$ \\
+$L_{10}$ & 0.50 & $0.500 \pm 0.010$ & $<1\%$ \\
+$L_{11}$ & 0.75 & $0.749 \pm 0.010$ & $<1\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{hallazgo}
+Los puntos centrales $L_9$, $L_{10}$, $L_{11}$ dividen el eje en \textbf{exactamente 4 partes iguales} con un error menor al 1\%. Este hallazgo tiene implicaciones importantes para el diseño de arquitecturas jerárquicas.
+\end{hallazgo}
+
+\subsubsection{Simetría Bilateral}
+
+La asimetría entre pares bilaterales se cuantifica como:
+
+\begin{equation}
+\Delta_{\text{sim}}(L_l, L_r) = |d(L_l, \text{eje}) - d(L_r, \text{eje})|
+\end{equation}
+
+donde $d(L, \text{eje})$ es la distancia perpendicular del landmark al eje central.
+
+\begin{table}[H]
+\centering
+\caption{Asimetría bilateral en Ground Truth}
+\label{tab:asimetria}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Par} & \textbf{Asimetría media (px)} & $\sigma$ \textbf{(px)} \\
+\midrule
+$(L_3, L_4)$ - Ápices & 5.51 & 4.58 \\
+$(L_5, L_6)$ - Hilios & 5.55 & 5.20 \\
+$(L_7, L_8)$ - Bases & 6.82 & 5.85 \\
+$(L_{12}, L_{13})$ - Costales sup. & 6.15 & 5.42 \\
+$(L_{14}, L_{15})$ - Costofrénicos & 7.89 & 6.84 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}
+La asimetría natural en el Ground Truth varía entre 5.5 y 7.9 píxeles. Este hallazgo indica que \textbf{no se debe forzar simetría perfecta} en las predicciones del modelo, ya que incluso las anotaciones expertas presentan asimetría bilateral inherente.
+\end{observacion}
+
+% ==============================================================================
+\section{Identificación del Error Mínimo Teórico}
+% ==============================================================================
+
+El análisis de las anotaciones permite estimar el error mínimo alcanzable por cualquier modelo:
+
+\begin{definicion}[Error de Anotación Base]
+El error de anotación base $\epsilon_{\text{base}}$ representa la incertidumbre inherente en las anotaciones manuales, independiente del modelo utilizado.
+\end{definicion}
+
+\begin{equation}
+\epsilon_{\text{base}} \approx 1.3 - 1.5 \text{ px}
+\end{equation}
+
+Esta estimación se deriva de:
+\begin{itemize}
+    \item Distancia promedio de $L_9$, $L_{10}$, $L_{11}$ al eje teórico: $1.37 \pm 1.13$ px
+    \item Variabilidad intra-observador reportada en literatura: $1-2$ px
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Escenarios de error según calidad del modelo}
+\label{tab:escenarios_error}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Escenario} & \textbf{Error (px)} & \textbf{Interpretación} \\
+\midrule
+Perfecto (teórico) & 1.5-2 & Límite de precisión de anotación \\
+Excelente & 5-6 & Modelo de alta calidad \\
+Muy bueno & 6-8 & Objetivo realista \\
+Baseline & 9-10 & Modelo inicial sin optimizar \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{División del Conjunto de Datos}
+% ==============================================================================
+
+\subsection{Estrategia de División}
+
+Se implementó una división estratificada para mantener las proporciones de clase en cada subconjunto:
+
+\begin{equation}
+\mathcal{D} = \mathcal{D}_{\text{train}} \cup \mathcal{D}_{\text{val}} \cup \mathcal{D}_{\text{test}}, \quad
+\mathcal{D}_i \cap \mathcal{D}_j = \emptyset \quad \forall i \neq j
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{División del conjunto de datos}
+\label{tab:division_datos}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Subconjunto} & \textbf{Proporción} & \textbf{Total} & \textbf{COVID} & \textbf{Normal} & \textbf{VP} \\
+\midrule
+Entrenamiento & 75\% & 717 & 229 & 351 & 137 \\
+Validación & 15\% & 144 & 46 & 70 & 28 \\
+Test & 10\% & 96 & 31 & 47 & 18 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Reproducibilidad}
+
+La división se realizó con semilla fija para garantizar reproducibilidad:
+
+\begin{lstlisting}[caption={División estratificada del dataset}]
+from sklearn.model_selection import train_test_split
+
+# Division con semilla fija
+train_df, temp_df = train_test_split(
+    df, test_size=0.25, stratify=df['category'], random_state=42
+)
+val_df, test_df = train_test_split(
+    temp_df, test_size=0.40, stratify=temp_df['category'], random_state=42
+)
+\end{lstlisting}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 1.1: Distribución de Clases}
+
+\textbf{Descripción}: Gráfico de barras mostrando la distribución de las tres categorías (COVID, Normal, Viral Pneumonia) con colores distintivos y porcentajes.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Barras verticales para cada categoría
+    \item Etiquetas con cantidad y porcentaje
+    \item Colores: Rojo (COVID), Verde (Normal), Azul (Viral Pneumonia)
+\end{itemize}
+
+\subsection{Figura 1.2: Diagrama Anatómico de Landmarks}
+
+\textbf{Descripción}: Radiografía de tórax de ejemplo con los 15 landmarks superpuestos, etiquetados con su nomenclatura ($L_1$ a $L_{15}$).
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Imagen de radiografía como fondo
+    \item Puntos circulares coloreados por tipo (central vs bilateral)
+    \item Líneas conectando el eje central
+    \item Líneas punteadas conectando pares bilaterales
+    \item Leyenda con descripción anatómica
+\end{itemize}
+
+\subsection{Figura 1.3: Histogramas de Coordenadas}
+
+\textbf{Descripción}: Grid de 15$\times$2 histogramas mostrando la distribución de coordenadas X e Y para cada landmark.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Un histograma por coordenada por landmark
+    \item Curva de densidad superpuesta
+    \item Línea vertical indicando la media
+    \item Bandas de $\pm 1\sigma$ sombreadas
+\end{itemize}
+
+\subsection{Figura 1.4: Variabilidad de Landmarks por Categoría}
+
+\textbf{Descripción}: Scatter plot mostrando las posiciones de landmarks para múltiples muestras, coloreadas por categoría.
+
+\textbf{Elementos}:
+\begin{itemize}
+    \item Elipses de confianza al 95\% para cada landmark
+    \item Puntos semitransparentes para cada muestra
+    \item Colores por categoría clínica
+    \item Forma canónica como referencia
+\end{itemize}
+
+% ==============================================================================
+\section{Conclusiones del Análisis Exploratorio}
+% ==============================================================================
+
+El análisis exploratorio del conjunto de datos reveló las siguientes conclusiones fundamentales:
+
+\begin{enumerate}
+    \item \textbf{Desbalance moderado}: La distribución de clases presenta desbalance (Normal: 49\%, COVID: 32\%, Viral: 19\%), requiriendo técnicas de balanceo durante el entrenamiento.
+
+    \item \textbf{Estructura geométrica consistente}: Los landmarks del eje central ($L_1$, $L_2$, $L_9$, $L_{10}$, $L_{11}$) presentan alta consistencia, con división casi exacta en cuatro segmentos iguales.
+
+    \item \textbf{Asimetría natural}: Los pares bilaterales presentan asimetría inherente de 5.5-7.9 px, lo cual debe considerarse en el diseño de funciones de pérdida.
+
+    \item \textbf{Error mínimo identificado}: El error de anotación base de $\sim$1.5 px establece el límite inferior teórico para cualquier modelo.
+
+    \item \textbf{Variabilidad diferenciada}: Los landmarks costofrénicos ($L_{14}$, $L_{15}$) presentan mayor variabilidad, sugiriendo que serán más difíciles de predecir.
+\end{enumerate}
+
+\begin{metodologia}
+El análisis exploratorio fundamenta las decisiones de diseño posteriores:
+\begin{itemize}
+    \item Uso de Wing Loss para mayor sensibilidad a errores pequeños
+    \item Implementación de restricciones de simetría suave (no perfecta)
+    \item Muestreo ponderado por categoría para balancear clases
+    \item Objetivo de error < 8 px como meta realista
+\end{itemize}
+\end{metodologia}
+
+% ==============================================================================
+\section{Archivos de Referencia}
+% ==============================================================================
+
+\begin{table}[H]
+\centering
+\caption{Archivos fuente relacionados con este documento}
+\begin{tabular}{ll}
+\toprule
+\textbf{Archivo} & \textbf{Descripción} \\
+\midrule
+\archivo{data/coordenadas/coordenadas\_maestro.csv} & CSV con 957 muestras anotadas \\
+\archivo{src\_v2/data/dataset.py} & Clase LandmarkDataset \\
+\archivo{src\_v2/data/utils.py} & Funciones de carga y procesamiento \\
+\archivo{scripts/analyze\_data.py} & Script de análisis estadístico \\
+\archivo{SESSION\_LOG.md} & Registro de sesiones 0-1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\bibliographystyle{ieeetr}
+% \bibliography{referencias}
+% ==============================================================================
+
+\end{document}

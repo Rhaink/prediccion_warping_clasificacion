@@ -1,0 +1,486 @@
+% ==============================================================================
+% DOCUMENTACIÓN CIENTÍFICA - DESCUBRIMIENTOS GEOMÉTRICOS DEL ETIQUETADO
+% Proyecto: Detección de COVID-19 mediante Landmarks Anatómicos
+% Sesiones cubiertas: 19
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{article}
+\input{00_preambulo}
+
+\title{Descubrimientos Geométricos de la\\Estructura del Etiquetado Manual}
+\author{Documentación del Proceso de Desarrollo}
+\date{Sesión: 19}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento presenta los descubrimientos geométricos críticos realizados
+al analizar la estructura del etiquetado manual de 957 radiografías. Se
+descubrió que el proceso de anotación crea una estructura paramétrica
+casi perfecta: L9, L10 y L11 dividen el eje central L1-L2 en \textbf{exactamente}
+4 partes iguales ($t = 0.25, 0.50, 0.75$) con un error de solo 1.3 píxeles.
+También se identificó que el ground truth presenta asimetría natural de
+5.5-7.9 píxeles entre pares bilaterales, estableciendo un error mínimo
+teórico de 5-6 píxeles. Estos descubrimientos fundamentaron el diseño
+de funciones de pérdida geométricas y la arquitectura jerárquica, y
+explican por qué el modelo directo aprende estas restricciones implícitamente.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==============================================================================
+\section{Introducción y Metodología de Análisis}
+% ==============================================================================
+
+\subsection{Motivación del Análisis}
+
+El análisis geométrico del ground truth se realizó con dos objetivos:
+
+\begin{enumerate}
+    \item Comprender la estructura implícita del proceso de etiquetado manual
+    \item Identificar restricciones que pudieran explotarse para mejorar
+    las predicciones del modelo
+\end{enumerate}
+
+\subsection{Metodología}
+
+Se analizaron las 957 muestras del dataset completo, extrayendo para cada
+imagen:
+
+\begin{itemize}
+    \item Coordenadas de los 15 landmarks en píxeles
+    \item Geometría del eje central (L1-L2)
+    \item Parámetros relativos ($t$, $d$) de cada landmark
+    \item Métricas de simetría y alineación
+\end{itemize}
+
+% ==============================================================================
+\section{Estructura del Eje Central}
+% ==============================================================================
+
+\subsection{Definición del Eje}
+
+El eje central se define por los landmarks L1 (ápice superior) y L2
+(ápice inferior) de la columna vertebral torácica:
+
+\begin{equation}
+\text{Eje} = \overrightarrow{L_1 L_2} = L_2 - L_1
+\label{eq:axis_def}
+\end{equation}
+
+\subsection{Estadísticas del Eje}
+
+\begin{table}[htbp]
+\centering
+\caption{Estadísticas del eje central L1-L2}
+\label{tab:axis_stats}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{Valor} & \textbf{Interpretación} \\
+\midrule
+Longitud promedio & $198.2 \pm 32.8$ px & Alta variabilidad \\
+Ángulo con vertical & $-0.21° \pm 4.00°$ & \textbf{Casi perfecto} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{hallazgo}[title={El eje es prácticamente vertical}]
+El ángulo medio del eje con la vertical es de solo $-0.21°$, con desviación
+estándar de $4°$. Esto significa que el proceso de anotación tiende a
+alinear L1 y L2 casi perfectamente en vertical, probablemente guiado por
+la anatomía de la columna vertebral.
+\end{hallazgo}
+
+% ==============================================================================
+\section{Estructura Paramétrica del Etiquetado}
+% ==============================================================================
+
+\subsection{Parametrización de Landmarks}
+
+Cada landmark puede representarse con dos parámetros relativos al eje L1-L2:
+
+\begin{definicion}[Parámetro $t$ (Posición en el Eje)]
+\begin{equation}
+t = \frac{(P - L_1) \cdot (L_2 - L_1)}{\|L_2 - L_1\|^2}
+\label{eq:t_param}
+\end{equation}
+donde $t = 0$ corresponde a $L_1$ y $t = 1$ a $L_2$.
+\end{definicion}
+
+\begin{definicion}[Parámetro $d$ (Distancia Perpendicular)]
+\begin{equation}
+d = (P - L_1) \cdot \hat{u}^\perp
+\label{eq:d_param}
+\end{equation}
+donde $\hat{u}^\perp$ es el vector unitario perpendicular al eje.
+Valores negativos indican posición a la izquierda, positivos a la derecha.
+\end{definicion}
+
+\subsection{Landmarks Centrales: División Exacta del Eje}
+
+\begin{table}[htbp]
+\centering
+\caption{Posición de landmarks centrales sobre el eje}
+\label{tab:central_landmarks}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Landmark} & \textbf{$t$ Observado} & \textbf{$t$ Teórico} & \textbf{Error $t$} & \textbf{Dist. al eje} \\
+\midrule
+L9 & $0.249 \pm 0.010$ & 0.25 & 0.001 & $1.37 \pm 1.13$ px \\
+L10 & $0.500 \pm 0.010$ & 0.50 & 0.000 & $1.30 \pm 1.13$ px \\
+L11 & $0.749 \pm 0.010$ & 0.75 & 0.001 & $1.35 \pm 1.11$ px \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{resultadoimportante}[title={División exacta en 4 partes}]
+Los landmarks centrales L9, L10, L11 dividen el eje L1-L2 en
+\textbf{exactamente 4 partes iguales}:
+\begin{itemize}
+    \item L9 en $t = 0.249$ (teórico: 0.25) $\to$ Error: 0.4\%
+    \item L10 en $t = 0.500$ (teórico: 0.50) $\to$ Error: 0.0\%
+    \item L11 en $t = 0.749$ (teórico: 0.75) $\to$ Error: 0.1\%
+\end{itemize}
+La distancia perpendicular al eje es de solo $\sim$1.3 px, indicando
+que estos puntos están \textbf{casi perfectamente alineados} con el eje.
+\end{resultadoimportante}
+
+\subsection{Representación Paramétrica Completa}
+
+\begin{table}[htbp]
+\centering
+\caption{Parámetros $(t, d)$ de todos los landmarks}
+\label{tab:all_params}
+\begin{tabular}{lcrl}
+\toprule
+\textbf{Landmark} & \textbf{$t$} & \textbf{$d$ (px)} & \textbf{Ubicación Anatómica} \\
+\midrule
+L1 & 0.000 & 0.0 & Origen del eje (ápice superior) \\
+L2 & 1.000 & 0.0 & Fin del eje (ápice inferior) \\
+\midrule
+L3 & 0.247 & $-86.2$ & Ápice pulmonar izquierdo \\
+L4 & 0.248 & $+86.5$ & Ápice pulmonar derecho \\
+\midrule
+L5 & 0.499 & $-99.2$ & Hilio izquierdo \\
+L6 & 0.499 & $+98.8$ & Hilio derecho \\
+\midrule
+L7 & 0.748 & $-106.6$ & Base pulmonar izquierda \\
+L8 & 0.749 & $+106.0$ & Base pulmonar derecha \\
+\midrule
+L9 & 0.249 & $-0.3$ & Centro superior (1/4 eje) \\
+L10 & 0.500 & $-0.2$ & Centro medio (1/2 eje) \\
+L11 & 0.749 & $-0.3$ & Centro inferior (3/4 eje) \\
+\midrule
+L12 & $-0.001$ & $-45.4$ & Borde superior izquierdo \\
+L13 & $-0.001$ & $+46.8$ & Borde superior derecho \\
+\midrule
+L14 & 0.998 & $-112.7$ & Ángulo costofrénico izquierdo \\
+L15 & 0.999 & $+111.6$ & Ángulo costofrénico derecho \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Proporcionalidad de Distancias}
+
+Las distancias perpendiculares $d$ son proporcionales a la longitud del eje:
+
+\begin{table}[htbp]
+\centering
+\caption{Ratio $|d|/\text{longitud\_eje}$ por par bilateral}
+\label{tab:d_ratio}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Par} & \textbf{Ratio} & \textbf{Correlación con longitud} \\
+\midrule
+L3-L4 (ápices) & $0.444 \pm 0.076$ & $r = 0.41$ \\
+L5-L6 (hilios) & $0.511 \pm 0.084$ & $r = 0.42$ \\
+L7-L8 (bases) & $0.549 \pm 0.091$ & $r = 0.43$ \\
+L14-L15 (costof.) & $0.581 \pm 0.098$ & $r = 0.44$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}
+La correlación significativa ($p < 10^{-39}$) indica que radiografías
+con ejes más largos tienden a tener landmarks bilaterales más separados,
+preservando proporciones anatómicas.
+\end{observacion}
+
+% ==============================================================================
+\section{Error Irreducible en Anotaciones}
+% ==============================================================================
+
+\subsection{Fuentes de Error Identificadas}
+
+\subsubsection{Ruido Base del Etiquetado}
+
+El ruido fundamental del proceso de anotación se estima en $\sim$1.3-1.5 px:
+
+\begin{itemize}
+    \item \textbf{Evidencia}: L9, L10, L11 están a $\sim$1.3 px del eje perfecto,
+    cuando deberían estar exactamente sobre él
+    \item \textbf{Causa}: Movimiento discreto con teclado, imprecisión del cursor,
+    fatiga del anotador
+\end{itemize}
+
+\subsubsection{Asimetría Natural del Ground Truth}
+
+\begin{table}[htbp]
+\centering
+\caption{Asimetría entre pares bilaterales en el ground truth}
+\label{tab:asymmetry}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Par} & \textbf{Asimetría Media (px)} & \textbf{Desv. Est. (px)} \\
+\midrule
+L3-L4 & 5.51 & 4.58 \\
+L5-L6 & 5.55 & 5.20 \\
+L7-L8 & 6.82 & 5.85 \\
+L14-L15 & 7.89 & 6.84 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{hallazgo}[title={El ground truth NO es simétrico}]
+El ground truth presenta asimetría natural de 5.5-7.9 píxeles entre pares
+bilaterales. Esta asimetría puede ser:
+\begin{itemize}
+    \item Asimetría anatómica real del paciente
+    \item Variabilidad del proceso de anotación
+    \item Combinación de ambas
+\end{itemize}
+\textbf{Implicación crítica}: Forzar simetría perfecta introduce error.
+\end{hallazgo}
+
+\subsection{Error Mínimo Teórico}
+
+\begin{table}[htbp]
+\centering
+\caption{Estimación del error mínimo alcanzable}
+\label{tab:min_error}
+\begin{tabular}{lll}
+\toprule
+\textbf{Escenario} & \textbf{Error Esperado} & \textbf{Descripción} \\
+\midrule
+Perfecto & 1.5-2 px & Aprendizaje ideal del ruido \\
+Excelente & 3-4 px & Mejor resultado realista \\
+Muy bueno & 4-6 px & Objetivo alcanzable \\
+Resultado obtenido & 3.71 px & Ensemble final \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Implicaciones para el Modelado}
+% ==============================================================================
+
+\subsection{Restricciones NO Forzables}
+
+\begin{observacion}[Simetría perfecta perjudica]
+Evaluación de Soft Symmetry Loss en el ground truth:
+\begin{itemize}
+    \item Margen 0 px: Loss = 72.31 (GT penalizado severamente)
+    \item Margen 5 px: Loss = 28.96
+    \item Margen 8 px: Loss = 16.51 (GT casi sin penalización)
+\end{itemize}
+\textbf{Conclusión}: Usar margen de 5-8 px para permitir asimetría natural.
+\end{observacion}
+
+\subsection{Restricciones Explotables}
+
+\begin{enumerate}
+    \item \textbf{Alineación central}: L9, L10, L11 deben estar sobre el eje.
+    Error actual en GT: 1.34 $\pm$ 0.87 px
+
+    \item \textbf{División del eje}: L9, L10, L11 en $t = 0.25, 0.50, 0.75$
+    exactamente
+
+    \item \textbf{Proporcionalidad}: $|d|$ proporcional a longitud del eje
+\end{enumerate}
+
+\subsection{Funciones de Pérdida Propuestas}
+
+\subsubsection{Central Alignment Loss}
+
+\begin{equation}
+\mathcal{L}_{central} = \frac{1}{3} \sum_{i \in \{9, 10, 11\}}
+\text{dist}(L_i, \overrightarrow{L_1 L_2})
+\label{eq:central_loss}
+\end{equation}
+
+donde $\text{dist}(P, \ell)$ es la distancia perpendicular del punto $P$
+a la línea $\ell$.
+
+\subsubsection{Soft Symmetry Loss}
+
+\begin{equation}
+\mathcal{L}_{sym} = \frac{1}{5} \sum_{(i,j) \in \mathcal{P}}
+\max(0, |d_i| - |d_j| - \text{margin})^2
+\label{eq:soft_sym_loss}
+\end{equation}
+
+donde $\mathcal{P} = \{(3,4), (5,6), (7,8), (12,13), (14,15)\}$ son los
+pares bilaterales y $\text{margin} = 6$ px.
+
+% ==============================================================================
+\section{Variabilidad por Categoría}
+% ==============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Variabilidad de landmarks por categoría diagnóstica}
+\label{tab:category_variability}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Categoría} & \textbf{Muestras} & \textbf{Variabilidad ($\sigma$)} & \textbf{Outliers} \\
+\midrule
+COVID & 306 (32\%) & 20.1 px & 10.5\% \\
+Normal & 468 (49\%) & 17.0 px & 4.5\% \\
+Viral & 183 (19\%) & 12.5 px & 1.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{observacion}
+Las imágenes de neumonía viral tienen significativamente menor variabilidad
+(12.5 px vs 17-20 px). Esto implica que un modelo único debe
+``comprometerse'' entre precisiones diferentes por categoría.
+\end{observacion}
+
+\subsection{Muestras Problemáticas}
+
+El 20.7\% de las muestras tienen geometría inconsistente (asimetría $>$ 8 px
+en algún par). Las 5 muestras más problemáticas:
+
+\begin{table}[htbp]
+\centering
+\caption{Muestras con mayor asimetría}
+\label{tab:outliers}
+\begin{tabular}{lccc}
+\toprule
+\textbf{ID} & \textbf{Categoría} & \textbf{Asimetría Máx (px)} \\
+\midrule
+601 & Normal-8317 & 39.2 \\
+369 & COVID-1258 & 33.9 \\
+373 & COVID-1558 & 32.9 \\
+379 & COVID-2281 & 25.7 \\
+285 & COVID-2933 & 24.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Correlaciones Descubiertas}
+% ==============================================================================
+
+\subsection{Predicibilidad de Coordenadas}
+
+\begin{hallazgo}[title={Coordenadas Y son altamente predecibles}]
+Las coordenadas Y de todos los landmarks tienen correlación $R^2 > 0.98$
+con las coordenadas de L1 y L2:
+\begin{itemize}
+    \item $L_{12,Y} \approx L_{1,Y}$ (correlación 0.98)
+    \item $L_{14,Y} \approx L_{2,Y}$ (correlación 0.97)
+    \item $L_{9,X} \approx L_{1,X}$ (correlación 0.96)
+\end{itemize}
+Esto sugiere que predecir correctamente L1 y L2 condiciona fuertemente
+el resto de landmarks.
+\end{hallazgo}
+
+\subsection{Orden de Dificultad}
+
+Los landmarks ordenados por variabilidad (más fácil a más difícil):
+
+\begin{enumerate}
+    \item L9, L10 ($\sigma \sim 20$ px) --- \textbf{Más fáciles}
+    \item L1, L4, L13, L3, L12 ($\sigma \sim 22$-24 px)
+    \item L6, L5, L11 ($\sigma \sim 24$-25 px)
+    \item L8, L7 ($\sigma \sim 28$-30 px)
+    \item L2, L15, L14 ($\sigma \sim 32$-35 px) --- \textbf{Más difíciles}
+\end{enumerate}
+
+% ==============================================================================
+\section{Figuras Sugeridas}
+% ==============================================================================
+
+\subsection{Figura 9.1: Estructura Paramétrica del Etiquetado}
+\textit{Descripción}: Diagrama anatómico mostrando:
+\begin{itemize}
+    \item Eje L1-L2 con parámetro $t$ marcado en 0.25, 0.50, 0.75
+    \item L9, L10, L11 sobre el eje
+    \item Flechas mostrando distancias perpendiculares $d$ para pares bilaterales
+    \item Proporciones anotadas
+\end{itemize}
+
+\subsection{Figura 9.2: Distribución de Posición $t$}
+\textit{Descripción}: Histograma mostrando la distribución de $t$ para
+L9, L10, L11, con líneas verticales en 0.25, 0.50, 0.75 teóricos.
+Demostrar la precisión de la división en 4 partes.
+
+\subsection{Figura 9.3: Asimetría en Ground Truth}
+\textit{Descripción}: Boxplot mostrando distribución de asimetría por par
+bilateral (L3-L4, L5-L6, etc.). Incluir línea horizontal en 6 px (margen
+recomendado).
+
+\subsection{Figura 9.4: Variabilidad por Categoría}
+\textit{Descripción}: Gráfico de violín o boxplot comparando la distribución
+de variabilidad ($\sigma$) por categoría (COVID, Normal, Viral).
+
+\subsection{Figura 9.5: Orden de Dificultad de Landmarks}
+\textit{Descripción}: Gráfico de barras horizontales mostrando variabilidad
+por landmark, ordenados de menor a mayor $\sigma$.
+
+% ==============================================================================
+\section{Archivos Fuente}
+% ==============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Archivos de análisis geométrico}
+\label{tab:source_files}
+\begin{tabular}{ll}
+\toprule
+\textbf{Archivo} & \textbf{Contenido} \\
+\midrule
+\archivo{DESCUBRIMIENTOS\_GEOMETRICOS.md} & Documento completo de hallazgos \\
+\archivo{scripts/gpa\_analysis.py} & Análisis de Procrustes \\
+\archivo{scripts/analyze\_data.py} & Estadísticas del dataset \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ==============================================================================
+\section{Conclusiones}
+% ==============================================================================
+
+\begin{enumerate}
+    \item \textbf{Estructura paramétrica exacta}: El etiquetado manual crea
+    una estructura geométrica casi perfecta, con L9, L10, L11 dividiendo
+    el eje en exactamente 4 partes.
+
+    \item \textbf{Error mínimo de 1.3-1.5 px}: El ruido base del etiquetado
+    establece un límite inferior práctico para cualquier modelo.
+
+    \item \textbf{No forzar simetría perfecta}: El GT tiene asimetría natural
+    de 5.5-7.9 px; forzar simetría introduce error.
+
+    \item \textbf{Proporcionalidad preservada}: Las distancias perpendiculares
+    son proporcionales a la longitud del eje.
+
+    \item \textbf{COVID es más variable}: Mayor variabilidad en COVID
+    (20.1 px) vs Normal (17.0 px) vs Viral (12.5 px).
+
+    \item \textbf{Predicibilidad jerárquica}: Coordenadas Y altamente
+    predecibles desde L1, L2 ($R^2 > 0.98$).
+
+    \item \textbf{Error obtenido: 3.71 px}: Resultado excelente cercano al
+    límite teórico, considerando ruido de etiquetado y asimetría natural.
+
+    \item \textbf{Fundamento para arquitectura jerárquica}: Aunque el modelo
+    directo resultó mejor, estos descubrimientos explican por qué las
+    restricciones geométricas son aprendidas implícitamente.
+\end{enumerate}
+
+\end{document}

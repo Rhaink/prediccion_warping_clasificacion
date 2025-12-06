@@ -1,0 +1,297 @@
+"""
+Dataset de landmarks para radiografias de torax
+
+SESION 7: Agregado soporte para pesos por categoria (COVID oversampling)
+"""
+
+import torch
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
+import pandas as pd
+import numpy as np
+from PIL import Image
+from pathlib import Path
+from typing import Tuple, Optional, Callable, List, Dict
+from sklearn.model_selection import train_test_split
+
+from .utils import load_coordinates_csv, get_image_path, get_landmarks_array
+from .transforms import get_train_transforms, get_val_transforms
+
+
+# Pesos por categoria para sobremuestreo
+# COVID es mas dificil (11.74 px vs 7.79 px Normal), necesita mas peso
+DEFAULT_CATEGORY_WEIGHTS = {
+    'COVID': 2.0,           # Doble peso - categoria mas dificil
+    'Normal': 1.0,          # Peso base
+    'Viral_Pneumonia': 1.2  # Ligeramente mas peso
+}
+
+
+def compute_sample_weights(
+    df: pd.DataFrame,
+    category_weights: Optional[Dict[str, float]] = None
+) -> torch.Tensor:
+    """
+    Calcula pesos por muestra basados en su categoria.
+
+    Args:
+        df: DataFrame con columna 'category'
+        category_weights: Dict con peso por categoria. Si None, usa DEFAULT_CATEGORY_WEIGHTS.
+
+    Returns:
+        Tensor de pesos (una por muestra)
+    """
+    if category_weights is None:
+        category_weights = DEFAULT_CATEGORY_WEIGHTS
+
+    weights = []
+    for _, row in df.iterrows():
+        category = row['category']
+        weight = category_weights.get(category, 1.0)
+        weights.append(weight)
+
+    return torch.tensor(weights, dtype=torch.float)
+
+
+class LandmarkDataset(Dataset):
+    """
+    Dataset de imagenes con 15 landmarks.
+
+    Cada muestra contiene:
+    - Imagen: tensor (3, H, W) normalizado
+    - Landmarks: tensor (30,) en coordenadas normalizadas [0, 1]
+
+    Atributos:
+        df: DataFrame con datos
+        data_root: Ruta raiz de datos
+        transform: Transformacion a aplicar
+        original_size: Tamano de imagenes originales (por defecto 299)
+    """
+
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        data_root: str,
+        transform: Optional[Callable] = None,
+        original_size: int = 299
+    ):
+        """
+        Args:
+            df: DataFrame con columnas image_name, category, L1_x, L1_y, ...
+            data_root: Directorio raiz que contiene carpeta 'dataset/'
+            transform: Transformacion a aplicar (None = validacion)
+            original_size: Tamano de imagenes originales
+        """
+        self.df = df.reset_index(drop=True)
+        self.data_root = Path(data_root)
+        self.transform = transform if transform else get_val_transforms()
+        self.original_size = (original_size, original_size)
+
+    def __len__(self) -> int:
+        return len(self.df)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, dict]:
+        """
+        Retorna imagen, landmarks y metadata.
+
+        Returns:
+            image: Tensor (3, 224, 224)
+            landmarks: Tensor (30,) en [0, 1]
+            meta: Dict con image_name y category
+        """
+        row = self.df.iloc[idx]
+
+        # Cargar imagen
+        image_path = get_image_path(
+            row['image_name'],
+            row['category'],
+            self.data_root
+        )
+        image = Image.open(image_path).convert('RGB')
+
+        # Obtener landmarks como array (15, 2)
+        landmarks = get_landmarks_array(row)
+
+        # Aplicar transformaciones
+        image_tensor, landmarks_tensor = self.transform(
+            image, landmarks, self.original_size
+        )
+
+        meta = {
+            'image_name': row['image_name'],
+            'category': row['category'],
+            'idx': idx
+        }
+
+        return image_tensor, landmarks_tensor, meta
+
+
+def create_dataloaders(
+    csv_path: str,
+    data_root: str,
+    batch_size: int = 16,
+    val_split: float = 0.15,
+    test_split: float = 0.10,
+    num_workers: int = 4,
+    random_state: int = 42,
+    output_size: int = 224,
+    flip_prob: float = 0.5,
+    rotation_degrees: float = 10.0,
+    use_clahe: bool = False,
+    clahe_clip_limit: float = 2.0,
+    clahe_tile_size: int = 8,
+    use_category_weights: bool = False,
+    category_weights: Optional[Dict[str, float]] = None,
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    """
+    Crea DataLoaders para train, val y test.
+
+    Args:
+        csv_path: Ruta al CSV de coordenadas
+        data_root: Directorio raiz de datos
+        batch_size: Tamano de batch
+        val_split: Fraccion para validacion
+        test_split: Fraccion para test
+        num_workers: Workers para DataLoader
+        random_state: Semilla para reproducibilidad
+        output_size: Tamano de salida de imagenes
+        flip_prob: Probabilidad de flip horizontal
+        rotation_degrees: Rango de rotacion en grados
+        use_clahe: Usar CLAHE para mejorar contraste local
+        clahe_clip_limit: Limite de contraste para CLAHE (2.0 es estandar)
+        clahe_tile_size: Tamano de tiles para CLAHE (8 es estandar)
+        use_category_weights: Usar WeightedRandomSampler para sobremuestrear COVID
+        category_weights: Pesos por categoria (si None, usa DEFAULT_CATEGORY_WEIGHTS)
+
+    Returns:
+        (train_loader, val_loader, test_loader)
+    """
+    # Cargar datos
+    df = load_coordinates_csv(csv_path)
+
+    # Split estratificado por categoria
+    train_df, temp_df = train_test_split(
+        df,
+        test_size=(val_split + test_split),
+        stratify=df['category'],
+        random_state=random_state
+    )
+
+    val_ratio = val_split / (val_split + test_split)
+    val_df, test_df = train_test_split(
+        temp_df,
+        test_size=(1 - val_ratio),
+        stratify=temp_df['category'],
+        random_state=random_state
+    )
+
+    print(f"Dataset split:")
+    print(f"  Train: {len(train_df)} ({len(train_df)/len(df)*100:.1f}%)")
+    print(f"  Val:   {len(val_df)} ({len(val_df)/len(df)*100:.1f}%)")
+    print(f"  Test:  {len(test_df)} ({len(test_df)/len(df)*100:.1f}%)")
+
+    # Transformaciones
+    train_transform = get_train_transforms(
+        output_size=output_size,
+        flip_prob=flip_prob,
+        rotation_degrees=rotation_degrees,
+        use_clahe=use_clahe,
+        clahe_clip_limit=clahe_clip_limit,
+        clahe_tile_size=clahe_tile_size,
+    )
+    val_transform = get_val_transforms(
+        output_size=output_size,
+        use_clahe=use_clahe,
+        clahe_clip_limit=clahe_clip_limit,
+        clahe_tile_size=clahe_tile_size,
+    )
+
+    # Datasets
+    train_dataset = LandmarkDataset(train_df, data_root, train_transform)
+    val_dataset = LandmarkDataset(val_df, data_root, val_transform)
+    test_dataset = LandmarkDataset(test_df, data_root, val_transform)
+
+    # Custom collate para incluir metadata
+    def collate_fn(batch):
+        images = torch.stack([item[0] for item in batch])
+        landmarks = torch.stack([item[1] for item in batch])
+        metas = [item[2] for item in batch]
+        return images, landmarks, metas
+
+    # Crear sampler si se usan pesos por categoria
+    train_sampler = None
+    train_shuffle = True
+
+    if use_category_weights:
+        sample_weights = compute_sample_weights(train_df, category_weights)
+        train_sampler = WeightedRandomSampler(
+            weights=sample_weights,
+            num_samples=len(train_df),
+            replacement=True  # Permitir muestreo con reemplazo
+        )
+        train_shuffle = False  # No usar shuffle con sampler
+        print(f"  Using WeightedRandomSampler with category weights:")
+        weights_dict = category_weights if category_weights else DEFAULT_CATEGORY_WEIGHTS
+        for cat, weight in weights_dict.items():
+            count = len(train_df[train_df['category'] == cat])
+            print(f"    {cat}: weight={weight}, count={count}")
+
+    # DataLoaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=train_shuffle,
+        sampler=train_sampler,
+        num_workers=num_workers,
+        pin_memory=True,
+        collate_fn=collate_fn
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+        collate_fn=collate_fn
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+        collate_fn=collate_fn
+    )
+
+    return train_loader, val_loader, test_loader
+
+
+def get_dataframe_splits(
+    csv_path: str,
+    val_split: float = 0.15,
+    test_split: float = 0.10,
+    random_state: int = 42
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Retorna DataFrames separados para train, val, test.
+    Util para analisis sin crear DataLoaders.
+    """
+    df = load_coordinates_csv(csv_path)
+
+    train_df, temp_df = train_test_split(
+        df,
+        test_size=(val_split + test_split),
+        stratify=df['category'],
+        random_state=random_state
+    )
+
+    val_ratio = val_split / (val_split + test_split)
+    val_df, test_df = train_test_split(
+        temp_df,
+        test_size=(1 - val_ratio),
+        stratify=temp_df['category'],
+        random_state=random_state
+    )
+
+    return train_df, val_df, test_df
