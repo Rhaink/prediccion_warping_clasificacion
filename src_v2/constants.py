@@ -4,6 +4,27 @@ Constantes centralizadas para el proyecto COVID-19 Detection via Anatomical Land
 Este módulo define todas las constantes del dominio en un solo lugar
 para evitar duplicación y facilitar el mantenimiento.
 
+ESTRUCTURA GEOMÉTRICA DE LOS 15 LANDMARKS:
+==========================================
+Los landmarks definen el CONTORNO de los pulmones, NO son puntos anatómicos específicos.
+Fueron colocados manualmente para dibujar la silueta pulmonar en 15 puntos.
+
+Estructura:
+- Eje central vertical: L1 (superior) → L9 → L10 → L11 → L2 (inferior)
+  L9, L10, L11 dividen el eje en 4 partes iguales (t=0.25, 0.50, 0.75)
+
+- Contorno pulmón izquierdo: L12 → L3 → L5 → L7 → L14
+- Contorno pulmón derecho:   L13 → L4 → L6 → L8 → L15
+
+- 5 pares simétricos (izq-der): L3-L4, L5-L6, L7-L8, L12-L13, L14-L15
+
+Parámetro t: posición relativa sobre el eje L1-L2
+- t=0.00: L1, L12, L13 (zona superior)
+- t=0.25: L9, L3, L4
+- t=0.50: L10, L5, L6
+- t=0.75: L11, L7, L8
+- t=1.00: L2, L14, L15 (zona inferior)
+
 Uso:
     from src_v2.constants import SYMMETRIC_PAIRS, CENTRAL_LANDMARKS, DEFAULT_IMAGE_SIZE
 """
@@ -21,39 +42,42 @@ NUM_LANDMARKS: int = 15
 NUM_COORDINATES: int = NUM_LANDMARKS * 2  # 30
 
 # Nombres de landmarks (L1 a L15)
+# Los 15 landmarks definen el CONTORNO de los pulmones, NO son puntos anatómicos específicos.
+# Fueron colocados manualmente para dibujar la silueta pulmonar.
 LANDMARK_NAMES: List[str] = [
-    'L1',   # Superior mediastinum
-    'L2',   # Inferior mediastinum
-    'L3',   # Left apex
-    'L4',   # Right apex
-    'L5',   # Left hilum
-    'L6',   # Right hilum
-    'L7',   # Left base
-    'L8',   # Right base
-    'L9',   # Superior central
-    'L10',  # Middle central
-    'L11',  # Inferior central
-    'L12',  # Left upper border
-    'L13',  # Right upper border
-    'L14',  # Left costophrenic angle
-    'L15',  # Right costophrenic angle
+    'L1',   # Eje central - punto superior (t=0.00)
+    'L2',   # Eje central - punto inferior (t=1.00)
+    'L3',   # Contorno izquierdo - zona superior (t≈0.25)
+    'L4',   # Contorno derecho - zona superior (t≈0.25)
+    'L5',   # Contorno izquierdo - zona media (t≈0.50)
+    'L6',   # Contorno derecho - zona media (t≈0.50)
+    'L7',   # Contorno izquierdo - zona inferior (t≈0.75)
+    'L8',   # Contorno derecho - zona inferior (t≈0.75)
+    'L9',   # Eje central - cuarto superior (t=0.25)
+    'L10',  # Eje central - punto medio (t=0.50)
+    'L11',  # Eje central - cuarto inferior (t=0.75)
+    'L12',  # Borde superior izquierdo (t≈0.00)
+    'L13',  # Borde superior derecho (t≈0.00)
+    'L14',  # Esquina inferior izquierda (t≈1.00)
+    'L15',  # Esquina inferior derecha (t≈1.00)
 ]
 
 # Pares de landmarks simétricos (índices 0-based)
-# L3-L4, L5-L6, L7-L8, L12-L13, L14-L15
+# Cada par tiene un punto en el contorno izquierdo y otro en el derecho
 SYMMETRIC_PAIRS: List[Tuple[int, int]] = [
-    (2, 3),   # L3-L4: Apexes
-    (4, 5),   # L5-L6: Hilums
-    (6, 7),   # L7-L8: Bases
-    (11, 12), # L12-L13: Upper borders
-    (13, 14), # L14-L15: Costophrenic angles
+    (2, 3),   # L3-L4: Contorno zona superior
+    (4, 5),   # L5-L6: Contorno zona media
+    (6, 7),   # L7-L8: Contorno zona inferior
+    (11, 12), # L12-L13: Borde superior
+    (13, 14), # L14-L15: Esquinas inferiores
 ]
 
-# Landmarks centrales que deben estar sobre el eje L1-L2
+# Landmarks centrales que están sobre el eje L1-L2
+# Dividen el eje en 4 partes iguales (t=0.25, 0.50, 0.75)
 CENTRAL_LANDMARKS: List[int] = [8, 9, 10]  # L9, L10, L11
 
-# Landmarks del eje vertical (mediastinum)
-AXIS_LANDMARKS: List[int] = [0, 1]  # L1, L2
+# Landmarks del eje vertical (definen la línea central)
+AXIS_LANDMARKS: List[int] = [0, 1]  # L1 (superior), L2 (inferior)
 
 # =============================================================================
 # DIMENSIONES DE IMAGEN
