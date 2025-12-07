@@ -12,10 +12,21 @@ Estructura del etiquetado descubierta:
 - Los landmarks bilaterales estan a distancias perpendiculares del eje
 """
 
+import logging
+
 import torch
 import torch.nn as nn
 import torchvision.models as models
 from typing import Tuple, Optional
+
+from src_v2.constants import (
+    SYMMETRIC_PAIRS,
+    CENTRAL_LANDMARKS,
+    BACKBONE_FEATURE_DIM,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 class HierarchicalLandmarkModel(nn.Module):
@@ -318,6 +329,9 @@ class CentralAlignmentLossHierarchical(nn.Module):
 
 
 if __name__ == "__main__":
+    # Test - configurar logging para ver salida
+    logging.basicConfig(level=logging.DEBUG)
+
     # Test
     model = HierarchicalLandmarkModel()
     x = torch.randn(4, 3, 224, 224)
@@ -325,17 +339,15 @@ if __name__ == "__main__":
     with torch.no_grad():
         out = model(x)
 
-    print(f"Input shape: {x.shape}")
-    print(f"Output shape: {out.shape}")
-    print(f"Output range: [{out.min():.3f}, {out.max():.3f}]")
+    logger.debug("Input shape: %s", x.shape)
+    logger.debug("Output shape: %s", out.shape)
+    logger.debug("Output range: [%.3f, %.3f]", out.min(), out.max())
 
     # Verificar que landmarks centrales estan alineados
     out_reshaped = out.view(-1, 15, 2)
     L1 = out_reshaped[:, 0]
     L2 = out_reshaped[:, 1]
-    L9 = out_reshaped[:, 8]
     L10 = out_reshaped[:, 9]
-    L11 = out_reshaped[:, 10]
 
     axis = L2 - L1
     axis_len = torch.norm(axis, dim=1, keepdim=True)
@@ -346,4 +358,4 @@ if __name__ == "__main__":
     proj = (vec * axis_unit).sum(dim=1, keepdim=True) * axis_unit
     perp = vec - proj
     dist = torch.norm(perp, dim=1)
-    print(f"L10 perpendicular distance to axis: {dist.mean():.6f} (should be ~0)")
+    logger.debug("L10 perpendicular distance to axis: %.6f (should be ~0)", dist.mean())
