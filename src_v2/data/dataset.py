@@ -4,6 +4,8 @@ Dataset de landmarks para radiografias de torax
 SESION 7: Agregado soporte para pesos por categoria (COVID oversampling)
 """
 
+import logging
+
 import torch
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import pandas as pd
@@ -13,17 +15,12 @@ from pathlib import Path
 from typing import Tuple, Optional, Callable, List, Dict
 from sklearn.model_selection import train_test_split
 
+from src_v2.constants import DEFAULT_CATEGORY_WEIGHTS, ORIGINAL_IMAGE_SIZE
 from .utils import load_coordinates_csv, get_image_path, get_landmarks_array
 from .transforms import get_train_transforms, get_val_transforms
 
 
-# Pesos por categoria para sobremuestreo
-# COVID es mas dificil (11.74 px vs 7.79 px Normal), necesita mas peso
-DEFAULT_CATEGORY_WEIGHTS = {
-    'COVID': 2.0,           # Doble peso - categoria mas dificil
-    'Normal': 1.0,          # Peso base
-    'Viral_Pneumonia': 1.2  # Ligeramente mas peso
-}
+logger = logging.getLogger(__name__)
 
 
 def compute_sample_weights(
@@ -72,7 +69,7 @@ class LandmarkDataset(Dataset):
         df: pd.DataFrame,
         data_root: str,
         transform: Optional[Callable] = None,
-        original_size: int = 299
+        original_size: int = ORIGINAL_IMAGE_SIZE
     ):
         """
         Args:
@@ -97,16 +94,26 @@ class LandmarkDataset(Dataset):
             image: Tensor (3, 224, 224)
             landmarks: Tensor (30,) en [0, 1]
             meta: Dict con image_name y category
+
+        Raises:
+            FileNotFoundError: Si la imagen no existe
+            IOError: Si la imagen esta corrupta o no se puede leer
         """
         row = self.df.iloc[idx]
+        image_name = row['image_name']
+        category = row['category']
 
-        # Cargar imagen
-        image_path = get_image_path(
-            row['image_name'],
-            row['category'],
-            self.data_root
-        )
-        image = Image.open(image_path).convert('RGB')
+        # Cargar imagen con manejo de errores
+        image_path = get_image_path(image_name, category, self.data_root)
+
+        try:
+            image = Image.open(image_path).convert('RGB')
+        except FileNotFoundError:
+            logger.error("Image not found: %s (idx=%d)", image_path, idx)
+            raise FileNotFoundError(f"Image not found: {image_path}")
+        except (OSError, IOError) as e:
+            logger.error("Corrupt or unreadable image: %s (idx=%d): %s", image_path, idx, e)
+            raise IOError(f"Corrupt or unreadable image: {image_path}") from e
 
         # Obtener landmarks como array (15, 2)
         landmarks = get_landmarks_array(row)
@@ -117,8 +124,8 @@ class LandmarkDataset(Dataset):
         )
 
         meta = {
-            'image_name': row['image_name'],
-            'category': row['category'],
+            'image_name': image_name,
+            'category': category,
             'idx': idx
         }
 
@@ -184,10 +191,12 @@ def create_dataloaders(
         random_state=random_state
     )
 
-    print(f"Dataset split:")
-    print(f"  Train: {len(train_df)} ({len(train_df)/len(df)*100:.1f}%)")
-    print(f"  Val:   {len(val_df)} ({len(val_df)/len(df)*100:.1f}%)")
-    print(f"  Test:  {len(test_df)} ({len(test_df)/len(df)*100:.1f}%)")
+    logger.info(
+        "Dataset split: Train=%d (%.1f%%), Val=%d (%.1f%%), Test=%d (%.1f%%)",
+        len(train_df), len(train_df) / len(df) * 100,
+        len(val_df), len(val_df) / len(df) * 100,
+        len(test_df), len(test_df) / len(df) * 100
+    )
 
     # Transformaciones
     train_transform = get_train_transforms(
@@ -229,11 +238,12 @@ def create_dataloaders(
             replacement=True  # Permitir muestreo con reemplazo
         )
         train_shuffle = False  # No usar shuffle con sampler
-        print(f"  Using WeightedRandomSampler with category weights:")
         weights_dict = category_weights if category_weights else DEFAULT_CATEGORY_WEIGHTS
-        for cat, weight in weights_dict.items():
-            count = len(train_df[train_df['category'] == cat])
-            print(f"    {cat}: weight={weight}, count={count}")
+        weight_info = ", ".join(
+            f"{cat}(w={w}, n={len(train_df[train_df['category'] == cat])})"
+            for cat, w in weights_dict.items()
+        )
+        logger.info("Using WeightedRandomSampler: %s", weight_info)
 
     # DataLoaders
     train_loader = DataLoader(
