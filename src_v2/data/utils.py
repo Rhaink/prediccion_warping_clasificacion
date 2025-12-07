@@ -1,7 +1,11 @@
 """
-Utilidades para manejo de datos de landmarks
+Utilidades para manejo de datos de landmarks.
+
+Este módulo proporciona funciones para cargar, procesar y visualizar
+datos de landmarks anatómicos en radiografías de tórax.
 """
 
+import logging
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -9,19 +13,15 @@ from typing import Tuple, List, Dict, Optional
 import matplotlib.pyplot as plt
 from PIL import Image
 
+from src_v2.constants import (
+    SYMMETRIC_PAIRS,
+    CENTRAL_LANDMARKS,
+    LANDMARK_NAMES,
+    NUM_LANDMARKS,
+    CATEGORIES,
+)
 
-# Pares de landmarks simetricos (indices 0-based)
-# L3-L4, L5-L6, L7-L8, L12-L13, L14-L15
-SYMMETRIC_PAIRS = [(2, 3), (4, 5), (6, 7), (11, 12), (13, 14)]
-
-# Landmarks centrales (deben estar sobre el eje L1-L2)
-CENTRAL_LANDMARKS = [8, 9, 10]  # L9, L10, L11
-
-# Nombres de landmarks
-LANDMARK_NAMES = [
-    'L1',  'L2',  'L3',  'L4',  'L5',  'L6',  'L7',  'L8',
-    'L9',  'L10', 'L11', 'L12', 'L13', 'L14', 'L15'
-]
+logger = logging.getLogger(__name__)
 
 
 def load_coordinates_csv(csv_path: str) -> pd.DataFrame:
@@ -33,17 +33,42 @@ def load_coordinates_csv(csv_path: str) -> pd.DataFrame:
     - Columnas 1-30: coordenadas (L1_x, L1_y, ..., L15_x, L15_y)
     - Columna 31: nombre de imagen
 
+    Args:
+        csv_path: Ruta al archivo CSV de coordenadas.
+
     Returns:
         DataFrame con columnas: image_name, category, L1_x, L1_y, ..., L15_x, L15_y
+
+    Raises:
+        FileNotFoundError: Si el archivo CSV no existe.
+        ValueError: Si el formato del CSV es inválido.
     """
+    # Validar que el archivo existe
+    csv_path = Path(csv_path)
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Archivo CSV no encontrado: {csv_path}")
+
+    logger.info("Cargando coordenadas desde %s", csv_path)
+
     # Nombres de columnas
     coord_cols = []
-    for i in range(1, 16):
+    for i in range(1, NUM_LANDMARKS + 1):
         coord_cols.extend([f'L{i}_x', f'L{i}_y'])
 
     columns = ['idx'] + coord_cols + ['image_name']
 
-    df = pd.read_csv(csv_path, header=None, names=columns)
+    try:
+        df = pd.read_csv(csv_path, header=None, names=columns)
+    except Exception as e:
+        raise ValueError(f"Error al leer CSV {csv_path}: {e}") from e
+
+    # Validar número de columnas
+    expected_cols = 1 + (NUM_LANDMARKS * 2) + 1  # idx + coords + image_name
+    if len(df.columns) != expected_cols:
+        raise ValueError(
+            f"Formato de CSV inválido: esperado {expected_cols} columnas, "
+            f"encontrado {len(df.columns)}"
+        )
 
     # Extraer categoria del nombre de imagen
     def extract_category(name: str) -> str:
@@ -54,12 +79,20 @@ def load_coordinates_csv(csv_path: str) -> pd.DataFrame:
         elif name.startswith('Viral'):
             return 'Viral_Pneumonia'
         else:
+            logger.warning("Categoría desconocida para imagen: %s", name)
             return 'Unknown'
 
     df['category'] = df['image_name'].apply(extract_category)
 
     # Eliminar columna de indice original
     df = df.drop('idx', axis=1)
+
+    # Log estadísticas
+    logger.info(
+        "Cargadas %d muestras: %s",
+        len(df),
+        df['category'].value_counts().to_dict()
+    )
 
     return df
 
@@ -77,9 +110,15 @@ def get_image_path(image_name: str, category: str, data_root: str) -> Path:
 def get_landmarks_array(row: pd.Series) -> np.ndarray:
     """
     Extrae coordenadas de landmarks como array numpy (15, 2).
+
+    Args:
+        row: Fila del DataFrame con columnas L{i}_x, L{i}_y.
+
+    Returns:
+        Array numpy de shape (NUM_LANDMARKS, 2) con coordenadas.
     """
     coords = []
-    for i in range(1, 16):
+    for i in range(1, NUM_LANDMARKS + 1):
         x = row[f'L{i}_x']
         y = row[f'L{i}_y']
         coords.append([x, y])
@@ -89,8 +128,14 @@ def get_landmarks_array(row: pd.Series) -> np.ndarray:
 def landmarks_to_dict(landmarks: np.ndarray) -> Dict[str, Tuple[float, float]]:
     """
     Convierte array de landmarks a diccionario.
+
+    Args:
+        landmarks: Array de shape (NUM_LANDMARKS, 2).
+
+    Returns:
+        Diccionario {nombre_landmark: (x, y)}.
     """
-    return {LANDMARK_NAMES[i]: tuple(landmarks[i]) for i in range(15)}
+    return {LANDMARK_NAMES[i]: tuple(landmarks[i]) for i in range(NUM_LANDMARKS)}
 
 
 def visualize_landmarks(
@@ -170,16 +215,22 @@ def visualize_landmarks(
 
 def compute_statistics(df: pd.DataFrame) -> Dict:
     """
-    Calcula estadisticas del dataset.
+    Calcula estadísticas del dataset.
+
+    Args:
+        df: DataFrame con datos de landmarks.
+
+    Returns:
+        Diccionario con estadísticas totales y por landmark.
     """
     stats = {
         'total_samples': len(df),
         'by_category': df['category'].value_counts().to_dict(),
     }
 
-    # Estadisticas por landmark
+    # Estadísticas por landmark
     landmark_stats = {}
-    for i in range(1, 16):
+    for i in range(1, NUM_LANDMARKS + 1):
         x_col = f'L{i}_x'
         y_col = f'L{i}_y'
         landmark_stats[f'L{i}'] = {
