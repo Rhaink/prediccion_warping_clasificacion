@@ -60,6 +60,53 @@ def setup_hydra_config(config_path: str, config_name: str, overrides: list):
     return cfg
 
 
+def detect_architecture_from_checkpoint(state_dict: dict) -> dict:
+    """
+    Detecta la arquitectura del modelo a partir del state_dict.
+
+    Args:
+        state_dict: Diccionario con los pesos del modelo
+
+    Returns:
+        dict con los parametros de arquitectura detectados:
+        - use_coord_attention: bool
+        - deep_head: bool
+        - hidden_dim: int
+    """
+    # Detectar coord_attention
+    use_coord_attention = any("coord_attention" in k for k in state_dict.keys())
+
+    # Detectar deep_head (tiene indices 6, 9 en head)
+    deep_head = "head.9.weight" in state_dict or "head.9.bias" in state_dict
+
+    # Detectar hidden_dim
+    if deep_head:
+        # En deep_head, head.5 es Linear(512, hidden_dim)
+        # hidden_dim es la primera dimension de head.5.weight
+        if "head.5.weight" in state_dict:
+            hidden_dim = state_dict["head.5.weight"].shape[0]
+        else:
+            hidden_dim = 256  # fallback
+    else:
+        # En head simple, head.2 es Linear(feature_dim, hidden_dim)
+        # hidden_dim es la primera dimension de head.2.weight
+        if "head.2.weight" in state_dict:
+            weight = state_dict["head.2.weight"]
+            # Puede ser Linear o BatchNorm, verificar shape
+            if len(weight.shape) == 2:
+                hidden_dim = weight.shape[0]
+            else:
+                hidden_dim = 256  # fallback
+        else:
+            hidden_dim = 256  # fallback
+
+    return {
+        "use_coord_attention": use_coord_attention,
+        "deep_head": deep_head,
+        "hidden_dim": hidden_dim,
+    }
+
+
 @app.command()
 def train(
     config_path: str = typer.Option(
@@ -117,6 +164,26 @@ def train(
         "-b",
         help="Tamano de batch"
     ),
+    coord_attention: bool = typer.Option(
+        True,
+        "--coord-attention/--no-coord-attention",
+        help="Usar Coordinate Attention module"
+    ),
+    deep_head: bool = typer.Option(
+        True,
+        "--deep-head/--no-deep-head",
+        help="Usar cabeza profunda con GroupNorm"
+    ),
+    hidden_dim: int = typer.Option(
+        768,
+        "--hidden-dim",
+        help="Dimension de capa oculta"
+    ),
+    dropout: float = typer.Option(
+        0.3,
+        "--dropout",
+        help="Tasa de dropout"
+    ),
 ):
     """
     Entrenar modelo de prediccion de landmarks.
@@ -129,6 +196,7 @@ def train(
     from torch.utils.data import DataLoader, random_split
 
     from src_v2.data import LandmarkDataset, get_train_transforms, get_val_transforms
+    from src_v2.data.utils import load_coordinates_csv
     from src_v2.models import create_model, CombinedLandmarkLoss
     from src_v2.training.trainer import LandmarkTrainer
 
@@ -181,50 +249,32 @@ def train(
         logger.error("CSV de coordenadas no existe: %s", csv_path)
         raise typer.Exit(code=1)
 
-    # Crear dataset
+    # Cargar CSV de coordenadas
     logger.info("Cargando dataset desde %s", data_root)
-
-    full_dataset = LandmarkDataset(
-        csv_path=csv_path,
-        root_dir=data_root,
-        transform=None  # Se asigna despues del split
-    )
+    df = load_coordinates_csv(csv_path)
+    logger.info("CSV cargado: %d muestras", len(df))
 
     # Split train/val/test (75/15/10)
-    n_total = len(full_dataset)
-    n_train = int(0.75 * n_total)
-    n_val = int(0.15 * n_total)
-    n_test = n_total - n_train - n_val
+    # IMPORTANTE: Siempre usar random_state=42 para el split de datos
+    # El seed del modelo solo afecta inicialización, no el split
+    from sklearn.model_selection import train_test_split
+    SPLIT_SEED = 42  # Fijo para reproducibilidad
 
-    train_dataset, val_dataset, test_dataset = random_split(
-        full_dataset,
-        [n_train, n_val, n_test],
-        generator=torch.Generator().manual_seed(seed)
+    train_df, temp_df = train_test_split(
+        df, test_size=0.25, random_state=SPLIT_SEED, stratify=df['category']
+    )
+    val_df, test_df = train_test_split(
+        temp_df, test_size=0.4, random_state=SPLIT_SEED, stratify=temp_df['category']
     )
 
-    logger.info("Dataset splits: train=%d, val=%d, test=%d", n_train, n_val, n_test)
+    logger.info("Dataset splits: train=%d, val=%d, test=%d", len(train_df), len(val_df), len(test_df))
 
-    # Aplicar transforms
-    train_transform = get_train_transforms(image_size=DEFAULT_IMAGE_SIZE)
-    val_transform = get_val_transforms(image_size=DEFAULT_IMAGE_SIZE)
+    # Crear datasets con transforms
+    train_transform = get_train_transforms(output_size=DEFAULT_IMAGE_SIZE)
+    val_transform = get_val_transforms(output_size=DEFAULT_IMAGE_SIZE)
 
-    # Wrapper para aplicar transforms
-    class TransformWrapper:
-        def __init__(self, dataset, transform):
-            self.dataset = dataset
-            self.transform = transform
-
-        def __len__(self):
-            return len(self.dataset)
-
-        def __getitem__(self, idx):
-            image, landmarks, meta = self.dataset[idx]
-            if self.transform:
-                image, landmarks = self.transform(image, landmarks)
-            return image, landmarks, meta
-
-    train_set = TransformWrapper(train_dataset, train_transform)
-    val_set = TransformWrapper(val_dataset, val_transform)
+    train_set = LandmarkDataset(train_df, data_root, transform=train_transform)
+    val_set = LandmarkDataset(val_df, data_root, transform=val_transform)
 
     # DataLoaders
     train_loader = DataLoader(
@@ -244,7 +294,16 @@ def train(
 
     # Crear modelo
     logger.info("Creando modelo ResNet18Landmarks")
-    model = create_model(pretrained=True)
+    logger.info("  coord_attention=%s, deep_head=%s, hidden_dim=%d, dropout=%.2f",
+                coord_attention, deep_head, hidden_dim, dropout)
+    model = create_model(
+        pretrained=True,
+        freeze_backbone=True,
+        dropout_rate=dropout,
+        hidden_dim=hidden_dim,
+        use_coord_attention=coord_attention,
+        deep_head=deep_head,
+    )
     model = model.to(torch_device)
 
     # Loss function
@@ -253,6 +312,7 @@ def train(
         central_weight=1.0,
         symmetry_weight=0.5
     )
+    criterion = criterion.to(torch_device)
 
     # Trainer
     trainer = LandmarkTrainer(
@@ -321,11 +381,18 @@ def evaluate(
         "--tta",
         help="Usar Test-Time Augmentation"
     ),
+    split: str = typer.Option(
+        "test",
+        "--split",
+        "-s",
+        help="Split a evaluar: test, val, train, all"
+    ),
 ):
     """
     Evaluar modelo en dataset de test.
 
     Calcula metricas de error por landmark y por categoria.
+    Por defecto evalua solo el split de test (10% de datos, seed=42).
     """
     import json
 
@@ -333,6 +400,7 @@ def evaluate(
     from torch.utils.data import DataLoader
 
     from src_v2.data import LandmarkDataset, get_val_transforms
+    from src_v2.data.utils import load_coordinates_csv
     from src_v2.models import create_model
     from src_v2.evaluation.metrics import evaluate_model, evaluate_model_with_tta
 
@@ -349,35 +417,75 @@ def evaluate(
     torch_device = get_device(device)
     logger.info("Usando dispositivo: %s", torch_device)
 
-    # Cargar modelo
+    # Cargar checkpoint y detectar arquitectura
     logger.info("Cargando modelo desde: %s", checkpoint)
-    model = create_model(pretrained=False)
-
     checkpoint_data = torch.load(checkpoint, map_location=torch_device, weights_only=False)
-    if "model_state_dict" in checkpoint_data:
-        model.load_state_dict(checkpoint_data["model_state_dict"])
-    else:
-        model.load_state_dict(checkpoint_data)
 
+    if "model_state_dict" in checkpoint_data:
+        state_dict = checkpoint_data["model_state_dict"]
+    else:
+        state_dict = checkpoint_data
+
+    # Detectar arquitectura automaticamente del checkpoint
+    arch_params = detect_architecture_from_checkpoint(state_dict)
+    logger.info("Arquitectura detectada: coord_attention=%s, deep_head=%s, hidden_dim=%d",
+                arch_params["use_coord_attention"], arch_params["deep_head"], arch_params["hidden_dim"])
+
+    model = create_model(
+        pretrained=False,
+        use_coord_attention=arch_params["use_coord_attention"],
+        deep_head=arch_params["deep_head"],
+        hidden_dim=arch_params["hidden_dim"],
+    )
+    model.load_state_dict(state_dict)
     model = model.to(torch_device)
     model.eval()
 
-    # Crear dataset de test
+    # Crear dataset
     logger.info("Cargando dataset desde: %s", data_root)
+    df = load_coordinates_csv(csv_path)
+    logger.info("CSV cargado: %d muestras totales", len(df))
 
-    test_transform = get_val_transforms(image_size=DEFAULT_IMAGE_SIZE)
-    test_dataset = LandmarkDataset(
-        csv_path=csv_path,
-        root_dir=data_root,
-        transform=test_transform
-    )
+    # Filtrar por split si es necesario
+    if split != "all":
+        from sklearn.model_selection import train_test_split
+        SPLIT_SEED = 42  # Mismo seed que en training
+        train_df, temp_df = train_test_split(
+            df, test_size=0.25, random_state=SPLIT_SEED, stratify=df['category']
+        )
+        val_df, test_df = train_test_split(
+            temp_df, test_size=0.4, random_state=SPLIT_SEED, stratify=temp_df['category']
+        )
+
+        if split == "test":
+            df = test_df
+        elif split == "val":
+            df = val_df
+        elif split == "train":
+            df = train_df
+        else:
+            logger.error("Split invalido: %s (usar: test, val, train, all)", split)
+            raise typer.Exit(code=1)
+
+    logger.info("Evaluando split '%s': %d muestras", split, len(df))
+
+    test_transform = get_val_transforms(output_size=DEFAULT_IMAGE_SIZE)
+    test_dataset = LandmarkDataset(df, data_root, transform=test_transform)
+
+    # Custom collate para incluir metadata
+    def collate_fn(batch):
+        images = torch.stack([item[0] for item in batch])
+        landmarks = torch.stack([item[1] for item in batch])
+        metas = [item[2] for item in batch]
+        return images, landmarks, metas
 
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
         num_workers=4,
-        pin_memory=True
+        pin_memory=True,
+        collate_fn=collate_fn
     )
 
     # Evaluar
@@ -392,19 +500,20 @@ def evaluate(
     logger.info("-" * 40)
     logger.info("RESULTADOS")
     logger.info("-" * 40)
-    logger.info("Error promedio: %.2f px", results["mean_error"])
-    logger.info("Error mediana: %.2f px", results["median_error"])
-    logger.info("Error std: %.2f px", results["std_error"])
+    overall = results["overall"]
+    logger.info("Error promedio: %.2f px", overall["mean"])
+    logger.info("Error mediana: %.2f px", overall["median"])
+    logger.info("Error std: %.2f px", overall["std"])
 
     if "per_landmark" in results:
         logger.info("\nError por landmark:")
-        for name, error in results["per_landmark"].items():
-            logger.info("  %s: %.2f px", name, error)
+        for name, stats in results["per_landmark"].items():
+            logger.info("  %s: %.2f px (std=%.2f)", name, stats["mean"], stats["std"])
 
     if "per_category" in results:
         logger.info("\nError por categoria:")
-        for cat, error in results["per_category"].items():
-            logger.info("  %s: %.2f px", cat, error)
+        for cat, stats in results["per_category"].items():
+            logger.info("  %s: %.2f px (n=%d)", cat, stats["mean"], stats["count"])
 
     # Guardar JSON si se especifica
     if output_json:
@@ -489,16 +598,27 @@ def predict(
     torch_device = get_device(device)
     logger.info("Usando dispositivo: %s", torch_device)
 
-    # Cargar modelo
+    # Cargar checkpoint y detectar arquitectura
     logger.info("Cargando modelo desde: %s", checkpoint)
-    model = create_model(pretrained=False)
-
     checkpoint_data = torch.load(checkpoint, map_location=torch_device, weights_only=False)
-    if "model_state_dict" in checkpoint_data:
-        model.load_state_dict(checkpoint_data["model_state_dict"])
-    else:
-        model.load_state_dict(checkpoint_data)
 
+    if "model_state_dict" in checkpoint_data:
+        state_dict = checkpoint_data["model_state_dict"]
+    else:
+        state_dict = checkpoint_data
+
+    # Detectar arquitectura automaticamente del checkpoint
+    arch_params = detect_architecture_from_checkpoint(state_dict)
+    logger.info("Arquitectura detectada: coord_attention=%s, deep_head=%s, hidden_dim=%d",
+                arch_params["use_coord_attention"], arch_params["deep_head"], arch_params["hidden_dim"])
+
+    model = create_model(
+        pretrained=False,
+        use_coord_attention=arch_params["use_coord_attention"],
+        deep_head=arch_params["deep_head"],
+        hidden_dim=arch_params["hidden_dim"],
+    )
+    model.load_state_dict(state_dict)
     model = model.to(torch_device)
     model.eval()
 
@@ -595,14 +715,14 @@ def warp(
         help="Path al checkpoint del modelo para prediccion de landmarks"
     ),
     canonical_shape: str = typer.Option(
-        "data/canonical/canonical_shape.npy",
+        "outputs/shape_analysis/canonical_shape_gpa.json",
         "--canonical",
-        help="Path a la forma canonica (.npy)"
+        help="Path a la forma canonica (.json o .npy)"
     ),
     triangles: str = typer.Option(
-        "data/canonical/delaunay_triangles.npy",
+        "outputs/shape_analysis/canonical_delaunay_triangles.json",
         "--triangles",
-        help="Path a los triangulos de Delaunay (.npy)"
+        help="Path a los triangulos de Delaunay (.json o .npy)"
     ),
     margin_scale: float = typer.Option(
         1.05,
@@ -662,9 +782,25 @@ def warp(
         logger.error("Triangulos de Delaunay no existen: %s", triangles)
         raise typer.Exit(code=1)
 
-    canonical = np.load(canonical_shape)
-    tri = np.load(triangles)
+    # Soportar formato JSON y NPY
+    if canonical_shape.endswith('.json'):
+        import json
+        with open(canonical_shape, 'r') as f:
+            data = json.load(f)
+        canonical = np.array(data['canonical_shape_pixels'])
+    else:
+        canonical = np.load(canonical_shape)
+
+    if triangles.endswith('.json'):
+        import json
+        with open(triangles, 'r') as f:
+            data = json.load(f)
+        tri = np.array(data['triangles'])
+    else:
+        tri = np.load(triangles)
+
     logger.info("Forma canonica cargada: %s", canonical.shape)
+    logger.info("Triangulos Delaunay cargados: %s", tri.shape)
 
     # Crear directorio de salida
     output_path = Path(output_dir)
@@ -674,16 +810,27 @@ def warp(
     torch_device = get_device(device)
     logger.info("Usando dispositivo: %s", torch_device)
 
-    # Cargar modelo
+    # Cargar checkpoint y detectar arquitectura
     logger.info("Cargando modelo desde: %s", checkpoint)
-    model = create_model(pretrained=False)
-
     checkpoint_data = torch.load(checkpoint, map_location=torch_device, weights_only=False)
-    if "model_state_dict" in checkpoint_data:
-        model.load_state_dict(checkpoint_data["model_state_dict"])
-    else:
-        model.load_state_dict(checkpoint_data)
 
+    if "model_state_dict" in checkpoint_data:
+        state_dict = checkpoint_data["model_state_dict"]
+    else:
+        state_dict = checkpoint_data
+
+    # Detectar arquitectura automaticamente del checkpoint
+    arch_params = detect_architecture_from_checkpoint(state_dict)
+    logger.info("Arquitectura detectada: coord_attention=%s, deep_head=%s, hidden_dim=%d",
+                arch_params["use_coord_attention"], arch_params["deep_head"], arch_params["hidden_dim"])
+
+    model = create_model(
+        pretrained=False,
+        use_coord_attention=arch_params["use_coord_attention"],
+        deep_head=arch_params["deep_head"],
+        hidden_dim=arch_params["hidden_dim"],
+    )
+    model.load_state_dict(state_dict)
     model = model.to(torch_device)
     model.eval()
 

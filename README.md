@@ -14,14 +14,15 @@ This project implements a two-stage approach for COVID-19 classification:
 
 | Metric | Value |
 |--------|-------|
-| Landmark Error (Ensemble + TTA) | **3.79 px** |
-| Landmark Error Std | 2.49 px |
-| Best Individual Model | 4.04 px |
+| Landmark Error (Ensemble + TTA) | **4.50 px** |
+| Landmark Error Std | 2.99 px |
+| Median Error | 3.91 px |
+| Best Individual Model (TTA) | 4.04 px |
 
-### Per-Category Landmark Performance
-- Normal: 3.53 px
-- COVID-19: 3.83 px
-- Viral Pneumonia: 4.42 px
+### Per-Category Landmark Performance (Test Split)
+- Normal: 4.01 px
+- COVID-19: 4.76 px
+- Viral Pneumonia: 5.34 px
 
 ## Architecture
 
@@ -107,10 +108,45 @@ The project uses the [COVID-19 Radiography Database](https://www.kaggle.com/data
 
 ## Usage
 
-### Training
+### CLI Commands (src_v2)
+
+The project includes a modern CLI built with Typer:
 
 ```bash
+# View all available commands
+python -m src_v2 --help
+
 # Train landmark prediction model
+python -m src_v2 train --data-root data/ \
+  --csv-path data/coordenadas/coordenadas_maestro.csv \
+  --checkpoint-dir checkpoints_v2 \
+  --phase1-epochs 15 --phase2-epochs 100
+
+# Evaluate model on test set (default: test split, 10% of data)
+python -m src_v2 evaluate checkpoints_v2/final_model.pt \
+  --data-root data/ --csv-path data/coordenadas/coordenadas_maestro.csv \
+  --tta --split test
+
+# Evaluate on all data
+python -m src_v2 evaluate checkpoints_v2/final_model.pt --split all
+
+# Predict landmarks on a single image
+python -m src_v2 predict data/dataset/COVID/COVID-100.png \
+  --checkpoint checkpoints_v2/final_model.pt \
+  --output outputs/prediction.png
+
+# Apply geometric warping to a dataset
+python -m src_v2 warp data/dataset/ outputs/warped/ \
+  --checkpoint checkpoints_v2/final_model.pt
+
+# Show version
+python -m src_v2 version
+```
+
+### Legacy Scripts
+
+```bash
+# Train landmark prediction model (legacy)
 python scripts/train.py
 
 # Train classifier on warped images
@@ -120,23 +156,35 @@ python scripts/train_classifier.py
 python scripts/evaluate_ensemble.py
 ```
 
-### Inference
+### Inference (Python API)
 
 ```python
+import torch
 from src_v2.models import create_model
 
-# Load model
+# Load model (architecture auto-detected from checkpoint)
+checkpoint = torch.load('path/to/checkpoint.pt')
+state_dict = checkpoint['model_state_dict']
+
+# Auto-detect architecture from state_dict keys
+use_coord_attention = any('coord_attention' in k for k in state_dict.keys())
+deep_head = 'head.9.weight' in state_dict
+hidden_dim = state_dict['head.5.weight'].shape[0] if deep_head else 256
+
 model = create_model(
     num_landmarks=15,
-    pretrained=True,
-    use_coord_attention=True,
-    deep_head=True
+    pretrained=False,
+    use_coord_attention=use_coord_attention,
+    deep_head=deep_head,
+    hidden_dim=hidden_dim
 )
-model.load_state_dict(torch.load('path/to/checkpoint.pt'))
+model.load_state_dict(state_dict)
 
 # Predict landmarks
 landmarks = model.predict_landmarks(image_tensor)  # Shape: (B, 15, 2)
 ```
+
+**Note:** The CLI commands (`evaluate`, `predict`, `warp`) automatically detect the model architecture from the checkpoint.
 
 ## Preprocessing
 

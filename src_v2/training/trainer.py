@@ -278,7 +278,7 @@ class LandmarkTrainer:
         train_loader: DataLoader,
         val_loader: DataLoader,
         criterion: Callable,
-        epochs: int = 50,
+        epochs: int = 100,
         backbone_lr: float = 2e-5,
         head_lr: float = 2e-4,
         patience: int = 10

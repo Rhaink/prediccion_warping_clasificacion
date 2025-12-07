@@ -226,12 +226,15 @@ def main():
             'Viral_Pneumonia': args.viral_weight,
         }
 
+    # IMPORTANTE: Siempre usar random_state=42 para el split de datos
+    # El seed del modelo (args.seed) solo afecta inicialización del modelo
+    # Esto garantiza que train/val/test siempre contengan las mismas imágenes
     train_loader, val_loader, test_loader = create_dataloaders(
         csv_path=str(PROJECT_ROOT / args.csv_path),
         data_root=str(PROJECT_ROOT / args.data_root),
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        random_state=args.seed,
+        random_state=42,  # Fijo para reproducibilidad del split
         flip_prob=args.flip_prob,
         rotation_degrees=args.rotation,
         use_clahe=args.clahe,
