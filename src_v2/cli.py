@@ -184,6 +184,55 @@ def train(
         "--dropout",
         help="Tasa de dropout"
     ),
+    # Loss function
+    loss_type: str = typer.Option(
+        "wing",
+        "--loss",
+        help="Tipo de loss: wing, weighted_wing, combined"
+    ),
+    # CLAHE preprocessing
+    use_clahe: bool = typer.Option(
+        True,
+        "--clahe/--no-clahe",
+        help="Usar CLAHE para mejora de contraste"
+    ),
+    clahe_clip: float = typer.Option(
+        2.0,
+        "--clahe-clip",
+        help="CLAHE clip limit"
+    ),
+    clahe_tile: int = typer.Option(
+        4,
+        "--clahe-tile",
+        help="CLAHE tile size"
+    ),
+    # Learning rates
+    phase1_lr: float = typer.Option(
+        1e-3,
+        "--phase1-lr",
+        help="Learning rate para fase 1"
+    ),
+    phase2_backbone_lr: float = typer.Option(
+        2e-5,
+        "--phase2-backbone-lr",
+        help="Learning rate del backbone en fase 2"
+    ),
+    phase2_head_lr: float = typer.Option(
+        2e-4,
+        "--phase2-head-lr",
+        help="Learning rate de la cabeza en fase 2"
+    ),
+    # Early stopping
+    phase1_patience: int = typer.Option(
+        5,
+        "--phase1-patience",
+        help="Paciencia early stopping fase 1"
+    ),
+    phase2_patience: int = typer.Option(
+        10,
+        "--phase2-patience",
+        help="Paciencia early stopping fase 2"
+    ),
 ):
     """
     Entrenar modelo de prediccion de landmarks.
@@ -191,6 +240,11 @@ def train(
     Entrenamiento en dos fases:
     - Fase 1: Backbone congelado, entrenar solo cabeza
     - Fase 2: Fine-tuning completo con LR diferenciado
+
+    Valores por defecto reproducen el mejor modelo (4.50 px ensemble):
+    - Loss: WingLoss
+    - CLAHE: enabled (clip=2.0, tile=4)
+    - Arquitectura: CoordAttention + DeepHead (hidden_dim=768)
     """
     import torch
     from torch.utils.data import DataLoader, random_split
@@ -269,9 +323,20 @@ def train(
 
     logger.info("Dataset splits: train=%d, val=%d, test=%d", len(train_df), len(val_df), len(test_df))
 
-    # Crear datasets con transforms
-    train_transform = get_train_transforms(output_size=DEFAULT_IMAGE_SIZE)
-    val_transform = get_val_transforms(output_size=DEFAULT_IMAGE_SIZE)
+    # Crear datasets con transforms (con CLAHE si está habilitado)
+    logger.info("Transforms: CLAHE=%s (clip=%.1f, tile=%d)", use_clahe, clahe_clip, clahe_tile)
+    train_transform = get_train_transforms(
+        output_size=DEFAULT_IMAGE_SIZE,
+        use_clahe=use_clahe,
+        clahe_clip_limit=clahe_clip,
+        clahe_tile_size=clahe_tile
+    )
+    val_transform = get_val_transforms(
+        output_size=DEFAULT_IMAGE_SIZE,
+        use_clahe=use_clahe,
+        clahe_clip_limit=clahe_clip,
+        clahe_tile_size=clahe_tile
+    )
 
     train_set = LandmarkDataset(train_df, data_root, transform=train_transform)
     val_set = LandmarkDataset(val_df, data_root, transform=val_transform)
@@ -307,11 +372,28 @@ def train(
     model = model.to(torch_device)
 
     # Loss function
-    criterion = CombinedLandmarkLoss(
-        image_size=DEFAULT_IMAGE_SIZE,
-        central_weight=1.0,
-        symmetry_weight=0.5
-    )
+    from src_v2.models.losses import WingLoss, WeightedWingLoss
+
+    logger.info("Loss function: %s", loss_type)
+    if loss_type == "wing":
+        criterion = WingLoss(omega=10.0, epsilon=2.0, normalized=True, image_size=DEFAULT_IMAGE_SIZE)
+    elif loss_type == "weighted_wing":
+        from src_v2.models.losses import get_landmark_weights
+        weights = get_landmark_weights("uniform")
+        criterion = WeightedWingLoss(
+            omega=10.0, epsilon=2.0,
+            weights=weights.to(torch_device),
+            normalized=True, image_size=DEFAULT_IMAGE_SIZE
+        )
+    elif loss_type == "combined":
+        criterion = CombinedLandmarkLoss(
+            image_size=DEFAULT_IMAGE_SIZE,
+            central_weight=1.0,
+            symmetry_weight=0.5
+        )
+    else:
+        logger.error("Loss desconocida: %s (usar: wing, weighted_wing, combined)", loss_type)
+        raise typer.Exit(code=1)
     criterion = criterion.to(torch_device)
 
     # Trainer
@@ -324,12 +406,20 @@ def train(
 
     # Entrenar
     logger.info("Iniciando entrenamiento...")
+    logger.info("  Phase 1: epochs=%d, lr=%.1e, patience=%d", phase1_epochs, phase1_lr, phase1_patience)
+    logger.info("  Phase 2: epochs=%d, backbone_lr=%.1e, head_lr=%.1e, patience=%d",
+                phase2_epochs, phase2_backbone_lr, phase2_head_lr, phase2_patience)
     history = trainer.train_full(
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
         phase1_epochs=phase1_epochs,
         phase2_epochs=phase2_epochs,
+        phase1_lr=phase1_lr,
+        phase2_backbone_lr=phase2_backbone_lr,
+        phase2_head_lr=phase2_head_lr,
+        phase1_patience=phase1_patience,
+        phase2_patience=phase2_patience,
     )
 
     # Guardar modelo final
@@ -386,6 +476,22 @@ def evaluate(
         "--split",
         "-s",
         help="Split a evaluar: test, val, train, all"
+    ),
+    # CLAHE preprocessing (debe coincidir con entrenamiento)
+    use_clahe: bool = typer.Option(
+        True,
+        "--clahe/--no-clahe",
+        help="Usar CLAHE para mejora de contraste (debe coincidir con entrenamiento)"
+    ),
+    clahe_clip: float = typer.Option(
+        2.0,
+        "--clahe-clip",
+        help="CLAHE clip limit"
+    ),
+    clahe_tile: int = typer.Option(
+        4,
+        "--clahe-tile",
+        help="CLAHE tile size"
     ),
 ):
     """
@@ -468,8 +574,14 @@ def evaluate(
             raise typer.Exit(code=1)
 
     logger.info("Evaluando split '%s': %d muestras", split, len(df))
+    logger.info("Transforms: CLAHE=%s (clip=%.1f, tile=%d)", use_clahe, clahe_clip, clahe_tile)
 
-    test_transform = get_val_transforms(output_size=DEFAULT_IMAGE_SIZE)
+    test_transform = get_val_transforms(
+        output_size=DEFAULT_IMAGE_SIZE,
+        use_clahe=use_clahe,
+        clahe_clip_limit=clahe_clip,
+        clahe_tile_size=clahe_tile
+    )
     test_dataset = LandmarkDataset(df, data_root, transform=test_transform)
 
     # Custom collate para incluir metadata
