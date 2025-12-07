@@ -1,12 +1,13 @@
 """
-Transformaciones y augmentations para landmarks
+Transformaciones y augmentations para landmarks.
 
 IMPORTANTE: El flip horizontal debe intercambiar indices de pares simetricos,
 no solo reflejar coordenadas.
 
-SESION 7: Agregado CLAHE para mejorar visibilidad en imagenes COVID
+SESION 7: Agregado CLAHE para mejorar visibilidad en imagenes COVID.
 """
 
+import logging
 import numpy as np
 import torch
 from PIL import Image
@@ -15,9 +16,18 @@ import torchvision.transforms.functional as TF
 import random
 import cv2
 
+from src_v2.constants import (
+    SYMMETRIC_PAIRS,
+    DEFAULT_IMAGE_SIZE,
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    DEFAULT_CLAHE_CLIP_LIMIT,
+    DEFAULT_CLAHE_TILE_SIZE,
+    DEFAULT_FLIP_PROB,
+    DEFAULT_ROTATION_DEGREES,
+)
 
-# Pares simetricos (indices 0-based)
-SYMMETRIC_PAIRS = [(2, 3), (4, 5), (6, 7), (11, 12), (13, 14)]
+logger = logging.getLogger(__name__)
 
 
 def apply_clahe(
@@ -78,12 +88,12 @@ class LandmarkTransform:
 
     def __init__(
         self,
-        output_size: int = 224,
-        normalize_mean: Tuple[float, float, float] = (0.485, 0.456, 0.406),
-        normalize_std: Tuple[float, float, float] = (0.229, 0.224, 0.225),
+        output_size: int = DEFAULT_IMAGE_SIZE,
+        normalize_mean: Tuple[float, float, float] = IMAGENET_MEAN,
+        normalize_std: Tuple[float, float, float] = IMAGENET_STD,
         use_clahe: bool = False,
-        clahe_clip_limit: float = 2.0,
-        clahe_tile_size: int = 8,
+        clahe_clip_limit: float = DEFAULT_CLAHE_CLIP_LIMIT,
+        clahe_tile_size: int = DEFAULT_CLAHE_TILE_SIZE,
     ):
         self.output_size = output_size
         self.normalize_mean = normalize_mean
@@ -140,14 +150,14 @@ class TrainTransform(LandmarkTransform):
 
     def __init__(
         self,
-        output_size: int = 224,
-        flip_prob: float = 0.5,
-        rotation_degrees: float = 10.0,
+        output_size: int = DEFAULT_IMAGE_SIZE,
+        flip_prob: float = DEFAULT_FLIP_PROB,
+        rotation_degrees: float = DEFAULT_ROTATION_DEGREES,
         brightness_range: Tuple[float, float] = (0.8, 1.2),
         contrast_range: Tuple[float, float] = (0.8, 1.2),
         use_clahe: bool = False,
-        clahe_clip_limit: float = 2.0,
-        clahe_tile_size: int = 8,
+        clahe_clip_limit: float = DEFAULT_CLAHE_CLIP_LIMIT,
+        clahe_tile_size: int = DEFAULT_CLAHE_TILE_SIZE,
         **kwargs
     ):
         super().__init__(
@@ -295,10 +305,10 @@ class ValTransform(LandmarkTransform):
 
     def __init__(
         self,
-        output_size: int = 224,
+        output_size: int = DEFAULT_IMAGE_SIZE,
         use_clahe: bool = False,
-        clahe_clip_limit: float = 2.0,
-        clahe_tile_size: int = 8,
+        clahe_clip_limit: float = DEFAULT_CLAHE_CLIP_LIMIT,
+        clahe_tile_size: int = DEFAULT_CLAHE_TILE_SIZE,
         **kwargs
     ):
         super().__init__(
@@ -343,12 +353,12 @@ class ValTransform(LandmarkTransform):
 
 
 def get_train_transforms(
-    output_size: int = 224,
-    flip_prob: float = 0.5,
-    rotation_degrees: float = 10.0,
+    output_size: int = DEFAULT_IMAGE_SIZE,
+    flip_prob: float = DEFAULT_FLIP_PROB,
+    rotation_degrees: float = DEFAULT_ROTATION_DEGREES,
     use_clahe: bool = False,
-    clahe_clip_limit: float = 2.0,
-    clahe_tile_size: int = 8,
+    clahe_clip_limit: float = DEFAULT_CLAHE_CLIP_LIMIT,
+    clahe_tile_size: int = DEFAULT_CLAHE_TILE_SIZE,
     **kwargs
 ) -> TrainTransform:
     """Factory para transformaciones de entrenamiento."""
@@ -364,10 +374,10 @@ def get_train_transforms(
 
 
 def get_val_transforms(
-    output_size: int = 224,
+    output_size: int = DEFAULT_IMAGE_SIZE,
     use_clahe: bool = False,
-    clahe_clip_limit: float = 2.0,
-    clahe_tile_size: int = 8,
+    clahe_clip_limit: float = DEFAULT_CLAHE_CLIP_LIMIT,
+    clahe_tile_size: int = DEFAULT_CLAHE_TILE_SIZE,
     **kwargs
 ) -> ValTransform:
     """Factory para transformaciones de validacion."""
