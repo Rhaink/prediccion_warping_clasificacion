@@ -18,9 +18,8 @@ from src_v2.models.losses import (
     SoftSymmetryLoss,
     CombinedLandmarkLoss,
     get_landmark_weights,
-    SYMMETRIC_PAIRS,
-    CENTRAL_LANDMARKS
 )
+from src_v2.constants import SYMMETRIC_PAIRS, CENTRAL_LANDMARKS
 
 
 class TestWingLoss:

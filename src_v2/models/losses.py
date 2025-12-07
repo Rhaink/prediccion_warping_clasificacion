@@ -9,17 +9,21 @@ Incluye:
 - CombinedLandmarkLoss: Combinacion ponderada
 """
 
+import logging
+
 import torch
 import torch.nn as nn
 import numpy as np
 from typing import Optional, Dict
 
+from src_v2.constants import (
+    SYMMETRIC_PAIRS,
+    CENTRAL_LANDMARKS,
+    DEFAULT_IMAGE_SIZE,
+)
 
-# Pares simetricos (indices 0-based)
-SYMMETRIC_PAIRS = [(2, 3), (4, 5), (6, 7), (11, 12), (13, 14)]
 
-# Landmarks centrales
-CENTRAL_LANDMARKS = [8, 9, 10]  # L9, L10, L11
+logger = logging.getLogger(__name__)
 
 
 class WingLoss(nn.Module):
@@ -36,7 +40,7 @@ class WingLoss(nn.Module):
     """
 
     def __init__(self, omega: float = 10.0, epsilon: float = 2.0,
-                 normalized: bool = True, image_size: int = 224):
+                 normalized: bool = True, image_size: int = DEFAULT_IMAGE_SIZE):
         """
         Args:
             omega: Umbral para cambio de regimen (en pixeles si normalized=True)
@@ -93,7 +97,7 @@ class WeightedWingLoss(nn.Module):
         epsilon: float = 2.0,
         weights: Optional[torch.Tensor] = None,
         normalized: bool = True,
-        image_size: int = 224
+        image_size: int = DEFAULT_IMAGE_SIZE
     ):
         """
         Args:
@@ -166,7 +170,7 @@ class CentralAlignmentLoss(nn.Module):
     al Wing Loss. La distancia de 1.3 px en 224 px = 0.0058 normalizado.
     """
 
-    def __init__(self, image_size: int = 224):
+    def __init__(self, image_size: int = DEFAULT_IMAGE_SIZE):
         """
         Args:
             image_size: Tamano de imagen (para referencia, no escala)
@@ -230,7 +234,7 @@ class SoftSymmetryLoss(nn.Module):
     al Wing Loss. El margen de 6 px en 224 px = 0.027 normalizado.
     """
 
-    def __init__(self, margin: float = 6.0, image_size: int = 224):
+    def __init__(self, margin: float = 6.0, image_size: int = DEFAULT_IMAGE_SIZE):
         """
         Args:
             margin: Margen de asimetria permitida en pixeles
@@ -313,7 +317,7 @@ class CombinedLandmarkLoss(nn.Module):
         central_weight: float = 1.0,
         symmetry_weight: float = 0.5,
         symmetry_margin: float = 6.0,
-        image_size: int = 224
+        image_size: int = DEFAULT_IMAGE_SIZE
     ):
         """
         Args:
