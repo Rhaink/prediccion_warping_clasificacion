@@ -2,17 +2,23 @@
 Trainer unificado para landmark prediction
 """
 
+import logging
+import time
+from pathlib import Path
+from typing import Optional, Dict, List, Tuple, Callable
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from typing import Optional, Dict, List, Tuple, Callable
-from pathlib import Path
-import time
 from tqdm import tqdm
 
+from src_v2.constants import DEFAULT_IMAGE_SIZE
 from .callbacks import EarlyStopping, ModelCheckpoint, LRSchedulerCallback
+
+
+logger = logging.getLogger(__name__)
 
 
 class LandmarkTrainer:
@@ -27,7 +33,7 @@ class LandmarkTrainer:
         model: nn.Module,
         device: torch.device,
         save_dir: str = './checkpoints',
-        image_size: int = 224
+        image_size: int = DEFAULT_IMAGE_SIZE
     ):
         """
         Args:
@@ -203,9 +209,9 @@ class LandmarkTrainer:
         Returns:
             Historial de entrenamiento
         """
-        print("=" * 60)
-        print("PHASE 1: Training head only (backbone + coord_attention frozen)")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("PHASE 1: Training head only (backbone + coord_attention frozen)")
+        logger.info("=" * 60)
 
         # Asegurar backbone y coord_attention congelados
         if hasattr(self.model, 'freeze_all_except_head'):
@@ -241,9 +247,12 @@ class LandmarkTrainer:
             elapsed = time.time() - start_time
 
             # Log
-            print(f"Epoch {epoch+1}/{epochs} ({elapsed:.1f}s)")
-            print(f"  Train: loss={train_metrics['loss']:.4f}, error={train_metrics['error_px']:.2f}px")
-            print(f"  Val:   loss={val_metrics['val_loss']:.4f}, error={val_metrics['val_error_px']:.2f}px")
+            logger.info(
+                "Epoch %d/%d (%.1fs) - Train: loss=%.4f, error=%.2fpx - Val: loss=%.4f, error=%.2fpx",
+                epoch + 1, epochs, elapsed,
+                train_metrics['loss'], train_metrics['error_px'],
+                val_metrics['val_loss'], val_metrics['val_error_px']
+            )
 
             # Update history
             history['train_loss'].append(train_metrics['loss'])
@@ -260,7 +269,7 @@ class LandmarkTrainer:
 
         # Cargar mejor modelo
         checkpoint.load_best(self.model)
-        print(f"\nPhase 1 complete. Best val error: {early_stopping.best_score:.2f}px")
+        logger.info("Phase 1 complete. Best val error: %.2fpx", early_stopping.best_score)
 
         return history
 
@@ -289,9 +298,9 @@ class LandmarkTrainer:
         Returns:
             Historial de entrenamiento
         """
-        print("\n" + "=" * 60)
-        print("PHASE 2: Fine-tuning (backbone + coord_attention unfrozen)")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("PHASE 2: Fine-tuning (backbone + coord_attention unfrozen)")
+        logger.info("=" * 60)
 
         # Descongelar todo (backbone + coord_attention)
         if hasattr(self.model, 'unfreeze_all'):
@@ -333,9 +342,12 @@ class LandmarkTrainer:
             current_lr = optimizer.param_groups[0]['lr']
 
             # Log
-            print(f"Epoch {epoch+1}/{epochs} ({elapsed:.1f}s) [lr={current_lr:.2e}]")
-            print(f"  Train: loss={train_metrics['loss']:.4f}, error={train_metrics['error_px']:.2f}px")
-            print(f"  Val:   loss={val_metrics['val_loss']:.4f}, error={val_metrics['val_error_px']:.2f}px")
+            logger.info(
+                "Epoch %d/%d (%.1fs) [lr=%.2e] - Train: loss=%.4f, error=%.2fpx - Val: loss=%.4f, error=%.2fpx",
+                epoch + 1, epochs, elapsed, current_lr,
+                train_metrics['loss'], train_metrics['error_px'],
+                val_metrics['val_loss'], val_metrics['val_error_px']
+            )
 
             # Update history
             history['train_loss'].append(train_metrics['loss'])
@@ -354,7 +366,7 @@ class LandmarkTrainer:
 
         # Cargar mejor modelo
         checkpoint.load_best(self.model)
-        print(f"\nPhase 2 complete. Best val error: {early_stopping.best_score:.2f}px")
+        logger.info("Phase 2 complete. Best val error: %.2fpx", early_stopping.best_score)
 
         return history
 
@@ -409,7 +421,7 @@ class LandmarkTrainer:
             'history': self.history
         }
         torch.save(checkpoint, path)
-        print(f"Model saved to {path}")
+        logger.info("Model saved to %s", path)
 
     def load_model(self, path: str):
         """Carga modelo guardado."""
@@ -417,4 +429,4 @@ class LandmarkTrainer:
         self.model.load_state_dict(checkpoint['model_state_dict'])
         if 'history' in checkpoint:
             self.history = checkpoint['history']
-        print(f"Model loaded from {path}")
+        logger.info("Model loaded from %s", path)

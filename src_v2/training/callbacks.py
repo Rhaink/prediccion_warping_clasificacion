@@ -2,11 +2,16 @@
 Callbacks para entrenamiento
 """
 
-import torch
-import numpy as np
+import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
-from datetime import datetime
+
+import torch
+import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 
 class EarlyStopping:
@@ -66,13 +71,15 @@ class EarlyStopping:
         else:
             self.counter += 1
             if self.verbose:
-                print(f"  EarlyStopping: {self.counter}/{self.patience} "
-                      f"(best: {self.best_score:.4f} @ epoch {self.best_epoch})")
+                logger.info(
+                    "EarlyStopping: %d/%d (best: %.4f @ epoch %d)",
+                    self.counter, self.patience, self.best_score, self.best_epoch
+                )
 
             if self.counter >= self.patience:
                 self.should_stop = True
                 if self.verbose:
-                    print(f"  Early stopping triggered!")
+                    logger.info("Early stopping triggered!")
 
         return self.should_stop
 
@@ -169,7 +176,7 @@ class ModelCheckpoint:
         torch.save(checkpoint, filepath)
 
         if self.verbose and should_save:
-            print(f"  Checkpoint saved: {filepath.name} ({self.monitor}={score:.4f})")
+            logger.info("Checkpoint saved: %s (%s=%.4f)", filepath.name, self.monitor, score)
 
         # Guardar referencia al mejor
         if should_save:
@@ -186,7 +193,7 @@ class ModelCheckpoint:
             optimizer: Optimizador opcional
         """
         if self.best_path is None or not self.best_path.exists():
-            print("No checkpoint found to load")
+            logger.warning("No checkpoint found to load")
             return
 
         checkpoint = torch.load(self.best_path, weights_only=False)
@@ -195,7 +202,7 @@ class ModelCheckpoint:
         if optimizer is not None:
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-        print(f"Loaded best checkpoint from epoch {checkpoint['epoch']}")
+        logger.info("Loaded best checkpoint from epoch %d", checkpoint['epoch'])
 
 
 class LRSchedulerCallback:
