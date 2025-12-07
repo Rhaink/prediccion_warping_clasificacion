@@ -2,24 +2,28 @@
 Metricas de evaluacion para landmark prediction
 """
 
-import torch
-import numpy as np
-from torch.utils.data import DataLoader
-from typing import Dict, List, Tuple, Optional
+import logging
 from collections import defaultdict
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+
+from src_v2.constants import (
+    LANDMARK_NAMES,
+    SYMMETRIC_PAIRS,
+    DEFAULT_IMAGE_SIZE,
+)
 
 
-# Nombres de landmarks
-LANDMARK_NAMES = [
-    'L1',  'L2',  'L3',  'L4',  'L5',  'L6',  'L7',  'L8',
-    'L9',  'L10', 'L11', 'L12', 'L13', 'L14', 'L15'
-]
+logger = logging.getLogger(__name__)
 
 
 def compute_pixel_error(
     pred: torch.Tensor,
     target: torch.Tensor,
-    image_size: int = 224
+    image_size: int = DEFAULT_IMAGE_SIZE
 ) -> torch.Tensor:
     """
     Calcula error euclidiano en pixeles.
@@ -43,7 +47,7 @@ def compute_pixel_error(
 def compute_error_per_landmark(
     pred: torch.Tensor,
     target: torch.Tensor,
-    image_size: int = 224
+    image_size: int = DEFAULT_IMAGE_SIZE
 ) -> Dict[str, float]:
     """
     Calcula error promedio por landmark.
@@ -62,8 +66,8 @@ def evaluate_model(
     model: torch.nn.Module,
     data_loader: DataLoader,
     device: torch.device,
-    image_size: int = 224
-) -> Dict[str, any]:
+    image_size: int = DEFAULT_IMAGE_SIZE
+) -> Dict[str, Any]:
     """
     Evaluacion completa del modelo.
 
@@ -159,7 +163,7 @@ def compute_error_per_category(
     pred: torch.Tensor,
     target: torch.Tensor,
     categories: List[str],
-    image_size: int = 224
+    image_size: int = DEFAULT_IMAGE_SIZE
 ) -> Dict[str, Dict[str, float]]:
     """
     Calcula error promedio por categoria.
@@ -268,10 +272,6 @@ def compute_success_rate(
     }
 
 
-# Pares simetricos para TTA (indices 0-based)
-SYMMETRIC_PAIRS = [(2, 3), (4, 5), (6, 7), (11, 12), (13, 14)]
-
-
 def _flip_landmarks_horizontal(landmarks: torch.Tensor) -> torch.Tensor:
     """
     Flip horizontal de landmarks normalizados [0,1].
@@ -343,8 +343,8 @@ def evaluate_model_with_tta(
     model: torch.nn.Module,
     data_loader: DataLoader,
     device: torch.device,
-    image_size: int = 224
-) -> Dict[str, any]:
+    image_size: int = DEFAULT_IMAGE_SIZE
+) -> Dict[str, Any]:
     """
     Evaluacion completa del modelo con TTA.
 
