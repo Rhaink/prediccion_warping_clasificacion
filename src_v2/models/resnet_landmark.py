@@ -2,11 +2,22 @@
 Modelo ResNet-18 para prediccion de landmarks
 """
 
+import logging
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 from typing import Optional, List, Tuple
+
+from src_v2.constants import (
+    NUM_LANDMARKS,
+    DEFAULT_IMAGE_SIZE,
+    BACKBONE_FEATURE_DIM,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 class CoordinateAttention(nn.Module):
@@ -67,7 +78,7 @@ class ResNet18Landmarks(nn.Module):
 
     def __init__(
         self,
-        num_landmarks: int = 15,
+        num_landmarks: int = NUM_LANDMARKS,
         pretrained: bool = True,
         freeze_backbone: bool = True,
         dropout_rate: float = 0.5,
@@ -77,7 +88,7 @@ class ResNet18Landmarks(nn.Module):
     ):
         """
         Args:
-            num_landmarks: Numero de landmarks (default 15)
+            num_landmarks: Numero de landmarks (default NUM_LANDMARKS)
             pretrained: Usar pesos pretrained de ImageNet
             freeze_backbone: Congelar backbone inicialmente
             dropout_rate: Tasa de dropout en cabeza
@@ -108,13 +119,13 @@ class ResNet18Landmarks(nn.Module):
         )
 
         # Coordinate Attention (opcional)
-        self.coord_attention = CoordinateAttention(512, reduction=32) if use_coord_attention else None
+        self.coord_attention = CoordinateAttention(BACKBONE_FEATURE_DIM, reduction=32) if use_coord_attention else None
 
         # Average pooling
         self.avgpool = resnet.avgpool
 
         # Dimension de features del backbone
-        self.feature_dim = 512
+        self.feature_dim = BACKBONE_FEATURE_DIM
 
         # Cabeza de regresion
         if deep_head:
@@ -242,7 +253,7 @@ class ResNet18Landmarks(nn.Module):
     def predict_landmarks(
         self,
         x: torch.Tensor,
-        image_size: int = 224
+        image_size: int = DEFAULT_IMAGE_SIZE
     ) -> torch.Tensor:
         """
         Prediccion con desnormalizacion a pixeles.
@@ -261,7 +272,7 @@ class ResNet18Landmarks(nn.Module):
 
 
 def create_model(
-    num_landmarks: int = 15,
+    num_landmarks: int = NUM_LANDMARKS,
     pretrained: bool = True,
     freeze_backbone: bool = True,
     dropout_rate: float = 0.5,
