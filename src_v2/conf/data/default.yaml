@@ -1,0 +1,48 @@
+# Configuración de datos por defecto
+
+# Tamaño de imagen
+image_size: 224
+original_size: 299
+
+# Splits
+splits:
+  train: 0.75
+  val: 0.15
+  test: 0.10
+
+# DataLoader
+batch_size: 16
+num_workers: 4
+pin_memory: true
+
+# Preprocesamiento
+preprocessing:
+  clahe:
+    enabled: true
+    clip_limit: 2.0
+    tile_size: 8
+  normalize:
+    mean: [0.485, 0.456, 0.406]  # ImageNet
+    std: [0.229, 0.224, 0.225]
+
+# Augmentación (solo entrenamiento)
+augmentation:
+  enabled: true
+  flip_horizontal:
+    enabled: true
+    probability: 0.5
+  rotation:
+    enabled: true
+    degrees: 10.0
+  color_jitter:
+    enabled: true
+    brightness: 0.1
+    contrast: 0.1
+
+# Balanceo de clases
+class_balance:
+  enabled: true
+  weights:
+    COVID: 2.0
+    Normal: 1.0
+    Viral_Pneumonia: 1.2

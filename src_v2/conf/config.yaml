@@ -1,0 +1,42 @@
+# Configuración principal del proyecto COVID-19 Detection via Anatomical Landmarks
+# Uso con Hydra: python -m src_v2.cli train --config-name=config
+
+defaults:
+  - model: resnet18
+  - training: default
+  - data: default
+  - _self_
+
+# Configuración del proyecto
+project:
+  name: "COVID-19 Landmark Detection"
+  version: "2.2"
+  description: "Detección de COVID-19 mediante predicción de landmarks anatómicos y normalización geométrica"
+
+# Paths (pueden ser sobreescritos via CLI)
+paths:
+  data_root: "data/"
+  csv_path: "data/coordenadas/coordenadas_maestro.csv"
+  checkpoint_dir: "checkpoints/"
+  output_dir: "outputs/"
+  log_dir: "logs/"
+
+# Seed para reproducibilidad
+seed: 42
+
+# Device
+device: "auto"  # auto, cuda, cpu, mps
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: null  # Si se especifica, también logea a archivo
+
+# Hydra configuration
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: outputs/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
