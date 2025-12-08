@@ -197,3 +197,89 @@ class TestCLIDeviceDetection:
         device = get_device('auto')
         # Debe ser cpu, cuda, o mps
         assert device.type in ['cpu', 'cuda', 'mps']
+
+
+class TestArchitectureDetection:
+    """Tests para deteccion automatica de arquitectura desde checkpoint."""
+
+    def test_detect_simple_architecture(self):
+        """Detectar arquitectura sin coord_attention ni deep_head."""
+        import torch
+        from src_v2.cli import detect_architecture_from_checkpoint
+
+        # Simular state_dict de modelo simple (sin coord_attention, sin deep_head)
+        # head simple tiene: Flatten, Dropout, Linear(512, 256), ReLU, Dropout, Linear(256, 30), Sigmoid
+        # indices: 0=Flatten, 1=Dropout, 2=Linear, 3=ReLU, 4=Dropout, 5=Linear, 6=Sigmoid
+        state_dict = {
+            'backbone_conv.0.weight': torch.randn(64, 3, 7, 7),
+            'head.2.weight': torch.randn(256, 512),  # Linear(512, 256)
+            'head.2.bias': torch.randn(256),
+            'head.5.weight': torch.randn(30, 256),   # Linear(256, 30)
+            'head.5.bias': torch.randn(30),
+        }
+
+        result = detect_architecture_from_checkpoint(state_dict)
+
+        assert result['use_coord_attention'] is False
+        assert result['deep_head'] is False
+        assert result['hidden_dim'] == 256
+
+    def test_detect_coord_attention(self):
+        """Detectar arquitectura con coord_attention."""
+        import torch
+        from src_v2.cli import detect_architecture_from_checkpoint
+
+        state_dict = {
+            'backbone_conv.0.weight': torch.randn(64, 3, 7, 7),
+            'coord_attention.conv1.weight': torch.randn(16, 512, 1, 1),
+            'coord_attention.bn1.weight': torch.randn(16),
+            'head.2.weight': torch.randn(256, 512),
+            'head.5.weight': torch.randn(30, 256),
+        }
+
+        result = detect_architecture_from_checkpoint(state_dict)
+
+        assert result['use_coord_attention'] is True
+        assert result['deep_head'] is False
+
+    def test_detect_deep_head(self):
+        """Detectar arquitectura con deep_head."""
+        import torch
+        from src_v2.cli import detect_architecture_from_checkpoint
+
+        # deep_head tiene indices hasta 9 (Linear final)
+        state_dict = {
+            'backbone_conv.0.weight': torch.randn(64, 3, 7, 7),
+            'head.1.weight': torch.randn(512, 512),    # Linear(512, 512)
+            'head.2.weight': torch.randn(512),         # GroupNorm
+            'head.5.weight': torch.randn(768, 512),    # Linear(512, 768)
+            'head.6.weight': torch.randn(768),         # GroupNorm
+            'head.9.weight': torch.randn(30, 768),     # Linear(768, 30)
+            'head.9.bias': torch.randn(30),
+        }
+
+        result = detect_architecture_from_checkpoint(state_dict)
+
+        assert result['use_coord_attention'] is False
+        assert result['deep_head'] is True
+        assert result['hidden_dim'] == 768
+
+    def test_detect_full_architecture(self):
+        """Detectar arquitectura con coord_attention y deep_head."""
+        import torch
+        from src_v2.cli import detect_architecture_from_checkpoint
+
+        state_dict = {
+            'backbone_conv.0.weight': torch.randn(64, 3, 7, 7),
+            'coord_attention.conv1.weight': torch.randn(16, 512, 1, 1),
+            'coord_attention.bn1.weight': torch.randn(16),
+            'head.1.weight': torch.randn(512, 512),
+            'head.5.weight': torch.randn(512, 512),    # hidden_dim=512
+            'head.9.weight': torch.randn(30, 512),
+        }
+
+        result = detect_architecture_from_checkpoint(state_dict)
+
+        assert result['use_coord_attention'] is True
+        assert result['deep_head'] is True
+        assert result['hidden_dim'] == 512
