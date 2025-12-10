@@ -1089,3 +1089,54 @@ class TestOptimizeMarginCommand:
         )
         assert result.returncode == 0
         assert 'optimize' in result.stdout.lower() or 'margin' in result.stdout.lower()
+
+
+class TestWarpingImports:
+    """Tests para verificar que cli.py usa la version correcta de warping.
+
+    Bug corregido en Sesion 36: cli.py usaba scripts/piecewise_affine_warp.py
+    en lugar de src_v2/processing/warp.py
+    """
+
+    def test_cli_no_imports_from_scripts_piecewise_affine_warp(self):
+        """cli.py NO debe importar de scripts.piecewise_affine_warp."""
+        cli_path = Path(__file__).parent.parent / 'src_v2' / 'cli.py'
+        content = cli_path.read_text()
+
+        # Buscar imports problematicos
+        bad_import = 'from scripts.piecewise_affine_warp import'
+        assert bad_import not in content, (
+            f"cli.py todavia importa de scripts.piecewise_affine_warp. "
+            f"Debe usar 'from src_v2.processing.warp import piecewise_affine_warp'"
+        )
+
+    def test_cli_imports_from_src_v2_processing_warp(self):
+        """cli.py debe importar de src_v2.processing.warp."""
+        cli_path = Path(__file__).parent.parent / 'src_v2' / 'cli.py'
+        content = cli_path.read_text()
+
+        # Verificar que usa el import correcto
+        good_import = 'from src_v2.processing.warp import piecewise_affine_warp'
+        assert good_import in content, (
+            f"cli.py no importa piecewise_affine_warp desde src_v2.processing.warp"
+        )
+
+    def test_src_v2_processing_warp_module_exists(self):
+        """El modulo src_v2.processing.warp debe existir y ser importable."""
+        from src_v2.processing.warp import piecewise_affine_warp
+        assert callable(piecewise_affine_warp)
+
+    def test_src_v2_processing_warp_has_required_functions(self):
+        """src_v2.processing.warp debe tener las funciones requeridas."""
+        from src_v2.processing import warp
+
+        required_functions = [
+            'piecewise_affine_warp',
+            'scale_landmarks_from_centroid',
+            'clip_landmarks_to_image',
+            'compute_fill_rate',
+        ]
+
+        for func_name in required_functions:
+            assert hasattr(warp, func_name), f"warp.py missing function: {func_name}"
+            assert callable(getattr(warp, func_name)), f"{func_name} is not callable"

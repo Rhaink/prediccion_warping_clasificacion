@@ -1017,16 +1017,8 @@ def warp(
     model = model.to(torch_device)
     model.eval()
 
-    # Importar funcion de warp (del proyecto existente)
-    project_root = Path(__file__).parent.parent
-    sys.path.insert(0, str(project_root))
-
-    try:
-        from scripts.piecewise_affine_warp import piecewise_affine_warp
-    except ImportError:
-        logger.error("No se pudo importar piecewise_affine_warp")
-        logger.info("Verifica que scripts/piecewise_affine_warp.py existe")
-        raise typer.Exit(code=1)
+    # Importar funcion de warp desde el modulo correcto
+    from src_v2.processing.warp import piecewise_affine_warp
 
     # Buscar imagenes
     images = list(input_path.glob(pattern))
@@ -1677,14 +1669,8 @@ def classify(
         logger.info("Modelos de landmarks cargados: %d", len(landmark_models))
         logger.info("TTA: %s", "habilitado" if use_tta else "deshabilitado")
 
-        # Importar funcion de warp
-        project_root = Path(__file__).parent.parent
-        sys.path.insert(0, str(project_root))
-        try:
-            from scripts.piecewise_affine_warp import piecewise_affine_warp
-        except ImportError:
-            logger.error("No se pudo importar piecewise_affine_warp")
-            raise typer.Exit(code=1)
+        # Importar funcion de warp desde el modulo correcto
+        from src_v2.processing.warp import piecewise_affine_warp
 
     # Encontrar imagenes
     input_path = Path(image)
