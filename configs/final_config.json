@@ -6,6 +6,15 @@
     "sessions_completed": 12
   },
   "results": {
+    "ensemble_4models": {
+      "error_px": 3.71,
+      "std_px": 2.42,
+      "median_px": 3.17,
+      "models_count": 4,
+      "models_used": ["seed123", "seed456", "seed321", "seed789"],
+      "tta_enabled": true,
+      "note": "Sesion 13: Ensemble de 4 modelos logra el mejor resultado"
+    },
     "ensemble_optimal": {
       "error_px": 3.79,
       "std_px": 2.49,
@@ -155,6 +164,35 @@
       },
       "symmetric_pairs": [[2,3], [4,5], [6,7], [11,12], [13,14]]
     }
+  },
+  "ensemble_4models": {
+    "description": "Ensemble optimo: 4 modelos (Sesion 13) - Mejor resultado",
+    "models": [
+      {
+        "seed": 123,
+        "checkpoint": "checkpoints/session10/ensemble/seed123/final_model.pt",
+        "individual_error_px": 4.05
+      },
+      {
+        "seed": 456,
+        "checkpoint": "checkpoints/session10/ensemble/seed456/final_model.pt",
+        "individual_error_px": 4.04
+      },
+      {
+        "seed": 321,
+        "checkpoint": "checkpoints/session13/seed321/final_model.pt",
+        "individual_error_px": 4.0
+      },
+      {
+        "seed": 789,
+        "checkpoint": "checkpoints/session13/seed789/final_model.pt",
+        "individual_error_px": 4.0
+      }
+    ],
+    "aggregation": "mean",
+    "weights": [0.25, 0.25, 0.25, 0.25],
+    "tta_per_model": true,
+    "ensemble_error_px": 3.71
   },
   "ensemble_optimal": {
     "description": "Ensemble optimo: 2 modelos sin seed=42 (Sesion 12)",
