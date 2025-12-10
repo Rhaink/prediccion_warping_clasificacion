@@ -97,19 +97,6 @@ def get_optimal_num_workers() -> int:
     return min(4, cpu_count)
 
 
-def setup_hydra_config(config_path: str, config_name: str, overrides: list):
-    """Cargar configuracion con Hydra."""
-    from hydra import compose, initialize_config_dir
-    from omegaconf import OmegaConf
-
-    config_dir = Path(config_path).resolve()
-
-    with initialize_config_dir(config_dir=str(config_dir), version_base=None):
-        cfg = compose(config_name=config_name, overrides=overrides)
-
-    return cfg
-
-
 def detect_architecture_from_checkpoint(state_dict: dict) -> dict:
     """
     Detecta la arquitectura del modelo a partir del state_dict.
@@ -159,18 +146,6 @@ def detect_architecture_from_checkpoint(state_dict: dict) -> dict:
 
 @app.command()
 def train(
-    config_path: str = typer.Option(
-        "src_v2/conf",
-        "--config-path",
-        "-c",
-        help="Path al directorio de configuracion Hydra"
-    ),
-    config_name: str = typer.Option(
-        "config",
-        "--config-name",
-        "-n",
-        help="Nombre del archivo de configuracion (sin .yaml)"
-    ),
     data_root: Optional[str] = typer.Option(
         None,
         "--data-root",
@@ -316,27 +291,6 @@ def train(
     # Dispositivo
     torch_device = get_device(device)
     logger.info("Usando dispositivo: %s", torch_device)
-
-    # Cargar configuracion si existe
-    overrides = []
-    if data_root:
-        overrides.append(f"paths.data_root={data_root}")
-    if csv_path:
-        overrides.append(f"paths.csv_path={csv_path}")
-
-    config_dir = Path(config_path)
-    if config_dir.exists():
-        try:
-            cfg = setup_hydra_config(config_path, config_name, overrides)
-            logger.info("Configuracion cargada desde %s/%s.yaml", config_path, config_name)
-
-            # Usar valores de config si no se especificaron en CLI
-            if data_root is None:
-                data_root = cfg.paths.data_root
-            if csv_path is None:
-                csv_path = cfg.paths.csv_path
-        except Exception as e:
-            logger.info("Usando configuración por defecto (Hydra no disponible: %s)", e)
 
     # Valores por defecto si no se especificaron
     if data_root is None:

@@ -846,6 +846,154 @@ class TestClassifyIntegration:
 
         assert result.exit_code != 0
 
+    def test_classify_directory_batch(
+        self, mock_classifier_checkpoint, tmp_path
+    ):
+        """
+        Session 35: Classify procesa directorio de imagenes en batch.
+        """
+        from PIL import Image
+
+        # Crear directorio con imagenes
+        input_dir = tmp_path / "batch_images"
+        input_dir.mkdir()
+        for i in range(3):
+            img = Image.new('L', (224, 224), color=128)
+            img.save(input_dir / f"image_{i}.png")
+
+        output_json = tmp_path / "batch_results.json"
+
+        result = runner.invoke(app, [
+            'classify',
+            str(input_dir),
+            '--classifier', str(mock_classifier_checkpoint),
+            '--device', 'cpu',
+            '--no-clahe',
+            '--no-warp',
+            '--output', str(output_json),
+        ])
+
+        assert result.exit_code == 0, f"Batch classification failed: {result.stdout}"
+        assert output_json.exists(), "Output JSON not created"
+
+        with open(output_json) as f:
+            data = json.load(f)
+        # Formato: {"config": {...}, "results": [...]}
+        assert 'results' in data, "Output should contain 'results' key"
+        assert len(data['results']) == 3, f"Expected 3 results, got {len(data['results'])}"
+
+    def test_classify_with_clahe_enabled(
+        self, test_image_file, mock_classifier_checkpoint
+    ):
+        """
+        Session 35: Classify con CLAHE habilitado funciona correctamente.
+        """
+        result = runner.invoke(app, [
+            'classify',
+            str(test_image_file),
+            '--classifier', str(mock_classifier_checkpoint),
+            '--device', 'cpu',
+            '--clahe',  # Habilitar CLAHE
+            '--clahe-clip', '2.0',
+            '--clahe-tile', '8',
+            '--no-warp',
+        ])
+
+        assert result.exit_code == 0, f"CLAHE classification failed: {result.stdout}"
+
+    def test_classify_batch_size_parameter(
+        self, mock_classifier_checkpoint, tmp_path
+    ):
+        """
+        Session 35: Classify respeta parametro --batch-size.
+        """
+        from PIL import Image
+
+        # Crear directorio con imagenes
+        input_dir = tmp_path / "batch_test"
+        input_dir.mkdir()
+        for i in range(4):
+            img = Image.new('L', (224, 224), color=100)
+            img.save(input_dir / f"test_{i}.png")
+
+        for batch_size in [1, 2, 4]:
+            result = runner.invoke(app, [
+                'classify',
+                str(input_dir),
+                '--classifier', str(mock_classifier_checkpoint),
+                '--device', 'cpu',
+                '--no-clahe',
+                '--no-warp',
+                '--batch-size', str(batch_size),
+            ])
+
+            assert result.exit_code == 0, \
+                f"Batch size {batch_size} failed: {result.stdout}"
+
+    def test_classify_output_contains_required_fields(
+        self, test_image_file, mock_classifier_checkpoint, tmp_path
+    ):
+        """
+        Session 35: JSON de salida contiene campos requeridos.
+        """
+        output_json = tmp_path / "detailed_output.json"
+
+        result = runner.invoke(app, [
+            'classify',
+            str(test_image_file),
+            '--classifier', str(mock_classifier_checkpoint),
+            '--device', 'cpu',
+            '--no-clahe',
+            '--no-warp',
+            '--output', str(output_json),
+        ])
+
+        assert result.exit_code == 0, f"Classification failed: {result.stdout}"
+        assert output_json.exists()
+
+        with open(output_json) as f:
+            data = json.load(f)
+
+        # Formato: {"config": {...}, "results": [...]}
+        assert isinstance(data, dict), "Output should be a dict"
+        assert 'results' in data, "Output should contain 'results' key"
+        assert 'config' in data, "Output should contain 'config' key"
+        assert len(data['results']) > 0, "Results should have at least one item"
+
+        # Verificar campos del primer resultado
+        result_item = data['results'][0]
+        assert 'prediction' in result_item, "Result should contain 'prediction' field"
+        assert 'probabilities' in result_item, "Result should contain 'probabilities' field"
+        assert 'confidence' in result_item, "Result should contain 'confidence' field"
+
+    def test_classify_with_margin_scale(
+        self,
+        test_image_file,
+        mock_classifier_checkpoint,
+        mock_landmark_checkpoint,
+        canonical_shape_json,
+        triangles_json
+    ):
+        """
+        Session 35: Classify con warp respeta parametro --margin-scale.
+        """
+        for margin in [1.0, 1.05, 1.1]:
+            result = runner.invoke(app, [
+                'classify',
+                str(test_image_file),
+                '--classifier', str(mock_classifier_checkpoint),
+                '--device', 'cpu',
+                '--no-clahe',
+                '--warp',
+                '--landmark-model', str(mock_landmark_checkpoint),
+                '--canonical', str(canonical_shape_json),
+                '--triangles', str(triangles_json),
+                '--margin-scale', str(margin),
+            ])
+
+            assert result.exit_code == 0, \
+                f"Margin scale {margin} failed: {result.stdout}"
+
 
 class TestTrainClassifierIntegration:
     """Tests de integracion para comando train-classifier."""

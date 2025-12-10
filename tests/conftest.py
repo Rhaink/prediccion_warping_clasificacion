@@ -127,12 +127,6 @@ def src_v2_path(project_root):
 
 
 @pytest.fixture
-def conf_path(src_v2_path):
-    """Path a configuracion Hydra."""
-    return src_v2_path / 'conf'
-
-
-@pytest.fixture
 def temp_dir(tmp_path):
     """Directorio temporal para tests."""
     return tmp_path

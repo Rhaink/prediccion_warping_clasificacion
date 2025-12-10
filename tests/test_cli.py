@@ -36,7 +36,7 @@ class TestCLIHelp:
         result = runner.invoke(app, ['train', '--help'])
         assert result.exit_code == 0
         assert 'Entrenar modelo' in result.stdout
-        assert '--config-path' in result.stdout
+        assert '--data-root' in result.stdout
         assert '--batch-size' in result.stdout
 
     def test_evaluate_help(self):
