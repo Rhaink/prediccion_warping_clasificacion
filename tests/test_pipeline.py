@@ -291,3 +291,115 @@ class TestEndToEndInference:
 
         assert output.shape[0] == batch_images_tensor.shape[0]
         assert output.shape[1] == NUM_COORDINATES
+
+
+class TestDataSplitReproducibility:
+    """Tests para verificar que el split de datos es reproducible."""
+
+    @pytest.fixture
+    def csv_path(self):
+        """Ruta al CSV de coordenadas."""
+        from pathlib import Path
+        return str(Path(__file__).parent.parent / "data/coordenadas/coordenadas_maestro.csv")
+
+    @pytest.fixture
+    def data_root(self):
+        """Directorio raiz de datos."""
+        from pathlib import Path
+        return str(Path(__file__).parent.parent / "data/")
+
+    def test_split_is_deterministic(self, csv_path, data_root):
+        """El split con random_state=42 debe ser siempre igual."""
+        from sklearn.model_selection import train_test_split
+        from src_v2.data.dataset import load_coordinates_csv
+
+        df = load_coordinates_csv(csv_path)
+
+        # Primera ejecucion
+        train1, temp1 = train_test_split(
+            df, test_size=0.25, random_state=42, stratify=df['category']
+        )
+        val1, test1 = train_test_split(
+            temp1, test_size=0.4, random_state=42, stratify=temp1['category']
+        )
+
+        # Segunda ejecucion
+        train2, temp2 = train_test_split(
+            df, test_size=0.25, random_state=42, stratify=df['category']
+        )
+        val2, test2 = train_test_split(
+            temp2, test_size=0.4, random_state=42, stratify=temp2['category']
+        )
+
+        # Deben ser identicos
+        assert list(train1.index) == list(train2.index), "Train split debe ser determinístico"
+        assert list(val1.index) == list(val2.index), "Val split debe ser determinístico"
+        assert list(test1.index) == list(test2.index), "Test split debe ser determinístico"
+
+    def test_split_sizes_match_expected(self, csv_path, data_root):
+        """El split debe producir ~75% train, 15% val, 10% test."""
+        from sklearn.model_selection import train_test_split
+        from src_v2.data.dataset import load_coordinates_csv
+
+        df = load_coordinates_csv(csv_path)
+        total = len(df)
+
+        train_df, temp_df = train_test_split(
+            df, test_size=0.25, random_state=42, stratify=df['category']
+        )
+        val_df, test_df = train_test_split(
+            temp_df, test_size=0.4, random_state=42, stratify=temp_df['category']
+        )
+
+        # Verificar proporciones con tolerancia
+        train_ratio = len(train_df) / total
+        val_ratio = len(val_df) / total
+        test_ratio = len(test_df) / total
+
+        assert 0.73 <= train_ratio <= 0.77, f"Train ratio {train_ratio:.2f} fuera de rango esperado"
+        assert 0.13 <= val_ratio <= 0.17, f"Val ratio {val_ratio:.2f} fuera de rango esperado"
+        assert 0.08 <= test_ratio <= 0.12, f"Test ratio {test_ratio:.2f} fuera de rango esperado"
+
+    def test_test_split_has_expected_samples(self, csv_path, data_root):
+        """El test split debe tener ~96 muestras (10% de 957)."""
+        from sklearn.model_selection import train_test_split
+        from src_v2.data.dataset import load_coordinates_csv
+
+        df = load_coordinates_csv(csv_path)
+
+        train_df, temp_df = train_test_split(
+            df, test_size=0.25, random_state=42, stratify=df['category']
+        )
+        _, test_df = train_test_split(
+            temp_df, test_size=0.4, random_state=42, stratify=temp_df['category']
+        )
+
+        # 10% de 957 = 95.7, redondeado ~96
+        assert 90 <= len(test_df) <= 100, f"Test size {len(test_df)} fuera de rango esperado"
+
+    def test_stratification_preserves_categories(self, csv_path, data_root):
+        """El split estratificado debe preservar la proporcion de categorias."""
+        from sklearn.model_selection import train_test_split
+        from src_v2.data.dataset import load_coordinates_csv
+
+        df = load_coordinates_csv(csv_path)
+
+        # Proporciones originales
+        original_ratios = df['category'].value_counts(normalize=True)
+
+        train_df, temp_df = train_test_split(
+            df, test_size=0.25, random_state=42, stratify=df['category']
+        )
+        val_df, test_df = train_test_split(
+            temp_df, test_size=0.4, random_state=42, stratify=temp_df['category']
+        )
+
+        # Proporciones en cada split
+        for split_name, split_df in [('train', train_df), ('val', val_df), ('test', test_df)]:
+            split_ratios = split_df['category'].value_counts(normalize=True)
+            for category in original_ratios.index:
+                orig = original_ratios.get(category, 0)
+                split = split_ratios.get(category, 0)
+                # Tolerancia del 5% absoluto
+                assert abs(orig - split) < 0.05, \
+                    f"{split_name}: {category} ratio {split:.2f} difiere de original {orig:.2f}"

@@ -313,6 +313,97 @@ class TestFactoryFunctions:
         assert isinstance(transform, ValTransform)
         assert transform.output_size == 256
 
+    def test_get_train_transforms_with_clahe(self):
+        """Verifica factory de train transforms con CLAHE."""
+        transform = get_train_transforms(
+            output_size=224,
+            use_clahe=True,
+            clahe_clip_limit=2.0,
+            clahe_tile_size=4
+        )
+
+        assert isinstance(transform, TrainTransform)
+        assert transform.use_clahe is True
+        assert transform.clahe_clip_limit == 2.0
+        # clahe_tile_size se almacena como tupla (n, n)
+        assert transform.clahe_tile_size == (4, 4)
+
+    def test_get_val_transforms_with_clahe(self):
+        """Verifica factory de val transforms con CLAHE."""
+        transform = get_val_transforms(
+            output_size=224,
+            use_clahe=True,
+            clahe_clip_limit=2.0,
+            clahe_tile_size=4
+        )
+
+        assert isinstance(transform, ValTransform)
+        assert transform.use_clahe is True
+
+
+class TestCLAHETransforms:
+    """Tests para transformaciones con CLAHE."""
+
+    def test_clahe_changes_image(self):
+        """CLAHE debe modificar la imagen."""
+        from PIL import Image
+
+        # Crear imagen de prueba con bajo contraste (PIL Image)
+        img = Image.new('L', (224, 224), color=128)
+        # Agregar región con diferente contraste
+        pixels = img.load()
+        for i in range(50, 100):
+            for j in range(50, 100):
+                pixels[i, j] = 140
+
+        # Convertir a RGB
+        img = img.convert('RGB')
+
+        # Landmarks en pixeles
+        landmarks_px = np.array([[112, 112] for _ in range(15)], dtype=np.float32)
+        original_size = (224, 224)  # width, height
+
+        # Transform sin CLAHE
+        transform_no_clahe = get_val_transforms(output_size=224, use_clahe=False)
+        result_no_clahe, _ = transform_no_clahe(img.copy(), landmarks_px.copy(), original_size)
+
+        # Transform con CLAHE
+        transform_clahe = get_val_transforms(output_size=224, use_clahe=True, clahe_clip_limit=2.0, clahe_tile_size=4)
+        result_clahe, _ = transform_clahe(img.copy(), landmarks_px.copy(), original_size)
+
+        # Las imagenes deben ser diferentes
+        assert not np.allclose(result_no_clahe.numpy(), result_clahe.numpy(), atol=0.01), \
+            "CLAHE debe modificar la imagen"
+
+    def test_clahe_preserves_landmarks(self):
+        """CLAHE no debe afectar las coordenadas de landmarks."""
+        from PIL import Image
+
+        # Crear imagen aleatoria
+        img_array = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
+        img = Image.fromarray(img_array)
+
+        # Landmarks en pixeles
+        landmarks_px = np.array([[67, 90], [112, 135], [157, 180]] + [[112, 112] for _ in range(12)], dtype=np.float32)
+        original_size = (224, 224)
+
+        # Sin CLAHE
+        transform_no_clahe = get_val_transforms(output_size=224, use_clahe=False)
+        _, result_no_clahe = transform_no_clahe(img.copy(), landmarks_px.copy(), original_size)
+
+        # Con CLAHE
+        transform_clahe = get_val_transforms(output_size=224, use_clahe=True)
+        _, result_clahe = transform_clahe(img.copy(), landmarks_px.copy(), original_size)
+
+        # Landmarks deben ser iguales (CLAHE no afecta landmarks)
+        np.testing.assert_array_almost_equal(result_no_clahe.numpy(), result_clahe.numpy(), decimal=5)
+
+    def test_clahe_disabled_by_default_in_legacy(self):
+        """Verificar comportamiento con CLAHE deshabilitado."""
+        transform = get_val_transforms(output_size=224, use_clahe=False)
+
+        assert transform.use_clahe is False
+
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
