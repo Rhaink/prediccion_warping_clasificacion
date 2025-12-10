@@ -115,6 +115,16 @@ DEFAULT_CATEGORY_WEIGHTS = {
 }
 
 # =============================================================================
+# CLASIFICADOR COVID-19
+# =============================================================================
+
+# Backbone por defecto para clasificador
+DEFAULT_CLASSIFIER_BACKBONE: str = "resnet18"
+
+# Clases del clasificador (alias de CATEGORIES para claridad)
+CLASSIFIER_CLASSES: List[str] = CATEGORIES
+
+# =============================================================================
 # MODELO
 # =============================================================================
 
@@ -165,5 +175,42 @@ DEFAULT_FLIP_PROB: float = 0.5
 DEFAULT_ROTATION_DEGREES: float = 10.0
 
 # Parámetros CLAHE
+# Nota: tile_size=4 produce mejores resultados que 8 (usado en el modelo 4.50 px)
 DEFAULT_CLAHE_CLIP_LIMIT: float = 2.0
-DEFAULT_CLAHE_TILE_SIZE: int = 8
+DEFAULT_CLAHE_TILE_SIZE: int = 4
+
+# =============================================================================
+# QUICK MODE - Configuración para pruebas rápidas
+# =============================================================================
+
+# Límites de datos para modo quick (optimize-margin, etc.)
+# Estos valores permiten pruebas rápidas manteniendo representatividad estadística
+QUICK_MODE_MAX_TRAIN: int = 500  # Máximo de imágenes de entrenamiento
+QUICK_MODE_MAX_VAL: int = 100   # Máximo de imágenes de validación
+QUICK_MODE_MAX_TEST: int = 100  # Máximo de imágenes de test
+
+# Épocas reducidas para modo quick
+QUICK_MODE_EPOCHS_OPTIMIZE: int = 3   # Para optimize-margin
+QUICK_MODE_EPOCHS_COMPARE: int = 5    # Para compare-architectures
+
+# =============================================================================
+# WARPING - Configuración de normalización geométrica
+# =============================================================================
+
+# Margen óptimo encontrado experimentalmente (Session 28)
+# 1.25 = 25% de expansión desde el centroide de landmarks
+# Produce 96.51% accuracy en clasificación
+OPTIMAL_MARGIN_SCALE: float = 1.25
+
+# Margen por defecto (conservador)
+DEFAULT_MARGIN_SCALE: float = 1.05
+
+# =============================================================================
+# COMBINED LOSS - Pesos para pérdida combinada
+# =============================================================================
+
+# Pesos para CombinedLandmarkLoss (basados en análisis geométrico)
+# central_weight: peso para landmarks del eje central (L1, L2, L9, L10, L11)
+# symmetry_weight: peso para penalización de asimetría bilateral
+DEFAULT_CENTRAL_WEIGHT: float = 1.0
+DEFAULT_SYMMETRY_WEIGHT: float = 0.5
