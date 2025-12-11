@@ -4,8 +4,8 @@
 > consulta este archivo para mantener el contexto y NO desviarte de los objetivos.
 
 **Fecha de creación:** 2025-12-10
-**Última actualización:** Sesión 40
-**Basado en:** Análisis exhaustivo de 39 sesiones + toda la documentación
+**Última actualización:** Sesión 43
+**Basado en:** Análisis exhaustivo de 43 sesiones + toda la documentación
 
 ---
 
@@ -80,7 +80,7 @@
 prediccion_warping_clasificacion/
 ├── src_v2/                          # Código fuente principal (12,891 líneas)
 │   ├── constants.py                 # Constantes centralizadas
-│   ├── cli.py                       # CLI con Typer (6,665 líneas, 15+ comandos)
+│   ├── cli.py                       # CLI con Typer (6,665 líneas, 20 comandos)
 │   ├── data/                        # Módulo de datos
 │   │   ├── dataset.py               # Dataset loading
 │   │   ├── transforms.py            # Augmentaciones
@@ -102,7 +102,7 @@ prediccion_warping_clasificacion/
 │       ├── gradcam.py               # Grad-CAM
 │       └── pfs_analysis.py          # Pulmonary Focus Score
 │
-├── tests/                           # Tests (10,781 líneas, 327+ tests)
+├── tests/                           # Tests (10,781 líneas, 553+ tests)
 │   ├── conftest.py                  # Fixtures compartidos
 │   ├── test_cli_integration.py      # Tests de integración CLI
 │   └── ...
@@ -133,7 +133,7 @@ prediccion_warping_clasificacion/
 
 ---
 
-## 4. COMANDOS CLI DISPONIBLES (15 comandos)
+## 4. COMANDOS CLI DISPONIBLES (20 comandos)
 
 ### Landmarks
 ```bash
@@ -159,12 +159,23 @@ python -m src_v2 compare-architectures    # Comparar arquitecturas
 ```bash
 python -m src_v2 compute-canonical        # Calcular forma canónica (GPA)
 python -m src_v2 generate-dataset         # Generar dataset warped
+python -m src_v2 generate-lung-masks      # Generar máscaras pulmonares aproximadas
+python -m src_v2 optimize-margin          # Buscar margen óptimo para warping
+```
+
+### Visualización y Análisis
+```bash
+python -m src_v2 gradcam                  # Generar visualizaciones Grad-CAM
+python -m src_v2 analyze-errors           # Analizar errores de clasificación
+python -m src_v2 pfs-analysis             # Analizar Pulmonary Focus Score (PFS)
 ```
 
 ### Utilidad
 ```bash
 python -m src_v2 version                  # Mostrar versión
 ```
+
+**Instalación como paquete:** `pip install -e .` → `covid-landmarks --help`
 
 ---
 
@@ -269,13 +280,13 @@ checkpoints/session13/seed789/final_model.pt
 - Pipeline E2E funcional
 
 ### Fase 3: Validación y CLI (Sesiones 18-27)
-- 15 comandos CLI implementados
+- CLI con múltiples comandos implementados
 - Cross-evaluate, test-robustness, compare-architectures
-- 327+ tests pasando
+- Tests de integración
 
 ### Fase 4: Testing y Visualización (Sesiones 28-34)
 - Galería visual GradCAM
-- Tests de integración
+- Tests de integración adicionales
 - Documentación de resultados
 
 ### Fase 5: Introspección Crítica (Sesiones 35-39) ⚠️
@@ -288,6 +299,16 @@ checkpoints/session13/seed789/final_model.pt
   - Reveló mecanismo causal: 75% info + 25% geo
   - Corrigió claim de generalización: 11x → 2.4x
   - Invalidó PFS (≈ chance)
+
+### Fase 6: Production Ready (Sesiones 40-43) ✅
+- Sesión 40: Documentación de claims corregidos y referencia maestra
+- Sesión 41: Actualización de documentación con claims validados
+- Sesión 42: Debugging y producción (pyproject.toml, CHANGELOG, seeds, 9 comandos CLI nuevos)
+- Sesión 43: **CONSOLIDACIÓN FINAL Y TAG v2.0.0**
+  - 553 tests pasando
+  - 20 comandos CLI
+  - Paquete pip instalable
+  - Tag v2.0.0 production-ready
 
 ---
 
@@ -303,6 +324,9 @@ checkpoints/session13/seed789/final_model.pt
 | 37 | Máscaras no warped | Implementar warp_mask() |
 | 38 | Robustez desaparece 99% | Identificar mecanismo causal |
 | 39 | Claims incorrectos | Experimento de control |
+| 40-41 | Documentación desactualizada | Actualizar claims validados |
+| 42 | Preparación producción | pyproject.toml, seeds, 9 comandos CLI nuevos |
+| 43 | Consolidación final | Tag v2.0.0, 553 tests, paquete pip instalable |
 
 ---
 
@@ -330,14 +354,20 @@ checkpoints/session13/seed789/final_model.pt
 
 ## 10. TRABAJO PENDIENTE (PRIORIZADO)
 
-### Alta Prioridad (Antes de Defensa):
-- [ ] Actualizar README.md con claims corregidos
-- [ ] Commit final con tag de versión
-- [ ] Revisión final de documentación LaTeX
+### ✅ COMPLETADO (Sesiones 40-43):
+- [x] Actualizar README.md con claims corregidos
+- [x] Commit final con tag de versión (v2.0.0)
+- [x] pyproject.toml funcional (`pip install -e .`)
+- [x] Implementar comando `gradcam` para explicabilidad
+- [x] Implementar comando `analyze-errors`
+- [x] Implementar comando `pfs-analysis`
+- [x] Implementar comando `generate-lung-masks`
+- [x] Implementar comando `optimize-margin`
+- [x] 553 tests pasando
+- [x] 20 comandos CLI
 
-### Media Prioridad:
-- [ ] Implementar comando `gradcam` para explicabilidad
-- [ ] Implementar comando `analyze-errors`
+### Media Prioridad (Antes de Defensa):
+- [ ] Revisión final de documentación LaTeX
 - [ ] Evaluar en datasets externos (Montgomery, Shenzhen)
 
 ### Baja Prioridad (Post-Defensa):
@@ -392,10 +422,11 @@ checkpoints/session13/seed789/final_model.pt
 │                         ESTADO DEL PROYECTO                              │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  Progreso:        92% completo                                          │
-│  Tests:           327+ pasando                                          │
-│  CLI:             15 comandos funcionales                               │
-│  Documentación:   9.2/10 calidad promedio                               │
+│  Progreso:        100% completo (v2.0.0 production-ready)               │
+│  Tests:           553 pasando                                           │
+│  CLI:             20 comandos funcionales                               │
+│  Instalación:     pip install -e . → covid-landmarks                    │
+│  Tag:             v2.0.0                                                │
 │                                                                          │
 │  RESULTADO PRINCIPAL:                                                    │
 │  ├─ Error landmarks: 3.71 px (ensemble 4 modelos + TTA)                 │
@@ -416,4 +447,4 @@ checkpoints/session13/seed789/final_model.pt
 
 **FIN DEL DOCUMENTO DE REFERENCIA**
 
-*Última actualización: Sesión 40 (2025-12-10)*
+*Última actualización: Sesión 43 (2025-12-11) - Tag v2.0.0 Production Ready*
