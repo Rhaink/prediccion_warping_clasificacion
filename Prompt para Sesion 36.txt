@@ -1,0 +1,108 @@
+## Contexto del Proyecto
+Sistema CLI para clasificacion de COVID-19 en rayos X usando normalizacion
+geometrica (warping).
+
+ESTADO ACTUALIZADO POST-SESION 35:
+- Hipotesis de ROBUSTEZ: CONFIRMADA (30x JPEG, 3x blur)
+- Hipotesis de GENERALIZACION 11x: CUESTIONADA (sesgo metodologico)
+- 520 tests pasando
+- 75% cobertura CLI (15/20 comandos)
+- Proyecto ~85% completo
+
+## Hallazgos Criticos Sesion 35 (LEER CON ATENCION)
+
+### H1: BUGS EN CODIGO DE WARPING (ALTA PRIORIDAD)
+Los comandos `warp` y `classify --warp` usan implementacion ANTIGUA:
+- src_v2/cli.py linea 1025: usa `scripts/piecewise_affine_warp.py`
+- src_v2/cli.py linea 1684: mismo problema
+- La version correcta esta en `src_v2/processing/warp.py`
+
+ACCION REQUERIDA: Cambiar imports a:
+```python
+from src_v2.processing.warp import piecewise_affine_warp
+```
+
+### H2: SESGO METODOLOGICO CRITICO EN CROSS-EVALUATION
+El claim "generaliza 11x mejor (gap 25.36% -> 2.24%)" tiene sesgo:
+- Imagenes WARPED: ~47% contenido, ~53% fondo negro
+- Imagenes ORIGINAL: ~100% contenido
+- El "gap" mide PERDIDA DE INFORMACION, no sobreajuste
+
+CONSECUENCIA: Cross-evaluation es INVALIDA como metrica de generalizacion.
+El modelo original aprendio features que NO EXISTEN en warped.
+
+VALIDO: Robustez JPEG 30x y Blur 3x (mismo dataset, perturbacion simetrica)
+INVALIDO: "Generaliza 11x mejor"
+
+### H3: GRADCAM/PFS NO VALIDA HIPOTESIS DE ATENCION PULMONAR
+- PFS (Pulmonary Focus Score) = 35% en AMBOS modelos
+- Ambos modelos miran mayormente FUERA de la region pulmonar
+- Las mascaras NO estan warped -> comparacion PFS invalida para warped
+- La hipotesis "warped fuerza atencion en pulmones" NO esta demostrada
+
+### H4: LOS DATOS SON REALES Y VERIFICADOS
+- 15+ verificaciones matematicas exactas (gap, robustez, matrices)
+- Scripts reproducibles en /scripts/
+- Checkpoints fisicos existentes (600+ MB)
+- NO hay datos inventados
+
+## Objetivo Sesion 36
+
+### Prioridad 1: Corregir Bugs de Warping
+1. Actualizar imports en cli.py (lineas 1025 y 1684)
+2. Agregar test que verifique que se usa version correcta
+3. Verificar que comandos warp y classify --warp funcionan
+
+### Prioridad 2: Decidir Estrategia para Sesgo Metodologico
+Opciones:
+A) Generar dataset warped con full_coverage=True (~96% fill rate)
+B) Generar dataset original croppeado (misma info que warped)
+C) Reformular claims sin correr nuevos experimentos
+
+### Prioridad 3: Actualizar Documentacion
+- Reformular claim de "generalizacion 11x" a "robustez 30x"
+- Documentar limitaciones metodologicas
+- Actualizar README y docs de tesis
+
+## Archivos Clave
+- src_v2/cli.py - CLI principal (~6,680 lineas)
+- src_v2/processing/warp.py - Version CORRECTA de warping
+- scripts/piecewise_affine_warp.py - Version ANTIGUA (no usar)
+- tests/test_cli_integration.py - 102 tests de integracion
+- docs/sesiones/SESION_35_ANALISIS_CRITICO.md - Analisis completo
+
+## Comandos Utiles
+```bash
+# Verificar CLI funciona
+.venv/bin/python -m src_v2 --help
+.venv/bin/python -m src_v2 warp --help
+.venv/bin/python -m src_v2 classify --help
+
+# Correr tests
+.venv/bin/python -m pytest tests/ -v --tb=short
+
+# Ver lineas especificas del bug
+sed -n '1020,1030p' src_v2/cli.py
+sed -n '1680,1690p' src_v2/cli.py
+
+# Git status
+git log --oneline -5
+git status
+```
+
+## Commits Recientes
+- 4e3d604 refactor: eliminar codigo Hydra muerto y agregar tests classify
+- d4f0beb chore: actualizar gitignore para checkpoints_v2 y outputs_v2
+- bf5a13d chore: eliminar documentacion obsoleta
+
+## Preguntas que Debes Hacerme
+1. Quieres que corrija los bugs de warping primero?
+2. Que estrategia prefieres para el sesgo metodologico (A, B, o C)?
+3. Hay deadline para la tesis que deba considerar?
+
+## Notas Importantes
+- Branch actual: feature/restructure-production
+- Los datos experimentales SON reales (verificado con 5 agentes)
+- La robustez (JPEG/blur) SI esta validada
+- La "generalizacion 11x" necesita reformularse o re-experimentarse
+- PFS bajo (~35%) indica que modelos NO enfocan en pulmones
