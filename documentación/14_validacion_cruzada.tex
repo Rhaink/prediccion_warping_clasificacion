@@ -22,13 +22,14 @@ entrenados y evaluados en diferentes dominios: imágenes originales y
 geométricamente normalizadas (warped). Se definen cuatro configuraciones
 experimentales que evalúan la transferencia de conocimiento entre dominios:
 Original$\to$Original (98.81\%), Original$\to$Warped (73.45\%),
-Warped$\to$Warped (98.02\%), y Warped$\to$Original (95.78\%). El hallazgo
+Warped$\to$Warped (98.73\%), y Warped$\to$Original (95.57\%). El hallazgo
 más significativo es la asimetría en la generalización: mientras que los
-modelos entrenados en original sufren una degradación del 25.36\% al
-evaluarse en warped, los modelos entrenados en warped solo pierden 2.24\%
+modelos entrenados en original sufren una degradación del 7.70\% al
+evaluarse en warped, los modelos entrenados en warped solo pierden 3.17\%
 al evaluarse en original. Esto indica que el modelo entrenado en imágenes
 normalizadas ha aprendido características más robustas y transferibles,
-con una mejora en generalización de 11.3× respecto al modelo original.
+con una mejora en generalización de 2.4× respecto al modelo original
+(corregido de 11× en Sesión 39 mediante cross-evaluation con 3 clases idénticas).
 Este resultado valida la hipótesis de que la normalización geométrica
 produce modelos con mayor capacidad de generalización.
 \end{abstract}
@@ -152,8 +153,8 @@ Un valor $R > 1$ indica que el modelo warped generaliza mejor.
 \cmidrule(lr){2-3}
 \textbf{Entrenamiento} & \textbf{Original} & \textbf{Warped} & \textbf{Gap} \\
 \midrule
-\textbf{Original} & \cellcolor{green!20}98.81\% & \cellcolor{red!20}73.45\% & \textbf{25.36\%} \\
-\textbf{Warped} & \cellcolor{yellow!20}95.78\% & \cellcolor{green!20}98.02\% & \textbf{2.24\%} \\
+\textbf{Original} & \cellcolor{green!20}98.84\% & \cellcolor{red!20}91.13\% & \textbf{7.70\%} \\
+\textbf{Warped} & \cellcolor{yellow!20}95.57\% & \cellcolor{green!20}98.73\% & \textbf{3.17\%} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -168,13 +169,13 @@ Un valor $R > 1$ indica que el modelo warped generaliza mejor.
 \toprule
 \textbf{Dominio Train} & \textbf{Métrica} & \textbf{In-Domain} & \textbf{Cross-Domain} \\
 \midrule
-Original & Accuracy & 98.81\% & 73.45\% \\
-& Gap absoluto & \multicolumn{2}{c}{25.36 puntos} \\
-& Gap relativo & \multicolumn{2}{c}{-25.7\%} \\
+Original & Accuracy & 98.84\% & 91.13\% \\
+& Gap absoluto & \multicolumn{2}{c}{7.70 puntos} \\
+& Gap relativo & \multicolumn{2}{c}{-7.79\%} \\
 \midrule
-Warped & Accuracy & 98.02\% & 95.78\% \\
-& Gap absoluto & \multicolumn{2}{c}{2.24 puntos} \\
-& Gap relativo & \multicolumn{2}{c}{-2.3\%} \\
+Warped & Accuracy & 98.73\% & 95.57\% \\
+& Gap absoluto & \multicolumn{2}{c}{3.17 puntos} \\
+& Gap relativo & \multicolumn{2}{c}{-3.20\%} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -183,20 +184,19 @@ Warped & Accuracy & 98.02\% & 95.78\% \\
 
 \begin{equation}
 R = \frac{\text{Gap}_{\text{Original}}}{\text{Gap}_{\text{Warped}}} =
-\frac{25.36\%}{2.24\%} = \textbf{11.32}
+\frac{7.70\%}{3.17\%} = \textbf{2.43}
 \end{equation}
 
-\begin{resultadoimportante}[title={Mejora de 11× en generalización}]
-El modelo entrenado en imágenes warped generaliza \textbf{11.3 veces mejor}
-que el modelo entrenado en originales. Esta diferencia drástica confirma
-que:
+\begin{resultadoimportante}[title={Mejora de 2.4× en generalización (Corregido Sesión 39)}]
+El modelo entrenado en imágenes warped generaliza \textbf{2.4 veces mejor}
+que el modelo entrenado en originales. Este resultado fue corregido en Sesión 39
+mediante cross-evaluation con datasets de 3 clases idénticas (el claim anterior
+de 11× comparaba datasets con diferente número de clases).
 \begin{enumerate}
-    \item El modelo original depende fuertemente de características
-    específicas del dominio (shortcuts geométricos)
-    \item El modelo warped ha aprendido características más robustas
-    que transfieren entre dominios
-    \item La normalización geométrica produce representaciones más
-    generalizables
+    \item El modelo original tiene gap de generalización de 7.70\%
+    \item El modelo warped tiene gap de generalización de 3.17\%
+    \item La normalización geométrica contribuye \textasciitilde25\% adicional
+    a la robustez (el \textasciitilde75\% restante viene de reducción de información)
 \end{enumerate}
 \end{resultadoimportante}
 
@@ -338,8 +338,8 @@ geométricas. Esta invariancia se manifiesta en:
     \item \textbf{Recomendación}: Usar el modelo warped incluso si la
     accuracy in-domain es ligeramente menor (98.02\% vs 98.81\%)
 
-    \item \textbf{Justificación}: La mejora de 11× en generalización
-    supera la pérdida de 0.79 puntos in-domain
+    \item \textbf{Justificación}: La mejora de 2.4× en generalización
+    es significativa y el modelo warped mantiene 98.73\% accuracy
 \end{enumerate}
 
 \subsection{Para Investigación}
@@ -386,8 +386,8 @@ geométricas. Esta invariancia se manifiesta en:
 
 \textbf{Elementos visuales}:
 \begin{itemize}
-    \item Dos barras: Gap Original (25.36\%), Gap Warped (2.24\%)
-    \item Anotación del ratio (11.3×)
+    \item Dos barras: Gap Original (7.70\%), Gap Warped (3.17\%)
+    \item Anotación del ratio (2.4×)
     \item Colores contrastantes
 \end{itemize}
 \end{figuradescripcion}
@@ -466,11 +466,12 @@ correlacionados con etiquetas.
 
 \begin{enumerate}
     \item \textbf{Asimetría significativa}: Los modelos entrenados en
-    warped generalizan mucho mejor (gap 2.24\%) que los entrenados en
-    original (gap 25.36\%).
+    warped generalizan mejor (gap 3.17\%) que los entrenados en
+    original (gap 7.70\%) - datos corregidos en Sesión 39.
 
-    \item \textbf{Ratio de mejora de 11×}: La normalización geométrica
-    produce modelos con capacidad de generalización 11.3 veces superior.
+    \item \textbf{Ratio de mejora de 2.4×}: La normalización geométrica
+    produce modelos con capacidad de generalización 2.4 veces superior
+    (corregido de 11× en Sesión 39).
 
     \item \textbf{Validación del enfoque}: El cross-evaluation confirma
     que el warping elimina shortcuts y produce características más robustas.

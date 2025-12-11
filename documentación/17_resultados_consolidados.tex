@@ -21,10 +21,12 @@ mediante Normalización Geométrica Basada en Landmarks}
 Este documento consolida los resultados de todo el proyecto de investigación,
 proporcionando una síntesis integral de los avances logrados en cada etapa
 del pipeline. Se presentan las mejoras cuantificadas en predicción de landmarks
-(reducción de error de 9.08 a 3.79 píxeles, mejora del 58\%), clasificación
-de COVID-19 (98.81\% accuracy con MobileNetV2), generalización interna
-(mejora de 11× en ratio de transferencia), y robustez a perturbaciones
-(30× más resistente a compresión JPEG). Se discuten las limitaciones
+(reducción de error de 9.08 a 3.71 píxeles, mejora del 59\%), clasificación
+de COVID-19 (98.73\% accuracy con modelo warped), generalización interna
+(mejora de 2.4× en ratio de transferencia, corregido en Sesión 39), y robustez a perturbaciones
+(30× más resistente a compresión JPEG). El experimento de control (Sesión 39)
+reveló que la robustez proviene \textasciitilde75\% de reducción de información y
+\textasciitilde25\% de normalización geométrica. Se discuten las limitaciones
 identificadas, particularmente el domain shift en validación externa, y
 se establecen las conclusiones metodológicas sobre el valor y límites de
 la normalización geométrica en imágenes médicas.
@@ -319,18 +321,18 @@ Viral Pneumonia & 94.7\% & 100.0\% & 97.3\% & 18 \\
 Original & 98.81\% & 73.45\% & 0.74 \\
 Warped & 95.78\% & 98.02\% & 1.02 \\
 \midrule
-\textbf{Gap} & -3.03\% & +24.57\% & \textbf{11.3×} \\
+\textbf{Gap} & 3.17\% & 7.70\% & \textbf{2.4×} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{resultadoimportante}[title={Mejora en generalización interna}]
+\begin{resultadoimportante}[title={Mejora en generalización interna (Corregido Sesión 39)}]
 El modelo entrenado en imágenes warped muestra:
 \begin{itemize}
-    \item \textbf{Ratio de generalización}: 1.02 (casi perfecta simetría)
-    \item \textbf{Comparación}: 11.3× mejor que modelo original (ratio 0.74)
-    \item \textbf{Interpretación}: Features geométricamente normalizadas son
-    más transferibles entre representaciones
+    \item \textbf{Gap de generalización}: 3.17\% (warped) vs 7.70\% (original)
+    \item \textbf{Ratio}: 2.4× mejor generalización (corregido de 11× en Sesión 39)
+    \item \textbf{Metodología}: Cross-evaluation con 3 clases idénticas en ambos datasets
+    \item \textbf{Nota}: El claim anterior de 11× era inválido por comparar 4 vs 3 clases
 \end{itemize}
 \end{resultadoimportante}
 
@@ -399,7 +401,7 @@ superando cualquier beneficio de la normalización geométrica.
 \midrule
 Error landmarks (MAE) & 9.08 px & 3.71 px & 59\% reducción \\
 Accuracy clasificación & -- & 98.96\% & Estado del arte \\
-Generalización interna & 0.74 ratio & 1.02 ratio & 11.3× mejor \\
+Generalización interna & 7.70\% gap & 3.17\% gap & 2.4× mejor (Sesión 39) \\
 Robustez JPEG (Q=50) & -16.52\% & -0.52\% & 31.8× más robusto \\
 Robustez blur ($\sigma=3$) & -17.56\% & -6.35\% & 2.8× más robusto \\
 Fill rate warping & 47.1\% & 96.1\% & 2× cobertura \\
@@ -439,8 +441,8 @@ que transfieren mejor entre dominios visual similares.
 \textbf{Resultado}: \textcolor{green!60!black}{\textbf{CONFIRMADA}}
 
 \begin{itemize}
-    \item Ratio de generalización: 1.02 (warped) vs 0.74 (original)
-    \item Mejora: 11.3× en transferencia bidireccional
+    \item Gap de generalización: 3.17\% (warped) vs 7.70\% (original)
+    \item Mejora: 2.4× en transferencia bidireccional (corregido Sesión 39)
     \item Significancia estadística: $p < 0.001$ (test de McNemar)
 \end{itemize}
 
@@ -505,7 +507,7 @@ como feature discriminativa (shortcut).
 \textbf{Objetivo} & \textbf{Mejor Opción} & \textbf{Justificación} \\
 \midrule
 Accuracy máxima & Original + MobileNetV2 & 98.96\% vs 98.02\% \\
-Generalización interna & Warped + ResNet-18 & 11× mejor transferencia \\
+Generalización interna & Warped + ResNet-18 & 2.4× mejor transferencia \\
 Robustez operacional & Warped + cualquier & 30× más robusto a JPEG \\
 Generalización externa & Ninguno superior & Domain shift domina \\
 \bottomrule
@@ -526,7 +528,7 @@ Modelo landmarks & +4M parámetros & Habilita warping \\
 Predicción landmarks & +18 ms/imagen & 3.71 px precisión \\
 Warping piecewise & +12 ms/imagen & Normalización geométrica \\
 \midrule
-\textbf{Total adicional} & +30 ms, +4M params & 11× generalización, 30× robustez \\
+\textbf{Total adicional} & +30 ms, +4M params & 2.4× generalización, 30× robustez \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -723,7 +725,7 @@ Registro deformable & Corrige forma completa & Computacionalmente costoso \\
 
 \textbf{Elementos visuales}:
 \begin{itemize}
-    \item H1 (Generalización): ✓ Confirmada - 11× mejor
+    \item H1 (Generalización): ✓ Confirmada - 2.4× mejor (corregido)
     \item H2 (Robustez): ✓ Confirmada - 30× JPEG
     \item H3 (Externa): ✗ Rechazada - domain shift
     \item H4 (Shortcut): ✓ Confirmada - $p=0.69$
@@ -813,8 +815,8 @@ Outputs & \archivo{outputs/landmarks/}\\
 
 \begin{enumerate}
     \item \textbf{La normalización geométrica mejora significativamente la
-    generalización interna}: Con una mejora de 11× en el ratio de transferencia
-    entre dominios, el warping produce representaciones más transferibles.
+    generalización interna}: Con una mejora de 2.4× en el ratio de transferencia
+    entre dominios (corregido en Sesión 39), el warping produce representaciones más transferibles.
 
     \item \textbf{La robustez a perturbaciones aumenta dramáticamente}: Mejoras
     de hasta 31.8× en resistencia a compresión JPEG y 2.8× en robustez a blur
