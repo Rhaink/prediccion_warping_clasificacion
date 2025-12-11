@@ -49,11 +49,11 @@ logger = logging.getLogger(__name__)
 
 
 # Default paths (same as original dataset generation)
-DEFAULT_INPUT_DIR = "data/COVID-19_Radiography_Dataset"
+DEFAULT_INPUT_DIR = "data/dataset/COVID-19_Radiography_Dataset"
 DEFAULT_OUTPUT_DIR = "outputs/full_coverage_warped_dataset"
 DEFAULT_CHECKPOINT = "checkpoints/session10/ensemble/seed123/final_model.pt"
-DEFAULT_CANONICAL = "outputs/shape_analysis/canonical_shape_pixels.json"
-DEFAULT_TRIANGLES = "outputs/shape_analysis/canonical_triangles.json"
+DEFAULT_CANONICAL = "outputs/shape_analysis/canonical_shape_gpa.json"
+DEFAULT_TRIANGLES = "outputs/shape_analysis/canonical_delaunay_triangles.json"
 
 # Same parameters as original dataset
 MARGIN_SCALE = 1.05

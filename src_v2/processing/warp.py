@@ -298,3 +298,135 @@ def compute_fill_rate(warped_image: np.ndarray) -> float:
     black_pixels = np.sum(warped_image == 0)
     fill_rate = 1 - (black_pixels / warped_image.size)
     return fill_rate
+
+
+def warp_mask(
+    mask: np.ndarray,
+    source_landmarks: np.ndarray,
+    target_landmarks: np.ndarray,
+    output_size: int = 224,
+    use_full_coverage: bool = True
+) -> np.ndarray:
+    """
+    Warp a binary mask using the same transformation as piecewise_affine_warp.
+
+    This function applies the SAME geometric transformation to masks
+    (e.g., lung segmentation masks) as applied to images. Uses NEAREST
+    interpolation to preserve binary values.
+
+    IMPORTANT: This enables valid PFS (Pulmonary Focus Score) calculation
+    on warped images by ensuring mask-image geometric alignment.
+
+    Args:
+        mask: Binary mask (H, W) with values 0 or 255 (or 0/1)
+        source_landmarks: Source image landmarks (15, 2)
+        target_landmarks: Target/canonical landmarks (15, 2)
+        output_size: Output mask size
+        use_full_coverage: If True, add boundary points for full coverage
+
+    Returns:
+        warped_mask: Mask warped to canonical shape
+    """
+    # Ensure mask is 2D
+    if len(mask.shape) == 3:
+        mask = mask[:, :, 0] if mask.shape[2] == 1 else cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY)
+
+    # Binarize if needed
+    if mask.max() > 1:
+        mask_binary = (mask > 127).astype(np.uint8) * 255
+    else:
+        mask_binary = (mask > 0.5).astype(np.uint8) * 255
+
+    # Extend landmarks with boundary points if needed
+    if use_full_coverage:
+        src_extended = add_boundary_points(source_landmarks, output_size)
+        dst_extended = add_boundary_points(target_landmarks, output_size)
+        tri = Delaunay(dst_extended)
+        triangles = tri.simplices
+        source_pts = src_extended
+        target_pts = dst_extended
+    else:
+        source_pts = source_landmarks
+        target_pts = target_landmarks
+        tri = Delaunay(target_pts)
+        triangles = tri.simplices
+
+    # Create output mask
+    warped_mask = np.zeros((output_size, output_size), dtype=np.uint8)
+
+    # Warp each triangle using NEAREST interpolation
+    for tri_indices in triangles:
+        src_tri = source_pts[tri_indices]
+        dst_tri = target_pts[tri_indices]
+
+        # Check for degenerate triangles
+        def triangle_area_2x(tri):
+            v1 = tri[1] - tri[0]
+            v2 = tri[2] - tri[0]
+            return abs(v1[0] * v2[1] - v1[1] * v2[0])
+
+        if triangle_area_2x(src_tri) < 1e-6 or triangle_area_2x(dst_tri) < 1e-6:
+            continue
+
+        try:
+            _warp_triangle_nearest(mask_binary, warped_mask, src_tri, dst_tri)
+        except Exception:
+            continue
+
+    return warped_mask
+
+
+def _warp_triangle_nearest(
+    src_img: np.ndarray,
+    dst_img: np.ndarray,
+    src_tri: np.ndarray,
+    dst_tri: np.ndarray
+) -> None:
+    """
+    Warp a triangle using NEAREST interpolation (for binary masks).
+
+    Args:
+        src_img: Source mask (H, W)
+        dst_img: Destination mask (modified in-place)
+        src_tri: Source triangle vertices (3, 2)
+        dst_tri: Destination triangle vertices (3, 2)
+    """
+    # Get bounding boxes
+    src_rect = get_bounding_box(src_tri)
+    dst_rect = get_bounding_box(dst_tri)
+
+    src_x, src_y, src_w, src_h = src_rect
+    dst_x, dst_y, dst_w, dst_h = dst_rect
+
+    if src_w <= 0 or src_h <= 0 or dst_w <= 0 or dst_h <= 0:
+        return
+
+    # Adjust triangles to local coordinates
+    src_tri_local = src_tri.copy()
+    src_tri_local[:, 0] -= src_x
+    src_tri_local[:, 1] -= src_y
+
+    dst_tri_local = dst_tri.copy()
+    dst_tri_local[:, 0] -= dst_x
+    dst_tri_local[:, 1] -= dst_y
+
+    # Extract source patch
+    src_patch = src_img[src_y:src_y + src_h, src_x:src_x + src_w].copy()
+
+    # Compute affine transformation
+    M = get_affine_transform_matrix(src_tri_local, dst_tri_local)
+
+    # Apply warp with NEAREST interpolation (critical for binary masks)
+    warped_patch = cv2.warpAffine(
+        src_patch, M, (dst_w, dst_h),
+        flags=cv2.INTER_NEAREST,  # NEAREST for binary masks
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0
+    )
+
+    # Create destination triangle mask
+    mask = create_triangle_mask((dst_h, dst_w), dst_tri_local)
+
+    # Apply mask and copy to destination
+    dst_region = dst_img[dst_y:dst_y + dst_h, dst_x:dst_x + dst_w]
+    np.copyto(dst_region, warped_patch, where=(mask > 0))

@@ -34,6 +34,7 @@ from src_v2.processing.warp import (
     create_triangle_mask,
     get_bounding_box,
     warp_triangle,
+    warp_mask,
 )
 
 
@@ -802,3 +803,99 @@ class TestNewClassifierArchitectures:
         actual = set(ImageClassifier.SUPPORTED_BACKBONES)
 
         assert actual == expected
+
+
+class TestWarpMask:
+    """Tests para warp_mask (transformar máscaras con misma geometría que imágenes)."""
+
+    def test_warp_mask_output_shape(self):
+        """warp_mask debe producir máscara del tamaño correcto."""
+        mask = np.zeros((224, 224), dtype=np.uint8)
+        mask[50:150, 50:150] = 255  # Cuadrado central
+
+        source = np.random.rand(15, 2) * 180 + 22
+        target = np.random.rand(15, 2) * 180 + 22
+
+        warped = warp_mask(mask, source, target, output_size=224)
+
+        assert warped.shape == (224, 224)
+        assert warped.dtype == np.uint8
+
+    def test_warp_mask_binary_values(self):
+        """warp_mask debe producir solo valores 0 o 255."""
+        mask = np.zeros((224, 224), dtype=np.uint8)
+        mask[80:144, 80:144] = 255
+
+        # Landmarks que no distorsionan mucho
+        landmarks = np.array([
+            [30, 30], [194, 30], [30, 194], [194, 194],
+            [60, 60], [164, 60], [60, 164], [164, 164],
+            [112, 30], [112, 112], [112, 194], [60, 30],
+            [164, 30], [60, 194], [164, 194]
+        ], dtype=np.float64)
+
+        warped = warp_mask(mask, landmarks, landmarks)
+
+        unique_values = np.unique(warped)
+        assert set(unique_values).issubset({0, 255})
+
+    def test_warp_mask_identical_landmarks_preserves_shape(self):
+        """warp_mask con landmarks idénticos debe preservar la máscara aproximadamente."""
+        mask = np.zeros((224, 224), dtype=np.uint8)
+        mask[60:160, 60:160] = 255
+
+        landmarks = np.array([
+            [30, 30], [194, 30], [30, 194], [194, 194],
+            [60, 60], [164, 60], [60, 164], [164, 164],
+            [112, 30], [112, 112], [112, 194], [60, 30],
+            [164, 30], [60, 194], [164, 194]
+        ], dtype=np.float64)
+
+        warped = warp_mask(mask, landmarks, landmarks, use_full_coverage=True)
+
+        # El área blanca debe ser aproximadamente igual
+        original_area = np.sum(mask > 0)
+        warped_area = np.sum(warped > 0)
+        ratio = warped_area / original_area
+
+        assert 0.8 < ratio < 1.2  # Permitir 20% de diferencia por interpolación
+
+    def test_warp_mask_handles_rgb_input(self):
+        """warp_mask debe manejar entrada RGB (convertir a grayscale)."""
+        mask_rgb = np.zeros((224, 224, 3), dtype=np.uint8)
+        mask_rgb[80:144, 80:144, :] = 255
+
+        landmarks = np.random.rand(15, 2) * 180 + 22
+
+        warped = warp_mask(mask_rgb, landmarks, landmarks)
+
+        assert warped.shape == (224, 224)  # Debe ser 2D
+        assert warped.dtype == np.uint8
+
+    def test_warp_mask_handles_normalized_input(self):
+        """warp_mask debe manejar máscaras normalizadas (0-1)."""
+        mask = np.zeros((224, 224), dtype=np.float32)
+        mask[80:144, 80:144] = 1.0
+
+        landmarks = np.random.rand(15, 2) * 180 + 22
+
+        warped = warp_mask(mask, landmarks, landmarks)
+
+        assert warped.dtype == np.uint8
+        assert warped.max() == 255 or warped.max() == 0
+
+    def test_warp_mask_full_coverage_vs_partial(self):
+        """warp_mask con full_coverage debe cubrir más área."""
+        mask = np.ones((224, 224), dtype=np.uint8) * 255
+
+        source = np.random.rand(15, 2) * 140 + 42
+        target = np.random.rand(15, 2) * 140 + 42
+
+        warped_partial = warp_mask(mask, source, target, use_full_coverage=False)
+        warped_full = warp_mask(mask, source, target, use_full_coverage=True)
+
+        # Full coverage debe tener más píxeles cubiertos
+        partial_coverage = np.sum(warped_partial > 0) / warped_partial.size
+        full_coverage = np.sum(warped_full > 0) / warped_full.size
+
+        assert full_coverage >= partial_coverage
