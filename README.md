@@ -239,6 +239,73 @@ python -m src_v2 generate-dataset \
   outputs/warped_dataset \
   --checkpoint checkpoints_v2/final_model.pt \
   --margin 1.05 --splits 0.75,0.125,0.125 --seed 42
+
+# --- Analysis & Validation Commands ---
+
+# Cross-evaluation: Compare generalization of two models on two datasets
+python -m src_v2 cross-evaluate \
+  outputs/classifier_original/best.pt \
+  outputs/classifier_warped/best.pt \
+  --data-a data/COVID-19_Radiography_Dataset \
+  --data-b outputs/full_warped_dataset \
+  --output-dir outputs/cross_evaluation
+
+# Evaluate on external binary dataset (FedCOVIDx/Dataset3)
+python -m src_v2 evaluate-external \
+  outputs/classifier/best.pt \
+  --external-data outputs/external_validation/dataset3 \
+  --output results.json
+
+# Test robustness to perturbations (JPEG compression, blur, noise)
+python -m src_v2 test-robustness \
+  outputs/classifier/best.pt \
+  --data-dir outputs/warped_dataset \
+  --output robustness_results.json
+
+# Compare multiple CNN architectures
+python -m src_v2 compare-architectures outputs/warped_dataset \
+  --architectures resnet18,efficientnet_b0,densenet121 \
+  --epochs 30 --output-dir outputs/arch_comparison
+
+# --- Explainability Commands ---
+
+# Generate Grad-CAM visualizations (single image)
+python -m src_v2 gradcam --checkpoint outputs/classifier/best.pt \
+  --image test.png --output gradcam.png
+
+# Generate Grad-CAM visualizations (batch mode)
+python -m src_v2 gradcam --checkpoint outputs/classifier/best.pt \
+  --data-dir outputs/warped_dataset/test \
+  --output-dir outputs/gradcam_analysis --num-samples 20
+
+# Analyze classification errors with optional Grad-CAM
+python -m src_v2 analyze-errors \
+  --checkpoint outputs/classifier/best.pt \
+  --data-dir outputs/warped_dataset/test \
+  --output-dir outputs/error_analysis \
+  --visualize --gradcam
+
+# Analyze Pulmonary Focus Score (PFS) - measures lung region attention
+python -m src_v2 pfs-analysis \
+  --checkpoint outputs/classifier/best.pt \
+  --data-dir outputs/warped_dataset/test \
+  --mask-dir data/COVID-19_Radiography_Dataset \
+  --output-dir outputs/pfs_analysis
+
+# Generate approximate lung masks (when segmentation masks unavailable)
+python -m src_v2 generate-lung-masks \
+  --data-dir outputs/warped_dataset \
+  --output-dir outputs/lung_masks \
+  --method rectangular --margin 0.15
+
+# --- Optimization Commands ---
+
+# Find optimal warping margin via grid search
+python -m src_v2 optimize-margin \
+  --data-dir data/COVID-19_Radiography_Dataset \
+  --landmarks-csv data/landmarks.csv \
+  --margins 1.00,1.05,1.10,1.15,1.20,1.25,1.30 \
+  --epochs 10 --output-dir outputs/margin_optimization
 ```
 
 ### Key CLI Parameters

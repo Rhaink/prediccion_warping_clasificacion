@@ -145,7 +145,7 @@ def create_dataloaders(
     rotation_degrees: float = 10.0,
     use_clahe: bool = False,
     clahe_clip_limit: float = 2.0,
-    clahe_tile_size: int = 8,
+    clahe_tile_size: int = 4,
     use_category_weights: bool = False,
     category_weights: Optional[Dict[str, float]] = None,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
@@ -165,7 +165,7 @@ def create_dataloaders(
         rotation_degrees: Rango de rotacion en grados
         use_clahe: Usar CLAHE para mejorar contraste local
         clahe_clip_limit: Limite de contraste para CLAHE (2.0 es estandar)
-        clahe_tile_size: Tamano de tiles para CLAHE (8 es estandar)
+        clahe_tile_size: Tamano de tiles para CLAHE (4 es el estandar del proyecto)
         use_category_weights: Usar WeightedRandomSampler para sobremuestrear COVID
         category_weights: Pesos por categoria (si None, usa DEFAULT_CATEGORY_WEIGHTS)
 

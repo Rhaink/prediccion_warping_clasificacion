@@ -1,0 +1,130 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.0.0] - 2025-12-11
+
+### Added
+- Complete CLI with 20 commands via Typer
+- Piecewise affine warping with Delaunay triangulation
+- `warp_mask()` function for mask transformation
+- Full coverage warping with boundary points
+- Ensemble model evaluation (4 models + TTA)
+- Cross-dataset validation pipeline
+- Robustness testing (JPEG compression, Gaussian blur)
+- Control experiment for mechanism validation (Session 39)
+- Pulmonary Focus Score (PFS) analysis with warped masks
+- CONTRIBUTING.md and CHANGELOG.md
+- pyproject.toml for pip installation
+- Complete seed management for reproducibility
+
+### Changed
+- Unified CLAHE tile_size to 4 (from inconsistent 4/8)
+- Standardized PIL imports to `from PIL import Image`
+- Deduplicated `triangle_area_2x()` in warp.py
+- Updated requirements.txt (removed unused dependencies)
+- Improved documentation with validated claims
+
+### Fixed
+- Bounding box clamping in `get_bounding_box()`
+- Cross-evaluation now uses consistent 3 classes
+- PFS calculation uses correctly warped masks
+- Seeds now include `random.seed()` for stdlib
+
+### Removed
+- Unused `hydra-core` and `omegaconf` dependencies
+- Legacy Hydra-based configuration system
+- Obsolete tests depending on Hydra
+
+### Documentation
+- Updated README with validated results from Session 39
+- Corrected generalization claim from 11x to 2.4x
+- Added mechanism explanation (75% info + 25% geo)
+- Session documentation (Sessions 35-42)
+
+## [1.5.0] - 2025-12-08
+
+### Added
+- Session 35-38 improvements
+- Cross-evaluation command
+- Compare-architectures command
+- Optimize-margin command
+
+### Fixed
+- Warping commands use correct `src_v2.processing.warp`
+- CLI validation and error messages
+
+## [1.4.0] - 2025-12-05
+
+### Added
+- Grad-CAM visualization
+- PFS (Pulmonary Focus Score) analysis
+- Error analysis by category
+
+### Changed
+- Improved model checkpoint handling
+- Better logging throughout CLI
+
+## [1.3.0] - 2025-12-01
+
+### Added
+- Image classifier with multiple architectures
+- Support for ResNet18, ResNet50, EfficientNet-B0, DenseNet-121
+- Train-classifier and evaluate-classifier commands
+- Class weighting for imbalanced datasets
+
+## [1.2.0] - 2025-11-25
+
+### Added
+- Coordinate Attention Module
+- Two-phase training (frozen backbone + fine-tuning)
+- Early stopping and model checkpointing
+- WingLoss and CombinedLandmarkLoss
+
+### Changed
+- Improved landmark prediction accuracy to 3.71 px
+
+## [1.1.0] - 2025-11-20
+
+### Added
+- GPA (Generalized Procrustes Analysis)
+- Canonical shape computation
+- Warp command in CLI
+- Generate-dataset command
+
+### Fixed
+- Triangle degeneration handling in warping
+
+## [1.0.0] - 2025-11-15
+
+### Added
+- Initial release
+- ResNet-18 landmark prediction model
+- Basic CLI with train, evaluate, predict commands
+- LandmarkDataset with CLAHE preprocessing
+- Basic test suite
+
+## Validated Results (Session 39-41)
+
+### Landmark Prediction
+- **Error**: 3.71 px (ensemble 4 models + TTA)
+- Per-category: Normal 3.42 px, COVID 3.77 px, Viral 4.40 px
+
+### Classification
+- Original 100%: 98.84% accuracy
+- Warped 99%: 98.73% accuracy
+
+### Robustness (vs Original 100%)
+- JPEG Q50: **30x more robust** (0.53% vs 16.14% degradation)
+- JPEG Q30: **23x more robust** (1.32% vs 29.97% degradation)
+- Blur sigma=1: **2.4x more robust** (6.06% vs 14.43% degradation)
+
+### Cross-Dataset Generalization
+- Warped model: **2.4x better** (gap 3.17% vs 7.70%)
+
+### Robustness Mechanism
+- ~75%: Information reduction (implicit regularization via reduced fill rate)
+- ~25%: Geometric normalization (additional warping benefit)

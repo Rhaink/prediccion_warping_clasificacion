@@ -17,6 +17,23 @@ from typing import Tuple, Optional
 from scipy.spatial import Delaunay
 
 
+def _triangle_area_2x(tri: np.ndarray) -> float:
+    """
+    Calculate 2x the area of a triangle using cross product.
+
+    Used to detect degenerate triangles (area < threshold).
+
+    Args:
+        tri: Triangle vertices (3, 2)
+
+    Returns:
+        2x the area of the triangle (avoids division by 2)
+    """
+    v1 = tri[1] - tri[0]
+    v2 = tri[2] - tri[0]
+    return abs(v1[0] * v2[1] - v1[1] * v2[0])
+
+
 def scale_landmarks_from_centroid(
     landmarks: np.ndarray,
     scale: float = 1.0
@@ -265,15 +282,8 @@ def piecewise_affine_warp(
         dst_tri = target_pts[tri_indices]
 
         # Verify triangles are valid (not degenerate)
-        # Use cross product formula for 2D triangle area: 0.5 * |v1 x v2|
-        # where v1 = tri[1] - tri[0], v2 = tri[2] - tri[0]
-        def triangle_area_2x(tri):
-            v1 = tri[1] - tri[0]
-            v2 = tri[2] - tri[0]
-            return abs(v1[0] * v2[1] - v1[1] * v2[0])
-
-        src_area = triangle_area_2x(src_tri)
-        dst_area = triangle_area_2x(dst_tri)
+        src_area = _triangle_area_2x(src_tri)
+        dst_area = _triangle_area_2x(dst_tri)
 
         if src_area < 1e-6 or dst_area < 1e-6:
             continue
@@ -364,12 +374,7 @@ def warp_mask(
         dst_tri = target_pts[tri_indices]
 
         # Check for degenerate triangles
-        def triangle_area_2x(tri):
-            v1 = tri[1] - tri[0]
-            v2 = tri[2] - tri[0]
-            return abs(v1[0] * v2[1] - v1[1] * v2[0])
-
-        if triangle_area_2x(src_tri) < 1e-6 or triangle_area_2x(dst_tri) < 1e-6:
+        if _triangle_area_2x(src_tri) < 1e-6 or _triangle_area_2x(dst_tri) < 1e-6:
             continue
 
         try:

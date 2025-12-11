@@ -9,7 +9,10 @@ Uso:
 """
 
 import logging
+import random
 import sys
+
+import numpy as np
 from pathlib import Path
 from typing import Optional
 
@@ -283,7 +286,9 @@ def train(
     logger.info("COVID-19 Landmark Detection - Training")
     logger.info("=" * 60)
 
-    # Configurar seed
+    # Configurar seed completo para reproducibilidad
+    random.seed(seed)
+    np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
@@ -721,7 +726,7 @@ def predict(
     import cv2
     import numpy as np
     import torch
-    from PIL import Image as PILImage
+    from PIL import Image
 
     from src_v2.constants import LANDMARK_NAMES, IMAGENET_MEAN, IMAGENET_STD
     from src_v2.models import create_model
@@ -773,11 +778,11 @@ def predict(
     logger.info("Procesando imagen: %s", image)
     logger.info("Preprocessing: CLAHE=%s (clip=%.1f, tile=%d)", use_clahe, clahe_clip, clahe_tile)
 
-    img = PILImage.open(image).convert("RGB")
+    img = Image.open(image).convert("RGB")
     original_size = img.size
 
     # Resize a 224x224
-    img_resized = img.resize((DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE), PILImage.BILINEAR)
+    img_resized = img.resize((DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE), Image.BILINEAR)
     img_array = np.array(img_resized, dtype=np.uint8)
 
     # Aplicar CLAHE si está habilitado (antes de normalizar)
@@ -1941,9 +1946,12 @@ def train_classifier(
     logger.info("COVID-19 Classifier Training")
     logger.info("=" * 60)
 
-    # Configurar semilla
-    torch.manual_seed(seed)
+    # Configurar semilla completa para reproducibilidad
+    random.seed(seed)
     np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     # Verificar directorios
     data_path = Path(data_dir)
@@ -2428,9 +2436,12 @@ def cross_evaluate(
     logger.info("Cross-Evaluation: Modelo A vs Modelo B")
     logger.info("=" * 60)
 
-    # Configurar semilla
+    # Configurar semilla completa para reproducibilidad
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     # Verificar paths
     for path, name in [(model_a, "Modelo A"), (model_b, "Modelo B")]:
@@ -3612,6 +3623,8 @@ def generate_dataset(
     logger.info("Creando splits (train=%.0f%%, val=%.0f%%, test=%.0f%%)...",
                 train_ratio * 100, val_ratio * 100, test_ratio * 100)
 
+    # Configurar semilla para reproducibilidad
+    random.seed(seed)
     np.random.seed(seed)
 
     # Agrupar por clase
@@ -4431,9 +4444,12 @@ def compare_architectures(
 
     logger.info("Arquitecturas a comparar: %s", arch_list)
 
-    # Configurar semilla
-    torch.manual_seed(seed)
+    # Configurar semilla completa para reproducibilidad
+    random.seed(seed)
     np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     # Verificar directorios
     data_path = Path(data_dir)
@@ -6067,8 +6083,13 @@ def optimize_margin(
     output_path.mkdir(parents=True, exist_ok=True)
 
     torch_device = get_device(device)
-    torch.manual_seed(seed)
+
+    # Configurar semilla completa para reproducibilidad
+    random.seed(seed)
     np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     logger.info("")
     logger.info("Configuración:")
