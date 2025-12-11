@@ -133,20 +133,24 @@ def create_triangle_mask(
     return mask
 
 
-def get_bounding_box(triangle: np.ndarray) -> Tuple[int, int, int, int]:
+def get_bounding_box(
+    triangle: np.ndarray,
+    max_size: int = 224
+) -> Tuple[int, int, int, int]:
     """
     Get bounding box of a triangle.
 
     Args:
         triangle: Triangle vertices (3, 2)
+        max_size: Maximum image size for clamping (default 224)
 
     Returns:
         (x, y, w, h) of bounding box
     """
     x_min = max(0, int(np.floor(triangle[:, 0].min())))
     y_min = max(0, int(np.floor(triangle[:, 1].min())))
-    x_max = int(np.ceil(triangle[:, 0].max()))
-    y_max = int(np.ceil(triangle[:, 1].max()))
+    x_max = min(max_size, int(np.ceil(triangle[:, 0].max())))
+    y_max = min(max_size, int(np.ceil(triangle[:, 1].max())))
     return x_min, y_min, x_max - x_min, y_max - y_min
 
 
