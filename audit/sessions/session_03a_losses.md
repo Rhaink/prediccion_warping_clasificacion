@@ -70,14 +70,15 @@
 
 ## Veredicto del Auditor Maestro
 
-- **Estado del modulo:** ✅ **APROBADO**
-- **Conteo (Sesion 3a):** 0🔴, 1🟠 (resuelto), 4🟡, 10⚪
-- **Aplicacion de umbrales segun §5.2:** Cumple criterio "✅ Aprobado" (0🔴, 0🟠 abiertos)
-- **Prioridades:**
-  1. ~~D01 (🟠)~~: RESUELTO - Agregada referencia a documento fuente
-  2. C03 (🟡): Agregar warning para estrategia desconocida (opcional)
-  3. D05 (🟡): Clarificar comportamiento con coordenadas no normalizadas (opcional)
-- **Siguiente paso:** Proceder a Sesion 3b (resnet_landmark.py + classifier.py)
+| Metrica | Valor |
+|---------|-------|
+| **Estado del modulo** | ✅ **APROBADO** |
+| **Conteo (Sesion 3a)** | 0🔴, 1🟠 (resuelto), 4🟡, 10⚪ |
+| **Aplicacion umbrales §5.2** | Cumple criterio "✅ Aprobado" (0🔴, 0🟠 abiertos) |
+| **Prioridad 1** | ~~D01 (🟠)~~: RESUELTO - Agregada referencia a documento fuente |
+| **Prioridad 2** | C03 (🟡): Agregar warning para estrategia desconocida (opcional) |
+| **Prioridad 3** | D05 (🟡): Clarificar comportamiento con coordenadas no normalizadas (opcional) |
+| **Siguiente paso** | Proceder a Sesion 3b (resnet_landmark.py + classifier.py) |
 
 ### Justificacion del Veredicto
 
@@ -147,6 +148,10 @@ Resultado: 30 passed in 0.75s ✓
 - El modulo models/ continua siendo PRIORIDAD CRITICA
 - Dividir 3b y 3c si excede limite de 500 lineas
 
-## Desviaciones del Protocolo
+## Desviaciones del Protocolo Identificadas Post-Sesion
 
-Ninguna desviacion identificada. Se siguio el protocolo §4.4 estrictamente.
+| ID | Severidad | Descripcion | Accion Correctiva |
+|----|-----------|-------------|-------------------|
+| P01 | 🟡 | Veredicto del Auditor Maestro usaba formato de vinetas en lugar de tabla segun §6 | Corregido: Reformateado a tabla con 7 filas |
+
+**Estado:** Todas las desviaciones corregidas. Cumplimiento 100% con plantilla §6.
