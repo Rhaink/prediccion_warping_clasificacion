@@ -285,7 +285,18 @@ def get_dataframe_splits(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Retorna DataFrames separados para train, val, test.
-    Util para analisis sin crear DataLoaders.
+
+    Util para analisis sin crear DataLoaders completos.
+    Usa split estratificado por categoria para mantener proporciones.
+
+    Args:
+        csv_path: Ruta al archivo CSV de coordenadas
+        val_split: Fraccion para validacion (default: 0.15)
+        test_split: Fraccion para test (default: 0.10)
+        random_state: Semilla para reproducibilidad (default: 42)
+
+    Returns:
+        Tupla (train_df, val_df, test_df) con DataFrames estratificados
     """
     df = load_coordinates_csv(csv_path)
 

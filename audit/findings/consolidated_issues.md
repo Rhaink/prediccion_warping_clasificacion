@@ -32,13 +32,15 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 
 | Severidad | Cantidad | Resueltos | Pendientes |
 |-----------|----------|-----------|------------|
-| 🔴 Crítico | 0 | 0 | 0 |
-| 🟠 Mayor | 4 | 1 | 3 |
-| 🟡 Menor | 6 | 0 | 6 |
-| ⚪ Nota | 8 | 0 | 8 |
-| **Total** | **18** | **1** | **17** |
+| 🔴 Critico | 0 | 0 | 0 |
+| 🟠 Mayor | 6 | 3 | 3 |
+| 🟡 Menor | 12 | 0 | 12 |
+| ⚪ Nota | 14 | 0 | 14 |
+| **Total** | **32** | **3** | **29** |
 
-**Nota:** Sesión 1 agregó 1🟡 (C01) y 4⚪ (A01, D01, V01, V02)
+**Nota:**
+- Sesion 1 agrego 1🟡 (C01) y 4⚪ (A01, D01, V01, V02)
+- Sesion 2 agrego 2🟠 (D01-S2, V01-S2), 6🟡, 6⚪
 
 ---
 
@@ -100,6 +102,36 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 | **Solución** | Documentar: "Grid search [1.0-1.3] en Sesión 25 encontró 1.05 minimiza error de warping" |
 | **Esfuerzo** | 30 minutos |
 | **Estado** | ⏳ Pendiente |
+
+### M5: Docstring incompleto en get_dataframe_splits() (Sesion 2)
+| Campo | Valor |
+|-------|-------|
+| **ID** | M5 (D01-S2) |
+| **Severidad** | 🟠 Mayor |
+| **Auditor** | Especialista en Documentacion |
+| **Sesion** | 2 |
+| **Descripcion** | `get_dataframe_splits()` tiene docstring minimo sin Args/Returns completos. Funcion publica deberia estar mejor documentada para que terceros puedan usarla. |
+| **Ubicacion** | src_v2/data/dataset.py:286-289 |
+| **Impacto** | Documentacion incompleta para funcion publica |
+| **Solucion** | Agregar docstring completo con Args y Returns |
+| **Esfuerzo** | 5 minutos |
+| **Estado** | ✅ **RESUELTO** (Sesion 2) |
+| **Resolucion** | Docstring completado con Args y Returns en dataset.py:286-300 |
+
+### M6: dataset.py sin tests dedicados (Sesion 2)
+| Campo | Valor |
+|-------|-------|
+| **ID** | M6 (V01-S2) |
+| **Severidad** | 🟠 Mayor |
+| **Auditor** | Ingeniero de Validacion |
+| **Sesion** | 2 |
+| **Descripcion** | `LandmarkDataset`, `create_dataloaders()`, `compute_sample_weights()` sin tests unitarios dedicados. Test coverage del modulo dataset.py es ~0%. |
+| **Ubicacion** | tests/ |
+| **Impacto** | Falta cobertura de tests en modulo critico |
+| **Solucion** | Crear tests/test_dataset.py con tests para funciones publicas principales |
+| **Esfuerzo** | 30 minutos |
+| **Estado** | ✅ **RESUELTO** (Sesion 2) |
+| **Resolucion** | Creado tests/test_dataset.py con 14 tests: 5 para compute_sample_weights, 5 para LandmarkDataset, 4 para get_dataframe_splits |
 
 ---
 
