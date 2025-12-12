@@ -1,11 +1,12 @@
 # Sesión 0: Mapeo del Proyecto
 **Fecha:** 2025-12-11
-**Duración:** ~2 horas
+**Duración estimada:** ~2 horas
 **Rama Git:** audit/main
 **Archivos en alcance:** Proyecto completo (exploración)
 
 ## Alcance
-- **Objetivo:** Mapeo inicial del proyecto para planificar auditoría
+- **Archivos revisados:** Proyecto completo (src_v2/, tests/, scripts/, docs/, documentación/)
+- **Objetivo específico:** Mapeo inicial del proyecto para planificar auditoría detallada por módulos
 - **Actividades realizadas:**
   1. Exploración de estructura de directorios
   2. Conteo de líneas y archivos
@@ -65,14 +66,23 @@
 | V02 | 🟠 | hierarchical.py (368 líneas) sin tests | models/ | Añadir tests |
 | V03 | 🟡 | dataset.py sin tests dedicados | data/ | Añadir tests |
 
+### Auditor Maestro
+| ID | Severidad | Descripción | Ubicación | Solución Propuesta |
+|----|-----------|-------------|-----------|-------------------|
+| AM01 | ⚪ | Fortaleza: Pipeline innovador landmarks + warping + ensemble | Global | Documentar como contribución |
+| AM02 | ⚪ | Fortaleza: Validación causal demostrada (Sesión 39) | docs/sesiones/ | Destacar en defensa |
+| AM03 | ⚪ | Fortaleza: 613 tests automatizados | tests/ | Mantener cobertura |
+| AM04 | ⚪ | Fortaleza: GROUND_TRUTH.json para reproducibilidad | raíz | Verificar en cada sesión |
+
 ## Veredicto del Auditor Maestro
-- **Estado del proyecto:** ✅ APROBADO PARA DEFENSA con correcciones menores
-- **Conteo:** 0 🔴, 4 🟠, 5 🟡, 4 ⚪
+- **Estado del proyecto:** ⚠️ REQUIERE CORRECCIONES (según §5.2: 0🔴, >5🟠)
+- **Conteo real:** 0 🔴, 7 🟠, 3 🟡, 4 ⚪
+- **Nota de consolidación:** Los 7 hallazgos 🟠 se consolidaron a 4 en `consolidated_issues.md` agrupando por tema (ver metodología en ese documento)
 - **Prioridades:**
-  1. Corregir documentación (M1-M4)
-  2. Añadir tests a módulos críticos
-  3. Refactorizar CLI (futuro)
-- **Siguiente paso:** Crear entregables de Sesión 0, luego iniciar Sesión 1
+  1. Corregir documentación (D01-D03 → M1, M3, M4)
+  2. Añadir tests a módulos críticos (V01-V02 → m5)
+  3. Refactorizar CLI (A01, C01 → m1, m3) - futuro
+- **Siguiente paso:** Implementar correcciones M1-M4 antes de continuar con Sesión 1
 
 ## Fortalezas Identificadas
 1. ✅ Pipeline innovador: landmarks + warping + ensemble
@@ -95,8 +105,14 @@
 
 ## 🎯 Progreso de Auditoría
 **Módulos completados:** 0/12 (sesión de mapeo)
-**Hallazgos totales:** [🔴:0 | 🟠:4 | 🟡:5 | ⚪:4]
-**Próximo hito:** Completar Sesión 1 (constants + utils)
+**Hallazgos totales (Sesión 0):** [🔴:0 | 🟠:7 | 🟡:3 | ⚪:4]
+**Hallazgos consolidados:** [🔴:0 | 🟠:4 | 🟡:5 | ⚪:4] (ver metodología en consolidated_issues.md)
+**Próximo hito:** Implementar correcciones M1-M4, luego Sesión 1
+
+## Registro de Commit
+**Commit inicial:** `598a26f audit(session-0): mapeo inicial del proyecto`
+**Fecha:** 2025-12-12
+**Archivos incluidos:** MASTER_PLAN.md, REFERENCE_INDEX.md, session_00_mapping.md, consolidated_issues.md, executive_summary.md, referencia_auditoria.md
 
 ## Notas para Siguiente Sesión
 - Comenzar con módulos pequeños (constants.py, utils/)

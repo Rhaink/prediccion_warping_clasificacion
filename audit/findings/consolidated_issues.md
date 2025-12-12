@@ -1,7 +1,32 @@
 # Hallazgos Consolidados de Auditoría
 **Proyecto:** Clasificación de Radiografías de Tórax
-**Última actualización:** 2025-12-11
-**Sesiones incluidas:** 0-50
+**Última actualización:** 2025-12-12
+**Sesiones incluidas:** 0
+
+## Metodología de Consolidación
+
+Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consolidados siguiendo estos criterios:
+
+### Agrupación por Tema
+| Hallazgos Originales | Consolidado | Justificación |
+|---------------------|-------------|---------------|
+| A01 (cli monolítico) | m1 | Reclasificado a 🟡: no bloquea defensa, mejora futura |
+| C01 (imports inline) | m3 | Reclasificado a 🟡: no bloquea defensa, mejora futura |
+| D01 (PFS claim) | M1 | Mantenido 🟠: afecta credibilidad científica |
+| D02 (sesgos dataset) | M3 | Mantenido 🟠: requisito ético en ML médico |
+| D03 (margen 1.05) | M4 | Mantenido 🟠: pregunta probable del jurado |
+| V01+V02 (tests modelos) | m5 | Reclasificado a 🟡: tests de integración existen |
+| A02, C02, V03 | m2, m4 | Mantenido 🟡: mejoras menores |
+
+### Criterios de Reclasificación
+- **🟠 → 🟡**: Si existe workaround o no afecta directamente la defensa
+- **Agrupación**: Hallazgos similares se combinan bajo un único ID
+
+### Hallazgos Sesión 0 (Original)
+- **Conteo original:** 0 🔴, 7 🟠, 3 🟡, 4 ⚪
+- **Conteo consolidado:** 0 🔴, 4 🟠, 5 🟡, 4 ⚪
+
+---
 
 ## Resumen de Hallazgos
 

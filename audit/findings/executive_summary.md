@@ -2,6 +2,7 @@
 **Proyecto:** Clasificación de Radiografías de Tórax mediante Landmarks Anatómicos y Normalización Geométrica
 **Nivel:** Maestría en Ingeniería Electrónica
 **Fecha de auditoría:** 2025-12-11
+**Auditor:** Claude Code (AI) en colaboración con el estudiante
 **Estado:** En progreso (Sesión 0 completada)
 
 ---
@@ -99,6 +100,29 @@ El proyecto cumple ampliamente los estándares académicos de maestría en rigor
 | **Implementación** | ⭐⭐⭐⭐ | Modular, testeable, CLI profesional |
 | **Reproducibilidad** | ⭐⭐⭐⭐⭐ | Seeds, GROUND_TRUTH, instrucciones claras |
 | **PROMEDIO** | **4.3/5** | **Sobresaliente** |
+
+---
+
+## Consideraciones Éticas (§8.1)
+
+### Manejo de Datos de Pacientes
+- **Dataset:** COVID-19 Radiography Database (Kaggle) - datos públicos anonimizados
+- **Anonimización:** El dataset no contiene información identificable de pacientes
+- **Cumplimiento:** Uso conforme a términos de Kaggle para investigación académica
+
+### Sesgos Potenciales del Dataset
+- **Distribución demográfica:** Desconocida (hallazgo M3 pendiente de documentar)
+- **Equipamiento radiológico:** Variado entre instituciones
+- **Origen geográfico:** Múltiples países, distribución no uniforme
+
+### Limitaciones para Uso Clínico
+⚠️ **DISCLAIMER:** Este modelo es experimental y NO está validado para uso clínico directo. Los resultados son para propósitos de investigación académica únicamente.
+
+### Implicaciones de Errores de Clasificación
+| Tipo de Error | Consecuencia Potencial | Mitigación |
+|---------------|------------------------|------------|
+| Falso Positivo (COVID) | Alarma innecesaria, pruebas adicionales | Threshold ajustable |
+| Falso Negativo (COVID) | Caso no detectado, riesgo de contagio | No reemplaza criterio médico |
 
 ---
 
