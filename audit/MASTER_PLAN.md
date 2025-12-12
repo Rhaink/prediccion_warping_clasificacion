@@ -84,13 +84,15 @@ Cada módulo recibe un veredicto basado en el número y severidad de hallazgos:
 
 ### 6.1 Resumen de Hallazgos
 
-| Severidad | Cantidad | Detalle |
-|-----------|----------|---------|
-| 🔴 Críticos | 0 | - |
-| 🟠 Mayores | 4 | Ver sección 7 |
-| 🟡 Menores | 5 | Documentados en `session_00_initial_assessment.md` |
-| ⚪ Notas | 4 | Sugerencias opcionales |
-| **Total** | **13** | |
+| Severidad | Cantidad | Resueltos | Pendientes |
+|-----------|----------|-----------|------------|
+| 🔴 Críticos | 0 | 0 | 0 |
+| 🟠 Mayores | 4 | 1 (M2) | 3 |
+| 🟡 Menores | 5 | 0 | 5 |
+| ⚪ Notas | 4 | 0 | 4 |
+| **Total** | **13** | **1** | **12** |
+
+**Nota:** M2 (CLAHE tile_size) resuelto en Sesión 1 - verificado consistencia en todo el proyecto.
 
 ### 6.2 Veredicto Preliminar
 
@@ -117,11 +119,12 @@ Los siguientes hallazgos 🟠 requieren atención antes de la defensa:
 **Corrección:** Reformular como "propuesta open-source" o "implementación disponible públicamente"
 **Impacto:** Credibilidad académica
 
-### M2: Clarificar parámetro CLAHE `tile_size`
+### M2: Clarificar parámetro CLAHE `tile_size` ✅ RESUELTO
 **Ubicación:** `data/transforms.py` + documentación
 **Problema:** No se especifica claramente el valor de `tile_size` en configuración CLAHE
 **Corrección:** Documentar valor usado, justificar elección, añadir a constantes si es fijo
 **Impacto:** Reproducibilidad experimental
+**Resolución (Sesión 1):** Verificado que tile_size=4 es consistente en todos los archivos del proyecto. Documentado en constants.py con nota explicativa.
 
 ### M3: Añadir sección de sesgos y disclaimer médico
 **Ubicación:** `README.md` o documento de limitaciones

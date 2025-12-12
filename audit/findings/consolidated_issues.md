@@ -33,10 +33,10 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 | Severidad | Cantidad | Resueltos | Pendientes |
 |-----------|----------|-----------|------------|
 | 🔴 Crítico | 0 | 0 | 0 |
-| 🟠 Mayor | 4 | 0 | 4 |
+| 🟠 Mayor | 4 | 1 | 3 |
 | 🟡 Menor | 5 | 0 | 5 |
 | ⚪ Nota | 4 | 0 | 4 |
-| **Total** | **13** | **0** | **13** |
+| **Total** | **13** | **1** | **12** |
 
 ---
 
@@ -68,7 +68,8 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 | **Impacto** | Confusión al reproducir resultados |
 | **Solución** | Auditar archivos legacy y clarificar: tile_size=4 es el válido para resultados finales |
 | **Esfuerzo** | 20 minutos |
-| **Estado** | ⏳ Pendiente |
+| **Estado** | ✅ **RESUELTO** (Sesión 1) |
+| **Resolución** | Verificado en Sesión 1: tile_size=4 consistente en todos los archivos (constants.py, GROUND_TRUTH.json, README.md, configs/, todos los scripts). La única mención de tile_size=8 está en scripts/visualization/generate_prediction_samples.py para comparación visual intencional. CHANGELOG.md confirma unificación. |
 
 ### M3: Sesgos del dataset no documentados
 | Campo | Valor |
@@ -174,7 +175,7 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 
 | Fecha | ID | Acción | Verificado |
 |-------|----|----|------------|
-| - | - | Sin resoluciones aún | - |
+| 2025-12-12 | M2 | Verificado consistencia tile_size=4 en todos los archivos del proyecto | ✓ Sesión 1 |
 
 ---
 
