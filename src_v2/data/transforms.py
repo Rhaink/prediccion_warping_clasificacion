@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 
 def apply_clahe(
     image: Image.Image,
-    clip_limit: float = 2.0,
-    tile_grid_size: Tuple[int, int] = (8, 8)
+    clip_limit: float = DEFAULT_CLAHE_CLIP_LIMIT,
+    tile_grid_size: Tuple[int, int] = (DEFAULT_CLAHE_TILE_SIZE, DEFAULT_CLAHE_TILE_SIZE)
 ) -> Image.Image:
     """
     Aplica CLAHE (Contrast Limited Adaptive Histogram Equalization).

@@ -264,7 +264,8 @@ def compute_symmetry_error(landmarks: np.ndarray) -> Dict[str, float]:
         return {}
 
     eje_unit = eje / eje_len
-    perp = np.array([-eje_unit[1], eje_unit[0]])  # Perpendicular
+    # Vector perpendicular (rotación 90° antihorario)
+    perp = np.array([-eje_unit[1], eje_unit[0]])
 
     errors = {}
     for left_idx, right_idx in SYMMETRIC_PAIRS:

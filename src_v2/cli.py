@@ -225,12 +225,12 @@ def train(
         help="Usar CLAHE para mejora de contraste"
     ),
     clahe_clip: float = typer.Option(
-        2.0,
+        DEFAULT_CLAHE_CLIP_LIMIT,
         "--clahe-clip",
         help="CLAHE clip limit"
     ),
     clahe_tile: int = typer.Option(
-        4,
+        DEFAULT_CLAHE_TILE_SIZE,
         "--clahe-tile",
         help="CLAHE tile size"
     ),
@@ -269,7 +269,7 @@ def train(
     - Fase 1: Backbone congelado, entrenar solo cabeza
     - Fase 2: Fine-tuning completo con LR diferenciado
 
-    Valores por defecto reproducen el mejor modelo (4.50 px ensemble):
+    Valores por defecto reproducen el mejor modelo (3.71 px ensemble):
     - Loss: WingLoss
     - CLAHE: enabled (clip=2.0, tile=4)
     - Arquitectura: CoordAttention + DeepHead (hidden_dim=768)
@@ -505,12 +505,12 @@ def evaluate(
         help="Usar CLAHE para mejora de contraste (debe coincidir con entrenamiento)"
     ),
     clahe_clip: float = typer.Option(
-        2.0,
+        DEFAULT_CLAHE_CLIP_LIMIT,
         "--clahe-clip",
         help="CLAHE clip limit"
     ),
     clahe_tile: int = typer.Option(
-        4,
+        DEFAULT_CLAHE_TILE_SIZE,
         "--clahe-tile",
         help="CLAHE tile size"
     ),
@@ -705,12 +705,12 @@ def predict(
         help="Usar CLAHE para mejora de contraste (debe coincidir con entrenamiento)"
     ),
     clahe_clip: float = typer.Option(
-        2.0,
+        DEFAULT_CLAHE_CLIP_LIMIT,
         "--clahe-clip",
         help="CLAHE clip limit"
     ),
     clahe_tile: int = typer.Option(
-        4,
+        DEFAULT_CLAHE_TILE_SIZE,
         "--clahe-tile",
         help="CLAHE tile size"
     ),
@@ -916,12 +916,12 @@ def warp(
         help="Usar CLAHE para mejora de contraste (debe coincidir con entrenamiento)"
     ),
     clahe_clip: float = typer.Option(
-        2.0,
+        DEFAULT_CLAHE_CLIP_LIMIT,
         "--clahe-clip",
         help="CLAHE clip limit"
     ),
     clahe_tile: int = typer.Option(
-        4,
+        DEFAULT_CLAHE_TILE_SIZE,
         "--clahe-tile",
         help="CLAHE tile size"
     ),
@@ -1107,7 +1107,7 @@ def warp(
             success += 1
 
         except Exception as e:
-            logger.debug("Error procesando %s: %s", img_path, e)
+            logger.warning("Error procesando %s: %s", img_path, e)
             failed += 1
 
     logger.info("-" * 40)
@@ -1181,12 +1181,12 @@ def evaluate_ensemble(
         help="Usar CLAHE para mejora de contraste"
     ),
     clahe_clip: float = typer.Option(
-        2.0,
+        DEFAULT_CLAHE_CLIP_LIMIT,
         "--clahe-clip",
         help="CLAHE clip limit"
     ),
     clahe_tile: int = typer.Option(
-        4,
+        DEFAULT_CLAHE_TILE_SIZE,
         "--clahe-tile",
         help="CLAHE tile size"
     ),
@@ -1531,12 +1531,12 @@ def classify(
         help="Usar CLAHE para mejora de contraste"
     ),
     clahe_clip: float = typer.Option(
-        2.0,
+        DEFAULT_CLAHE_CLIP_LIMIT,
         "--clahe-clip",
         help="CLAHE clip limit"
     ),
     clahe_tile: int = typer.Option(
-        4,
+        DEFAULT_CLAHE_TILE_SIZE,
         "--clahe-tile",
         help="CLAHE tile size"
     ),
@@ -3452,12 +3452,12 @@ def generate_dataset(
         help="Usar CLAHE para prediccion de landmarks"
     ),
     clahe_clip: float = typer.Option(
-        2.0,
+        DEFAULT_CLAHE_CLIP_LIMIT,
         "--clahe-clip",
         help="CLAHE clip limit"
     ),
     clahe_tile: int = typer.Option(
-        4,
+        DEFAULT_CLAHE_TILE_SIZE,
         "--clahe-tile",
         help="CLAHE tile size"
     ),
