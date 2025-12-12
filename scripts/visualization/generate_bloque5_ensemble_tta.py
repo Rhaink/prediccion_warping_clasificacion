@@ -66,7 +66,8 @@ plt.rcParams.update({
 })
 
 # Rutas
-BASE_DIR = Path('/home/donrobot/Projects/prediccion_coordenadas')
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = PROJECT_ROOT
 OUTPUT_DIR = BASE_DIR / 'presentacion' / '05_ensemble_tta'
 ASSETS_DIAGRAMAS = OUTPUT_DIR / 'assets' / 'diagramas'
 ASSETS_GRAFICAS = OUTPUT_DIR / 'assets' / 'graficas'
@@ -265,7 +266,7 @@ def asset_results_comparison_bar():
 
     # Datos de error promedio (valores del proyecto)
     configs = ['Modelo\nIndividual', 'Ensemble\n(4 modelos)', 'Ensemble\n+ TTA']
-    errors = [4.02, 3.85, 3.71]  # Error en píxeles
+    errors = [4.04, 3.79, 3.71]  # Error px: best_individual_tta, session_12_ensemble_2, ensemble_4_tta
     colors = [COLORS['accent_secondary'], COLORS['data_3'], COLORS['success']]
 
     bars = ax.bar(configs, errors, color=colors, edgecolor='white', linewidth=2, width=0.6)
@@ -446,14 +447,18 @@ def asset_results_table():
     fig, ax = plt.subplots(figsize=(8, 4), facecolor=COLORS['background'])
     ax.axis('off')
 
-    # Datos
+    # Datos - valores mediana/max son ESTIMADOS para visualizacion
+    # Valores reales validados: Error Medio (GROUND_TRUTH.json)
+    # NOTA: Mediana y Max son aproximaciones ilustrativas, NO datos experimentales
+    # S50: Corregido - 3.79 es ensemble 2, 3.71 es ensemble 4 + TTA
     data = [
-        ['Configuración', 'Error Medio', 'Error Mediana', 'Error Max', 'Mejora'],
-        ['Baseline (ResNet-18)', '9.08 px', '8.15 px', '28.4 px', '-'],
-        ['Modelo Individual', '4.02 px', '3.45 px', '15.2 px', '55%'],
-        ['Ensemble (4 modelos)', '3.85 px', '3.31 px', '14.1 px', '57%'],
-        ['Ensemble + TTA', '3.71 px', '3.18 px', '13.5 px', '59%'],
+        ['Configuración', 'Error Medio', 'Error Mediana*', 'Error Max*', 'Mejora'],
+        ['Baseline (ResNet-18)', '9.08 px', '~8.2 px', '~28 px', '-'],
+        ['Modelo Individual', '4.04 px', '~3.5 px', '~15 px', '55%'],
+        ['Ensemble (2 modelos)', '3.79 px', '~3.2 px', '~14 px', '58%'],
+        ['Ensemble (4 modelos) + TTA', '3.71 px', '3.17 px', '~13 px', '59%'],
     ]
+    # *Valores aproximados - ver GROUND_TRUTH.json para datos oficiales
 
     # Crear tabla
     table = ax.table(cellText=data, loc='center', cellLoc='center',

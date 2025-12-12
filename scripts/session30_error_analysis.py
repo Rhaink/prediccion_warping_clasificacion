@@ -38,7 +38,7 @@ ROBUSTNESS_GEOMETRIC_PATH = PROJECT_ROOT / "outputs" / "session29_robustness" / 
 # Resultados de sesiones anteriores (hardcoded para referencia)
 PREVIOUS_RESULTS = {
     'session28': {
-        'original_test_accuracy': 98.81,
+        'original_test_accuracy': 98.84,
         'original_test_f1': 98.08,
         'original_val_accuracy': 99.34
     },
@@ -400,7 +400,7 @@ def create_consolidated_table(results):
 
 | Métrica | Original | Warped | Δ (W-O) |
 |---------|----------|--------|---------|
-| Test Accuracy | 98.81% | 98.02% | -0.79% |
+| Test Accuracy | 98.84% | 98.02% | -0.82% |
 | Test F1 Macro | 98.08% | 97.31% | -0.77% |
 | Val Accuracy | 99.34% | 98.50% | -0.84% |
 
@@ -508,7 +508,7 @@ def create_consolidated_json(results):
 
         'ideal_conditions': {
             'original': {
-                'test_accuracy': 98.81,
+                'test_accuracy': 98.84,
                 'test_f1': 98.08,
                 'val_accuracy': 99.34
             },
@@ -624,7 +624,7 @@ def main():
 ├─────────────────────────────────────────────────────────────────────┤
 │ El modelo WARPED generaliza significativamente mejor:               │
 │                                                                     │
-│   - Gap Original: 25.36% (cae de 98.81% a 73.45%)                  │
+│   - Gap Original: 25.39% (cae de 98.84% a 73.45%)                  │
 │   - Gap Warped:    2.24% (cae de 98.02% a 95.78%)                  │
 │                                                                     │
 │   Ratio de mejora: 11x mejor generalización                         │

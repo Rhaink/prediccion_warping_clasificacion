@@ -69,7 +69,8 @@ plt.rcParams.update({
 })
 
 # Rutas
-BASE_DIR = Path('/home/donrobot/Projects/prediccion_coordenadas')
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = PROJECT_ROOT
 OUTPUT_DIR = BASE_DIR / 'presentacion' / '02_metodologia_datos'
 DATA_DIR = BASE_DIR / 'data'
 DATASET_DIR = DATA_DIR / 'dataset'

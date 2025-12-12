@@ -6,6 +6,10 @@ Uso:
     python scripts/predict.py imagen.png
     python scripts/predict.py imagen.png --output resultado.json
     python scripts/predict.py imagen.png --visualize
+
+NOTA: Los valores de referencia validados están en GROUND_TRUTH.json
+El ensemble óptimo de 4 modelos logra 3.71 px (validado Sesión 43).
+Para el ensemble completo, use: python -m src_v2 evaluate-ensemble
 """
 
 import sys
@@ -33,13 +37,14 @@ class EnsemblePredictor:
         landmarks = predictor.predict("xray.png")
         # landmarks: array (15, 2) con coordenadas en pixeles
 
-    Nota (Sesion 12):
-        El ensemble optimo usa solo seed=123 y seed=456.
-        El modelo seed=42 (6.75 px) degrada el ensemble de 3.79 a 4.50 px.
+    NOTA (Sesión 43):
+        El ensemble óptimo de 4 modelos logra 3.71 px (ver GROUND_TRUTH.json).
+        Este script usa 2 modelos por simplicidad (~4 px).
+        Para el ensemble completo, use: python -m src_v2 evaluate-ensemble
     """
 
-    # Ensemble optimo: 2 modelos (sin seed=42)
-    # Error: 3.79 px (Sesion 12)
+    # Ensemble simplificado: 2 modelos para inferencia rápida
+    # Para ensemble completo (3.71 px), use: python -m src_v2 evaluate-ensemble
     DEFAULT_MODEL_PATHS = [
         'checkpoints/session10/ensemble/seed123/final_model.pt',
         'checkpoints/session10/ensemble/seed456/final_model.pt',
@@ -47,7 +52,7 @@ class EnsemblePredictor:
 
     # Ensemble completo (3 modelos) - para referencia
     ALL_MODEL_PATHS = [
-        'checkpoints/session10/exp4_epochs100/final_model.pt',  # seed=42 (6.75 px)
+        'checkpoints/session10/exp4_epochs100/final_model.pt',  # seed=42 (4.10 px con TTA)
         'checkpoints/session10/ensemble/seed123/final_model.pt',  # seed=123 (4.05 px)
         'checkpoints/session10/ensemble/seed456/final_model.pt',  # seed=456 (4.04 px)
     ]

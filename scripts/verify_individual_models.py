@@ -2,6 +2,10 @@
 """
 Script para verificar modelos individuales del ensemble.
 Sesion 11: Verificacion de resultados.
+
+NOTA: Los valores de referencia validados están en GROUND_TRUTH.json
+Los valores esperados en este script son de Sesión 11 (históricos).
+El ensemble óptimo de 4 modelos logra 3.71 px (validado Sesión 43).
 """
 
 import sys
@@ -134,10 +138,11 @@ def main():
     print(f"Test samples: {len(test_loader.dataset)}")
 
     # Modelos a verificar
+    # Valores actualizados según GROUND_TRUTH.json (con TTA)
     models_to_verify = [
-        ('seed=42 (exp4_epochs100)', 'checkpoints/session10/exp4_epochs100/final_model.pt', 6.75),
-        ('seed=123 (ensemble)', 'checkpoints/session10/ensemble/seed123/final_model.pt', 7.16),
-        ('seed=456 (ensemble)', 'checkpoints/session10/ensemble/seed456/final_model.pt', 7.20),
+        ('seed=42 (exp4_epochs100)', 'checkpoints/session10/exp4_epochs100/final_model.pt', 4.10),
+        ('seed=123 (ensemble)', 'checkpoints/session10/ensemble/seed123/final_model.pt', 4.05),
+        ('seed=456 (ensemble)', 'checkpoints/session10/ensemble/seed456/final_model.pt', 4.04),
     ]
 
     print("\n" + "-"*60)

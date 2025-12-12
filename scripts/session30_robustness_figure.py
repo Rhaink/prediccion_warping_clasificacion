@@ -284,7 +284,7 @@ RESUMEN DE HALLAZGOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CONDICIONES IDEALES:
-  • Original: 98.81%  |  Warped: 98.02%
+  • Original: 98.84%  |  Warped: 98.02%
   • Diferencia: -0.79% (no significativa)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

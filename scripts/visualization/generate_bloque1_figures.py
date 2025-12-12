@@ -49,7 +49,8 @@ COLORS = {
 }
 
 # Rutas
-BASE_DIR = Path('/home/donrobot/Projects/prediccion_coordenadas')
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = PROJECT_ROOT
 OUTPUT_DIR = BASE_DIR / 'presentacion' / '01_contexto'
 DATA_DIR = BASE_DIR / 'data'
 DATASET_DIR = DATA_DIR / 'dataset'
@@ -662,7 +663,7 @@ def create_slide7_categorias_dataset():
 
     # Datos del dataset
     categorias = ['COVID-19', 'Normal', 'Neumonía Viral']
-    cantidades = [460, 317, 180]  # Total = 957
+    cantidades = [306, 468, 183]  # COVID, Normal, Viral - Total = 957
     colores = [COLORS['covid'], COLORS['normal'], COLORS['viral']]
 
     # Pie chart con efecto 3D

@@ -235,7 +235,7 @@ def create_summary_figure(
     colors = ['#ff6b6b', '#4ecdc4']
     bars = ax2.bar(categories, values, color=colors, edgecolor='black', linewidth=1.5)
     ax2.set_ylabel('Degradación por JPEG (%)', fontsize=12)
-    ax2.set_title('Mejora en Robustez JPEG\n(30.5× mejor)', fontsize=14, fontweight='bold')
+    ax2.set_title('Mejora en Robustez JPEG\n(30.45× mejor)', fontsize=14, fontweight='bold')
     ax2.set_ylim(0, 20)
     for bar, val in zip(bars, values):
         ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,

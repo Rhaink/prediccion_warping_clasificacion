@@ -5,7 +5,7 @@ SESIÓN 30: Cross-Evaluation - Evaluación Cruzada de Modelos
 OBJETIVO: Evaluar cada modelo en AMBOS datasets para medir generalización.
 
 Experimentos:
-- Modelo Original → Test Original = 98.81% (baseline, ya conocido)
+- Modelo Original → Test Original = 98.84% (baseline, ya conocido)
 - Modelo Original → Test Warped   = ??? (cross-evaluation)
 - Modelo Warped   → Test Warped   = 98.02% (baseline, ya conocido)
 - Modelo Warped   → Test Original = ??? (cross-evaluation)

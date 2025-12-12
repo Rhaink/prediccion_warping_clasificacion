@@ -69,7 +69,8 @@ plt.rcParams.update({
 })
 
 # Rutas
-BASE_DIR = Path('/home/donrobot/Projects/prediccion_coordenadas')
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = PROJECT_ROOT
 OUTPUT_DIR = BASE_DIR / 'presentacion' / '06_resultados'
 ASSETS_DIAGRAMAS = OUTPUT_DIR / 'assets' / 'diagramas'
 ASSETS_GRAFICAS = OUTPUT_DIR / 'assets' / 'graficas'
@@ -83,11 +84,11 @@ DPI = 100
 # DATOS DEL PROYECTO
 # ============================================================================
 
-# Error por landmark (píxeles) - Datos de DOCUMENTACION_TESIS.md Sección 9.2
+# Error por landmark (píxeles) - Datos de GROUND_TRUTH.json per_landmark_errors
 LANDMARK_ERRORS = {
-    'L1': 3.29, 'L2': 4.34, 'L3': 3.24, 'L4': 3.55, 'L5': 3.09, 'L6': 3.02,
-    'L7': 3.57, 'L8': 3.73, 'L9': 2.83, 'L10': 2.64, 'L11': 3.32,
-    'L12': 5.63, 'L13': 5.33, 'L14': 4.82, 'L15': 4.46
+    'L1': 3.20, 'L2': 4.34, 'L3': 3.20, 'L4': 3.49, 'L5': 2.97, 'L6': 3.01,
+    'L7': 3.39, 'L8': 3.67, 'L9': 2.84, 'L10': 2.57, 'L11': 3.19,
+    'L12': 5.50, 'L13': 5.21, 'L14': 4.63, 'L15': 4.48
 }
 
 # Evolución por sesión (error promedio en píxeles) - Datos de DOCUMENTACION_TESIS.md Sección 8.1
@@ -97,8 +98,8 @@ SESSION_PROGRESS = {
     'S7 +CLAHE': 8.18,
     'S8 tile=4': 7.84,
     'S9 dim=768': 7.21,
-    'S10 ep=100': 6.75,
-    'S10 Ens3': 4.50,
+    'S10 ep=100': 4.10,  # Con TTA (actualizado Sesion 46)
+    'S10 Ens3': 3.71,    # Actualizado a valor correcto
     'S12 Ens2': 3.79,
     'S13 Ens4': 3.71,
 }
@@ -111,16 +112,17 @@ ABLATION_STUDY = {
     '+CLAHE': 8.18,
     '+tile=4': 7.84,
     '+hidden=768': 7.21,
-    '+epochs=100': 6.75,
+    '+epochs=100': 4.10,  # Con TTA (actualizado S46)
     '+Ensemble 4': 3.71,
 }
 # Imagen oficial: thesis/figures/ablation_study.png
 
-# Error por categoría - Datos de DOCUMENTACION_TESIS.md Sección 9.3
+# Error por categoría - Datos de SESION_13_ENSEMBLE_4_MODELOS.md (valores correctos)
+# Actualizados en Sesion 48 para coincidir con GROUND_TRUTH.json
 CATEGORY_ERRORS = {
-    'COVID': {'baseline': 11.01, 'final': 3.83, 'mejora': 65},
-    'Normal': {'baseline': 9.08, 'final': 3.53, 'mejora': 61},
-    'Viral': {'baseline': 8.93, 'final': 4.42, 'mejora': 51},
+    'COVID': {'baseline': 11.01, 'final': 3.77, 'mejora': 66},
+    'Normal': {'baseline': 9.08, 'final': 3.42, 'mejora': 62},
+    'Viral': {'baseline': 8.93, 'final': 4.40, 'mejora': 51},
 }
 
 # Grupos de landmarks - Según descripción anatómica DOCUMENTACION_TESIS.md Sección 2.2
@@ -439,8 +441,10 @@ def asset_error_distribution():
 
     fig, ax = plt.subplots(figsize=(8, 5), facecolor=COLORS['background'])
 
-    # Distribución de errores calibrada para media ~3.71 px (datos reales del proyecto)
-    # Basado en DOCUMENTACION_TESIS.md: media=3.71, mediana=3.15, max~12.8
+    # NOTA: Distribucion SINTETICA generada para visualizacion.
+    # NO son datos experimentales reales. Solo ilustrativa.
+    # Para datos reales, ver GROUND_TRUTH.json (per_landmark_errors)
+    # Calibrada para aproximar: media~3.71px, mediana~3.17px (valores reales)
     np.random.seed(42)
     errors = np.concatenate([
         np.random.normal(2.9, 0.6, 300),   # Centrales L9-L11 (~2.9 px)
@@ -645,7 +649,7 @@ def slide30_by_category():
     print("  -> Generando slide30_by_category.png")
 
     fig = plt.figure(figsize=(14, 7.5), facecolor=COLORS['background'])
-    fig.suptitle('COVID-19 logró la mayor mejora absoluta gracias a CLAHE:\n65% de reducción del error (11.01 → 3.83 píxeles)',
+    fig.suptitle('COVID-19 logró la mayor mejora absoluta gracias a CLAHE:\n66% de reducción del error (11.01 → 3.77 píxeles)',
                 fontsize=14, fontweight='bold', y=0.96)
 
     # Asset principal: error por categoría

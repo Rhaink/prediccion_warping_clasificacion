@@ -2,6 +2,9 @@
 """
 Script para evaluar ensemble de modelos.
 Sesion 12: Soporta diferentes combinaciones y pesos.
+
+NOTA: Los valores de referencia validados están en GROUND_TRUTH.json
+El ensemble óptimo de 4 modelos logra 3.71 px (validado Sesión 43).
 """
 
 import sys
@@ -188,8 +191,8 @@ def main():
     available_models = {
         'seed42': {
             'path': 'checkpoints/session10/exp4_epochs100/final_model.pt',
-            'val_error': 7.22,  # Error en validación sin TTA
-            'test_error': 6.75,  # Error en test con TTA
+            'val_error': 7.22,   # Error en validación sin TTA
+            'test_error': 4.10,  # Error en test CON TTA (actualizado Sesion 46)
         },
         'seed123': {
             'path': 'checkpoints/session10/ensemble/seed123/final_model.pt',
@@ -301,14 +304,15 @@ def main():
     print(f"\n  ENSEMBLE: {metrics['overall']['mean']:.2f} px")
 
     # Mostrar mejora/empeoramiento vs baseline
-    baseline_ensemble = 4.50  # Ensemble original de 3 modelos
+    # NOTA: El ensemble óptimo de 4 modelos logra 3.71 px (GROUND_TRUTH.json)
+    baseline_ensemble = 3.71  # Ensemble de 4 modelos + TTA (Sesión 43)
     diff = metrics['overall']['mean'] - baseline_ensemble
     if diff < 0:
-        print(f"\n  *** MEJORA: {-diff:.2f} px respecto a ensemble original (4.50 px) ***")
+        print(f"\n  *** MEJORA: {-diff:.2f} px respecto a ensemble óptimo (3.71 px) ***")
     elif diff > 0:
-        print(f"\n  *** EMPEORA: +{diff:.2f} px respecto a ensemble original (4.50 px) ***")
+        print(f"\n  *** EMPEORA: +{diff:.2f} px respecto a ensemble óptimo (3.71 px) ***")
     else:
-        print(f"\n  *** SIN CAMBIO respecto a ensemble original (4.50 px) ***")
+        print(f"\n  *** SIN CAMBIO respecto a ensemble óptimo (3.71 px) ***")
 
 
 if __name__ == '__main__':

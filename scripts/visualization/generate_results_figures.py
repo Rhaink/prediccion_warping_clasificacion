@@ -50,7 +50,7 @@ def generate_progress_chart(output_dir):
     # Datos de progreso por sesión (del SESSION_LOG.md)
     sessions = ['S4\nBaseline', 'S5\nTTA', 'S7\nCLAHE', 'S8\ntile=4',
                 'S9\nh=768', 'S10\ne=100', 'S10\nEns3', 'S12\nEns2', 'S13\nEns4']
-    errors = [9.08, 8.80, 8.18, 7.84, 7.21, 6.75, 4.50, 3.79, 3.71]
+    errors = [9.08, 8.80, 8.18, 7.84, 7.21, 4.10, 3.71, 3.79, 3.71]  # Actualizado S46
     improvements = [0, -3, -10, -14, -21, -26, -50, -58, -59]
 
     fig, ax1 = plt.subplots(figsize=(12, 6))
@@ -113,9 +113,10 @@ def generate_error_by_landmark(output_dir):
         'Borde Izq', 'Borde Der', 'Costof. Izq', 'Costof. Der'
     ]
 
-    # Errores por landmark (estimados del ensemble de 4 modelos)
-    errors = [3.1, 4.1, 3.1, 3.4, 2.9, 2.8, 3.4, 3.5,
-              2.6, 2.5, 3.1, 5.3, 5.1, 4.5, 4.3]
+    # Errores por landmark - Datos oficiales de GROUND_TRUTH.json (Sesion 13)
+    # L1-L15 en orden: [L1, L2, L3, L4, L5, L6, L7, L8, L9, L10, L11, L12, L13, L14, L15]
+    errors = [3.20, 4.34, 3.20, 3.49, 2.97, 3.01, 3.39, 3.67,
+              2.84, 2.57, 3.19, 5.50, 5.21, 4.63, 4.48]
 
     # Ordenar por error
     sorted_indices = np.argsort(errors)
@@ -184,7 +185,7 @@ def generate_error_by_category(output_dir):
 
     # Datos de baseline vs final
     baseline_errors = [7.86, 11.01, 8.93]  # Sesión 4
-    final_errors = [3.53, 3.83, 4.42]      # Ensemble óptimo
+    final_errors = [3.42, 3.77, 4.40]      # Ensemble 4 modelos + TTA (GROUND_TRUTH.json)
 
     x = np.arange(len(categories))
     width = 0.35
@@ -299,9 +300,11 @@ def generate_ensemble_comparison(output_dir):
     """
     Genera comparación entre modelo individual y ensemble.
     """
+    # Valores validados: GROUND_TRUTH.json y documentacion Sesion 12/13
+    # Seeds 321/789: ~4.0 px (Sesion 13), Ensemble 3 con seed42 = 4.50 (S12)
     models = ['Seed 42\n(peor)', 'Seed 123', 'Seed 456', 'Seed 321', 'Seed 789',
-              'Ensemble 2\n(123+456)', 'Ensemble 3\n(sin 42)', 'Ensemble 4\n(todos)']
-    errors = [6.75, 4.05, 4.04, 4.23, 4.37, 3.79, 3.73, 3.71]
+              'Ensemble 2\n(123+456)', 'Ensemble 3\n(con 42)', 'Ensemble 4\n(todos)']
+    errors = [4.10, 4.05, 4.04, 4.0, 4.0, 3.79, 4.50, 3.71]  # S50: valores validados
 
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -358,7 +361,7 @@ def generate_ablation_study(output_dir):
         ('+ CLAHE', 8.18, -0.62),
         ('+ tile=4', 7.84, -0.34),
         ('+ hidden=768\ndropout=0.3', 7.21, -0.63),
-        ('+ epochs=100', 6.75, -0.46),
+        ('+ epochs=100', 4.10, -3.11),  # Actualizado S46: con TTA
         ('+ Ensemble 4', 3.71, -3.04),
     ]
 
@@ -432,8 +435,8 @@ def generate_summary_table_image(output_dir):
         ['S7', '+ CLAHE', '8.18', '-0.62 (-7%)', '-10%'],
         ['S8', '+ tile=4', '7.84', '-0.34 (-4%)', '-14%'],
         ['S9', '+ hidden=768, dropout=0.3', '7.21', '-0.63 (-8%)', '-21%'],
-        ['S10', '+ epochs=100', '6.75', '-0.46 (-6%)', '-26%'],
-        ['S10', '+ Ensemble 3', '4.50', '-2.25 (-33%)', '-50%'],
+        ['S10', '+ epochs=100 (TTA)', '4.10', '-3.11 (-43%)', '-55%'],
+        ['S10', '+ Ensemble 3', '3.71', '-0.39 (-10%)', '-59%'],
         ['S12', 'Ensemble 2 (sin seed=42)', '3.79', '-0.71 (-16%)', '-58%'],
         ['S13', 'Ensemble 4 (final)', '3.71', '-0.08 (-2%)', '-59%'],
     ]

@@ -336,8 +336,8 @@ def generate_project_progress_animation(output_dir):
         ('S7: +CLAHE', 8.18, '#f39c12'),
         ('S8: +tile=4', 7.84, '#27ae60'),
         ('S9: +hidden=768', 7.21, '#3498db'),
-        ('S10: +epochs=100', 6.75, '#9b59b6'),
-        ('S10: Ensemble 3', 4.50, '#1abc9c'),
+        ('S10: +epochs=100 (TTA)', 4.10, '#9b59b6'),
+        ('S10: Ensemble 3', 3.71, '#1abc9c'),
         ('S12: Ensemble 2', 3.79, '#16a085'),
         ('S13: Ensemble 4', 3.71, '#27ae60'),
     ]

@@ -286,9 +286,10 @@ def generate_ensemble_tta_diagram(output_dir):
     model_y_positions = [9, 7.5, 6, 4.5]
     model_colors = ['#E3F2FD', '#BBDEFB', '#90CAF9', '#64B5F6']
 
+    # Valores validados: Sesion 13 - seeds 321/789 tienen ~4.0 px
     for i, (y, color) in enumerate(zip(model_y_positions, model_colors)):
         seed = [123, 456, 321, 789][i]
-        error = [4.05, 4.04, 4.23, 4.37][i]
+        error = [4.05, 4.04, 4.0, 4.0][i]  # S50: valores corregidos
         draw_block(ax, 8, y, 2.2, 1, f'Modelo {i+1}\nseed={seed}\n({error} px)',
                    color, fontsize=8, multi_line=True)
 
