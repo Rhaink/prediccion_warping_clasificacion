@@ -88,11 +88,13 @@ Cada módulo recibe un veredicto basado en el número y severidad de hallazgos:
 |-----------|----------|-----------|------------|
 | 🔴 Críticos | 0 | 0 | 0 |
 | 🟠 Mayores | 4 | 1 (M2) | 3 |
-| 🟡 Menores | 5 | 0 | 5 |
-| ⚪ Notas | 4 | 0 | 4 |
-| **Total** | **13** | **1** | **12** |
+| 🟡 Menores | 6 | 0 | 6 |
+| ⚪ Notas | 8 | 0 | 8 |
+| **Total** | **18** | **1** | **17** |
 
-**Nota:** M2 (CLAHE tile_size) resuelto en Sesión 1 - verificado consistencia en todo el proyecto.
+**Nota:**
+- M2 (CLAHE tile_size) resuelto en Sesión 1 - verificado consistencia en todo el proyecto
+- Sesión 1 agregó 1🟡 (C01) y 4⚪ (A01, D01, V01, V02)
 
 ### 6.2 Veredicto Preliminar
 

@@ -34,9 +34,11 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 |-----------|----------|-----------|------------|
 | 🔴 Crítico | 0 | 0 | 0 |
 | 🟠 Mayor | 4 | 1 | 3 |
-| 🟡 Menor | 5 | 0 | 5 |
-| ⚪ Nota | 4 | 0 | 4 |
-| **Total** | **13** | **1** | **12** |
+| 🟡 Menor | 6 | 0 | 6 |
+| ⚪ Nota | 8 | 0 | 8 |
+| **Total** | **18** | **1** | **17** |
+
+**Nota:** Sesión 1 agregó 1🟡 (C01) y 4⚪ (A01, D01, V01, V02)
 
 ---
 
@@ -158,16 +160,31 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 | **Solución** | Añadir tests para forward pass, shapes, outputs |
 | **Estado** | ⏳ Pendiente |
 
+### m6: Docstring inconsistente en geometry.py (Sesión 1)
+| Campo | Valor |
+|-------|-------|
+| **ID** | m6 (C01) |
+| **Severidad** | 🟡 Menor |
+| **Sesión** | 1 |
+| **Descripción** | Docstring de `compute_perpendicular_vector_np` indica soporte para shapes `(2,)` o `(N, 2)`, pero implementación solo funciona para `(2,)`. Inconsistencia documentación-código. |
+| **Ubicación** | src_v2/utils/geometry.py:12-26 |
+| **Solución** | Corregir docstring para indicar solo `(2,)` o implementar soporte real para `(N, 2)`. |
+| **Estado** | ⏳ Pendiente |
+
 ---
 
 ## Hallazgos ⚪ Notas (Opcionales)
 
-| ID | Descripción | Consideración |
-|----|-------------|---------------|
-| n1 | Type hints podrían mejorarse en archivos legacy | Archivos nuevos (S42+) tienen buen coverage |
-| n2 | Documentación en español | Considerar traducir README para publicaciones |
-| n3 | Dataset de 957 muestras | Válido para maestría, validación externa sería valiosa |
-| n4 | 14 dependencias core | Bien documentado en requirements.txt |
+| ID | Sesión | Descripción | Consideración |
+|----|--------|-------------|---------------|
+| n1 | 0 | Type hints podrían mejorarse en archivos legacy | Archivos nuevos (S42+) tienen buen coverage |
+| n2 | 0 | Documentación en español | Considerar traducir README para publicaciones |
+| n3 | 0 | Dataset de 957 muestras | Válido para maestría, validación externa sería valiosa |
+| n4 | 0 | 14 dependencias core | Bien documentado en requirements.txt |
+| n5 (A01) | 1 | `compute_perpendicular_vector_np` no exportada en `__init__.py` | Documentar como uso interno |
+| n6 (D01) | 1 | `OPTIMAL_MARGIN_SCALE` podría mencionar rango grid search [1.0-1.3] | Mejora opcional para jurado |
+| n7 (V01) | 1 | `geometry.py` sin tests unitarios dedicados | Cobertura indirecta existe |
+| n8 (V02) | 1 | ~15 constantes nuevas sin tests en test_constants.py | Agregar cuando haya tiempo |
 
 ---
 
