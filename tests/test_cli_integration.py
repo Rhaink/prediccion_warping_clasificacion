@@ -53,10 +53,13 @@ class TestTrainIntegration:
             '--no-clahe',
         ])
 
-        # Session 33: Dataset sintético muy pequeño puede fallar
-        # legítimamente por problemas de splits. Aceptamos 0 o 1.
+        # Session 33/48: Dataset sintético muy pequeño puede fallar
+        # legítimamente por problemas de splits o archivos faltantes.
+        # Aceptamos exit_code 0 (éxito) o 1 (fallo controlado).
+        # No validamos mensajes específicos porque pueden estar en
+        # stdout, stderr, o en la excepción capturada.
         assert result.exit_code in [0, 1], \
-            f"Command crashed (code {result.exit_code}): {result.stdout}"
+            f"Command crashed with unexpected code {result.exit_code}"
 
     def test_train_creates_checkpoint_dir(self, minimal_landmark_dataset, tmp_path):
         """Train crea directorio de checkpoints si no existe."""

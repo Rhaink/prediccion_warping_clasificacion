@@ -290,9 +290,11 @@ class TestConstantsIntegrity:
             f"Landmarks no categorizados: {all_indices - all_categorized}"
 
     def test_imports_work(self):
-        """Todas las constantes deben poder importarse."""
-        # Este test pasa si el modulo se importa sin errores
+        """Verifica que constantes principales tienen valores correctos."""
         from src_v2.constants import (
             NUM_LANDMARKS, SYMMETRIC_PAIRS, CATEGORIES
         )
-        assert True
+        assert NUM_LANDMARKS == 15
+        assert len(SYMMETRIC_PAIRS) == 5
+        assert len(CATEGORIES) == 3
+        assert 'COVID' in CATEGORIES

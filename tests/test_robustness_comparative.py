@@ -12,6 +12,19 @@ import pytest
 from pathlib import Path
 
 
+def load_ground_truth():
+    """Load GROUND_TRUTH.json with official reference values."""
+    gt_path = Path(__file__).parent.parent / "GROUND_TRUTH.json"
+    if gt_path.exists():
+        with open(gt_path) as f:
+            return json.load(f)
+    return None
+
+
+# Cargar GROUND_TRUTH al inicio del módulo
+GROUND_TRUTH = load_ground_truth()
+
+
 class TestRobustnessComparative:
     """Tests for comparative robustness claims."""
 
@@ -72,11 +85,16 @@ class TestRobustnessComparative:
         assert warped_deg < original_deg, \
             f"Warped ({warped_deg:.2f}%) should be more robust than original ({original_deg:.2f}%)"
 
-        # Should be at least 5x more robust
+        # Should be at least 20x more robust
+        # Valores de referencia de GROUND_TRUTH.json:
+        # - Original 100%: 16.14% degradación (JPEG Q50)
+        # - Warped 47%: 0.53% degradación (JPEG Q50)
+        # - Factor de mejora real: 30.45x
+        # - Umbral mínimo: 20x (30.45 * 0.7 = 21.3, redondeado a 20)
         if original_deg > 0 and warped_deg > 0:
             ratio = original_deg / warped_deg
-            assert ratio >= 5, \
-                f"Warped should be at least 5x more robust to JPEG, got {ratio:.1f}x"
+            assert ratio >= 20, \
+                f"Expected at least 20x robustness (GROUND_TRUTH=30.45x), got {ratio:.1f}x"
 
     def test_information_reduction_contributes_to_robustness(self, robustness_results):
         """
@@ -174,10 +192,11 @@ class TestRobustnessClaims:
         """
         Validate claim: "Warped 47% is 30x more robust to JPEG than Original"
 
-        From Session 39 results:
-        - Original 100%: 16.14% degradation
-        - Warped 47%: 0.53% degradation
-        - Ratio: ~30x
+        Valores de referencia de GROUND_TRUTH.json (Session 39):
+        - Original 100%: 16.14% degradación bajo JPEG Q50
+        - Warped 47%: 0.53% degradación bajo JPEG Q50
+        - Robustness factor: 16.14 / 0.53 = 30.45x
+        - Rango aceptable: 20-40x para permitir variación experimental
         """
         original_100_path = Path("outputs/robustness_test_results.json")
         warped_47_path = Path("outputs/session29_warped_robustness/robustness_results.json")
@@ -228,6 +247,10 @@ class TestRobustnessClaims:
             warped = json.load(f)
 
         # Get JPEG Q50 degradations
+        # Valores por defecto de GROUND_TRUTH.json (Session 39):
+        # - original_100: 16.14% degradación
+        # - original_cropped_47: 2.11% degradación
+        # - warped_47: 0.53% degradación
         orig_deg = original.get("jpeg", {}).get("degradation", 16.14)
         crop_deg = cropped.get("jpeg_q50", {}).get("degradation", 2.11)
         warp_deg = warped.get("jpeg", {}).get("degradation", 0.53)
