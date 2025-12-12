@@ -10,10 +10,14 @@ GPA eliminates:
 - Rotation (align with reference)
 """
 
+import logging
 import numpy as np
 import warnings
 from typing import Tuple, Dict, Optional
 from scipy.spatial import Delaunay
+
+
+logger = logging.getLogger(__name__)
 
 
 def center_shape(shape: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -156,7 +160,7 @@ def gpa_iterative(
     n_shapes, n_landmarks, n_dims = shapes.shape
 
     if verbose:
-        print(f"GPA: {n_shapes} shapes, {n_landmarks} landmarks")
+        logger.info("GPA: %d shapes, %d landmarks", n_shapes, n_landmarks)
 
     # Step 1: Center and scale all shapes
     normalized_shapes = np.zeros_like(shapes)
@@ -204,12 +208,12 @@ def gpa_iterative(
         distances_history.append(mean_distance)
 
         if verbose and (iteration < 5 or iteration % 10 == 0):
-            print(f"  Iter {iteration}: change={change:.2e}, mean_dist={mean_distance:.6f}")
+            logger.debug("  Iter %d: change=%.2e, mean_dist=%.6f", iteration, change, mean_distance)
 
         # Check convergence
         if change < tolerance:
             if verbose:
-                print(f"  Converged at iteration {iteration} (change={change:.2e})")
+                logger.info("  Converged at iteration %d (change=%.2e)", iteration, change)
             reference_scaled = new_reference_scaled
             break
 
@@ -217,7 +221,7 @@ def gpa_iterative(
 
     else:
         if verbose:
-            print(f"  Reached max iterations ({max_iterations})")
+            logger.warning("  Reached max iterations (%d)", max_iterations)
 
     # Final canonical shape
     canonical_shape = reference_scaled

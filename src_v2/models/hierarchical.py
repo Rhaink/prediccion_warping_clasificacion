@@ -23,7 +23,17 @@ from src_v2.constants import (
     SYMMETRIC_PAIRS,
     CENTRAL_LANDMARKS,
     BACKBONE_FEATURE_DIM,
+    HIERARCHICAL_DT_SCALE,
+    HIERARCHICAL_T_SCALE,
+    HIERARCHICAL_D_MAX,
+    BILATERAL_T_POSITIONS,
+    HIERARCHICAL_HIDDEN_DIM,
+    HIERARCHICAL_NUM_GROUPS,
+    HIERARCHICAL_NUM_GROUPS_HALF,
+    DEFAULT_PHASE2_BACKBONE_LR,
+    DEFAULT_PHASE2_HEAD_LR,
 )
+from src_v2.utils.geometry import compute_perpendicular_vector
 
 
 logger = logging.getLogger(__name__)
@@ -48,14 +58,9 @@ class HierarchicalLandmarkModel(nn.Module):
     - L14 (13), L15 (14): Par bilateral costofrenicos
     """
 
-    # Pares bilaterales (izq, der) - indices 0-based
-    BILATERAL_PAIRS = [
-        (2, 3),   # L3, L4
-        (4, 5),   # L5, L6
-        (6, 7),   # L7, L8
-        (11, 12), # L12, L13
-        (13, 14), # L14, L15
-    ]
+    # Pares bilaterales (izq, der) - usando constante de constants.py
+    # Equivalente a: [(2,3), (4,5), (6,7), (11,12), (13,14)]
+    BILATERAL_PAIRS = SYMMETRIC_PAIRS
 
     # Parametros t teoricos para landmarks centrales
     CENTRAL_T = {
@@ -67,7 +72,7 @@ class HierarchicalLandmarkModel(nn.Module):
     def __init__(
         self,
         pretrained: bool = True,
-        hidden_dim: int = 512,
+        hidden_dim: int = HIERARCHICAL_HIDDEN_DIM,
         dropout: float = 0.3,
         learn_t_offsets: bool = True,  # Aprender desviaciones de t teorico
     ):
@@ -93,8 +98,8 @@ class HierarchicalLandmarkModel(nn.Module):
 
         # Cabeza para predecir eje (L1, L2) - 4 valores
         self.axis_head = nn.Sequential(
-            nn.Linear(512, hidden_dim),
-            nn.GroupNorm(32, hidden_dim),
+            nn.Linear(BACKBONE_FEATURE_DIM, hidden_dim),
+            nn.GroupNorm(HIERARCHICAL_NUM_GROUPS, hidden_dim),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, 4),  # L1_x, L1_y, L2_x, L2_y
@@ -112,12 +117,12 @@ class HierarchicalLandmarkModel(nn.Module):
         relative_dim = 3 + 5 * 3  # 3 dt + 15 (t, d_l, d_r) = 18
 
         self.relative_head = nn.Sequential(
-            nn.Linear(512 + 4, hidden_dim),  # Features + axis info
-            nn.GroupNorm(32, hidden_dim),
+            nn.Linear(BACKBONE_FEATURE_DIM + 4, hidden_dim),  # Features + axis info
+            nn.GroupNorm(HIERARCHICAL_NUM_GROUPS, hidden_dim),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.GroupNorm(16, hidden_dim // 2),
+            nn.GroupNorm(HIERARCHICAL_NUM_GROUPS_HALF, hidden_dim // 2),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim // 2, relative_dim),
@@ -186,36 +191,34 @@ class HierarchicalLandmarkModel(nn.Module):
         # Vector del eje
         axis_vec = L2 - L1  # (B, 2)
         axis_len = torch.norm(axis_vec, dim=1, keepdim=True) + 1e-8  # (B, 1)
-        axis_unit = axis_vec / axis_len  # (B, 2)
 
-        # Vector perpendicular (rotacion 90 grados)
-        perp_unit = torch.stack([-axis_unit[:, 1], axis_unit[:, 0]], dim=1)  # (B, 2)
+        # Vector perpendicular (rotacion 90 grados) usando función centralizada
+        perp_unit = compute_perpendicular_vector(axis_vec)  # (B, 2)
 
         # Extraer parametros
-        dt_centrales = torch.tanh(params[:, :3]) * 0.1  # Offsets pequenos, max +-0.1
+        dt_centrales = torch.tanh(params[:, :3]) * HIERARCHICAL_DT_SCALE  # Offsets pequenos
         bilateral_params = params[:, 3:]  # (B, 15)
 
         # Landmarks centrales (L9, L10, L11)
-        base_t = torch.tensor([0.25, 0.50, 0.75], device=device)  # (3,)
+        # Nota: t_base se define inline en el loop, no se necesita tensor separado
         for i, (landmark_idx, t_base) in enumerate([(8, 0.25), (9, 0.50), (10, 0.75)]):
             t = t_base + dt_centrales[:, i]  # (B,)
             landmarks[:, landmark_idx] = L1 + t.unsqueeze(1) * axis_vec
 
         # Landmarks bilaterales
-        # Posiciones t para cada par bilateral (CORREGIDO basado en análisis de GT)
+        # Usar posiciones t base desde constantes (CORREGIDO basado en análisis de GT)
         # L12,L13 están en t=0.0 (en L1), L14,L15 están en t=1.0 (en L2)
-        bilateral_t_base = [0.25, 0.50, 0.75, 0.00, 1.00]
 
         for pair_idx, (left_idx, right_idx) in enumerate(self.BILATERAL_PAIRS):
             # Extraer parametros para este par: t, d_left, d_right
             p_start = pair_idx * 3
-            t_offset = torch.tanh(bilateral_params[:, p_start]) * 0.2  # Offset de t
-            # CORREGIDO: aumentar rango de 0.5 a 0.7 para permitir distancias mayores
-            d_left = torch.sigmoid(bilateral_params[:, p_start + 1]) * 0.7  # Distancia izq, max 0.7
-            d_right = torch.sigmoid(bilateral_params[:, p_start + 2]) * 0.7  # Distancia der, max 0.7
+            t_offset = torch.tanh(bilateral_params[:, p_start]) * HIERARCHICAL_T_SCALE  # Offset de t
+            # CORREGIDO: aumentar rango para permitir distancias mayores
+            d_left = torch.sigmoid(bilateral_params[:, p_start + 1]) * HIERARCHICAL_D_MAX
+            d_right = torch.sigmoid(bilateral_params[:, p_start + 2]) * HIERARCHICAL_D_MAX
 
             # Posicion base en el eje
-            t = bilateral_t_base[pair_idx] + t_offset
+            t = BILATERAL_T_POSITIONS[pair_idx] + t_offset
             base_point = L1 + t.unsqueeze(1) * axis_vec  # (B, 2)
 
             # CORREGIDO: invertir signos - en las coordenadas de imagen,
@@ -241,7 +244,11 @@ class HierarchicalLandmarkModel(nn.Module):
         for param in self.backbone.parameters():
             param.requires_grad = True
 
-    def get_trainable_params(self, backbone_lr: float = 2e-5, head_lr: float = 2e-4):
+    def get_trainable_params(
+        self,
+        backbone_lr: float = DEFAULT_PHASE2_BACKBONE_LR,
+        head_lr: float = DEFAULT_PHASE2_HEAD_LR
+    ):
         """Obtener grupos de parametros con LR diferenciado."""
         backbone_params = list(self.backbone.parameters())
         head_params = list(self.axis_head.parameters()) + list(self.relative_head.parameters())

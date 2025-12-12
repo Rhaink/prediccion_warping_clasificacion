@@ -10,11 +10,15 @@ Pipeline:
 3. Warped image (geometrically normalized)
 """
 
+import logging
 import numpy as np
 import cv2
 import warnings
 from typing import Tuple, Optional
 from scipy.spatial import Delaunay
+
+
+logger = logging.getLogger(__name__)
 
 
 def _triangle_area_2x(tri: np.ndarray) -> float:
@@ -309,6 +313,8 @@ def compute_fill_rate(warped_image: np.ndarray) -> float:
     Returns:
         fill_rate: Value between 0 and 1
     """
+    if warped_image.size == 0:
+        return 0.0
     black_pixels = np.sum(warped_image == 0)
     fill_rate = 1 - (black_pixels / warped_image.size)
     return fill_rate
@@ -379,7 +385,8 @@ def warp_mask(
 
         try:
             _warp_triangle_nearest(mask_binary, warped_mask, src_tri, dst_tri)
-        except Exception:
+        except Exception as e:
+            logger.debug("Error warping mask triangle %s: %s", tri_indices, e)
             continue
 
     return warped_mask

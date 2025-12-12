@@ -6,7 +6,6 @@ import logging
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torchvision import models
 from typing import Optional, List, Tuple
 
@@ -14,6 +13,7 @@ from src_v2.constants import (
     NUM_LANDMARKS,
     DEFAULT_IMAGE_SIZE,
     BACKBONE_FEATURE_DIM,
+    DEFAULT_HIDDEN_DIM,
 )
 
 
@@ -82,7 +82,7 @@ class ResNet18Landmarks(nn.Module):
         pretrained: bool = True,
         freeze_backbone: bool = True,
         dropout_rate: float = 0.5,
-        hidden_dim: int = 256,
+        hidden_dim: int = DEFAULT_HIDDEN_DIM,
         use_coord_attention: bool = False,
         deep_head: bool = False
     ):
@@ -138,7 +138,7 @@ class ResNet18Landmarks(nn.Module):
                 nn.ReLU(inplace=True),
                 nn.Dropout(dropout_rate),
                 nn.Linear(512, hidden_dim),
-                nn.GroupNorm(num_groups=16, num_channels=hidden_dim),  # 256/16=16 canales por grupo
+                nn.GroupNorm(num_groups=min(16, hidden_dim // 16) if hidden_dim >= 16 else 1, num_channels=hidden_dim),
                 nn.ReLU(inplace=True),
                 nn.Dropout(dropout_rate * 0.5),
                 nn.Linear(hidden_dim, self.output_dim),
@@ -276,7 +276,7 @@ def create_model(
     pretrained: bool = True,
     freeze_backbone: bool = True,
     dropout_rate: float = 0.5,
-    hidden_dim: int = 256,
+    hidden_dim: int = DEFAULT_HIDDEN_DIM,
     use_coord_attention: bool = False,
     deep_head: bool = False,
     device: Optional[torch.device] = None
