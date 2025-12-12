@@ -58,7 +58,7 @@ Ubicación: `outputs/thesis_figures/combined_figures/summary_metrics.png`
 
 Gráfico de barras mostrando:
 - Gap de generalización: 25.36% → 2.24% (11.3× mejor)
-- Degradación JPEG Q50: 16.14% → 0.53% (30.5× mejor)
+- Degradación JPEG Q50: 16.14% → 0.53% (30.45× mejor)
 
 ## Observaciones Visuales Clave
 

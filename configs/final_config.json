@@ -38,15 +38,15 @@
       "checkpoint": "checkpoints/session10/ensemble/seed456/final_model.pt"
     },
     "per_category": {
-      "Normal": {"error_px": 3.53, "samples": 47},
-      "COVID": {"error_px": 3.83, "samples": 31},
-      "Viral_Pneumonia": {"error_px": 4.42, "samples": 18}
+      "Normal": {"error_px": 3.42, "samples": 47},
+      "COVID": {"error_px": 3.77, "samples": 31},
+      "Viral_Pneumonia": {"error_px": 4.40, "samples": 18}
     },
     "per_landmark": {
-      "L1": 3.29, "L2": 4.34, "L3": 3.24, "L4": 3.55,
-      "L5": 3.09, "L6": 3.02, "L7": 3.57, "L8": 3.73,
-      "L9": 2.83, "L10": 2.64, "L11": 3.32,
-      "L12": 5.63, "L13": 5.33, "L14": 4.82, "L15": 4.46
+      "L1": 3.20, "L2": 4.34, "L3": 3.20, "L4": 3.49,
+      "L5": 2.97, "L6": 3.01, "L7": 3.39, "L8": 3.67,
+      "L9": 2.84, "L10": 2.57, "L11": 3.19,
+      "L12": 5.50, "L13": 5.21, "L14": 4.63, "L15": 4.48
     }
   },
   "architecture": {

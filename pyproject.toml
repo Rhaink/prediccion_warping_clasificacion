@@ -58,9 +58,10 @@ dev = [
 [project.scripts]
 covid-landmarks = "src_v2.cli:app"
 
-[project.urls]
-"Homepage" = "https://github.com/prediccion_warping_clasificacion"
-"Bug Tracker" = "https://github.com/prediccion_warping_clasificacion/issues"
+# URLs comentadas hasta tener repositorio publico
+# [project.urls]
+# "Homepage" = "https://github.com/<usuario>/prediccion_warping_clasificacion"
+# "Bug Tracker" = "https://github.com/<usuario>/prediccion_warping_clasificacion/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

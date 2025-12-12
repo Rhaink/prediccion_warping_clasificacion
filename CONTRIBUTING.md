@@ -14,7 +14,8 @@ Thank you for your interest in contributing to this project. This document provi
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/prediccion_warping_clasificacion.git
+# Reemplaza <usuario> con tu nombre de usuario de GitHub
+git clone https://github.com/<usuario>/prediccion_warping_clasificacion.git
 cd prediccion_warping_clasificacion
 ```
 

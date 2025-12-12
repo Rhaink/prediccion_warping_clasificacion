@@ -108,7 +108,8 @@ prediccion_warping_clasificacion/
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/prediccion_warping_clasificacion.git
+# Reemplaza <usuario> con tu nombre de usuario de GitHub o la URL de tu fork
+git clone https://github.com/<usuario>/prediccion_warping_clasificacion.git
 cd prediccion_warping_clasificacion
 
 # Create virtual environment

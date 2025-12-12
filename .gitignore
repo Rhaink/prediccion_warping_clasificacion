@@ -90,3 +90,4 @@ documentación/*.blg
 PROMPT_SESION_*.md
 SESSION_LOG.md
 session*_summary.md
+Prompt para Sesion *.txt
