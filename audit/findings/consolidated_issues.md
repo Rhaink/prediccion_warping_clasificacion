@@ -1,7 +1,7 @@
 # Hallazgos Consolidados de Auditoría
 **Proyecto:** Clasificación de Radiografías de Tórax
 **Última actualización:** 2025-12-12
-**Sesiones incluidas:** 0
+**Sesiones incluidas:** 0, 1, 2, 3a
 
 ## Metodología de Consolidación
 
@@ -33,15 +33,16 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 | Severidad | Cantidad | Resueltos | Pendientes |
 |-----------|----------|-----------|------------|
 | 🔴 Critico | 0 | 0 | 0 |
-| 🟠 Mayor | 6 | 3 | 3 |
-| 🟡 Menor | 11 | 0 | 11 |
-| ⚪ Nota | 16 | 0 | 16 |
-| **Total** | **33** | **3** | **30** |
+| 🟠 Mayor | 7 | 4 | 3 |
+| 🟡 Menor | 15 | 0 | 15 |
+| ⚪ Nota | 26 | 0 | 26 |
+| **Total** | **48** | **4** | **44** |
 
 **Nota:**
 - Sesion 1 agrego 1🟡 (C01) y 4⚪ (A01, D01, V01, V02)
 - Sesion 2 agrego 2🟠 (D01-S2, V01-S2), 5🟡, 8⚪ (corregido: V02 era fortaleza, no debilidad)
 - Sesion 2 verificacion: Agregadas 4 desviaciones de protocolo identificadas post-sesion
+- Sesion 3a agrego 1🟠 (D01-S3a, resuelto), 4🟡 (A01, C03, D05, V03), 10⚪
 
 ---
 
@@ -133,6 +134,21 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 | **Esfuerzo** | 30 minutos |
 | **Estado** | ✅ **RESUELTO** (Sesion 2) |
 | **Resolucion** | Creado tests/test_dataset.py con 14 tests: 5 para compute_sample_weights, 5 para LandmarkDataset, 4 para get_dataframe_splits |
+
+### M7: Pesos inverse_variance sin referencia a documento origen (Sesion 3a)
+| Campo | Valor |
+|-------|-------|
+| **ID** | M7 (D01-S3a) |
+| **Severidad** | 🟠 Mayor |
+| **Auditor** | Especialista en Documentacion |
+| **Sesion** | 3a |
+| **Descripcion** | Los pesos de la estrategia 'inverse_variance' en `get_landmark_weights()` estaban hardcodeados sin referencia al documento o experimento que los genero. El comentario "basado en DESCUBRIMIENTOS" era vago. |
+| **Ubicacion** | src_v2/models/losses.py:391-410 |
+| **Impacto** | Jurado podria preguntar "de donde salen estos valores?" |
+| **Solucion** | Agregar referencia explicita al documento fuente |
+| **Esfuerzo** | 5 minutos |
+| **Estado** | ✅ **RESUELTO** (Sesion 3a) |
+| **Resolucion** | Agregada referencia a REPORTE_VERIFICACION_DESCUBRIMIENTOS_GEOMETRICOS.md Seccion 7, explicando que los pesos se basan en variabilidad (σ) de cada landmark. |
 
 ---
 
@@ -226,6 +242,7 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 | Fecha | ID | Acción | Verificado |
 |-------|----|----|------------|
 | 2025-12-12 | M2 | Verificado consistencia tile_size=4 en todos los archivos del proyecto | ✓ Sesión 1 |
+| 2025-12-12 | M7 | Agregada referencia a REPORTE_VERIFICACION_DESCUBRIMIENTOS_GEOMETRICOS.md para pesos inverse_variance | ✓ Sesión 3a |
 
 ---
 
