@@ -76,6 +76,14 @@ SYMMETRIC_PAIRS: List[Tuple[int, int]] = [
 # Dividen el eje en 4 partes iguales (t=0.25, 0.50, 0.75)
 CENTRAL_LANDMARKS: List[int] = [8, 9, 10]  # L9, L10, L11
 
+# Landmarks centrales con sus posiciones t teóricas sobre el eje L1-L2
+# Útil para modelos jerárquicos que predicen posición relativa
+CENTRAL_LANDMARKS_T: List[Tuple[int, float]] = [
+    (8, 0.25),   # L9
+    (9, 0.50),   # L10
+    (10, 0.75),  # L11
+]
+
 # Landmarks del eje vertical (definen la línea central)
 AXIS_LANDMARKS: List[int] = [0, 1]  # L1 (superior), L2 (inferior)
 
@@ -175,7 +183,7 @@ DEFAULT_FLIP_PROB: float = 0.5
 DEFAULT_ROTATION_DEGREES: float = 10.0
 
 # Parámetros CLAHE
-# Nota: tile_size=4 produce mejores resultados que 8 (usado en el modelo 4.50 px)
+# Nota: tile_size=4 produce mejores resultados que 8 (usado en el modelo 3.71 px ensemble)
 DEFAULT_CLAHE_CLIP_LIMIT: float = 2.0
 DEFAULT_CLAHE_TILE_SIZE: int = 4
 
@@ -197,13 +205,16 @@ QUICK_MODE_EPOCHS_COMPARE: int = 5    # Para compare-architectures
 # WARPING - Configuración de normalización geométrica
 # =============================================================================
 
-# Margen óptimo encontrado experimentalmente (Session 28)
-# 1.25 = 25% de expansión desde el centroide de landmarks
-# Produce 96.51% accuracy en clasificación
-OPTIMAL_MARGIN_SCALE: float = 1.25
+# Margen óptimo encontrado experimentalmente (Session 25 optimize-margin)
+# 1.05 = 5% de expansión desde el centroide de landmarks
+# Este es el valor que minimiza el error de warping
+# NOTA: GROUND_TRUTH.json usa margin_scale_optimal=1.05
+OPTIMAL_MARGIN_SCALE: float = 1.05
 
-# Margen por defecto (conservador)
-DEFAULT_MARGIN_SCALE: float = 1.05
+# Margen por defecto (conservador/legacy)
+# 1.25 = 25% de expansión desde el centroide
+# Se mantiene para compatibilidad con experimentos anteriores
+DEFAULT_MARGIN_SCALE: float = 1.25
 
 # =============================================================================
 # COMBINED LOSS - Pesos para pérdida combinada
@@ -214,3 +225,69 @@ DEFAULT_MARGIN_SCALE: float = 1.05
 # symmetry_weight: peso para penalización de asimetría bilateral
 DEFAULT_CENTRAL_WEIGHT: float = 1.0
 DEFAULT_SYMMETRY_WEIGHT: float = 0.5
+
+# =============================================================================
+# HIERARCHICAL LOSS - Parámetros para modelo jerárquico
+# =============================================================================
+
+# Escala para offsets de landmarks centrales (dt)
+HIERARCHICAL_DT_SCALE: float = 0.1
+
+# Escala para offset t bilateral
+HIERARCHICAL_T_SCALE: float = 0.2
+
+# Distancia máxima bilateral (en escala normalizada)
+HIERARCHICAL_D_MAX: float = 0.7
+
+# =============================================================================
+# ENTRENAMIENTO - Parámetros adicionales
+# =============================================================================
+
+# Weight decay por defecto para Adam/AdamW
+DEFAULT_WEIGHT_DECAY: float = 0.01
+
+# Learning rate para fine-tuning
+DEFAULT_FINE_TUNE_LR: float = 1e-4
+
+# =============================================================================
+# DATA AUGMENTATION - Parámetros adicionales
+# =============================================================================
+
+# Rango de brillo para augmentation
+DEFAULT_BRIGHTNESS_RANGE: Tuple[float, float] = (0.8, 1.2)
+
+# Rango de contraste para augmentation
+DEFAULT_CONTRAST_RANGE: Tuple[float, float] = (0.8, 1.2)
+
+# =============================================================================
+# BILATERAL LANDMARKS - Posiciones T
+# =============================================================================
+
+# Posiciones t base para landmarks bilaterales sobre el eje L1-L2
+# Corresponden a los pares: (L3,L4), (L5,L6), (L7,L8), (L12,L13), (L14,L15)
+# - L3,L4 en t=0.25, L5,L6 en t=0.50, L7,L8 en t=0.75
+# - L12,L13 en t=0.00 (en L1), L14,L15 en t=1.00 (en L2)
+BILATERAL_T_POSITIONS: List[float] = [0.25, 0.50, 0.75, 0.00, 1.00]
+
+# =============================================================================
+# WARP - Parámetros por defecto
+# =============================================================================
+
+# Margen mínimo desde bordes de imagen para landmarks
+DEFAULT_WARP_MARGIN: int = 2
+
+# Tamaño máximo de imagen para warping (coincide con DEFAULT_IMAGE_SIZE)
+DEFAULT_WARP_MAX_SIZE: int = 224
+
+# =============================================================================
+# HIERARCHICAL MODEL - Arquitectura
+# =============================================================================
+
+# Dimensión oculta para cabezas del modelo jerárquico
+HIERARCHICAL_HIDDEN_DIM: int = 512
+
+# Número de grupos para GroupNorm en modelo jerárquico
+HIERARCHICAL_NUM_GROUPS: int = 32
+
+# Número de grupos para GroupNorm en cabeza relativa (hidden_dim // 2)
+HIERARCHICAL_NUM_GROUPS_HALF: int = 16

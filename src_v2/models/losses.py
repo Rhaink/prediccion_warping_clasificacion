@@ -21,6 +21,7 @@ from src_v2.constants import (
     CENTRAL_LANDMARKS,
     DEFAULT_IMAGE_SIZE,
 )
+from src_v2.utils.geometry import compute_perpendicular_vector
 
 
 logger = logging.getLogger(__name__)
@@ -216,9 +217,9 @@ class CentralAlignmentLoss(nn.Module):
 
             total_dist = total_dist + dist
 
-        # Promedio sobre los 3 puntos centrales
+        # Promedio sobre los puntos centrales
         # NO multiplicar por image_size - mantener en escala normalizada [0,1]
-        loss = total_dist / 3
+        loss = total_dist / len(CENTRAL_LANDMARKS)
 
         return loss.mean()
 
@@ -264,12 +265,9 @@ class SoftSymmetryLoss(nn.Module):
         L1 = pred[:, 0]  # (B, 2)
         L2 = pred[:, 1]  # (B, 2)
 
-        # Vector perpendicular al eje
+        # Vector perpendicular al eje usando función centralizada
         eje = L2 - L1
-        eje_len = torch.norm(eje, dim=1, keepdim=True) + 1e-8
-        eje_unit = eje / eje_len
-        # Perpendicular: rotar 90 grados
-        perp = torch.stack([-eje_unit[:, 1], eje_unit[:, 0]], dim=1)  # (B, 2)
+        perp = compute_perpendicular_vector(eje)  # (B, 2)
 
         total_loss = 0.0
         for left_idx, right_idx in SYMMETRIC_PAIRS:
