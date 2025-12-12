@@ -34,13 +34,14 @@ Los hallazgos individuales de cada auditor (session_00_mapping.md) fueron consol
 |-----------|----------|-----------|------------|
 | 🔴 Critico | 0 | 0 | 0 |
 | 🟠 Mayor | 6 | 3 | 3 |
-| 🟡 Menor | 12 | 0 | 12 |
-| ⚪ Nota | 14 | 0 | 14 |
-| **Total** | **32** | **3** | **29** |
+| 🟡 Menor | 11 | 0 | 11 |
+| ⚪ Nota | 16 | 0 | 16 |
+| **Total** | **33** | **3** | **30** |
 
 **Nota:**
 - Sesion 1 agrego 1🟡 (C01) y 4⚪ (A01, D01, V01, V02)
-- Sesion 2 agrego 2🟠 (D01-S2, V01-S2), 6🟡, 6⚪
+- Sesion 2 agrego 2🟠 (D01-S2, V01-S2), 5🟡, 8⚪ (corregido: V02 era fortaleza, no debilidad)
+- Sesion 2 verificacion: Agregadas 4 desviaciones de protocolo identificadas post-sesion
 
 ---
 

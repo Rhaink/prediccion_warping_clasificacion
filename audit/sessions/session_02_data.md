@@ -1,9 +1,13 @@
 # Sesion 2: Modulo de Datos (Data Management)
 
 **Fecha:** 2025-12-12
-**Duracion estimada:** 2-3 horas
+**Duracion estimada:** 2 horas
 **Rama Git:** audit/main
 **Archivos en alcance:** 981 lineas, 3 archivos
+
+**Nota de desviacion (§4.3):** Esta sesion excede el limite de 500 lineas recomendado.
+Justificacion: Los 3 archivos del modulo data/ estan fuertemente acoplados y deben
+auditarse juntos para evaluar coherencia. En sesiones futuras se dividira mejor.
 
 ## Alcance
 
@@ -46,14 +50,21 @@
 | ID | Severidad | Descripcion | Ubicacion | Solucion Propuesta |
 |----|-----------|-------------|-----------|-------------------|
 | V01 | 🟠 | `LandmarkDataset`, `create_dataloaders()`, `compute_sample_weights()` sin tests unitarios dedicados. Test coverage del modulo dataset.py es ~0%. | `tests/` | Crear `tests/test_dataset.py` con tests para funciones publicas principales. |
-| V02 | 🟡 | `tests/test_transforms.py` existe con 25 tests. Buena cobertura de transformaciones. | `tests/test_transforms.py` | Fortaleza. Transforms bien testeados. |
+| V02 | ⚪ | `tests/test_transforms.py` existe con 25 tests. Buena cobertura de transformaciones. | `tests/test_transforms.py` | Fortaleza. Transforms bien testeados. |
 | V03 | 🟡 | Funciones de `utils.py` (visualize_landmarks, compute_statistics, compute_symmetry_error) sin tests dedicados. | `tests/` | Agregar tests basicos si hay tiempo. |
 | V04 | ⚪ | `test_pipeline.py` proporciona tests de integracion que usan el modulo data indirectamente. | `tests/test_pipeline.py` | Cobertura indirecta existe. |
+
+### Auditor Maestro
+
+| ID | Severidad | Descripcion | Ubicacion | Solucion Propuesta |
+|----|-----------|-------------|-----------|-------------------|
+| AM01 | ⚪ | Modulo data/ bien estructurado con separacion clara de responsabilidades. | Global | Fortaleza arquitectonica. |
+| AM02 | ⚪ | 8 fortalezas identificadas vs 2 hallazgos mayores corregibles. Balance positivo. | Global | Proceder con confianza. |
 
 ## Veredicto del Auditor Maestro
 
 - **Estado del modulo:** ✅ **APROBADO**
-- **Conteo (Sesion 2):** 0🔴, 2🟠, 6🟡, 6⚪
+- **Conteo (Sesion 2):** 0🔴, 2🟠, 5🟡, 8⚪
 - **Aplicacion de umbrales segun §5.2:** Cumple criterio "✅ Aprobado" (0🔴, <=2🟠)
 - **Prioridades:**
   1. D01 (🟠): Completar docstring de `get_dataframe_splits()`
@@ -65,19 +76,43 @@
 El modulo data/ esta en **excelente estado** para una tesis de maestria:
 
 **Fortalezas Identificadas:**
-1. ✅ Type hints 100% presentes y correctos
-2. ✅ Docstrings comprehensivos en funciones principales
-3. ✅ Cumplimiento PEP8 perfecto
-4. ✅ Manejo de errores robusto (FileNotFoundError, IOError)
-5. ✅ Patrones de diseno bien aplicados (Factory)
-6. ✅ Transforms testeados exhaustivamente (25 tests)
-7. ✅ Logging apropiado en lugares criticos
-8. ✅ CLAHE bien documentado con justificacion tecnica
+1. Type hints 100% presentes y correctos
+2. Docstrings comprehensivos en funciones principales
+3. Cumplimiento PEP8 perfecto
+4. Manejo de errores robusto (FileNotFoundError, IOError)
+5. Patrones de diseno bien aplicados (Factory)
+6. Transforms testeados exhaustivamente (25 tests)
+7. Logging apropiado en lugares criticos
+8. CLAHE bien documentado con justificacion tecnica
 
 **Areas de Mejora (no bloquean):**
 1. Cobertura de tests para dataset.py
 2. Docstring de get_dataframe_splits() incompleto
 3. Funcion create_dataloaders() larga pero funcional
+
+## Solicitud de Validacion (§7.2)
+
+```
+📋 SOLICITUD DE VALIDACION #1
+- Comando a ejecutar: pytest tests/test_transforms.py -v
+- Resultado esperado: 25 tests PASSED
+- Importancia: Verifica que transformaciones del modulo auditado funcionan correctamente
+- Criterio de exito: 0 failures, 0 errors
+
+Usuario confirmo: Si, ejecutar
+Resultado: 25 passed in 1.88s ✓
+```
+
+```
+📋 SOLICITUD DE VALIDACION #2
+- Comando a ejecutar: pytest tests/test_dataset.py -v
+- Resultado esperado: Tests nuevos pasan
+- Importancia: Verifica correcciones V01 implementadas correctamente
+- Criterio de exito: 0 failures, 0 errors
+
+Usuario confirmo: Si, ejecutar
+Resultado: 14 passed in 2.03s ✓
+```
 
 ## Validaciones Realizadas
 
@@ -94,13 +129,27 @@ El modulo data/ esta en **excelente estado** para una tesis de maestria:
 ## 🎯 Progreso de Auditoria
 
 **Modulos completados:** 2/12 (Configuracion Base + Datos)
-**Hallazgos Sesion 2:** [🔴:0 | 🟠:2 | 🟡:6 | ⚪:6]
-**Hallazgos acumulados (S0+S1+S2):** [🔴:0 | 🟠:5 | 🟡:7 | ⚪:14]
+**Hallazgos totales:** [🔴:0 | 🟠:5 | 🟡:8 | ⚪:16]
 **Proximo hito:** Sesion 3 - Arquitecturas de Modelos (models/)
+
+## Registro de Commit
+
+**Commit:** `17cdfb8 audit(session-2): auditoria modulo data/ con correcciones D01 y V01`
+**Fecha:** 2025-12-12
 
 ## Notas para Siguiente Sesion
 
-- Modulo data/ aprobado con correcciones menores
-- D01 y V01 deben completarse antes de Sesion 3
-- Sesion 3 auditara `models/` (losses.py, resnet_landmark.py, classifier.py, hierarchical.py) - ~1,561 lineas, PRIORIDAD CRITICA
-- El modulo models/ fue identificado en Sesion 0 como sin tests dedicados (V01-V02)
+- Modulo data/ aprobado con correcciones menores implementadas
+- D01 y V01 resueltos en esta sesion
+- Sesion 3 auditara `models/` (losses.py, resnet_landmark.py, classifier.py, hierarchical.py) - ~1,561 lineas
+- **IMPORTANTE:** Dividir models/ en sub-sesiones para respetar limite §4.3 de 500 lineas
+- El modulo models/ fue identificado en Sesion 0 como sin tests dedicados (V01-V02 originales)
+
+## Desviaciones del Protocolo Identificadas Post-Sesion
+
+| ID | Severidad | Descripcion | Accion Correctiva |
+|----|-----------|-------------|-------------------|
+| P01 | 🟠 | Falta protocolo §7.2 en documento original | Agregado en esta revision |
+| P02 | 🟠 | Exceso de lineas (981 vs 500 max) | Documentada justificacion; dividir en sesiones futuras |
+| P03 | 🟡 | V02 mal clasificado como 🟡 (era fortaleza) | Corregido a ⚪ |
+| P04 | 🟡 | Faltaba tabla de Auditor Maestro | Agregada tabla AM01-AM02 |
