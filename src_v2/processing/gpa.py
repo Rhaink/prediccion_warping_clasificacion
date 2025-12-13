@@ -8,6 +8,13 @@ GPA eliminates:
 - Translation (center at origin)
 - Scale (normalize to unit norm)
 - Rotation (align with reference)
+
+References:
+    Gower, J.C. (1975). Generalized procrustes analysis.
+    Psychometrika, 40(1), 33-51.
+
+    Dryden, I.L. & Mardia, K.V. (1998). Statistical Shape Analysis.
+    Wiley Series in Probability and Statistics. Wiley.
 """
 
 import logging
