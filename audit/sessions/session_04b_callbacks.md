@@ -176,7 +176,7 @@ Resultado: PASSED (21 passed in 0.70s)
 |-------|-------|
 | **Rama** | audit/main |
 | **Hash inicial** | 750601e |
-| **Hash commit** | 5d29d92 |
+| **Hash commit** | 66c4863 |
 | **Mensaje** | `audit(session-4b): auditoria callbacks.py` |
 | **Archivos modificados** | `audit/sessions/session_04b_callbacks.md` |
 
