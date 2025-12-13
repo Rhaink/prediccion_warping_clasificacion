@@ -95,14 +95,14 @@
 | ID | Severidad | Descripcion | Ubicacion | Solucion Propuesta |
 |----|-----------|-------------|-----------|-------------------|
 | AM01 | ⚪ | Modulo demuestra alta calidad: 7 arquitecturas soportadas, backward compatibility, 36+ tests, type hints completos. | Global | Fortaleza general. |
-| AM02 | ⚪ | Balance muy positivo: 13 fortalezas/observaciones vs 1 hallazgo mayor y 2 menores. | Global | Proceder con confianza. |
+| AM02 | ⚪ | Balance muy positivo: 15 fortalezas/observaciones vs 1 hallazgo mayor y 2 menores. | Global | Proceder con confianza. |
 
 ## Veredicto del Auditor Maestro
 
 | Metrica | Valor |
 |---------|-------|
 | **Estado del modulo** | ✅ **APROBADO** |
-| **Conteo (Sesion 3c)** | 0🔴, 1🟠, 2🟡, 13⚪ |
+| **Conteo (Sesion 3c)** | 0🔴, 1🟠, 2🟡, 15⚪ |
 | **Aplicacion umbrales §5.2** | Cumple criterio "✅ Aprobado" (0🔴, ≤2🟠) |
 | **Prioridad 1** | D01 (🟠): Actualizar docstrings con 7 backbones |
 | **Prioridad 2** | V01, D02 (🟡): Tests y documentacion de excepciones |
@@ -112,7 +112,7 @@
 
 El modulo `classifier.py` demuestra **alta calidad tecnica y academica**:
 
-**Fortalezas Destacadas (13⚪):**
+**Fortalezas Destacadas (15⚪):**
 1. Soporte para 7 arquitecturas CNN (ResNet-18/50, EfficientNet-B0, DenseNet-121, AlexNet, VGG-16, MobileNetV2)
 2. Backward compatibility automatica para checkpoints antiguos
 3. Excelente cobertura de tests (36 tests dedicados + tests en otros archivos)
@@ -172,7 +172,7 @@ Resultado: 36 passed in 5.62s ✓
 ## 🎯 Progreso de Auditoria
 
 **Modulos completados:** 5/12 (Config + Datos + Losses + ResNet + Classifier)
-**Hallazgos totales acumulados:** [🔴:0 | 🟠:8 (5 resueltos, 3 pendientes) | 🟡:19 (+2 esta sesion) | ⚪:54 (+13 esta sesion)]
+**Hallazgos totales acumulados:** [🔴:0 | 🟠:8 (5 resueltos, 3 pendientes) | 🟡:19 (+2 esta sesion) | ⚪:56 (+15 esta sesion)]
 **Proximo hito:** Sesion 3d (hierarchical.py o utils/)
 
 ## Analisis de Cobertura de Tests (Detallado)
@@ -218,3 +218,24 @@ Resultado: 36 passed in 5.62s ✓
 - Proxima sesion puede ser 3d: hierarchical.py o utils/
 - El modulo models/ tiene ahora 2 de 3 archivos auditados (resnet_landmark.py, classifier.py)
 - Quedan 3🟠 pendientes globales: M1 (PFS claim), M3 (sesgos dataset), M4 (margen 1.05)
+
+## Registro de Commit (§4.4 paso 9, §8.2)
+
+| Campo | Valor |
+|-------|-------|
+| **Rama** | audit/main |
+| **Hash inicial** | b9562d8 |
+| **Hash correcciones** | 5b5fe41 |
+| **Mensaje inicial** | `audit(session-3c): auditoria classifier.py con correccion D01` |
+| **Mensaje correcciones** | `audit(session-3c): correcciones segun verificacion estricta de protocolo` |
+| **Archivos modificados** | `src_v2/models/classifier.py`, `audit/sessions/session_03c_classifier.md` |
+
+## Desviaciones de Protocolo Identificadas Post-Sesion
+
+| ID | Severidad | Descripcion | Accion Correctiva |
+|----|-----------|-------------|-------------------|
+| P01 | 🟡 | Conteo ⚪ incorrecto (13 reportado vs 15 real) | Corregido: Actualizado a 15⚪ |
+| P02 | 🟡 | Falta seccion "Commit de Sesion" (§4.4 paso 9) | Corregido: Agregada seccion |
+| P03 | 🟡 | AM02 decia "13 fortalezas" en vez de "15" | Corregido: Actualizado texto |
+
+**Estado:** Todas las desviaciones corregidas mediante verificacion con agentes. Cumplimiento 100% con protocolo.
