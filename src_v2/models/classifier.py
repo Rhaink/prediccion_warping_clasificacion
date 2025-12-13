@@ -71,7 +71,7 @@ class ImageClassifier(nn.Module):
     ):
         """
         Args:
-            backbone: Arquitectura base ('resnet18' o 'efficientnet_b0')
+            backbone: Arquitectura base. Ver SUPPORTED_BACKBONES para opciones validas.
             num_classes: Numero de clases de salida
             pretrained: Usar pesos preentrenados de ImageNet
             dropout: Tasa de dropout antes de capa final
@@ -226,7 +226,7 @@ def create_classifier(
     Factory function para crear un clasificador.
 
     Args:
-        backbone: Arquitectura base ('resnet18' o 'efficientnet_b0')
+        backbone: Arquitectura base. Ver ImageClassifier.SUPPORTED_BACKBONES para opciones validas.
         num_classes: Numero de clases
         pretrained: Usar pesos ImageNet (ignorado si checkpoint se provee)
         dropout: Tasa de dropout
