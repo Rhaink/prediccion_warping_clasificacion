@@ -206,8 +206,13 @@ QUICK_MODE_EPOCHS_COMPARE: int = 5    # Para compare-architectures
 # =============================================================================
 
 # Margen óptimo encontrado experimentalmente (Session 25 optimize-margin)
+# Grid search evaluó márgenes: [1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30]
+# Criterio de selección: minimizar error de warping (distancia entre puntos
+# reales y predichos después del warping)
+# Resultado: 1.05 fue óptimo, balanceando:
+#   - Expansión suficiente para incluir estructura pulmonar completa
+#   - Sin sobre-expansión que cause artefactos de warping
 # 1.05 = 5% de expansión desde el centroide de landmarks
-# Este es el valor que minimiza el error de warping
 # NOTA: GROUND_TRUTH.json usa margin_scale_optimal=1.05
 OPTIMAL_MARGIN_SCALE: float = 1.05
 

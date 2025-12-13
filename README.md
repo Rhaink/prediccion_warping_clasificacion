@@ -287,6 +287,9 @@ python -m src_v2 analyze-errors \
   --visualize --gradcam
 
 # Analyze Pulmonary Focus Score (PFS) - measures lung region attention
+# NOTE: Analysis showed PFS ≈ 0.487 (~50%), indicating the model does NOT
+# specifically focus on lung regions. The robustness improvement comes from
+# geometric normalization (reduced fill rate), not from forced lung attention.
 python -m src_v2 pfs-analysis \
   --checkpoint outputs/classifier/best.pt \
   --data-dir outputs/warped_dataset/test \
@@ -392,6 +395,31 @@ Full scientific documentation in `documentación/` (Spanish, LaTeX format):
 - Training methodology
 - Experimental results
 - Geometric warping theory
+
+## Limitations and Known Biases
+
+### Dataset Limitations
+
+- **Sample size**: Small dataset (957 samples) - suitable for thesis research, external validation recommended for broader conclusions
+- **Demographic information**: Age and gender distribution of patients unknown
+- **Equipment variation**: Images acquired with multiple radiological equipment types/brands
+- **Geographic origin**: Data from multiple institutions/countries with varying protocols
+- **Labeling**: Manual annotations - inter-annotator variability not quantified
+
+### Model Limitations
+
+- **Generalization**: Performance on different X-ray equipment/protocols may vary
+- **External validation**: Not validated on independent external datasets beyond thesis scope
+- **Demographic bias**: Unknown performance across different demographic groups
+- **PFS Analysis**: Pulmonary Focus Score ≈ 50% indicates model attention is NOT specifically focused on lung regions
+
+### Clinical Use Disclaimer
+
+> **WARNING**: This model is experimental and developed for academic research purposes only.
+> It is NOT validated for clinical decision-making and should NOT be used in clinical
+> settings without proper regulatory approval (FDA, CE marking, etc.) and extensive
+> external validation. Any clinical application requires supervision by qualified
+> medical professionals.
 
 ## License
 
