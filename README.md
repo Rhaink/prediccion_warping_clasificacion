@@ -28,28 +28,32 @@ This project implements a two-stage approach for COVID-19 classification:
 
 ### COVID-19 Classification
 
-| Dataset | Accuracy | Fill Rate |
-|---------|----------|-----------|
-| Original 100% | 98.84% | 100% |
-| Original Cropped 47% | 98.89% | 47% |
-| Warped 47% | 98.02% | 47% |
-| **Warped 99%** | **98.73%** | 99% |
+| Dataset | Accuracy | Fill Rate | Robustness (JPEG Q50) |
+|---------|----------|-----------|----------------------|
+| Original 100% | 98.84% | 100% | 16.14% |
+| Warped 47% | 98.02% | 47% | 0.53% |
+| Warped 99% | 98.73% | 99% | 7.34% |
+| **Warped 96% (RECOMMENDED)** | **99.10%** | **96%** | **3.06%** |
 
-### Robustness to Perturbations (Validated - Session 39)
+> **Note:** Warped 96% achieves the best accuracy while maintaining 2.4x better robustness than Warped 99%. See [Session 53 documentation](docs/sesiones/SESION_53_FILL_RATE_TRADEOFF.md) for the fill rate trade-off analysis.
+
+### Robustness to Perturbations (Validated - Sessions 39, 52-53)
 
 | Model | Fill Rate | JPEG Q50 | JPEG Q30 | Blur sigma=1 |
 |-------|-----------|----------|----------|--------------|
 | Original 100% | 100% | 16.14% | 29.97% | 14.43% |
 | Original Cropped 47% | 47% | 2.11% | 7.65% | 7.65% |
-| **Warped 47%** | 47% | **0.53%** | **1.32%** | **6.06%** |
+| **Warped 47%** | 47% | **0.53%** | **1.32%** | 6.06% |
 | Warped 99% | 99% | 7.34% | 16.73% | 11.35% |
+| **Warped 96% (RECOMMENDED)** | 96% | 3.06% | 5.28% | **2.43%** |
 
 *Values represent accuracy degradation under perturbations (lower is better).*
 
 **Key findings:**
 - **JPEG Q50**: Warped 47% is **30x more robust** than Original (0.53% vs 16.14%)
 - **JPEG Q30**: Warped 47% is **23x more robust** than Original (1.32% vs 29.97%)
-- **Blur sigma=1**: Warped 47% is **2.4x more robust** than Original (6.06% vs 14.43%)
+- **Blur sigma=1**: Warped 96% is **5.9x more robust** than Original (2.43% vs 14.43%)
+- **Best overall**: Warped 96% balances **highest accuracy (99.10%)** with strong robustness
 
 ### Cross-Dataset Generalization (Validated - Session 39)
 
