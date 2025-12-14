@@ -235,11 +235,13 @@ python -m src_v2 compute-canonical data/coordenadas/coordenadas_maestro.csv \
   --output-dir outputs/shape_analysis --visualize
 
 # Generate warped dataset with train/val/test splits
+# --use-full-coverage (default) adds boundary points for ~99% fill rate
 python -m src_v2 generate-dataset \
   data/COVID-19_Radiography_Dataset \
   outputs/warped_dataset \
   --checkpoint checkpoints_v2/final_model.pt \
-  --margin 1.05 --splits 0.75,0.125,0.125 --seed 42
+  --margin 1.05 --splits 0.75,0.125,0.125 --seed 42 \
+  --use-full-coverage
 
 # --- Analysis & Validation Commands ---
 
@@ -330,6 +332,7 @@ python -m src_v2 optimize-margin \
 | `--landmark-model` | - | Single landmark model for warping |
 | `--landmark-ensemble` | - | Multiple landmark models for ensemble |
 | `--backbone` | resnet18 | Classifier backbone: resnet18, efficientnet_b0 |
+| `--use-full-coverage` | True | Add boundary points for ~99% fill rate |
 
 ### Legacy Scripts
 
