@@ -1,0 +1,309 @@
+# PROMPT PARA SESION 46 - LIMPIEZA FINAL Y PRODUCCION
+
+**Fecha de creacion:** 2025-12-11
+**Sesion anterior:** Sesion 45 (introspeccion completa)
+**Rama:** feature/restructure-production
+
+---
+
+## CONTEXTO
+
+En la Sesion 45 se realizo:
+1. Correcciones de la Sesion 44 (10 tareas completadas)
+2. Introspeccion profunda con 5 agentes paralelos
+3. Creacion de 60 nuevos tests
+
+**Estado actual:**
+- 613 tests pasando
+- 20 comandos CLI funcionales
+- Tag v2.0.0 creado (production-ready)
+- Multiples problemas identificados para corregir
+
+---
+
+## PROBLEMAS A CORREGIR (ORDENADOS POR PRIORIDAD)
+
+### PRIORIDAD 1: CRITICOS (Hacer primero)
+
+#### 1.1 Valores obsoletos en scripts de visualizacion
+
+**Archivos afectados y lineas:**
+
+1. `scripts/visualization/generate_bloque6_resultados.py`
+   - Linea 101: `'S10 ep=100': 6.75,` → actualizar a 4.10
+   - Linea 102: `'S10 Ens3': 4.50,` → actualizar a 3.71
+
+2. `scripts/visualization/generate_results_figures.py`
+   - Linea 53: Array con 4.50 → cambiar a 3.71
+   - Linea 304: `6.75, 4.05, 4.04...` → verificar consistencia
+   - Linea 361: `('+epochs=100', 6.75, -0.46)` → actualizar
+   - Lineas 435-436: Tabla con valores obsoletos
+
+3. `scripts/visualization/generate_animations.py`
+   - Linea 339: `('S10: +epochs=100', 6.75, ...)` → actualizar
+   - Linea 340: `('S10: Ensemble 3', 4.50, ...)` → actualizar a 3.71
+
+**Valores correctos segun GROUND_TRUTH.json:**
+- Ensemble 4 modelos TTA: 3.71 px
+- seed=123 individual TTA: 4.05 px
+- seed=456 individual TTA: 4.04 px
+- seed=42 individual TTA: ~4.10 px
+
+---
+
+#### 1.2 Comentario obsoleto en constants.py
+
+**Archivo:** `src_v2/constants.py`
+**Linea:** 178
+
+**Actual:**
+```python
+# Nota: tile_size=4 produce mejores resultados que 8 (usado en el modelo 4.50 px)
+```
+
+**Corregir a:**
+```python
+# Nota: tile_size=4 produce mejores resultados que 8 (usado en el modelo 3.71 px ensemble)
+```
+
+---
+
+#### 1.3 Test trivial en test_constants.py
+
+**Archivo:** `tests/test_constants.py`
+**Lineas:** 292-298
+
+**Actual:**
+```python
+def test_imports_work(self):
+    from src_v2.constants import (
+        NUM_LANDMARKS, SYMMETRIC_PAIRS, CATEGORIES
+    )
+    assert True  # TRIVIAL
+```
+
+**Corregir a:**
+```python
+def test_imports_work(self):
+    """Verifica que constantes principales tienen valores correctos."""
+    from src_v2.constants import (
+        NUM_LANDMARKS, SYMMETRIC_PAIRS, CATEGORIES
+    )
+    assert NUM_LANDMARKS == 15
+    assert len(SYMMETRIC_PAIRS) == 5
+    assert len(CATEGORIES) == 3
+    assert 'COVID' in CATEGORIES
+```
+
+---
+
+#### 1.4 URLs placeholder en pyproject.toml
+
+**Archivo:** `pyproject.toml`
+**Lineas:** 63-64
+
+**Actual:**
+```toml
+"Homepage" = "https://github.com/<usuario>/prediccion_warping_clasificacion"
+"Bug Tracker" = "https://github.com/<usuario>/prediccion_warping_clasificacion/issues"
+```
+
+**Solucion:** Reemplazar `<usuario>` con nombre real del repo o comentar/eliminar estas lineas hasta tener repo publico.
+
+---
+
+### PRIORIDAD 2: ALTOS (Importantes)
+
+#### 2.1 Actualizar .gitignore
+
+**Agregar al archivo `.gitignore`:**
+```
+# Archivos temporales de sesion
+Prompt para Sesion *.txt
+tempfile
+
+# Coverage ya esta pero verificar
+.coverage
+```
+
+---
+
+#### 2.2 Corregir evaluate_ensemble.py
+
+**Archivo:** `scripts/evaluate_ensemble.py`
+**Lineas:** 193-206
+
+**Problema:** seed42 tiene `test_error: 6.75` que es valor SIN TTA
+
+**Solucion:** Agregar comentario clarificando o actualizar:
+```python
+available_models = {
+    'seed42': {
+        'path': 'checkpoints/session10/exp4_epochs100/final_model.pt',
+        'val_error': 7.22,   # Sin TTA
+        'test_error': 4.10,  # Con TTA (actualizado)
+    },
+    ...
+}
+```
+
+---
+
+#### 2.3 Verificar checkpoints de session13
+
+**Verificar si existen:**
+```bash
+ls -la checkpoints/session13/seed321/final_model.pt
+ls -la checkpoints/session13/seed789/final_model.pt
+```
+
+Si no existen, actualizar `GROUND_TRUTH.json` con checkpoints reales.
+
+---
+
+### PRIORIDAD 3: MEDIO (Mejoras de codigo)
+
+#### 3.1 Crear constantes para losses.py
+
+**Agregar a `src_v2/constants.py`:**
+```python
+# =============================================================================
+# HIERARCHICAL LOSS - Parametros
+# =============================================================================
+
+HIERARCHICAL_DT_SCALE: float = 0.1      # Escala para dt_centrales
+HIERARCHICAL_T_SCALE: float = 0.2       # Escala para t_offset bilateral
+HIERARCHICAL_D_MAX: float = 0.7         # Distancia maxima bilateral
+```
+
+**Actualizar `src_v2/models/losses.py`:**
+```python
+from src_v2.constants import (
+    HIERARCHICAL_DT_SCALE,
+    HIERARCHICAL_T_SCALE,
+    HIERARCHICAL_D_MAX,
+)
+
+# Linea 195
+dt_centrales = torch.tanh(params[:, :3]) * HIERARCHICAL_DT_SCALE
+
+# Linea 212
+t_offset = torch.tanh(bilateral_params[:, p_start]) * HIERARCHICAL_T_SCALE
+
+# Lineas 214-215
+d_left = torch.sigmoid(bilateral_params[:, p_start + 1]) * HIERARCHICAL_D_MAX
+```
+
+---
+
+#### 3.2 Crear constantes adicionales
+
+**Agregar a `src_v2/constants.py`:**
+```python
+# Entrenamiento adicional
+DEFAULT_WEIGHT_DECAY: float = 0.01
+DEFAULT_FINE_TUNE_LR: float = 1e-4
+
+# Data augmentation adicional
+DEFAULT_BRIGHTNESS_RANGE: Tuple[float, float] = (0.8, 1.2)
+DEFAULT_CONTRAST_RANGE: Tuple[float, float] = (0.8, 1.2)
+```
+
+---
+
+### PRIORIDAD 4: BAJO (Post-sesion)
+
+#### 4.1 Documentar scripts obsoletos
+
+**Crear archivo:** `scripts/README.md`
+
+```markdown
+# Scripts del Proyecto
+
+## Scripts de Produccion (usar CLI preferentemente)
+- `predict.py` - Prediccion (usar `covid-landmarks predict`)
+- `evaluate_ensemble.py` - Evaluacion (usar `covid-landmarks evaluate`)
+
+## Scripts de Desarrollo/Analisis
+- `debug_hierarchical.py` - Debug de loss jerarquica
+- `visualize_predictions.py` - Visualizar predicciones
+- `verify_*.py` - Scripts de verificacion
+
+## Scripts Historicos (Sesiones 10-34)
+- `session*_*.py` - Scripts de sesiones especificas
+- `validation_session*.py` - Validaciones historicas
+
+## Scripts de Visualizacion
+- `visualization/generate_*.py` - Generacion de figuras
+```
+
+---
+
+#### 4.2 Eliminar variable no usada en hierarchical.py
+
+**Archivo:** `src_v2/models/hierarchical.py`
+**Linea:** 199
+
+**Eliminar:**
+```python
+base_t = torch.tensor([0.25, 0.50, 0.75], device=device)  # NO SE USA
+```
+
+---
+
+## RESUMEN DE TAREAS
+
+### Sesion 46 - Tareas Criticas:
+1. [ ] Actualizar valores en 3 scripts de visualizacion
+2. [ ] Corregir comentario en constants.py (4.50 → 3.71)
+3. [ ] Corregir test trivial en test_constants.py
+4. [ ] Actualizar/comentar URLs en pyproject.toml
+
+### Sesion 46 - Tareas Altas:
+5. [ ] Actualizar .gitignore
+6. [ ] Corregir evaluate_ensemble.py
+7. [ ] Verificar checkpoints session13
+
+### Sesion 46 - Tareas Medias:
+8. [ ] Crear constantes para losses.py
+9. [ ] Crear constantes adicionales en constants.py
+
+### Post-Sesion 46:
+10. [ ] Crear scripts/README.md
+11. [ ] Eliminar variable no usada en hierarchical.py
+12. [ ] Refactorizar cli.py (muy largo)
+13. [ ] Consolidar codigo duplicado
+
+---
+
+## VERIFICACION FINAL
+
+Despues de las correcciones:
+```bash
+# Ejecutar tests
+.venv/bin/python -m pytest tests/ -v
+
+# Verificar que scripts de visualizacion funcionan
+.venv/bin/python scripts/visualization/generate_bloque6_resultados.py --help
+
+# Verificar CLI
+.venv/bin/covid-landmarks --help
+
+# Verificar valores actualizados
+grep -r "4.50" scripts/visualization/
+grep -r "6.75" scripts/  # Solo deberia aparecer en verify_no_tta.py
+```
+
+**Meta:** 613+ tests pasando, valores consistentes con GROUND_TRUTH.json, codigo limpio para produccion.
+
+---
+
+## ARCHIVOS DE REFERENCIA
+
+- **GROUND_TRUTH.json**: Fuente de verdad para valores experimentales
+- **docs/REFERENCIA_SESIONES_FUTURAS.md**: Documento maestro del proyecto
+- **docs/sesiones/SESION_45_INTROSPECCION_COMPLETA.md**: Hallazgos de introspeccion
+
+---
+
+**FIN DEL PROMPT SESION 46**

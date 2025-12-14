@@ -222,7 +222,7 @@ Resultado: PASSED (8 passed in 0.09s)
 |-------|-------|
 | **Rama** | audit/main |
 | **Hash inicial** | beea84f |
-| **Hash commit** | (pendiente) |
+| **Hash commit** | 5d78995 |
 | **Mensaje** | `audit(session-7b): auditoria error_analysis.py` |
 | **Archivos modificados** | `audit/sessions/session_07b_error_analysis.md` |
 

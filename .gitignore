@@ -36,16 +36,9 @@ data/coordenadas/
 
 # --- Checkpoints de modelos (>136GB) ---
 checkpoints/
-checkpoints_v2/
-checkpoints_v2_correct/
-checkpoints_v2_full/
 
 # --- Outputs de experimentos (>5GB) ---
 outputs/
-outputs_v2/
-
-# --- Archivos temporales ---
-tempfile
 
 # --- IDE ---
 .idea/
@@ -86,8 +79,7 @@ documentación/*.blg
 # --- Claude Code ---
 .claude/
 
-# --- Archivos de sesion (prompts internos) ---
+# --- Archivos de sesion (prompts internos, en raiz) ---
 PROMPT_SESION_*.md
 SESSION_LOG.md
 session*_summary.md
-Prompt para Sesion *.txt

@@ -391,7 +391,7 @@ def get_landmark_weights(strategy: str = 'inverse_variance') -> torch.Tensor:
         # Pesos basados en variabilidad (σ) de cada landmark del Ground Truth.
         # Landmarks con mayor σ (mas dificiles) tienen menor peso para evitar
         # que el modelo se obsesione con ellos.
-        # Fuente: REPORTE_VERIFICACION_DESCUBRIMIENTOS_GEOMETRICOS.md, Seccion 7
+        # Fuente: docs/reportes/REPORTE_VERIFICACION_DESCUBRIMIENTOS_GEOMETRICOS.md, Seccion 7
         # Valores de σ: L9=19.2px, L14=35.2px, etc.
         # Peso = normalizado(1/σ) para que landmarks faciles contribuyan mas.
         weights = torch.tensor([

@@ -1,0 +1,231 @@
+# SESION 42 - DEBUGGING Y PREPARACION PARA PRODUCCION
+
+## CONTEXTO RAPIDO (LEER OBLIGATORIO)
+
+**Estado del proyecto:** 92% completo
+**Rama:** `feature/restructure-production`
+**Tag:** `v2.0.0-cli-thesis`
+**Ultimo commit:** 7086eac
+
+**Referencia maestra:** `docs/REFERENCIA_SESIONES_FUTURAS.md`
+
+### Claims VALIDOS (ya corregidos en Sesion 41):
+- Error landmarks: **3.71 px** (ensemble 4 modelos + TTA)
+- Robustez JPEG: **30x superior** (0.53% vs 16.14%)
+- Robustez Blur: **2.4x superior** (6.06% vs 14.43%)
+- Generalizacion: **2.4x mejor** (gap 3.17% vs 7.70%)
+- Mecanismo: **75% reduccion info + 25% normalizacion geo**
+- Clasificacion: **98.73% accuracy** (warped 99% fill)
+
+---
+
+## OBJETIVO DE ESTA SESION
+
+Actuar como **debugger profesional** del proyecto para:
+1. Corregir bugs e inconsistencias identificadas
+2. Preparar el proyecto para uso por otros usuarios/investigadores
+3. Asegurar reproducibilidad y calidad de produccion
+
+---
+
+## PROBLEMAS IDENTIFICADOS (ANALISIS MULTI-AGENTE)
+
+### CATEGORIA 1: DEPENDENCIAS (requirements.txt)
+
+| Problema | Severidad | Accion |
+|----------|-----------|--------|
+| `hydra-core` y `omegaconf` listados pero NO usados | ALTA | REMOVER |
+| `seaborn` usado en scripts pero NO listado | ALTA | AGREGAR |
+| PyTorch ROCm vs CUDA no documentado | MEDIA | DOCUMENTAR |
+
+**Archivos afectados:**
+- `requirements.txt`
+
+### CATEGORIA 2: CODIGO DUPLICADO/INCONSISTENTE
+
+| Problema | Ubicacion | Accion |
+|----------|-----------|--------|
+| `triangle_area_2x()` definida multiples veces | `src_v2/processing/warp.py` | DEDUPLICAR |
+| PIL import inconsistente (`PILImage` vs `Image`) | `src_v2/cli.py` | ESTANDARIZAR |
+| Valores CLAHE: tile_size=8 vs tile_size=4 | `scripts/train.py` vs `constants.py` | UNIFICAR a 4 |
+| batch_size default: 16 vs 32 | `src_v2/cli.py` | DOCUMENTAR o UNIFICAR |
+
+### CATEGORIA 3: TESTS FALTANTES/INCOMPLETOS
+
+| Area sin tests | Archivo | Prioridad |
+|----------------|---------|-----------|
+| Trainer (unit tests) | `src_v2/training/trainer.py` | ALTA |
+| Callbacks | `src_v2/training/callbacks.py` | MEDIA |
+| Dataset edge cases | `src_v2/data/dataset.py` | MEDIA |
+| Metrics | `src_v2/evaluation/metrics.py` | BAJA |
+
+**Tests que dependen de artifacts externos (19 skips condicionales):**
+- `test_cross_evaluation_classes.py` - 7 skips
+- `test_robustness_comparative.py` - 12 skips
+
+### CATEGORIA 4: DOCUMENTACION FALTANTE PARA PRODUCCION
+
+| Documento | Estado | Prioridad |
+|-----------|--------|-----------|
+| CONTRIBUTING.md | NO EXISTE | MEDIA |
+| CHANGELOG.md | NO EXISTE | MEDIA |
+| Troubleshooting guide | INCOMPLETO | MEDIA |
+| Docker/Deployment guide | NO EXISTE | BAJA (post-defensa) |
+| setup.py o pyproject.toml | NO EXISTE | ALTA |
+
+### CATEGORIA 5: CONFIGURACIONES HARDCODEADAS
+
+| Problema | Ubicacion | Riesgo |
+|----------|-----------|--------|
+| Rutas relativas por defecto | `cli.py` L297-299 | Fallos si se ejecuta desde otro directorio |
+| Checkpoint path relativo | `trainer.py` | Mismo problema |
+| SPLIT_SEED=42 fijo | `cli.py` L319 | Deberia ser parametrizable |
+
+### CATEGORIA 6: REPRODUCIBILIDAD
+
+| Problema | Detalle |
+|----------|---------|
+| Seeds incompletos | Falta `random.seed()` de stdlib |
+| Sin pyproject.toml | No instalable como paquete (`pip install -e .`) |
+| Sin pytest.ini | Configuracion de tests no estandarizada |
+
+---
+
+## TAREAS PRIORITARIAS
+
+### PRIORIDAD 1: Corregir requirements.txt [~15 min]
+```bash
+# REMOVER:
+hydra-core>=1.3.0
+omegaconf>=2.3.0
+
+# AGREGAR:
+seaborn>=0.12.0
+
+# AGREGAR COMENTARIO sobre PyTorch:
+# Para AMD GPUs: pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.0
+# Para NVIDIA GPUs: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+```
+
+### PRIORIDAD 2: Deduplicar codigo [~20 min]
+- Buscar todas las definiciones de `triangle_area_2x` en warp.py
+- Mantener UNA sola definicion
+- Estandarizar PIL imports a `from PIL import Image`
+
+### PRIORIDAD 3: Crear pyproject.toml [~30 min]
+```toml
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prediccion_warping_clasificacion"
+version = "2.0.0"
+description = "COVID-19 Detection via Anatomical Landmarks and Geometric Normalization"
+# ... completar
+```
+
+### PRIORIDAD 4: Unificar configuraciones [~15 min]
+- Cambiar `scripts/train.py` CLAHE tile_size de 8 a 4
+- Documentar por que batch_size varia (16 para landmarks, 32 para clasificador)
+
+### PRIORIDAD 5: Agregar seeds completos [~10 min]
+```python
+import random
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(seed)
+```
+
+### PRIORIDAD 6: Crear documentacion minima [~30 min]
+- CONTRIBUTING.md basico
+- CHANGELOG.md con releases hasta v2.0.0-cli-thesis
+
+---
+
+## CRITERIOS DE EXITO
+
+- [ ] requirements.txt limpio (sin hydra/omegaconf, con seaborn)
+- [ ] Sin codigo duplicado en warp.py
+- [ ] pyproject.toml funcional (`pip install -e .` funciona)
+- [ ] Seeds completos para reproducibilidad
+- [ ] CLAHE unificado a tile_size=4
+- [ ] CONTRIBUTING.md existe
+- [ ] CHANGELOG.md existe
+- [ ] Tests siguen pasando: `python -m pytest tests/ -v`
+
+---
+
+## RESTRICCIONES
+
+- NO modificar logica de negocio/algoritmos
+- NO cambiar resultados experimentales
+- Solo cambios de infraestructura/calidad de codigo
+- Documentar cada cambio realizado
+- Mantener compatibilidad hacia atras
+
+---
+
+## COMANDOS UTILES
+
+```bash
+# Verificar estado
+git status
+git log --oneline -5
+
+# Ejecutar tests
+.venv/bin/python -m pytest tests/ -v --tb=short
+
+# Buscar codigo duplicado
+grep -rn "def triangle_area_2x" src_v2/
+
+# Buscar imports de PIL
+grep -rn "from PIL import" src_v2/
+
+# Verificar seaborn usage
+grep -rn "import seaborn" scripts/
+
+# Verificar hydra usage (deberia ser 0)
+grep -rn "import hydra" src_v2/
+grep -rn "from hydra" src_v2/
+```
+
+---
+
+## ARCHIVOS CLAVE A MODIFICAR
+
+```
+requirements.txt              # Limpiar dependencias
+src_v2/processing/warp.py     # Deduplicar triangle_area_2x
+src_v2/cli.py                 # Estandarizar PIL, agregar seeds
+scripts/train.py              # Unificar CLAHE tile_size
+pyproject.toml                # CREAR - configuracion de paquete
+CONTRIBUTING.md               # CREAR - guia de contribucion
+CHANGELOG.md                  # CREAR - historial de cambios
+```
+
+---
+
+## RESUMEN EJECUTIVO DEL ANALISIS
+
+**Fortalezas del proyecto:**
+- CLI robusto con 20 comandos funcionales
+- 553 tests pasando
+- Documentacion cientifica excelente (9/10)
+- Claims correctamente validados y reformulados
+
+**Debilidades a corregir:**
+- Dependencias innecesarias (hydra, omegaconf)
+- Dependencia faltante (seaborn)
+- Codigo duplicado menor
+- Sin empaquetado formal (pyproject.toml)
+- Documentacion de contribucion ausente
+
+**Estado general:** El proyecto es funcional pero necesita pulido para
+ser usado por otros investigadores de forma profesional.
+
+---
+
+**FIN DEL PROMPT - SESION 42**
