@@ -3466,6 +3466,11 @@ def generate_dataset(
         "--classes",
         help="Clases a procesar separadas por coma"
     ),
+    use_full_coverage: bool = typer.Option(
+        True,
+        "--use-full-coverage/--no-full-coverage",
+        help="Agregar puntos de borde para cobertura completa (fill_rate ~99%)"
+    ),
 ):
     """
     Generar dataset warped completo con splits train/val/test.
@@ -3724,7 +3729,7 @@ def generate_dataset(
                     source_landmarks=scaled_landmarks,
                     target_landmarks=canonical,
                     triangles=tri,
-                    use_full_coverage=False
+                    use_full_coverage=use_full_coverage
                 )
 
                 # Calcular fill rate
