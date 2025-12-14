@@ -1,0 +1,28 @@
+# Include documentation
+include README.md
+include LICENSE
+include GROUND_TRUTH.json
+
+# Include configuration
+include pyproject.toml
+
+# Include type hints
+global-include py.typed
+
+# Exclude development and test files
+exclude .gitignore
+exclude .pre-commit-config.yaml
+prune tests
+prune scripts
+prune docs
+prune checkpoints
+prune outputs
+prune data
+prune .venv
+
+# Exclude editor configs
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude *.pyo
+global-exclude *.orig
+global-exclude .DS_Store

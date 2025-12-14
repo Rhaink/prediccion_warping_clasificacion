@@ -47,7 +47,7 @@ from src_v2.constants import (
 )
 
 
-# Configurar logging
+# Configurar logging inicial
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -55,11 +55,38 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def verbose_callback(ctx: typer.Context, verbose: bool):
+    """Callback para configurar nivel de logging."""
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger("src_v2").setLevel(logging.DEBUG)
+        logger.debug("Verbose mode enabled")
+
+
 app = typer.Typer(
     name="src_v2",
     help="COVID-19 Detection via Anatomical Landmarks - CLI",
     add_completion=False,
 )
+
+
+@app.callback()
+def main(
+    ctx: typer.Context,
+    verbose: bool = typer.Option(
+        False,
+        "--verbose", "-v",
+        help="Enable verbose output (DEBUG level logging)",
+        is_eager=True,
+        callback=verbose_callback,
+    ),
+):
+    """
+    COVID-19 Detection via Anatomical Landmarks.
+
+    Use --verbose/-v for detailed output.
+    """
+    pass
 
 
 def get_device(device: str) -> "torch.device":

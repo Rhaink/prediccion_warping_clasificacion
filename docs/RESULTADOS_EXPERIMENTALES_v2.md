@@ -1,8 +1,8 @@
 # Resultados Experimentales - Version Corregida
 
-**Fecha:** 2025-12-10
-**Estado:** Claims reformulados post-Sesion 35/36/39
-**Ultima actualizacion:** Sesion 39 - Cross-evaluation valido completado
+**Fecha:** 2025-12-14
+**Estado:** Claims reformulados post-Sesion 35/36/39/52/53
+**Ultima actualizacion:** Sesion 53 - Trade-off fill rate y warped_96 como RECOMENDADO
 
 ---
 
@@ -21,14 +21,17 @@
 
 ### 2. Clasificacion COVID-19 (VALIDADO)
 
-| Dataset | Accuracy Test | F1-Score |
-|---------|---------------|----------|
-| Original 3 clases | 98.84% | 98.16% |
-| Warped 47% fill | 98.02% | - |
-| Warped 99% fill | 98.73% | 97.95% |
-| Original Cropped 47% | 98.89% | 98.25% |
+| Dataset | Accuracy Test | F1-Score | Fill Rate | Robustez JPEG Q50 |
+|---------|---------------|----------|-----------|-------------------|
+| Original 3 clases | 98.84% | 98.16% | 100% | 16.14% |
+| Warped 47% fill | 98.02% | - | 47% | 0.53% |
+| Warped 99% fill | 98.73% | 97.95% | 99% | 7.34% |
+| Original Cropped 47% | 98.89% | 98.25% | 47% | 2.11% |
+| **Warped 96% (RECOMMENDED)** | **99.10%** | **98.45%** | **96%** | **3.06%** |
 
 **Nota:** Todos los modelos usan 3 clases (COVID, Normal, Viral_Pneumonia) para comparacion valida.
+
+**RECOMENDACION (Sesion 53):** Warped 96% es el punto optimo entre accuracy y robustez.
 
 ---
 
@@ -63,9 +66,52 @@ con contribucion adicional de la normalizacion geometrica.
 
 ---
 
-## 4. Cross-Evaluation Valido (Sesion 39 - NUEVO)
+## 4. Trade-off Fill Rate (Sesion 53 - NUEVO)
 
-### 4.1 Resultados Cross-Evaluation 3 Clases
+### 4.1 Hallazgo Principal
+
+El fill rate optimo NO es el maximo (99%), sino **96%**, que ofrece el mejor balance:
+
+| Dataset | Fill Rate | Accuracy | JPEG Q50 deg | Score Compuesto |
+|---------|-----------|----------|--------------|-----------------|
+| warped_47 | 47% | 98.02% | 0.53% | 97.49 |
+| **warped_96** | **96%** | **99.10%** | **3.06%** | **96.04** |
+| warped_99 | 99% | 98.73% | 7.34% | 91.39 |
+
+**Score Compuesto:** Accuracy - JPEG Q50 degradation (mayor es mejor)
+
+### 4.2 Causa de la Diferencia de Fill Rate
+
+| Metodo | Fill Rate | Preprocesamiento | Min Pixel Value |
+|--------|-----------|------------------|-----------------|
+| warped_99 | 99% | RGB + CLAHE (LAB) | 2-3 (no true blacks) |
+| warped_96 | 96% | Grayscale + CLAHE | 0 (preserves blacks) |
+
+**Implicacion:** El 96% es una medicion mas honesta del fill rate real.
+
+### 4.3 Comparacion de Robustez warped_96 vs warped_99
+
+| Perturbacion | warped_96 | warped_99 | Mejora |
+|--------------|-----------|-----------|--------|
+| JPEG Q50 | 3.06% | 7.34% | **2.4x** |
+| JPEG Q30 | 5.28% | 16.73% | **3.2x** |
+| Blur σ1 | 2.43% | 11.35% | **4.7x** |
+
+### 4.4 Recomendacion Final
+
+| Caso de Uso | Clasificador Recomendado |
+|-------------|-------------------------|
+| **Uso general** | **warped_96** (mejor accuracy + buena robustez) |
+| Maxima robustez requerida | warped_47 (mejor robustez, menor accuracy) |
+| Legacy / compatibilidad | warped_99 (superado por warped_96) |
+
+**Referencia:** Ver `docs/sesiones/SESION_53_FILL_RATE_TRADEOFF.md` para analisis completo.
+
+---
+
+## 5. Cross-Evaluation Valido (Sesion 39)
+
+### 5.1 Resultados Cross-Evaluation 3 Clases
 
 **Configuracion:**
 - Model A: Clasificador Original 3 clases
@@ -77,7 +123,7 @@ con contribucion adicional de la normalizacion geometrica.
 | **Model A (Original)** | 98.84% | 91.13% |
 | **Model B (Warped)** | 95.57% | 98.73% |
 
-### 4.2 Gaps de Generalizacion
+### 5.2 Gaps de Generalizacion
 
 | Modelo | Gap de Generalizacion | Interpretacion |
 |--------|----------------------|----------------|
@@ -86,7 +132,7 @@ con contribucion adicional de la normalizacion geometrica.
 
 **Ratio: 2.4x** - El modelo warped generaliza **2.4x mejor** que el original.
 
-### 4.3 Correccion de Claim Anterior
+### 5.3 Correccion de Claim Anterior
 
 | Claim | Valor Anterior | Valor Correcto |
 |-------|----------------|----------------|
@@ -95,9 +141,9 @@ con contribucion adicional de la normalizacion geometrica.
 
 ---
 
-## 5. Pulmonary Focus Score (PFS) - Actualizado Sesion 39
+## 6. Pulmonary Focus Score (PFS) - Actualizado Sesion 39
 
-### 5.1 Resultados con Mascaras Warped (VALIDO)
+### 6.1 Resultados con Mascaras Warped (VALIDO)
 
 | Metrica | Valor |
 |---------|-------|
@@ -105,21 +151,21 @@ con contribucion adicional de la normalizacion geometrica.
 | Median PFS | 0.486 |
 | Range | [0.185, 0.722] |
 
-### 5.2 PFS por Clase
+### 6.2 PFS por Clase
 
 | Clase | PFS Mean | Std | n |
 |-------|----------|-----|---|
 | COVID | 0.478 | 0.076 | 362 |
 | Normal | 0.510 | 0.118 | 138 |
 
-### 5.3 Interpretacion
+### 6.3 Interpretacion
 
 **Conclusion:** El modelo warped **NO** enfoca exclusivamente en los pulmones.
 - PFS ~0.49 significa ~49% de atencion en region pulmonar
 - Esto es aproximadamente igual al chance (~50%)
 - **No hay evidencia de que el warping fuerce atencion pulmonar**
 
-### 5.4 Correccion de Claim Anterior
+### 6.4 Correccion de Claim Anterior
 
 | Claim Anterior | Estado |
 |----------------|--------|
@@ -130,7 +176,7 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 
 ---
 
-## 6. Reformulacion de Claims
+## 7. Reformulacion de Claims
 
 ### INCORRECTO (version anterior):
 > "La normalizacion geometrica reduce el gap de generalizacion de 25.36% a 2.24%,
@@ -159,7 +205,7 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 
 ---
 
-## 7. Trabajo Futuro Requerido
+## 8. Trabajo Futuro Requerido
 
 ### Alta Prioridad - COMPLETADO
 1. [x] Generar dataset warped con `use_full_coverage=True` (~99% fill rate) - **COMPLETADO**
@@ -173,7 +219,7 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 
 ---
 
-## 8. Referencias de Verificacion
+## 9. Referencias de Verificacion
 
 ### Sesion 35: Analisis critico inicial
 - `/docs/sesiones/SESION_35_ANALISIS_CRITICO.md` - Analisis completo
@@ -184,10 +230,17 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 - `/outputs/original_3_classes/dataset_summary.json` - Dataset filtrado 3 clases
 - `/outputs/robustness_original_cropped_47.json` - Robustez control
 
+### Sesion 52-53: Clasificador warped_96 y trade-off fill rate
+- `/docs/sesiones/SESION_52_CORRECCION_CLI.md` - Correccion bug CLI
+- `/docs/sesiones/SESION_53_FILL_RATE_TRADEOFF.md` - Analisis trade-off fill rate
+- `/outputs/classifier_replication_v2/` - Clasificador warped_96 (RECOMENDADO)
+- `/outputs/warped_replication_v2/` - Dataset warped_96 (96% fill rate)
+
 ### Datasets generados
 - `/outputs/original_3_classes/` - 15,153 imagenes (3 clases, sin Lung_Opacity)
 - `/outputs/full_coverage_warped_dataset/` - 15,153 imagenes (99% fill rate)
 - `/outputs/original_cropped_47/` - 15,153 imagenes (47% fill rate, control)
+- `/outputs/warped_replication_v2/` - 15,153 imagenes (96% fill rate, **RECOMENDADO**)
 
 ---
 
