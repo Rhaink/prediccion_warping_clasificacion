@@ -1,0 +1,53 @@
+\documentclass[12pt,letterpaper]{article}
+\usepackage[spanish]{babel}
+\usepackage[letterpaper, margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amsmath}  % Para ecuaciones
+
+% Nombres en español
+\renewcommand{\tablename}{Tabla}
+
+\begin{document}
+
+\setstretch{1.15}
+
+% Página 1: Portada
+\input{title-page}
+
+% Página 2: Objetivos
+\newpage
+\input{5-Objetivos}
+
+% Página 3: Cronograma
+\newpage
+\input{7-Cronograma}
+
+% Página 4: Porcentajes
+\newpage
+\input{7-Porcentajes}
+
+% Página 5: Introducción
+\newpage
+\input{8-Introduccion}
+
+% Página 6: Hipótesis
+\newpage
+\input{9-Hipotesis}
+
+% Página 7: Justificación
+\newpage
+\input{10-Justificacion}
+
+% Páginas 8-9: Marco Teórico
+\newpage
+\input{11-MarcoTeorico}
+
+\end{document}

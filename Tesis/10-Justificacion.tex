@@ -1,0 +1,54 @@
+\section*{Justificación}
+
+% JUSTIFICACIÓN DE ESTA SECCIÓN:
+% - Demuestra relevancia clínica y científica
+% - Presenta contribuciones originales
+% - Prepara al lector para el marco teórico
+
+\subsection*{Relevancia Clínica}
+
+La pandemia de COVID-19 evidenció dramáticamente la brecha entre la demanda de análisis radiológico y la capacidad disponible de especialistas. En el pico de la crisis sanitaria, los sistemas de salud enfrentaron:
+
+\begin{itemize}
+    \item Incremento exponencial en volumen de radiografías de tórax
+    \item Necesidad de triaje rápido para priorización de pacientes
+    \item Variabilidad en equipos y protocolos entre instituciones
+    \item Compresión de imágenes para transmisión y almacenamiento
+\end{itemize}
+
+Los sistemas de diagnóstico asistido por computadora (CAD) ofrecen una solución potencial, pero su efectividad depende críticamente de la robustez ante las condiciones reales de operación hospitalaria.
+
+\subsection*{Contribuciones Científicas}
+
+Este trabajo aporta las siguientes contribuciones:
+
+\begin{enumerate}
+    \item \textbf{Función de pérdida geométrica multi-componente}: Integración de Wing Loss con restricciones de alineación central y simetría bilateral, respetando la anatomía torácica.
+
+    \item \textbf{Análisis del mecanismo de robustez}: Identificación experimental de los factores causales que contribuyen a la mejora de robustez (reducción de información vs. normalización geométrica).
+
+    \item \textbf{Validación rigurosa con limitaciones documentadas}: Evaluación en dataset externo (8,482 muestras) con análisis honesto del domain shift.
+
+    \item \textbf{Pipeline reproducible}: Implementación completa con código fuente, configuraciones y checkpoints disponibles para replicación.
+\end{enumerate}
+
+\subsection*{Impacto Potencial}
+
+La normalización geométrica propuesta puede servir como:
+
+\begin{itemize}
+    \item Preprocesamiento estándar para sistemas CAD pulmonares
+    \item Base para segmentación automática mediante Active Shape Models
+    \item Método de regularización implícita para mejorar generalización
+    \item Técnica de reducción de sensibilidad a artefactos de compresión
+\end{itemize}
+
+\subsection*{Alcance y Limitaciones}
+
+Es importante delimitar que este trabajo:
+\begin{itemize}
+    \item Se enfoca en radiografías PA de tórax (proyección posteroanterior)
+    \item Valida dentro del dominio de entrenamiento con alta precisión
+    \item Documenta honestamente las limitaciones de generalización cross-institucional
+    \item No pretende reemplazar el diagnóstico médico profesional
+\end{itemize}

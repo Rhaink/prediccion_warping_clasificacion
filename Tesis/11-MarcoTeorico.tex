@@ -1,0 +1,68 @@
+\section*{Marco Teórico}
+
+% JUSTIFICACIÓN DE ESTA SECCIÓN:
+% - Proporciona fundamentos físicos y matemáticos
+% - Establece base para entender la metodología
+% - Énfasis ingenieril con fórmulas relevantes
+
+\subsection*{Radiografías de Tórax}
+
+La radiografía de tórax se fundamenta en la atenuación diferencial de rayos X al atravesar tejidos de distinta densidad. La intensidad transmitida $I(x)$ sigue la ley de Beer-Lambert:
+
+\begin{equation}
+I(x) = I_0 \exp\left(-\int_0^x \mu(s) \, ds\right)
+\end{equation}
+
+donde $I_0$ es la intensidad incidente, $\mu(s)$ el coeficiente de atenuación lineal (dependiente del tejido), y $x$ la distancia recorrida.
+
+Los coeficientes típicos de atenuación son:
+\begin{itemize}
+    \item Aire alveolar: $\mu \approx 0.0001$ cm$^{-1}$
+    \item Tejidos blandos: $\mu \approx 0.20$ cm$^{-1}$
+    \item Hueso cortical: $\mu \approx 0.50$ cm$^{-1}$
+\end{itemize}
+
+\subsubsection*{Landmarks Anatómicos}
+
+Se definen 15 puntos de referencia que caracterizan la geometría torácica:
+
+\begin{itemize}
+    \item \textbf{Eje central} (L1, L2): Define la línea media vertical
+    \item \textbf{Puntos centrales} (L9, L10, L11): Dividen el eje en cuartos
+    \item \textbf{Pares bilaterales}: (L3-L4), (L5-L6), (L7-L8), (L12-L13), (L14-L15)
+\end{itemize}
+
+Estos landmarks presentan propiedades geométricas verificables: los puntos centrales se ubican exactamente en $t \in \{0.25, 0.50, 0.75\}$ a lo largo del eje, con desviación menor a 1.5 píxeles.
+
+\subsection*{Redes Neuronales Convolucionales}
+
+Las CNNs realizan extracción jerárquica de características mediante la operación de convolución discreta:
+
+\begin{equation}
+Y[i,j] = \sum_{m=0}^{M-1} \sum_{n=0}^{N-1} X[i+m, j+n] \cdot W[m,n] + b
+\end{equation}
+
+donde $X$ es la entrada, $W$ el kernel de convolución, y $b$ el sesgo.
+
+\subsubsection*{Arquitectura ResNet}
+
+Las redes residuales introducen conexiones de salto (skip connections) que permiten entrenar redes más profundas:
+
+\begin{equation}
+\mathbf{y} = \mathcal{F}(\mathbf{x}, \{W_i\}) + \mathbf{x}
+\end{equation}
+
+donde $\mathcal{F}$ representa las capas residuales y $\mathbf{x}$ la conexión directa.
+
+ResNet-18, con 11.7 millones de parámetros, ofrece un balance óptimo entre capacidad representacional y eficiencia computacional para tareas de regresión de coordenadas.
+
+\subsubsection*{Transfer Learning}
+
+El preentrenamiento en ImageNet (1.2 millones de imágenes, 1000 clases) proporciona:
+\begin{itemize}
+    \item Filtros de bajo nivel (bordes, texturas) altamente transferibles
+    \item Inicialización superior a pesos aleatorios
+    \item Convergencia más rápida con menos datos médicos
+\end{itemize}
+
+Para tareas con menos de 10,000 imágenes etiquetadas, el transfer learning mejora consistentemente el rendimiento comparado con entrenamiento desde cero.

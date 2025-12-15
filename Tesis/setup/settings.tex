@@ -1,0 +1,98 @@
+%----------------------------------------------------------------------------------------
+%       CONFIGURACIÓN BÁSICA DE LA TESIS
+%----------------------------------------------------------------------------------------
+
+% Bibliografía
+\usepackage[
+    citestyle=ieee,
+    bibstyle=ieee,
+    style=numeric-comp,
+    sorting=none,
+    doi=false,
+    url=true,
+    maxbibnames=99,
+]{biblatex}
+
+% Paquetes esenciales
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{enumitem}
+
+% Geometría y layout
+\usepackage[letterpaper, margin=2.5cm, centering]{geometry}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{float}
+
+% Tablas
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{makecell}
+
+% Headers y footers
+\usepackage{fancyhdr}
+
+% Enlaces
+\usepackage[hidelinks]{hyperref}
+\usepackage{nameref}
+
+% Párrafos
+\usepackage[parfill]{parskip}
+
+% Caption
+\usepackage{caption}
+\usepackage{subcaption}
+\captionsetup{font=small}
+
+% Títulos
+\usepackage{titlesec}
+
+% Formato de capítulos
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\huge\bfseries}
+  {Capítulo \thechapter}{17pt}{\Huge}
+
+\titlespacing*{\chapter}{0pt}{0pt}{10pt}
+
+% Contadores
+\usepackage{chngcntr}
+\counterwithin{figure}{section}
+\counterwithin{table}{section}
+
+% Nombres en español
+\renewcommand{\figurename}{Figura}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+
+% TOC
+\usepackage{tocloft}
+\renewcommand*\contentsname{Tabla de Contenido}
+
+% Estilos de página
+\fancypagestyle{myfancy}{%
+    \fancyhf{}
+    \fancyhead[OL]{\selectfont\leftmark}
+    \fancyhead[OR]{\selectfont\thepage}
+    \fancyhead[ER]{\selectfont\rightmark}
+    \fancyhead[EL]{\selectfont\thepage}
+    \setlength{\headheight}{15.5pt}
+    \renewcommand{\headrulewidth}{0.4pt}
+}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \setlength{\headheight}{0em}
+    \renewcommand{\headrulewidth}{0pt}
+    \fancyfoot[C]{\selectfont\thepage}
+}
+
+% Evitar hyphenation excesiva
+\pretolerance=10000
+\tolerance=2000
+\emergencystretch=50pt
+
+% Numeración de ecuaciones por sección
+\numberwithin{equation}{section}
