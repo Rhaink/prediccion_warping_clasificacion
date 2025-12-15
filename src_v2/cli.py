@@ -2716,6 +2716,22 @@ def evaluate_external(
         "-t",
         help="Umbral de decision para clase positiva (COVID)"
     ),
+    # CLAHE preprocessing (debe coincidir con entrenamiento)
+    use_clahe: bool = typer.Option(
+        True,
+        "--clahe/--no-clahe",
+        help="Aplicar CLAHE (debe coincidir con preprocesamiento del modelo)"
+    ),
+    clahe_clip: float = typer.Option(
+        DEFAULT_CLAHE_CLIP_LIMIT,
+        "--clahe-clip",
+        help="CLAHE clip limit"
+    ),
+    clahe_tile: int = typer.Option(
+        DEFAULT_CLAHE_TILE_SIZE,
+        "--clahe-tile",
+        help="CLAHE tile size"
+    ),
 ):
     """
     Evaluar clasificador en dataset externo binario (FedCOVIDx/Dataset3).
@@ -2756,11 +2772,13 @@ def evaluate_external(
     )
     from tqdm import tqdm
 
+    import cv2
     from src_v2.models import create_classifier, get_classifier_transforms
 
     logger.info("=" * 60)
     logger.info("Evaluacion Externa - Dataset Binario")
     logger.info("=" * 60)
+    logger.info("Preprocesamiento: CLAHE=%s (clip=%.1f, tile=%d)", use_clahe, clahe_clip, clahe_tile)
 
     # Verificar paths
     if not Path(checkpoint).exists():
@@ -2807,11 +2825,17 @@ def evaluate_external(
     # Transforms
     eval_transform = get_classifier_transforms(train=False, img_size=DEFAULT_IMAGE_SIZE)
 
-    # Dataset externo binario
+    # Crear CLAHE processor si está habilitado
+    clahe_processor = None
+    if use_clahe:
+        clahe_processor = cv2.createCLAHE(clipLimit=clahe_clip, tileGridSize=(clahe_tile, clahe_tile))
+
+    # Dataset externo binario con soporte CLAHE
     class ExternalBinaryDataset(Dataset):
-        def __init__(self, pos_dir, neg_dir, transform):
+        def __init__(self, pos_dir, neg_dir, transform, clahe_proc=None):
             self.samples = []
             self.transform = transform
+            self.clahe_proc = clahe_proc
 
             # Cargar positivos (COVID)
             for img_path in pos_dir.glob("*.png"):
@@ -2833,15 +2857,28 @@ def evaluate_external(
 
         def __getitem__(self, idx):
             path, label = self.samples[idx]
-            img = Image.open(path)
-            if img.mode != "RGB":
-                img = img.convert("RGB")
+
+            # Cargar imagen en grayscale para CLAHE
+            img_gray = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+            if img_gray is None:
+                # Fallback a PIL si cv2 falla
+                img = Image.open(path)
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+            else:
+                # Aplicar CLAHE si está habilitado
+                if self.clahe_proc is not None:
+                    img_gray = self.clahe_proc.apply(img_gray)
+                # Convertir a RGB para el modelo
+                img_rgb = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2RGB)
+                img = Image.fromarray(img_rgb)
+
             if self.transform:
                 img = self.transform(img)
             return img, label
 
     # Crear dataset
-    dataset = ExternalBinaryDataset(positive_dir, negative_dir, eval_transform)
+    dataset = ExternalBinaryDataset(positive_dir, negative_dir, eval_transform, clahe_processor)
     logger.info("Dataset externo: %d muestras (positive=%d, negative=%d)",
                 len(dataset), dataset.n_positive, dataset.n_negative)
 
@@ -2913,6 +2950,11 @@ def evaluate_external(
             'timestamp': datetime.now().isoformat(),
             'checkpoint': checkpoint,
             'external_data': external_data,
+            'preprocessing': {
+                'clahe_enabled': use_clahe,
+                'clahe_clip_limit': clahe_clip if use_clahe else None,
+                'clahe_tile_size': clahe_tile if use_clahe else None,
+            },
             'class_mapping': {
                 'model_classes': class_names_3,
                 'positive_mapped_to': 'COVID',

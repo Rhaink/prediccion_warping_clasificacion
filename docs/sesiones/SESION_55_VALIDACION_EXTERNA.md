@@ -189,6 +189,47 @@ Actual Pos       430        3811
 
 ---
 
+## Experimento de Verificacion: CLAHE
+
+### Hipotesis de Verificacion
+
+Para validar que los resultados no son artefactos de preprocesamiento, se investigo si aplicar CLAHE explicito durante la evaluacion externa mejoraria los resultados.
+
+### Metodologia
+
+Se modifico `evaluate-external` para aplicar CLAHE (clip_limit=2.0, tile_size=4) antes de la conversion a RGB, replicando exactamente el pipeline de entrenamiento.
+
+### Resultados con CLAHE Explicito
+
+| Metrica | D3 Original | D3 Original + CLAHE | D3 Warped | D3 Warped + CLAHE |
+|---------|-------------|---------------------|-----------|-------------------|
+| Accuracy | 53.36% | **50.65%** | 55.31% | **50.80%** |
+| Sensitivity | 90.12% | 90.36% | 89.86% | 95.50% |
+| Specificity | 16.60% | 10.94% | 20.75% | 6.11% |
+| AUC-ROC | 0.5422 | 0.5164 | 0.5994 | 0.5479 |
+
+### Analisis de Histogramas
+
+Comparacion estadistica de intensidades de pixeles:
+
+| Imagen | Media | Desv. Std | Entropia |
+|--------|-------|-----------|----------|
+| Training (referencia) | 135.82 | 59.48 | 7.04 |
+| External sin CLAHE | 98.50 | 49.82 | - |
+| External con CLAHE | 123.35 | 64.68 | - |
+
+**Distancia a Training:**
+- Sin CLAHE: 46.98
+- Con CLAHE: 17.66 (mas cercano)
+
+### Conclusion del Experimento
+
+**Paradoja:** Las imagenes externas CON CLAHE son estadisticamente MAS CERCANAS a las de entrenamiento, pero el accuracy fue PEOR (50.65% vs 53.36%).
+
+**Implicacion:** El domain shift NO es un artefacto de preprocesamiento. Es un problema real causado por diferencias fundamentales entre datasets (equipos, poblaciones, protocolos). El preprocesamiento identico no resuelve estas diferencias semanticas.
+
+---
+
 ## Trabajo Futuro
 
 1. **Domain adaptation:** Investigar tecnicas como:

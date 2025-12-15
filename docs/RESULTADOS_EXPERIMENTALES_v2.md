@@ -242,7 +242,23 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 **Observacion:** El modelo tiene alta sensibilidad (~90%) pero baja especificidad (~17-21%),
 indicando sesgo hacia predecir COVID (muchos falsos positivos).
 
-### 8.4 Conclusion
+### 8.4 Experimento de Verificacion CLAHE
+
+Para verificar que el domain shift no es un artefacto de preprocesamiento, se evaluo con CLAHE explicito:
+
+| Configuracion | D3 Original | D3 Warped |
+|---------------|-------------|-----------|
+| Sin CLAHE adicional | 53.36% | 55.31% |
+| Con CLAHE explicito | 50.65% | 50.80% |
+
+**Analisis de histogramas:**
+- Imagenes externas CON CLAHE son estadisticamente MAS CERCANAS al training (distancia 17.66 vs 46.98)
+- Sin embargo, accuracy fue PEOR con CLAHE (50.65% vs 53.36%)
+
+**Conclusion:** El domain shift es REAL, no un artefacto de preprocesamiento. Aplicar preprocesamiento
+identico no resuelve diferencias semanticas fundamentales entre datasets.
+
+### 8.5 Conclusion
 
 La normalizacion geometrica:
 - **SI mejora:** Generalizacion within-domain (2.4x mejor cross-evaluation interno)

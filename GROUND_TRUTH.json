@@ -200,6 +200,31 @@
             },
             "conclusion": "Domain shift predomina sobre mejoras metodologicas",
             "recommendation": "Se requiere domain adaptation para uso cross-dataset"
+        },
+        "clahe_verification_experiment": {
+            "description": "Experimento para verificar que el domain shift no es artefacto de preprocesamiento",
+            "hypothesis": "Aplicar CLAHE identico al training mejoraria resultados externos",
+            "results_with_clahe": {
+                "d3_original_clahe": {
+                    "accuracy": 50.65,
+                    "sensitivity": 90.36,
+                    "specificity": 10.94
+                },
+                "d3_warped_clahe": {
+                    "accuracy": 50.80,
+                    "sensitivity": 95.50,
+                    "specificity": 6.11
+                }
+            },
+            "histogram_analysis": {
+                "training_mean": 135.82,
+                "external_without_clahe_mean": 98.50,
+                "external_with_clahe_mean": 123.35,
+                "distance_without_clahe": 46.98,
+                "distance_with_clahe": 17.66,
+                "note": "CLAHE acerca estadisticamente pero accuracy empeora"
+            },
+            "conclusion": "CLAHE NO mejora resultados (50.65% vs 53.36%). Domain shift es REAL, no artefacto de preprocesamiento"
         }
     },
 
