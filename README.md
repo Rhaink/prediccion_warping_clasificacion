@@ -64,6 +64,23 @@ This project implements a two-stage approach for COVID-19 classification:
 
 **Ratio: 2.4x** - The warped model generalizes **2.4x better** than the original.
 
+### External Validation (Session 55)
+
+**Dataset:** FedCOVIDx (8,482 samples, binary classification: COVID vs No-COVID)
+
+| Model | Internal Accuracy | External Accuracy (D3 Original) | External Accuracy (D3 Warped) |
+|-------|-------------------|--------------------------------|------------------------------|
+| resnet18_original | 95.83% | 57.50% | - |
+| vgg16_warped | 90.63% | 56.44% | ~50% |
+| **warped_96 (RECOMMENDED)** | **99.10%** | **53.36%** | **55.31%** |
+
+**Key Findings:**
+- All models show ~45% accuracy gap between internal and external evaluation
+- Domain shift dominates over methodological improvements
+- High sensitivity (~90%) but low specificity (~17-21%) on external data
+
+> **Important:** Geometric normalization improves **within-domain** generalization (2.4x better cross-evaluation) but does NOT resolve **cross-domain** shift (~55% on external data vs 99% internal). Domain adaptation techniques are required for deployment on new datasets.
+
 ### Robustness Mechanism (Control Experiment - Session 39)
 
 The control experiment with Original Cropped 47% revealed the causal mechanism:
@@ -416,7 +433,8 @@ Full scientific documentation in `documentación/` (Spanish, LaTeX format):
 ### Model Limitations
 
 - **Generalization**: Performance on different X-ray equipment/protocols may vary
-- **External validation**: Not validated on independent external datasets beyond thesis scope
+- **External validation**: Validated on FedCOVIDx (8,482 samples) - shows ~55% accuracy due to domain shift (see Session 55)
+- **Domain shift**: Cross-domain generalization requires domain adaptation techniques
 - **Demographic bias**: Unknown performance across different demographic groups
 - **PFS Analysis**: Pulmonary Focus Score ≈ 50% indicates model attention is NOT specifically focused on lung regions
 

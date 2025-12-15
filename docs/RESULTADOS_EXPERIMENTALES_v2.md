@@ -1,8 +1,8 @@
 # Resultados Experimentales - Version Corregida
 
 **Fecha:** 2025-12-14
-**Estado:** Claims reformulados post-Sesion 35/36/39/52/53
-**Ultima actualizacion:** Sesion 53 - Trade-off fill rate y warped_96 como RECOMENDADO
+**Estado:** Claims reformulados post-Sesion 35/36/39/52/53/55
+**Ultima actualizacion:** Sesion 55 - Validacion externa en FedCOVIDx
 
 ---
 
@@ -205,7 +205,56 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 
 ---
 
-## 8. Trabajo Futuro Requerido
+## 8. Validacion Externa (Sesion 55)
+
+### 8.1 Dataset3 (FedCOVIDx) - 8,482 muestras
+
+**Configuracion:**
+- Dataset externo: FedCOVIDx (BIMCV ~95%, RICORD, RSNA)
+- Mapeo de clases: COVID → positive, Normal+Viral_Pneumonia → negative
+- Preprocesamiento: Identico al entrenamiento (CLAHE, resize 224x224, ImageNet norm)
+
+| Modelo | Tipo | Acc. Interna | Acc. D3 Original | Acc. D3 Warped |
+|--------|------|--------------|------------------|----------------|
+| resnet18_original | Original | 95.83% | 57.50% | - |
+| vgg16_warped | Warped | 90.63% | 56.44% | ~50% |
+| **warped_96** | **RECOMENDADO** | **99.10%** | **53.36%** | **55.31%** |
+
+### 8.2 Metricas Detalladas warped_96
+
+| Metrica | D3 Original | D3 Warped |
+|---------|-------------|-----------|
+| Accuracy | 53.36% | 55.31% |
+| Sensitivity (Recall COVID) | 90.12% | 89.86% |
+| Specificity (Recall No-COVID) | 16.60% | 20.75% |
+| F1-Score | 65.90% | 66.78% |
+| AUC-ROC | 0.5422 | 0.5994 |
+| Gap vs interno | 45.74% | 43.79% |
+
+### 8.3 Analisis de Domain Shift
+
+**Causas identificadas:**
+1. Diferencias de equipos/protocolos entre datasets (FedCOVIDx vs COVID-19 Radiography)
+2. Diferente distribucion de poblacion (geografica, demografica)
+3. Landmarks predichos (no ground truth) en datos externos
+4. Mapeo forzado de 3→2 clases
+
+**Observacion:** El modelo tiene alta sensibilidad (~90%) pero baja especificidad (~17-21%),
+indicando sesgo hacia predecir COVID (muchos falsos positivos).
+
+### 8.4 Conclusion
+
+La normalizacion geometrica:
+- **SI mejora:** Generalizacion within-domain (2.4x mejor cross-evaluation interno)
+- **NO resuelve:** Domain shift between-domain (~55% en datos externos vs 99% interno)
+
+**Implicacion:** Se requiere domain adaptation para uso en datasets nuevos.
+
+**Referencia:** Ver `docs/sesiones/SESION_55_VALIDACION_EXTERNA.md` para analisis completo.
+
+---
+
+## 9. Trabajo Futuro Requerido
 
 ### Alta Prioridad - COMPLETADO
 1. [x] Generar dataset warped con `use_full_coverage=True` (~99% fill rate) - **COMPLETADO**
@@ -213,13 +262,14 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 3. [x] Warpear mascaras pulmonares para PFS valido - **COMPLETADO (PFS ~0.49)**
 
 ### Media Prioridad
-4. [ ] Evaluar en datasets externos (Montgomery, Shenzhen)
+4. [x] Evaluar en datasets externos - **COMPLETADO (Sesion 55 - FedCOVIDx)**
 5. [x] Documentar trade-offs de normalizacion geometrica - **COMPLETADO (Sesion 39)**
 6. [ ] Implementar tests criticos faltantes
+7. [ ] Evaluar en datasets adicionales (Montgomery, Shenzhen)
 
 ---
 
-## 9. Referencias de Verificacion
+## 10. Referencias de Verificacion
 
 ### Sesion 35: Analisis critico inicial
 - `/docs/sesiones/SESION_35_ANALISIS_CRITICO.md` - Analisis completo
@@ -235,6 +285,12 @@ Ver `outputs/pfs_warped_valid_full/pfs_warped_summary.json` para datos completos
 - `/docs/sesiones/SESION_53_FILL_RATE_TRADEOFF.md` - Analisis trade-off fill rate
 - `/outputs/classifier_replication_v2/` - Clasificador warped_96 (RECOMENDADO)
 - `/outputs/warped_replication_v2/` - Dataset warped_96 (96% fill rate)
+
+### Sesion 55: Validacion externa FedCOVIDx
+- `/docs/sesiones/SESION_55_VALIDACION_EXTERNA.md` - Documentacion completa
+- `/outputs/external_validation/warped_96_on_d3_original.json` - Resultados D3 original
+- `/outputs/external_validation/warped_96_on_d3_warped.json` - Resultados D3 warped
+- `/outputs/external_validation/baseline_results.json` - Baseline 12 modelos
 
 ### Datasets generados
 - `/outputs/original_3_classes/` - 15,153 imagenes (3 clases, sin Lung_Opacity)

@@ -4,7 +4,7 @@
         "version": "2.1.0",
         "last_updated": "2025-12-14",
         "reference": "docs/REFERENCIA_SESIONES_FUTURAS.md",
-        "validated_sessions": [39, 42, 43, 52, 53]
+        "validated_sessions": [39, 42, 43, 52, 53, 55]
     },
 
     "landmarks": {
@@ -166,6 +166,40 @@
             "implication": "96% is a more honest fill rate measurement",
             "both_use_predicted_landmarks": true,
             "both_use_full_coverage_warping": true
+        }
+    },
+
+    "external_validation": {
+        "description": "Evaluacion en datasets externos (fuera de distribucion) - Sesion 55",
+        "dataset3_fedcovidx": {
+            "n_samples": 8482,
+            "class_mapping": "COVID→positive, Normal+Viral_Pneumonia→negative",
+            "sources": ["BIMCV (~95%)", "RICORD", "RSNA"],
+            "warped_96_recommended": {
+                "internal_accuracy": 99.10,
+                "on_d3_original": {
+                    "accuracy": 53.36,
+                    "sensitivity": 90.12,
+                    "specificity": 16.60,
+                    "f1_score": 65.90,
+                    "auc_roc": 0.5422,
+                    "gap": 45.74
+                },
+                "on_d3_warped": {
+                    "accuracy": 55.31,
+                    "sensitivity": 89.86,
+                    "specificity": 20.75,
+                    "f1_score": 66.78,
+                    "auc_roc": 0.5994,
+                    "gap": 43.79
+                }
+            },
+            "baseline_comparison": {
+                "best_original": {"model": "resnet18_original", "accuracy": 57.50},
+                "best_warped": {"model": "vgg16_warped", "accuracy": 56.44}
+            },
+            "conclusion": "Domain shift predomina sobre mejoras metodologicas",
+            "recommendation": "Se requiere domain adaptation para uso cross-dataset"
         }
     },
 
