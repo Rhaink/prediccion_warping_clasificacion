@@ -154,21 +154,51 @@ Actual Pos       430        3811
 
 ## Conclusion
 
-### Lo que SI mejora la normalizacion geometrica
+### ⚠️ Interpretacion Critica del 53-55%
 
-1. **Generalizacion within-domain:** 2.4x mejor cross-evaluation interno
-2. **Robustez a perturbaciones:** 30x mejor a JPEG, 3-5x mejor a blur
-3. **Accuracy interno:** 99.10% (mejor que original 98.84%)
+**En clasificacion binaria (COVID vs No-COVID):**
+- 50% = Adivinar al azar (lanzar una moneda)
+- 53-55% = Apenas 3-5% mejor que adivinar
+- **TODOS los modelos (warped y original) son practicamente inutiles en datos externos**
+
+### ¿Por que esto NO invalida el warping?
+
+1. El modelo **ORIGINAL tambien falla** (~57.50%) - esto no es un problema del warping
+2. Es un problema de **DOMAIN SHIFT** (diferencias entre hospitales/equipos/poblaciones)
+3. Este es un problema **FUNDAMENTAL** en medical imaging que afecta a todos los modelos
+
+### Lo que SI mejora la normalizacion geometrica (VALIDADO)
+
+| Metrica | Original | Warped | Mejora |
+|---------|----------|--------|--------|
+| Robustez JPEG Q50 | 16.14% deg | 3.06% deg | **5.3x mejor** |
+| Robustez blur | 14.43% deg | 2.43% deg | **5.9x mejor** |
+| Cross-eval within-domain | 7.70% gap | 3.17% gap | **2.4x mejor** |
 
 ### Lo que NO resuelve la normalizacion geometrica
 
-1. **Domain shift cross-domain:** ~55% en datos externos
+1. **Domain shift cross-domain:** ~55% en datos externos (igual que original ~57%)
 2. **Sesgo de prediccion:** Alto en datos no vistos
-3. **Generalizacion a nuevos equipos/protocolos**
+3. **Generalizacion a nuevos equipos/protocolos** - requiere domain adaptation
 
 ### Implicacion Practica
 
-> La normalizacion geometrica mediante landmarks anatomicos es una tecnica efectiva para mejorar la robustez y generalizacion **dentro del mismo dominio de datos**. Sin embargo, para uso en datasets nuevos (diferentes equipos, protocolos, poblaciones), se requieren tecnicas de **domain adaptation** adicionales.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ CLAIM VALIDADO:                                                 │
+│                                                                 │
+│ El warping mejora robustez y generalizacion DENTRO del mismo    │
+│ dominio de datos (mismo hospital/equipo).                       │
+│                                                                 │
+│ Para uso en NUEVOS hospitales se requiere:                      │
+│   → Domain adaptation                                           │
+│   → Fine-tuning con datos locales                               │
+│   → Transfer learning                                           │
+│                                                                 │
+│ Esto NO es una limitacion del warping - es un problema          │
+│ fundamental de medical imaging que afecta a TODOS los modelos.  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 

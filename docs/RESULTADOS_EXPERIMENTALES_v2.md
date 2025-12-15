@@ -2,11 +2,51 @@
 
 **Fecha:** 2025-12-14
 **Estado:** Claims reformulados post-Sesion 35/36/39/52/53/55
-**Ultima actualizacion:** Sesion 55 - Validacion externa en FedCOVIDx
+**Ultima actualizacion:** Sesion 55 - Validacion externa y experimento CLAHE
 
 ---
 
-## Resumen de Resultados Validados
+## RESUMEN EJECUTIVO: ¿Que mejora el warping?
+
+### Lo que SI mejora (VALIDADO)
+
+| Metrica | Original | Warped | Mejora |
+|---------|----------|--------|--------|
+| Accuracy interna | 98.84% | 99.10% | +0.26% |
+| Robustez JPEG Q50 | 16.14% deg | 3.06% deg | **5.3x mejor** |
+| Robustez blur | 14.43% deg | 2.43% deg | **5.9x mejor** |
+| Cross-eval gap | 7.70% | 3.17% | **2.4x mejor** |
+
+### Lo que NO mejora (VALIDADO - Sesion 55)
+
+| Escenario | Original | Warped | Conclusion |
+|-----------|----------|--------|------------|
+| Datos externos (otro hospital) | 57.50% | 53-55% | **Ambos ~random** |
+
+### Interpretacion
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ CLAIM PRINCIPAL VALIDADO:                                       │
+│                                                                 │
+│ La normalizacion geometrica mediante warping mejora:            │
+│   ✓ Robustez a perturbaciones (5-6x mejor)                      │
+│   ✓ Generalizacion within-domain (2.4x mejor)                   │
+│                                                                 │
+│ PERO NO RESUELVE:                                               │
+│   ✗ Domain shift (datos de otro hospital = ~55% = random)       │
+│   ✗ Esto afecta a TODOS los modelos, warped o no                │
+│                                                                 │
+│ Para uso clinico en nuevos hospitales se requiere:              │
+│   → Domain adaptation                                           │
+│   → Fine-tuning con datos locales                               │
+│   → Transfer learning                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Resultados Detallados
 
 ### 1. Prediccion de Landmarks (VALIDADO)
 
@@ -258,13 +298,29 @@ Para verificar que el domain shift no es un artefacto de preprocesamiento, se ev
 **Conclusion:** El domain shift es REAL, no un artefacto de preprocesamiento. Aplicar preprocesamiento
 identico no resuelve diferencias semanticas fundamentales entre datasets.
 
-### 8.5 Conclusion
+### 8.5 Conclusion e Interpretacion Critica
 
-La normalizacion geometrica:
-- **SI mejora:** Generalizacion within-domain (2.4x mejor cross-evaluation interno)
-- **NO resuelve:** Domain shift between-domain (~55% en datos externos vs 99% interno)
+**⚠️ INTERPRETACION DEL 53-55% EN DATOS EXTERNOS:**
 
-**Implicacion:** Se requiere domain adaptation para uso en datasets nuevos.
+En clasificacion binaria (COVID vs No-COVID):
+- 50% = Adivinar al azar (lanzar moneda)
+- 53-57% = Apenas mejor que adivinar
+- **Conclusion: TODOS los modelos (warped y original) son practicamente inutiles en datos externos**
+
+**¿Por que esto NO invalida el warping?**
+
+1. El modelo ORIGINAL tambien falla (~57%) - no es problema del warping
+2. Es un problema de DOMAIN SHIFT (diferencias entre hospitales/equipos)
+3. El warping SI mejora robustez y generalizacion DENTRO del mismo dominio
+
+**Lo que el warping SI logra:**
+- Robustez JPEG: 5.3x mejor (3.06% vs 16.14% degradacion)
+- Robustez blur: 5.9x mejor (2.43% vs 14.43% degradacion)
+- Cross-eval interno: 2.4x mejor (3.17% vs 7.70% gap)
+
+**Lo que NINGUN metodo resuelve sin domain adaptation:**
+- Generalizacion a otros hospitales/equipos
+- Este es un problema fundamental en medical imaging
 
 **Referencia:** Ver `docs/sesiones/SESION_55_VALIDACION_EXTERNA.md` para analisis completo.
 

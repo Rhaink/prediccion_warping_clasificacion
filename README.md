@@ -12,6 +12,18 @@ This project implements a two-stage approach for COVID-19 classification:
 
 ## Key Results
 
+### Resumen: ¿Qué mejora el warping y qué NO?
+
+| Aspecto | ¿Warping ayuda? | Evidencia |
+|---------|-----------------|-----------|
+| Accuracy interna | ✅ Sí (+0.26%) | 99.10% vs 98.84% |
+| Robustez JPEG | ✅ Sí (5x mejor) | 3.06% vs 16.14% degradación |
+| Robustez blur | ✅ Sí (6x mejor) | 2.43% vs 14.43% degradación |
+| Generalización within-domain | ✅ Sí (2.4x mejor) | 3.17% vs 7.70% gap |
+| **Datos externos (otro hospital)** | ❌ **NO** | **53-57% ≈ random** |
+
+> **Claim principal validado:** El warping mejora robustez y generalización **dentro del mismo dominio de datos**. NO resuelve el domain shift entre instituciones diferentes.
+
 ### Landmark Prediction
 
 | Metric | Value |
@@ -64,22 +76,32 @@ This project implements a two-stage approach for COVID-19 classification:
 
 **Ratio: 2.4x** - The warped model generalizes **2.4x better** than the original.
 
-### External Validation (Session 55)
+### External Validation (Session 55) - LIMITACIÓN IMPORTANTE
 
 **Dataset:** FedCOVIDx (8,482 samples, binary classification: COVID vs No-COVID)
 
-| Model | Internal Accuracy | External Accuracy (D3 Original) | External Accuracy (D3 Warped) |
-|-------|-------------------|--------------------------------|------------------------------|
-| resnet18_original | 95.83% | 57.50% | - |
-| vgg16_warped | 90.63% | 56.44% | ~50% |
-| **warped_96 (RECOMMENDED)** | **99.10%** | **53.36%** | **55.31%** |
+| Model | Internal Accuracy | External Accuracy | Interpretación |
+|-------|-------------------|-------------------|----------------|
+| resnet18_original | 95.83% | 57.50% | ~Random |
+| vgg16_warped | 90.63% | 56.44% | ~Random |
+| **warped_96** | **99.10%** | **53-55%** | **~Random** |
 
-**Key Findings:**
-- All models show ~45% accuracy gap between internal and external evaluation
-- Domain shift dominates over methodological improvements
-- High sensitivity (~90%) but low specificity (~17-21%) on external data
+**⚠️ INTERPRETACIÓN CRÍTICA:**
 
-> **Important:** Geometric normalization improves **within-domain** generalization (2.4x better cross-evaluation) but does NOT resolve **cross-domain** shift (~55% on external data vs 99% internal). Domain adaptation techniques are required for deployment on new datasets.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ En clasificación binaria:                                       │
+│   • 50% = Adivinar (lanzar moneda)                              │
+│   • 53-57% = Apenas mejor que adivinar                          │
+│   • TODOS los modelos fallan en datos externos                  │
+│                                                                 │
+│ Esto NO es un problema del warping - es DOMAIN SHIFT:           │
+│ Los modelos entrenados en un hospital NO funcionan en otro.     │
+│ Este es un problema FUNDAMENTAL en medical imaging.             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> **Conclusión:** El warping mejora robustez y generalización **dentro del mismo dominio** (mismo hospital/equipo), pero NO resuelve el domain shift entre diferentes instituciones. Para uso clínico en nuevos hospitales se requieren técnicas de domain adaptation.
 
 ### Robustness Mechanism (Control Experiment - Session 39)
 

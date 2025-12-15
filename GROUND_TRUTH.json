@@ -198,8 +198,15 @@
                 "best_original": {"model": "resnet18_original", "accuracy": 57.50},
                 "best_warped": {"model": "vgg16_warped", "accuracy": 56.44}
             },
-            "conclusion": "Domain shift predomina sobre mejoras metodologicas",
-            "recommendation": "Se requiere domain adaptation para uso cross-dataset"
+            "interpretation": {
+                "binary_classification_baseline": 50.0,
+                "external_accuracy_range": "53-57%",
+                "meaning": "Todos los modelos (warped y original) son ~random en datos externos",
+                "is_warping_problem": false,
+                "is_domain_shift_problem": true
+            },
+            "conclusion": "53-57% es apenas mejor que adivinar. Esto NO invalida el warping porque el modelo original tambien falla (~57%). Es domain shift, problema fundamental en medical imaging.",
+            "recommendation": "Para uso en nuevos hospitales: domain adaptation, fine-tuning local, o transfer learning"
         },
         "clahe_verification_experiment": {
             "description": "Experimento para verificar que el domain shift no es artefacto de preprocesamiento",
