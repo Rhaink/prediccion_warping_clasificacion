@@ -1,0 +1,31 @@
+\section{Clasificadores Supervisados para Detección de Enfermedades}
+\label{sec:clasificadores_supervisados_teoria}
+Una vez que la región pulmonar ha sido normalizada y se han extraído características relevantes de ella (esta vez, características orientadas a la detección de patologías, no a la forma), se utiliza un clasificador de aprendizaje supervisado para asignar una etiqueta de clase (e.g., sano, neumonía, COVID-19) a la imagen. En esta tesis se evaluarán tres tipos de clasificadores:
+
+\subsection{K-Vecinos Más Cercanos (KNN)}
+\label{ssec:knn_teoria}
+El algoritmo K-Vecinos Más Cercanos (KNN) es un método de aprendizaje no paramétrico y basado en instancias \cite{altman1992introduction}. Para clasificar una nueva muestra:
+\begin{itemize}
+    \item Se calcula la distancia (e.g., Euclidiana, Manhattan) entre la nueva muestra y todas las muestras en el conjunto de entrenamiento.
+    \item Se seleccionan los $K$ vecinos más cercanos.
+    \item La etiqueta de la nueva muestra se asigna por voto mayoritario entre las etiquetas de estos $K$ vecinos.
+\end{itemize}
+KNN es simple de implementar, pero puede ser computacionalmente costoso en la fase de predicción para conjuntos de datos grandes y su rendimiento es sensible a la elección de $K$ y la métrica de distancia, así como a la presencia de características irrelevantes o escalas diferentes entre características.
+
+\subsection{Perceptrón Multicapa (MLP)}
+\label{ssec:mlp_teoria}
+Un Perceptrón Multicapa (MLP) es un tipo de red neuronal artificial de alimentación hacia adelante (feedforward) que consta de al menos tres capas de nodos: una capa de entrada, una o más capas ocultas y una capa de salida \cite{rumelhart1986learning}. Cada nodo (neurona) en una capa está conectado a todos los nodos de la capa siguiente (capas densas o totalmente conectadas).
+\begin{itemize}
+\item Cada conexión tiene un peso asociado $w_{ij}$.
+\item Cada neurona (excepto las de entrada) aplica una función de activación no lineal (e.g., sigmoide, tangente hiperbólica, ReLU) a la suma ponderada de sus entradas más un sesgo (bias).
+$y_j = f\left(\sum_i w_{ij} x_i + b_j\right)$
+donde $y_j$ es la salida de la neurona $j$, $x_i$ son las entradas, $w_{ij}$ los pesos, $b_j$ el sesgo, y $f(\cdot)$ la función de activación.
+\item El aprendizaje en un MLP se realiza típicamente mediante el algoritmo de retropropagación (backpropagation), que ajusta los pesos y sesgos para minimizar una función de pérdida (e.g., entropía cruzada para clasificación).
+\end{itemize}
+Los MLPs son capaces de aprender funciones no lineales complejas y han sido ampliamente utilizados en tareas de clasificación. En el contexto de esta tesis, un MLP se utilizará como uno de los clasificadores para la detección de enfermedades, tomando como entrada las características extraídas de las regiones pulmonares normalizadas. Además, dentro del propio modelo MaShDL-CNN Hybrid, una DNN (que es un tipo de MLP) se utiliza para predecir los bins de los coeficientes $b_k$.
+
+\subsection{Redes Neuronales Convolucionales (CNNs) para Clasificación}
+\label{ssec:cnns_clasificacion_teoria}
+Además de su uso como extractoras de características, las CNNs también pueden ser entrenadas de extremo a extremo para tareas de clasificación de imágenes. En este caso, después de las capas convolucionales y de pooling que extraen características, se suelen añadir una o más capas totalmente conectadas (como en un MLP) que culminan en una capa de salida con una función de activación softmax para producir probabilidades de clase \cite{krizhevsky2012imagenet}.
+Para la tarea de clasificación de enfermedades en esta tesis, se podría diseñar una CNN que tome como entrada la región pulmonar segmentada y normalizada (o parches de esta región) y la clasifique directamente en las categorías patológicas. El entrenamiento de dicha CNN buscaría aprender las características visuales dentro de la región pulmonar que son discriminantes para neumonía y COVID-19. Modelos pre-entrenados en grandes conjuntos de datos de imágenes naturales (como ImageNet \cite{deng2009imagenet}) a menudo se utilizan como punto de partida mediante aprendizaje por transferencia (transfer learning), adaptándolos luego a la tarea médica específica \cite{shin2016deep,tajbakhsh2016convolutional}.
+

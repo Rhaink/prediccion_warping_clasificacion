@@ -1,0 +1,264 @@
+\chapter{Diseño Experimental y Configuración}
+\label{cap:diseno_experimental}
+Este capítulo detalla el diseño experimental seguido para desarrollar, optimizar y evaluar la metodología MaShDL-CNN Hybrid propuesta en esta tesis. Se describen los conjuntos de datos utilizados, la configuración del entorno computacional, los experimentos específicos realizados para la optimización del modelo de alineación y normalización de la forma pulmonar, y el protocolo experimental diseñado para la subsiguiente tarea de clasificación de neumonía y COVID-19. El objetivo es proporcionar una descripción clara y reproducible de los pasos llevados a cabo para validar la hipótesis y alcanzar los objetivos de la investigación.
+
+\section{Conjunto de Datos Utilizado}
+\label{sec:conjunto_datos}
+La selección y preparación adecuada de los conjuntos de datos es un factor crítico para el entrenamiento y la validación robusta de cualquier modelo de aprendizaje automático, especialmente en el dominio de las imágenes médicas.
+
+\subsection{Fuente y Características de las Imágenes}
+\label{ssec:fuente_imagenes}
+Para el desarrollo y evaluación de los modelos propuestos en esta tesis, se utilizó un conjunto de datos compuesto por radiografías de tórax (CXR) en vista posteroanterior (PA). Este conjunto de datos se construyó a partir de varias fuentes públicas ampliamente reconocidas en la comunidad de investigación, con el fin de asegurar una diversidad de casos y características de imagen. Las principales fuentes incluyen:
+\begin{itemize}
+    \item \textbf{COVID-19 Radiography Database (Dataset A):} Compilado por investigadores de la Universidad de Qatar, la Universidad de Dhaka, y colaboradores de Pakistán y Malasia, este conjunto contiene imágenes de COVID-19, neumonía viral y pulmones normales \cite{rahman2021exploring_covid_dataset, cohen2020covid}. Las imágenes provienen de diversas fuentes públicas y repositorios.
+    \item \textbf{Chest X-Ray Images (Pneumonia) (Dataset B):} Disponible en Kaggle, este conjunto de datos fue seleccionado de cohortes de pacientes pediátricos del Guangzhou Women and Children’s Medical Center, Guangzhou, e incluye imágenes de neumonía (bacteriana y viral) y pulmones normales \cite{kermany2018labeled}.
+    \item \textbf{Otros conjuntos de datos públicos (Dataset C, D, \dots):} Se exploró la inclusión de imágenes de otros repositorios como [Mencionar otros si se usaron, e.g., parte de MIMIC-CXR \cite{johnson2019mimic} o PadChest \cite{bustos2020padchest} si se aplicaron filtros específicos y se obtuvieron landmarks].
+\end{itemize}
+Todas las imágenes fueron convertidas a formato PNG y, para ciertas etapas del procesamiento (como la entrada a algunos modelos de CNN), reescaladas a un tamaño estándar, por ejemplo, $299 \times 299$ píxeles, utilizando interpolación bilineal. Se realizó un preprocesamiento inicial para la normalización de la intensidad de los píxeles al rango $[0,1]$.
+%(Sugerencia: Tabla \ref{tab:descripcion_datasets}: Una tabla que resuma las características de cada dataset utilizado. Columnas: Nombre del Dataset, Fuente/Referencia, Número de Imágenes por Clase (COVID-19, Neumonía Viral, Neumonía Bacteriana, Normal), Resolución Original (si varía), Notas (e.g., tipo de paciente, vista predominante).)
+
+\begin{table}
+    \centering
+    \caption[Descripción de los conjuntos de datos de radiografías de tórax utilizados]{Descripción de los conjuntos de datos de radiografías de tórax (CXR) empleados en esta investigación para el entrenamiento y la evaluación de los modelos.}
+    \label{tab:descripcion_datasets}
+    \begin{tabular}{@{}l l c c c c l@{}}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{Referencia} & \multicolumn{4}{c}{Número de Imágenes por Clase} & \multirow{2}{*}{Notas} \\
+        \cmidrule(lr){3-6}
+         & & COVID-19 & Neumonía & Normal & Total & \\
+        \midrule
+        Dataset A & \cite{rahman2021exploring_covid_dataset, cohen2020covid} & $N_{A,C}$ & $N_{A,P}$ & $N_{A,N}$ & $N_A$ & Vistas PA/AP, adultos. \\
+        Dataset B & \cite{kermany2018labeled} & --- & $N_{B,P}$ & $N_{B,N}$ & $N_B$ & Pediátrico, vistas PA. \\
+        % Dataset C & \cite{johnson2019mimic} & $N_{C,C}$ & $N_{C,P}$ & $N_{C,N}$ & $N_C$ & Filtrado específico. \\
+        \midrule
+        Total Compilado & & $N_{\text{Total},C}$ & $N_{\text{Total},P}$ & $N_{\text{Total},N}$ & $N_{\text{Total}}$ & \\
+        \bottomrule
+    \end{tabular}
+    \vspace{0.2cm}
+    \footnotesize{\textit{Nota: $N_{X,Y}$ representa el número de imágenes para la clase Y en el dataset X. Completar con los números reales.}}
+\end{table}
+
+\subsection{Anotación de Puntos Característicos (Landmarks)}
+\label{ssec:anotacion_landmarks_experimental}
+Para la construcción del Modelo Estadístico de Forma (SSM) pulmonar, se requirió un conjunto de imágenes con puntos característicos (landmarks) anotados. Se utilizó un conjunto de $N_s$ imágenes de entrenamiento donde se definieron $N_{lmk}=144$ landmarks por forma pulmonar. Estos landmarks, como se mencionó en la Sección~\ref{ssec:landmarks_ssm_metodologia}, fueron definidos y/o interpolados para delinear consistentemente el contorno de la región pulmonar (ambos pulmones, incluyendo el área cardiaca y mediastinal, según la definición implícita en el SSM de 144 puntos). Las coordenadas originales de estos landmarks se normalizaron a un espacio de referencia (e.g., $64 \times 64$ píxeles) para la construcción del SSM. El archivo \code{coordenadas/coordenadas_maestro_1.csv} contiene estos landmarks para el conjunto de datos base.
+
+\subsection{División en Conjuntos de Entrenamiento, Validación y Prueba}
+\label{ssec:division_conjuntos_experimental}
+Para asegurar una evaluación objetiva y evitar el sobreajuste, el conjunto de datos compilado se dividió en tres subconjuntos mutuamente excluyentes:
+\begin{itemize}
+    \item \textbf{Conjunto de Entrenamiento:} Utilizado para aprender los parámetros de los modelos (e.g., pesos de las CNNs, componentes del SSM si se reconstruyera).
+    \item \textbf{Conjunto de Validación:} Empleado durante el entrenamiento para ajustar hiperparámetros (e.g., tasa de aprendizaje, número de épocas mediante \textit{early stopping}, arquitectura del modelo) y para la selección del mejor modelo de una serie de entrenamientos. En el script \code{train_mashdl_cnn_hybrid.py}, la división entre entrenamiento y validación para la predicción de los $b_k$ se realiza con \code{args.validation_split} (e.g., 20\% para validación), aplicando estratificación si es posible.
+    \item \textbf{Conjunto de Prueba (Test):} Utilizado únicamente para la evaluación final del rendimiento del modelo entrenado y seleccionado. Este conjunto no se utiliza de ninguna forma durante el proceso de entrenamiento o selección de modelos. El archivo \code{indices/indices_maestro_1.csv} y \code{results/test_indices.txt} definen la pertenencia de las muestras a estos conjuntos.
+\end{itemize}
+Se procuró que la división de los datos mantuviera una proporción similar de las diferentes clases (COVID-19, neumonía, normal) en cada subconjunto, aunque el desequilibrio inherente de clases en los datasets originales puede persistir y debe ser considerado. El script \code{data_loader.py} es fundamental para cargar y gestionar el acceso a estos datos y sus correspondencias.
+
+\section{Configuración del Entorno Computacional}
+\label{sec:configuracion_entorno}
+Todos los experimentos se llevaron a cabo en un entorno computacional con las siguientes especificaciones (o similares, según el informe):
+\begin{itemize}
+    \item \textbf{Hardware:}
+    \begin{itemize}
+        \item CPU: [Especificar tipo de CPU, e.g., Intel Core i7/i9, AMD Ryzen]
+        \item GPU: [Especificar modelo de GPU, e.g., NVIDIA GeForce RTX 3080/4090, Tesla V100]. El uso de GPUs es crucial para el entrenamiento eficiente de los modelos de aprendizaje profundo.
+        \item Memoria RAM: [Especificar cantidad, e.g., 32 GB, 64 GB]
+        \item Almacenamiento: [Especificar tipo y capacidad, e.g., SSD NVMe de 1TB]
+    \end{itemize}
+    \item \textbf{Software:}
+    \begin{itemize}
+        \item Sistema Operativo: [Especificar, e.g., Ubuntu 20.04 LTS, Windows 10/11]
+        \item Lenguaje de Programación: Python (versión 3.8 o superior).
+        \item Librerías Principales de Aprendizaje Profundo:
+        \begin{itemize}
+            \item TensorFlow (versión 2.x, e.g., 2.10 o superior) \cite{abadi2016tensorflow}.
+            \item Keras (API de alto nivel de TensorFlow) \cite{chollet2015keras}.
+        \end{itemize}
+        \item Librerías de Procesamiento de Imágenes y Cálculo Numérico:
+        \begin{itemize}
+            \item OpenCV (\code{cv2}, versión 4.x) \cite{opencv_library}.
+            \item NumPy (versión 1.2x) \cite{harris2020array}.
+            \item Scikit-learn (versión 1.x) \cite{scikit-learn}.
+            \item Pandas (versión 1.x) \cite{mckinney2010data}.
+            \item Matplotlib (versión 3.x) \cite{hunter2007matplotlib} (para visualización).
+            \item Scipy (para operaciones científicas, e.g., \code{orthogonal_procrustes}) \cite{virtanen2020scipy}.
+            \item \code{tqdm} (para barras de progreso).
+            \item Shapely (opcional, para manipulación geométrica) \cite{van2011shapely}.
+        \end{itemize}
+        \item Entorno de Desarrollo: Jupyter Notebooks, Spyder, VS Code, o similar.
+    \end{itemize}
+    \item \textbf{Gestión de Entorno y Rutas (Contenedor Docker):} El informe menciona la ejecución dentro de un contenedor Docker y la importancia de la estructura de directorios con \code{/workspace} como raíz del proyecto (\code{TESIS_ROOT_DIR}). Esto asegura la reproducibilidad del entorno y la consistencia en las rutas de acceso a datos y scripts. La estructura de directorios principal para el proyecto MaShDL-CNN Hybrid es:
+    \begin{itemize}
+        \item \code{Tesis/segmentacion/MaShDL_CNN_Hybrid_Lung_Segmentation/}
+        \begin{itemize}
+            \item \code{src/}: Código fuente Python (scripts de entrenamiento, predicción, evaluación, etc.).
+            \item \code{data/}: Datos de entrada (\code{NPZ} de parches, archivos del SSM, índices, máscaras GT, etc.).
+            \item \code{models/}: Modelos ESL y modelos MaShDL-CNN Hybrid entrenados (organizados por \code{RunID}).
+            \item \code{results/}: Resultados de predicciones, estadísticas de evaluación, historiales.
+            \item \code{logs_training/}, \code{logs_script_patches/}: Archivos de log.
+            \item \code{plots/}: Gráficos generados durante el entrenamiento y la evaluación.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\section{Experimentos para la Optimización del Modelo de Alineación MaShDL-CNN}
+\label{sec:experimentos_optimizacion_alineacion}
+Se diseñó una serie de experimentos para evaluar y optimizar el rendimiento del modelo MaShDL-CNN Hybrid en la tarea de predicción de los coeficientes de forma $b_k$ y, consecuentemente, en la calidad de la segmentación pulmonar. Estos experimentos se centraron en variar hiperparámetros clave de la arquitectura de la CNN y el tamaño de los parches de entrada, basándose en las capacidades del script \code{train_mashdl_cnn_hybrid.py}. El informe de progreso (Secciones 4.2, 5 y 6) detalla estas iteraciones.
+
+\subsection{Línea Base y Primeras Iteraciones (Parches $Q=25$)}
+\label{ssec:exp_q25}
+El trabajo inicial se centró en establecer una línea base y explorar mejoras utilizando parches de tamaño $Q=25 \times 25$ píxeles.
+\begin{itemize}
+    \item \textbf{Corrida Inicial (Benchmark):}
+    \begin{itemize}
+        \item $Q=25$.
+        \item Arquitectura Sub-CNN: 2 capas convolucionales (e.g., filtros \code{[32, 64]}, kernels \code{(3,3)}, pools \code{(2,2)}).
+        \item Dimensión de características por parche: $\text{dim\_features\_per\_patch}=64$.
+        \item Arquitectura DNN: 2 capas ocultas (e.g., \code{dnn_hidden_units=[128, 64]}).
+        \item Número de modos $b_k$ entrenados: Inicialmente 3 modos, luego extendido a 10 modos.
+        \item Épocas: Inicialmente 10, luego aumentadas a 100-200 con \textit{Early Stopping} (\code{es_patience=30}).
+        \item Resultados preliminares:
+        \begin{itemize}
+            \item ValAcc promedio para $b_k$ (3 modos, 100 épocas): $\approx 0.6378$.
+            \item ValAcc promedio para $b_k$ (10 modos, 100 épocas): $\approx 0.5236$ (decayó para modos superiores $k>4$).
+            \item Coeficiente de Dice (3 modos, $Q=25$, CNN 2 capas, 100 épocas): $\approx 0.674$ (Convex Hull), $\approx 0.652$ (Dos Contornos).
+            \item Coeficiente de Dice (10 modos, $Q=25$, CNN 2 capas, 100 épocas): Similar al de 3 modos, indicando que la predicción deficiente de modos superiores no mejoraba la segmentación global.
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Experimento 1: CNN más Profunda (3 capas convolucionales)}
+    \begin{itemize}
+        \item $Q=25$, 5 modos $b_k$.
+        \item Argumentos clave para \code{train_mashdl_cnn_hybrid.py}:
+        \begin{itemize}
+            \item \code{--cnn_filters 32 64 128}
+            \item \code{--cnn_kernel_sizes 3,3 3,3 3,3} (asumido)
+            \item \code{--cnn_pool_sizes 2,2 2,2 2,2} (asumido)
+            \item \code{--dim_features_per_patch 64}
+            \item \code{--dnn_hidden_units 128 64}
+        \end{itemize}
+        \item Resultado: Mejora marginal en ValAcc promedio para $b_k$ ($\approx 0.6202 \rightarrow \approx 0.6260$ para $k_0-k_4$).
+    \end{itemize}
+    \item \textbf{Experimento 2: CNN de 3 capas + Mayor \code{dim_features_per_patch} y DNN más Grande}
+    \begin{itemize}
+        \item $Q=25$, 5 modos $b_k$.
+        \item Argumentos clave:
+        \begin{itemize}
+            \item (CNN igual que Exp1)
+            \item \code{--dim_features_per_patch 128}
+            \item \code{--dnn_hidden_units 256 128}
+        \end{itemize}
+        \item Resultado: Sin mejora clara en ValAcc promedio ($\approx 0.6226$), pérdida de validación más alta.
+    \end{itemize}
+\end{itemize}
+Estos experimentos iniciales con $Q=25$ sugirieron que simplemente aumentar la profundidad o el tamaño de la red sobre parches pequeños no producía mejoras drásticas, lo que llevó a la hipótesis de que el tamaño del parche podría ser un factor limitante más fundamental.
+
+\subsection{Experimento Crítico Propuesto (Parches $Q=41$ y Aumento de Datos Extensivo)}
+\label{ssec:exp_q41}
+Basándose en la discusión de que $Q=25$ podría no capturar suficiente contexto, el informe detalla un ``Próximo Paso Crítico (Experimento 3 - En curso/Pendiente)'' centrado en parches más grandes y un aumento de datos más agresivo.
+\begin{itemize}
+    \item \textbf{Paso 1: Regeneración de Datos de Parches 2D (con \code{mashdl_patch_extractor.py} adaptado):}
+    \begin{itemize}
+        \item Modificar el script para usar \code{Q_PATCH_SIZE = 41}.
+        \item Establecer \code{AUGMENTATION_PROBABILITY = 1.0} para asegurar que cada imagen de entrenamiento contribuya con una versión original y al menos una aumentada.
+        \item Generar los archivos \code{NPZ} (\code{mashdl_mode{K}_Q41_aug_TRAIN_B{B}.npz}) para los primeros 5 o 7 modos $b_k$.
+    \end{itemize}
+    \item \textbf{Paso 2: Entrenamiento de Modelos MaShDL-CNN Hybrid con Parches $Q=41$ (con \code{train_mashdl_cnn_hybrid.py}):}
+    \begin{itemize}
+        \item Argumento: \code{--patch_size_q 41}.
+        \item Arquitectura CNN sugerida: 3 capas convolucionales (e.g., \code{--cnn_filters 32 64 128}).
+        \item Dimensión de características por parche: \code{--dim_features_per_patch 64} (o probar 128).
+        \item Arquitectura DNN: e.g., \code{--dnn_hidden_units 128 64} (o ajustada según \code{dim_features_per_patch}).
+        \item Ajustar \code{--batch_size} si es necesario debido a la mayor demanda de memoria con parches más grandes.
+    \end{itemize}
+    \item \textbf{Paso 3: Evaluación de Resultados:}
+    \begin{itemize}
+        \item Repetir el ciclo de predicción (\code{generate_predictions_cnn.py}), desdiscretización (\code{main_desdiscretizer.py}) y cálculo del Coeficiente de Dice (\code{evaluate_segmentation.py}) para los modelos entrenados con $Q=41$.
+    \end{itemize}
+\end{itemize}
+Se espera que este experimento proporcione información clave sobre si el tamaño del parche es, de hecho, un factor determinante para mejorar la predicción de los $b_k$ (especialmente los modos sutiles) y, por lo tanto, la precisión de la segmentación.
+%(Sugerencia: Tabla \ref{tab:config_experimentos_alineacion}: Una tabla que resuma de manera concisa la configuración de cada uno de estos experimentos de optimización de la alineación. Columnas: ID Experimento, Q, Arquitectura Sub-CNN (filtros), dim_features_per_patch, Arquitectura DNN (unidades), Aumento de Datos, Número de Modos bk Entrenados, Objetivo Principal del Experimento.)
+
+\begin{table}
+    \centering
+    \caption[Configuración de los experimentos para la optimización del modelo de alineación MaShDL-CNN Hybrid]{Resumen de la configuración de los principales experimentos realizados para optimizar el modelo MaShDL-CNN Hybrid en la predicción de coeficientes de forma $b_k$.}
+    \label{tab:config_experimentos_alineacion}
+    \resizebox{\textwidth}{!}{% Ajustar tabla al ancho de la página
+    \begin{tabular}{@{}lcccccccl@{}}
+        \toprule
+        ID Exp. & $Q$ & CNN Filtros & \shortstack{Dim. Feat.\\por Parche} & DNN Unidades & \shortstack{Aumento\\Datos} & \shortstack{Modos $b_k$\\Entrenados} & \shortstack{Épocas\\(aprox.)} & Objetivo Principal \\
+        \midrule
+        Línea Base & 25 & \code{[32,64]} & 64 & \code{[128,64]} & Base & 3 y 10 & $\sim$30-60 & Establecer rendimiento inicial. \\
+        Exp. 1 & 25 & \code{[32,64,128]} & 64 & \code{[128,64]} & Base & 5 & $\sim$30-60 & Evaluar CNN más profunda. \\
+        Exp. 2 & 25 & \code{[32,64,128]} & 128 & \code{[256,128]} & Base & 5 & $\sim$30-60 & Evaluar más feat./parche y DNN mayor. \\
+        Exp. 3 & 41 & \code{[32,64,128]} & 64 o 128 & \code{[128,64]}+ & Extensivo & 5 o 7 & Por definir & Evaluar impacto de parches mayores. \\
+        \bottomrule
+    \end{tabular}%
+    }
+    \vspace{0.2cm}
+    \footnotesize{\textit{Nota: ``Base'' en Aumento de Datos se refiere a la configuración inicial; ``Extensivo'' a \code{AUGMENTATION_PROBABILITY = 1.0}. ``+'' en DNN Unidades indica que se ajustarán según \code{dim_features_per_patch}. Las épocas son aproximadas basadas en Early Stopping.}}
+\end{table}
+
+\subsection{Parámetros de Entrenamiento Comunes y Consideraciones}
+\label{ssec:params_comunes_entrenamiento}
+Para todos los experimentos de entrenamiento de los modelos MaShDL-CNN Hybrid, se utilizaron los siguientes parámetros y consideraciones comunes, gestionados por \code{train_mashdl_cnn_hybrid.py}, a menos que se especifique lo contrario para un experimento particular:
+\begin{itemize}
+    \item Optimizador: Predominantemente AdamW con una tasa de aprendizaje inicial de $1 \times 10^{-4}$ y decaimiento de peso de $1 \times 10^{-4}$.
+    \item Función de Pérdida: Entropía cruzada categórica.
+    \item Callbacks: \code{ModelCheckpoint} (guardando el mejor modelo basado en \code{val_accuracy}), \code{EarlyStopping} (paciencia de 30 épocas), \code{ReduceLROnPlateau} (paciencia de 15 épocas, factor de reducción de 0.2, \code{min_lr} de $1 \times 10^{-7}$), y \code{TerminateOnNaN}.
+    \item División de Datos: 20\% del conjunto de datos de entrenamiento (para un modo $k$) se utilizó para validación, con \code{random_seed=42} para reproducibilidad.
+    \item Manejo de Memoria: Se utilizó \code{tf.keras.backend.clear_session()} y \code{gc.collect()} entre el entrenamiento de modelos para diferentes modos $k$ para mitigar problemas de memoria GPU.
+    \item Número de Bins para $b_k$: \code{num_classes_b_bins = 3} fue un valor comúnmente utilizado, aunque el impacto de este hiperparámetro también podría explorarse.
+\end{itemize}
+
+\section{Protocolo para la Clasificación de Neumonía y COVID-19}
+\label{sec:protocolo_clasificacion_enfermedad}
+Una vez que se obtiene el modelo MaShDL-CNN Hybrid óptimo para la alineación y normalización de la forma pulmonar (basado en los resultados de la Sección~\ref{sec:experimentos_optimizacion_alineacion}), el siguiente gran objetivo es utilizar estas regiones pulmonares normalizadas para la tarea final de clasificación de enfermedades.
+
+\subsection{Extracción de Características de las Regiones Pulmonares Segmentadas y Normalizadas}
+\label{ssec:extraccion_features_enfermedad}
+Después de que el sistema MaShDL-CNN Hybrid produce una máscara de segmentación precisa $M_{\text{pred}}$ para la región pulmonar de una imagen de entrada, esta máscara se utiliza para aislar la región pulmonar. La imagen original $I$ se enmascara con $M_{\text{pred}}$ para obtener $I_{\text{pulmonar}} = I \odot M_{\text{pred}}$ (donde $\odot$ es la multiplicación por elementos). Además, la información de forma normalizada (e.g., los coeficientes $b_k$ o la forma reconstruida en el espacio canónico) está disponible.
+A partir de $I_{\text{pulmonar}}$ y/o la información de forma normalizada, se deben extraer características que sean discriminantes para las clases de enfermedad (sano, neumonía, COVID-19). Se pueden considerar varias estrategias:
+\begin{enumerate}
+    \item \textbf{Características de Textura Clásicas:} Calcular descriptores de textura a partir de $I_{\text{pulmonar}}$, como los de la Matriz de Co-ocurrencia de Niveles de Gris (GLCM) \cite{haralick1973textural}, Patrones Binarios Locales (LBP) \cite{ojala2002multiresolution}, o características basadas en wavelets \cite{bharati2020hybrid}.
+    \item \textbf{Características de Forma Adicionales:} Aunque la forma global ya está normalizada, se podrían calcular descriptores de la forma del contorno segmentado (e.g., descriptores de Fourier, momentos de Hu \cite{karargyris2016automated, xu2014texture}) si se cree que las desviaciones residuales de la forma o la complejidad del contorno tienen valor diagnóstico.
+    \item \textbf{Características de Aprendizaje Profundo (Deep Features):}
+    \begin{itemize}
+        \item Utilizar una CNN pre-entrenada (e.g., ResNet50, VGG16, DenseNet121 entrenada en ImageNet) como extractora de características. Se alimenta $I_{\text{pulmonar}}$ (o una versión recortada y reescalada de la misma) a la CNN pre-entrenada, y se toman las activaciones de una de sus capas profundas (e.g., antes de la capa de clasificación final) como el vector de características \cite{shin2016deep, tajbakhsh2016convolutional}.
+        \item Entrenar una CNN específica desde cero o mediante \textit{fine-tuning} sobre $I_{\text{pulmonar}}$ directamente para la tarea de clasificación de enfermedad. En este caso, la propia CNN aprende las características discriminantes.
+    \end{itemize}
+    \item \textbf{Combinación de Características:} Explorar la concatenación de diferentes tipos de características (e.g., textura + \textit{deep features}).
+\end{enumerate}
+La elección del método de extracción de características para la enfermedad es un paso de diseño crucial y puede requerir experimentación.
+
+\subsection{Clasificadores a Evaluar (Objetivo Específico 3)}
+\label{ssec:clasificadores_a_evaluar}
+Como se establece en el Objetivo Específico 3, se evaluará el rendimiento de los siguientes tipos de clasificadores de aprendizaje supervisado, utilizando como entrada las características extraídas en la Sección~\ref{ssec:extraccion_features_enfermedad}:
+\begin{itemize}
+    \item \textbf{K-Vecinos Más Cercanos (KNN):} Se experimentará con diferentes valores de $K$ y métricas de distancia (e.g., Euclidiana, Manhattan).
+    \item \textbf{Perceptrón Multicapa (MLP):} Se definirán arquitecturas con diferentes números de capas ocultas, neuronas por capa, y funciones de activación (predominantemente ReLU para capas ocultas y Softmax para la salida). Se utilizará regularización como Dropout.
+    \item \textbf{Red Neuronal Convolucional (CNN) para Clasificación de Enfermedad:} Si se opta por una CNN de extremo a extremo para la clasificación de enfermedad (opción 3b en \ref{ssec:extraccion_features_enfermedad}), se diseñará o adaptará una arquitectura CNN específica para esta tarea, tomando $I_{\text{pulmonar}}$ como entrada.
+\end{itemize}
+Para cada clasificador, se realizará una optimización de sus hiperparámetros utilizando el conjunto de validación o mediante validación cruzada dentro del conjunto de entrenamiento.
+
+\subsection{Escenarios de Comparación (Objetivo Específico 5)}
+\label{ssec:escenarios_comparacion}
+Para validar la eficacia de la técnica de alineación y normalización propuesta, se contrastarán los resultados de clasificación de enfermedades obtenidos con el sistema completo MaShDL-CNN Hybrid con los resultados obtenidos en los siguientes escenarios:
+\begin{enumerate}
+    \item \textbf{Escenario Baseline (Sin Alineación/Normalización):} Los mismos clasificadores (KNN, MLP, CNN de enfermedad) se entrenarán y evaluarán utilizando características extraídas directamente de las imágenes CXR originales o de una región de interés definida de manera simple (e.g., un \textit{bounding box} detectado por un detector genérico o toda la imagen reescalada). Este escenario sirve para cuantificar el rendimiento base sin una normalización de forma sofisticada.
+    \item \textbf{Escenario de Comparación con Alineación Previa (MaShDL con Perfiles 1D):} Se utilizarán los resultados de segmentación/alineación obtenidos con el método MaShDL anterior (basado en perfiles de intensidad 1D, entrenado con \code{train_mashdl_classifiers_v12_mod6_profile_input.py}). Las características para la clasificación de enfermedad se extraerán de estas regiones pulmonares alineadas, y se entrenarán/evaluarán los mismos clasificadores. Esto permitirá medir la mejora específica aportada por el nuevo componente CNN del MaShDL-CNN Hybrid sobre su predecesor.
+    \item \textbf{Escenario Propuesto (Alineación con MaShDL-CNN Hybrid):} Los clasificadores se entrenarán/evaluarán utilizando características extraídas de las regiones pulmonares alineadas y normalizadas por el sistema MaShDL-CNN Hybrid desarrollado en esta tesis.
+\end{enumerate}
+La comparación se realizará utilizando las mismas métricas de evaluación (precisión, sensibilidad, especificidad, F1-score, AUC) en el mismo conjunto de prueba para todos los escenarios, permitiendo un análisis directo del impacto de cada enfoque de normalización.
+
+\subsection{Métricas de Evaluación Detalladas (Objetivo Específico 4)}
+\label{ssec:metricas_evaluacion_detalladas_experimental}
+Para la validación del clasificador de enfermedades desarrollado (Objetivo Específico 4), se utilizará el conjunto completo de métricas introducidas en la Sección~\ref{ssec:metricas_clasificacion}:
+\begin{itemize}
+    \item Precisión (\textit{Accuracy}) general y por clase.
+    \item Sensibilidad (\textit{Recall}) por clase.
+    \item Especificidad por clase.
+    \item Puntuación F1 por clase y promediada (e.g., macro-F1, weighted-F1).
+    \item Matriz de Confusión.
+    \item Curvas ROC y Área Bajo la Curva (AUC) para cada clase (en un enfoque uno-vs-resto) y posiblemente un AUC promediado.
+\end{itemize}
+Se realizarán pruebas de validación cruzada (e.g., 5-fold o 10-fold cross-validation) sobre el conjunto de entrenamiento/validación combinado para obtener estimaciones más robustas del rendimiento de los clasificadores de enfermedad y para la selección final de hiperparámetros, antes de la evaluación final en el conjunto de prueba independiente.
+
+Este diseño experimental busca proporcionar una evaluación exhaustiva y rigurosa de la metodología propuesta, desde la optimización de sus componentes internos hasta la demostración de su impacto en la tarea final de diagnóstico asistido por computadora.

@@ -1,0 +1,221 @@
+% =============================================================================
+% CAPITULO 1: INTRODUCCION
+% =============================================================================
+
+\chapter{Introduccion}
+\label{ch:introduccion}
+
+% Cita inicial del capitulo
+\begin{flushright}
+    \textit{``El verdadero viaje de descubrimiento no consiste en buscar \\
+    nuevos paisajes, sino en tener nuevos ojos.''}\\
+    --- Marcel Proust
+\end{flushright}
+
+\vspace{1cm}
+
+% -----------------------------------------------------------------------------
+\section{Contexto y Motivacion}
+\label{sec:contexto}
+% -----------------------------------------------------------------------------
+
+La radiografia de torax constituye una de las modalidades de imagenes medicas mas utilizadas a nivel mundial, con mas de 2 mil millones de examenes realizados anualmente \cite{raoof2012interpretation}. Su bajo costo, rapida adquisicion, baja dosis de radiacion y amplia disponibilidad la convierten en la primera linea de diagnostico para una amplia variedad de condiciones pulmonares y cardiacas \cite{speets2006chest}.
+
+La interpretacion de radiografias de torax requiere la identificacion precisa de estructuras anatomicas de referencia, conocidas como \textit{landmarks} o puntos de referencia anatomicos. Estos landmarks son fundamentales para:
+
+\begin{itemize}
+    \item \textbf{Mediciones clinicas}: Calculo del indice cardiotoracico, evaluacion del tamano cardiaco y medicion de la silueta mediastinica.
+    \item \textbf{Deteccion de patologias}: Identificacion de cardiomegalia, derrames pleurales, neumotorax y masas pulmonares.
+    \item \textbf{Seguimiento longitudinal}: Comparacion objetiva entre estudios sucesivos para evaluar progresion o regresion de enfermedades.
+    \item \textbf{Planificacion de tratamientos}: Definicion de campos de radioterapia y guia para procedimientos intervencionistas.
+\end{itemize}
+
+La pandemia de COVID-19 ha intensificado dramaticamente la demanda de interpretacion de radiografias toracicas. Durante los picos de la pandemia, los departamentos de radiologia experimentaron aumentos de hasta el 300\% en su carga de trabajo \cite{jacobi2020portable}, lo que genero una necesidad urgente de herramientas automatizadas que asistan en el triaje y diagnostico.
+
+Sin embargo, la deteccion manual de landmarks anatomicos presenta limitaciones significativas:
+
+\begin{enumerate}
+    \item \textbf{Variabilidad inter-observador}: Diferentes radiologos pueden identificar los mismos puntos anatomicos con discrepancias de 5 a 15 pixeles \cite{van2017automatic}.
+    \item \textbf{Fatiga y errores humanos}: La carga de trabajo elevada incrementa la probabilidad de errores diagnosticos.
+    \item \textbf{Tiempo de procesamiento}: El etiquetado manual de multiples landmarks por imagen consume recursos valiosos del especialista.
+    \item \textbf{Escalabilidad limitada}: Es impractico mantener consistencia en estudios poblacionales a gran escala.
+\end{enumerate}
+
+Estas limitaciones motivan el desarrollo de sistemas automaticos de deteccion de landmarks basados en tecnicas de aprendizaje profundo (deep learning), capaces de proporcionar mediciones rapidas, reproducibles y objetivas.
+
+% -----------------------------------------------------------------------------
+\section{Problematica}
+\label{sec:problematica}
+% -----------------------------------------------------------------------------
+
+La deteccion automatica de landmarks anatomicos en radiografias de torax presenta desafios tecnicos especificos que la distinguen de otros problemas de vision por computadora:
+
+\subsection{Variabilidad Anatomica}
+
+La anatomia toracica exhibe considerable variabilidad entre individuos debido a factores como edad, sexo, constitucion fisica y posicion durante la adquisicion de la imagen. Los senos costofrenicos, en particular, presentan una alta variabilidad posicional (desviacion estandar de hasta 35 pixeles en nuestro dataset), lo que dificulta su localizacion precisa.
+
+\subsection{Presencia de Patologia}
+
+Las condiciones patologicas alteran significativamente la apariencia de las estructuras anatomicas:
+
+\begin{itemize}
+    \item \textbf{COVID-19}: Produce opacidades en vidrio esmerilado y consolidaciones que oscurecen los bordes pulmonares, dificultando la identificacion de landmarks en las bases pulmonares.
+    \item \textbf{Neumonia viral}: Genera infiltrados difusos que reducen el contraste local.
+    \item \textbf{Derrames pleurales}: Alteran la posicion aparente de los senos costofrenicos.
+    \item \textbf{Cardiomegalia}: Modifica las relaciones espaciales entre estructuras mediastinicas.
+\end{itemize}
+
+\subsection{Limitaciones del Etiquetado}
+
+El ground truth disponible para entrenar modelos supervisados proviene de etiquetado manual, el cual conlleva:
+
+\begin{itemize}
+    \item \textbf{Ruido inherente}: Error de etiquetado estimado en 1.5 a 2.0 pixeles.
+    \item \textbf{Asimetrias naturales}: Los pares de landmarks bilaterales presentan asimetrias de 5.5 a 7.9 pixeles en el ground truth, reflejando tanto la anatomia real como la variabilidad del etiquetado.
+    \item \textbf{Ambiguedad en bordes difusos}: En zonas de bajo contraste, la definicion exacta del landmark es subjetiva.
+\end{itemize}
+
+\subsection{Desbalance de Datos}
+
+Los datasets disponibles para radiografias de torax frecuentemente presentan desbalances entre categorias diagnosticas. En el dataset utilizado en este trabajo, la distribucion es:
+\begin{itemize}
+    \item Normal: 48.9\%
+    \item COVID-19: 32.0\%
+    \item Neumonia viral: 19.1\%
+\end{itemize}
+
+Este desbalance puede sesgar el modelo hacia las categorias mayoritarias, degradando el rendimiento en casos patologicos que son precisamente los de mayor interes clinico.
+
+% -----------------------------------------------------------------------------
+\section{Objetivos}
+\label{sec:objetivos}
+% -----------------------------------------------------------------------------
+
+\subsection{Objetivo General}
+
+Desarrollar un sistema de deep learning para la deteccion automatica de 15 landmarks anatomicos en radiografias de torax, alcanzando un error de localizacion menor a 8 pixeles y demostrando robustez ante condiciones patologicas como COVID-19 y neumonia viral.
+
+\subsection{Objetivos Especificos}
+
+\begin{enumerate}
+    \item \textbf{Implementar una arquitectura de red neuronal optimizada}: Disenar y entrenar un modelo basado en ResNet-18 con mecanismos de atencion espacial que maximice la precision en la localizacion de landmarks.
+
+    \item \textbf{Desarrollar un pipeline de preprocesamiento robusto}: Implementar tecnicas de realce de contraste (CLAHE) y normalizacion que mejoren la visibilidad de estructuras anatomicas, especialmente en casos patologicos.
+
+    \item \textbf{Evaluar funciones de perdida especializadas}: Comparar el rendimiento de diferentes funciones de perdida (MSE, Wing Loss, perdidas geometricas) para el problema de regresion de coordenadas.
+
+    \item \textbf{Implementar estrategias de ensemble}: Desarrollar un sistema de combinacion de multiples modelos que reduzca la varianza de las predicciones y mejore la precision final.
+
+    \item \textbf{Analizar el rendimiento por landmark y categoria}: Caracterizar el comportamiento del modelo en diferentes landmarks anatomicos y categorias diagnosticas, identificando fortalezas y limitaciones.
+
+    \item \textbf{Documentar el proceso de desarrollo}: Registrar sistematicamente las decisiones de diseno, experimentos realizados y lecciones aprendidas para facilitar la reproducibilidad y futura extension del trabajo.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\section{Contribuciones de la Tesis}
+\label{sec:contribuciones}
+% -----------------------------------------------------------------------------
+
+Las principales contribuciones de este trabajo son:
+
+\begin{resultadoclave}
+\begin{enumerate}
+    \item \textbf{Sistema de alta precision}: Se logro un error promedio de \errorpx{3.71}, superando ampliamente el objetivo inicial de $<$8 pixeles y acercandose al limite teorico impuesto por el ruido de etiquetado.
+
+    \item \textbf{Mejora del 59\% sobre baseline}: Reduccion del error de 9.08 px a 3.71 px mediante optimizacion sistematica de arquitectura, preprocesamiento y entrenamiento.
+
+    \item \textbf{Demostracion de eficacia de CLAHE para COVID-19}: El preprocesamiento con CLAHE (tile\_size=4) redujo el error en casos de COVID-19 de 11.74 a 3.80 pixeles, una mejora del 68\%.
+
+    \item \textbf{Estrategia de ensemble selectivo}: Se demostro que excluir modelos de bajo rendimiento del ensemble es mas efectivo que usar esquemas de ponderacion.
+\end{enumerate}
+\end{resultadoclave}
+
+Adicionalmente, se realizaron contribuciones metodologicas:
+
+\begin{itemize}
+    \item \textbf{Analisis geometrico del etiquetado}: Identificacion de la estructura parametrica del proceso de etiquetado manual, revelando que los landmarks centrales dividen el eje mediastinico en proporciones exactas (t = 0.25, 0.50, 0.75).
+
+    \item \textbf{Documentacion exhaustiva}: Registro detallado de 15 sesiones de desarrollo, incluyendo experimentos fallidos y lecciones aprendidas, facilitando la reproducibilidad.
+
+    \item \textbf{Codigo abierto}: Implementacion completa disponible para la comunidad cientifica, incluyendo scripts de entrenamiento, evaluacion e inferencia.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Alcances y Limitaciones}
+\label{sec:alcances}
+% -----------------------------------------------------------------------------
+
+\subsection{Alcances}
+
+\begin{itemize}
+    \item El sistema esta disenado para radiografias de torax posteroanterior (PA) en formato digital.
+    \item Se consideran 15 landmarks anatomicos especificos, seleccionados por su relevancia clinica.
+    \item El modelo ha sido entrenado y evaluado con imagenes de tres categorias: normal, COVID-19 y neumonia viral.
+    \item La implementacion es compatible con hardware de consumo (GPU AMD RX 6600 utilizada en este trabajo).
+\end{itemize}
+
+\subsection{Limitaciones}
+
+\begin{itemize}
+    \item \textbf{Tamano del dataset}: Con 957 imagenes totales y 96 en el conjunto de prueba, la generalizacion a poblaciones mas amplias requiere validacion adicional.
+
+    \item \textbf{Tipos de patologia}: El modelo no ha sido evaluado en condiciones como tuberculosis, cancer pulmonar, fibrosis o cardiopatias congenitas.
+
+    \item \textbf{Variabilidad de adquisicion}: Las imagenes provienen de fuentes limitadas; el rendimiento en imagenes de diferentes equipos o protocolos de adquisicion puede variar.
+
+    \item \textbf{Landmarks costofrenicos}: Los senos costofrenicos (L14, L15) presentan errores mayores (~4.8 px) debido a su alta variabilidad anatomica.
+
+    \item \textbf{Limite teorico}: El error minimo alcanzable esta limitado por el ruido inherente del etiquetado manual ($\sim$1.5-2.0 px).
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Metodologia de Investigacion}
+\label{sec:metodologia_inv}
+% -----------------------------------------------------------------------------
+
+Este trabajo siguio una metodologia de desarrollo iterativo e incremental, estructurada en las siguientes fases:
+
+\begin{enumerate}
+    \item \textbf{Analisis exploratorio}: Caracterizacion estadistica del dataset, identificacion de patrones geometricos en el etiquetado y definicion de metricas de evaluacion.
+
+    \item \textbf{Implementacion del baseline}: Desarrollo de la arquitectura base (ResNet-18 con cabeza de regresion) y establecimiento de la linea base de rendimiento.
+
+    \item \textbf{Optimizacion iterativa}: Ciclos de experimentacion sistematica para mejorar cada componente del sistema (preprocesamiento, arquitectura, entrenamiento, inferencia).
+
+    \item \textbf{Validacion rigurosa}: Verificacion de ausencia de data leakage, evaluacion en conjunto de prueba independiente y analisis de casos fallidos.
+
+    \item \textbf{Documentacion continua}: Registro de cada sesion de trabajo, decisiones de diseno y resultados experimentales.
+\end{enumerate}
+
+El proceso de desarrollo se extendio durante 15 sesiones de trabajo, cada una con objetivos especificos y entregables definidos. Este enfoque permitio un progreso medible y la identificacion temprana de problemas.
+
+% -----------------------------------------------------------------------------
+\section{Organizacion del Documento}
+\label{sec:organizacion}
+% -----------------------------------------------------------------------------
+
+El resto de este documento esta organizado de la siguiente manera:
+
+\begin{description}
+    \item[Capitulo 2: Marco Teorico] Presenta los fundamentos teoricos de redes neuronales convolucionales, arquitecturas de deep learning, mecanismos de atencion, funciones de perdida especializadas y tecnicas de preprocesamiento de imagenes medicas.
+
+    \item[Capitulo 3: Estado del Arte] Revisa la literatura relacionada con deteccion de landmarks en imagenes medicas, comparando diferentes enfoques (heatmaps vs. regresion directa) e identificando gaps en la investigacion actual.
+
+    \item[Capitulo 4: Metodologia] Describe en detalle la arquitectura propuesta, el pipeline de preprocesamiento, la estrategia de entrenamiento y las metricas de evaluacion utilizadas.
+
+    \item[Capitulo 5: Experimentacion y Resultados] Presenta los experimentos realizados, incluyendo estudios de ablacion, analisis por landmark y categoria, y comparacion de configuraciones.
+
+    \item[Capitulo 6: Discusion] Interpreta los resultados obtenidos, compara con el estado del arte, analiza casos exitosos y fallidos, y discute las implicaciones practicas.
+
+    \item[Capitulo 7: Conclusiones] Resume las contribuciones principales, evalua el cumplimiento de objetivos y propone direcciones de trabajo futuro.
+
+    \item[Apendice A: Codigo Fuente] Incluye fragmentos de codigo relevantes para la implementacion del modelo y funciones de perdida.
+
+    \item[Apendice B: Hiperparametros] Documenta la configuracion completa del sistema final.
+
+    \item[Apendice C: Visualizaciones Adicionales] Presenta figuras y diagramas complementarios.
+\end{description}
+
+% -----------------------------------------------------------------------------
+% FIN DEL CAPITULO
+% -----------------------------------------------------------------------------

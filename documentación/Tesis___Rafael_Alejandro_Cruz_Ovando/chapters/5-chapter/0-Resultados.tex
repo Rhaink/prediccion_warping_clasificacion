@@ -1,0 +1,128 @@
+\chapter{Resultados}
+\label{cap:resultados_discusion}
+
+Los resultados experimentales se presentan para cuantificar la precisión de la detección de puntos anatómicos utilizando el enfoque basado en modelos de apariencia.
+
+\section{Rendimiento de los Modelos de Apariencia}
+El análisis de los modelos PCA entrenados para cada punto anatómico reveló que un número relativamente pequeño de componentes principales es suficiente para capturar la mayor parte de la variabilidad en la apariencia de los parches de entrenamiento. Esto se cuantificó mediante la varianza explicada acumulada, donde típicamente los primeros 10-30 componentes explicaron alrededor del 95\% de la varianza total. Este hallazgo justifica la aplicación de técnicas de reducción de dimensionalidad para obtener representaciones compactas de la apariencia local.
+
+% \begin{figure}[H]
+%     \centering
+%     % Placeholder para gráfico de Varianza Explicada Acumulada
+%     \includegraphics[width=0.8\textwidth]{placeholder_variance_explained.png}
+%     \caption{Varianza explicada acumulada por el número de componentes principales para un punto anatómico representativo. Muestra cómo la mayoría de la variabilidad en la apariencia de los parches es capturada por un subespacio de baja dimensión.}
+%     \label{fig:variance_explained}
+% \end{figure}
+
+\section{Análisis de Precisión de Predicción en Pruebas Preliminares}
+La precisión de la localización de los puntos anatómicos se evaluó en el conjunto de prueba utilizando el Error Euclidiano como métrica principal. A continuación, se presentan los resultados de las pruebas preliminares descritas en la Sección \ref{cap:diseno_experimental}, enfocándose en la Coordenada 1 y la Coordenada 2 para ilustrar el comportamiento del sistema bajo diferentes condiciones. Es importante destacar que estos resultados corresponden a experimentos realizados \textbf{sin aplicar el proceso de alineamiento de formas (GPA)}.
+
+\begin{table}[htbp] % Se recomienda usar [htbp] en lugar de [H] para mejor flotación
+    \centering
+    \caption{Resultados de Error de Predicción Euclidiano (píxeles) para Coordenadas 1 y 2 en Pruebas Preliminares sin Alineamiento}
+    \label{tab:preliminary_prediction_errors}
+    % \small % Opcional: reduce el tamaño de fuente de toda la tabla si aún es necesario
+    \begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X l r r r @{}}
+        \toprule
+        Prueba & Coordenada & \makecell{Media\\(píxeles)} & \makecell{Mediana\\(píxeles)} & \makecell{Desviación\\Estándar\\(píxeles)} \\
+        \midrule
+        \textbf{Prueba 1 (200 imágenes)} & Coord1 & 4.04 & 2.24 & 4.92 \\
+        & Coord2 & 7.91 & 5.39 & 7.09 \\
+        \midrule
+        \textbf{Prueba 2 (400 imágenes con variaciones)} & Coord1 & 4.86 & 1.41 & 7.63 \\
+        & Coord2 & 11.64 & 13.04 & 7.36 \\
+        \midrule
+        \textbf{Prueba 3 (400 imágenes, SAHS)} & Coord1 & 4.76 & 3.61 & 4.12 \\
+        & Coord2 & 7.59 & 6.00 & 5.83 \\
+        \midrule
+        \textbf{Prueba 4 (800 imágenes)} & Coord1 & 5.62 & 1.71 & 8.37 \\
+        & Coord2 & 8.54 & 5.24 & 8.11 \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Discusión de los Resultados Preliminares}
+Los resultados de estas pruebas preliminares revelan varios puntos clave sobre el comportamiento del sistema sin la aplicación de alineamiento de formas:
+
+\begin{itemize}
+    \item \textbf{Impacto de la Variabilidad en la Forma (Prueba 2 vs. Prueba 1):} Al comparar la Prueba 2 con la Prueba 1, se observa un aumento significativo en el error promedio y la desviación estándar para ambas coordenadas, especialmente para la Coordenada 2. Esto se atribuye directamente a la inclusión de imágenes con traslaciones, rotaciones y escalas 'anormales' en el dataset de 400 imágenes. Este hallazgo subraya la sensibilidad del modelo de apariencia a las variaciones globales de forma cuando no se aplica una normalización geométrica previa.
+    \item \textbf{Efecto de la Normalización de Contraste (Prueba 3):} La aplicación de la normalización de contraste SAHS en la Prueba 3 mostró una reducción notable en el error promedio y la desviación estándar para la Coordenada 2 (7.59 $\pm$ 5.83 píxeles) en comparación con la Prueba 2 (11.64 $\pm$ 7.36 píxeles). Este resultado es consistente con las observaciones previas de que la región cercana a la Coordenada 2 tiende a presentar contrastes muy altos, y una normalización adecuada puede mejorar la robustez de la extracción de características de apariencia en esa zona. Aunque la Coordenada 1 también mostró una ligera mejora en la desviación estándar, el impacto fue más pronunciado en la Coordenada 2.
+    \item \textbf{Impacto del Tamaño del Dataset con Variaciones (Prueba 4):} La Prueba 4, que aumentó el dataset a 800 imágenes sin alineamiento pero incluyendo las imágenes con variaciones, resultó en un empeoramiento de las predicciones para ambas coordenadas en comparación con la Prueba 1 y la Prueba 3. Esto indica que simplemente aumentar el volumen de datos de entrenamiento no es suficiente si el dataset contiene una alta variabilidad de forma no normalizada. De hecho, puede introducir más ruido y complejidad al modelo de apariencia, dificultando la generalización.
+\end{itemize}
+Estos hallazgos preliminares resaltan la importancia crítica de la etapa de alineamiento de formas (GPA) en el pipeline propuesto, ya que su objetivo principal es mitigar la variabilidad global de traslación, rotación y escala que, como se demostró, afecta negativamente la precisión de los modelos de apariencia. Las futuras pruebas con la aplicación de alineamiento se espera que demuestren una mejora sustancial en la robustez y precisión del sistema.
+
+% \subsection{Visualizaciones de Predicción}
+% Las visualizaciones de las predicciones superpuestas en las imágenes de prueba (ej. Figura \ref{fig:prediction_visualization}) demuestran cualitativamente la capacidad del sistema para localizar los puntos. Se generaron visualizaciones que muestran la imagen redimensionada con los puntos anatómicos predichos marcados. Adicionalmente, para los puntos $\mathbf{p}_0$ y $\mathbf{p}_1$, se superpusieron construcciones geométricas derivadas de sus predicciones, como la línea principal trazada con el algoritmo de Bresenham, los puntos cuartiles en esta línea y segmentos de línea perpendiculares en estos puntos. Estas visualizaciones proporcionan una indicación visual de la alineación y la estructura de la forma predicha.
+
+% \begin{figure}[H]
+%     \centering
+%     % Placeholder para figura de Visualización de Predicción
+%     \includegraphics[width=0.8\textwidth]{placeholder_prediction_visualization.png}
+%     \caption{Ejemplo de visualización de predicción en una imagen de prueba. Muestra la imagen redimensionada con los puntos anatómicos predichos marcados y las construcciones geométricas (línea principal, cuartiles, perpendiculares) superpuestas.}
+%     \label{fig:prediction_visualization}
+% \end{figure}
+
+\section{Resultados SAHS}
+
+Para evaluar la eficacia de SAHS (Statistical Asymmetrical Histogram Stretching) en comparación con las técnicas convencionales, realizamos una serie de experimentos utilizando diversas arquitecturas de redes neuronales convolucionales (CNN) para la clasificación de imágenes radiográficas de tórax. Los resultados se compararon con el rendimiento de las mismas arquitecturas utilizando HE y CLAHE.
+
+La Tabla  muestra los resultados de precisión obtenidos para cada arquitectura CNN y método de preprocesamiento:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Modelo CNN} & \textbf{HE} & \textbf{CLAHE} & \textbf{SAHS} \\ \hline
+AlexNet & 89.4\% & 91.6\% & 92.8\% \\ \hline
+Compact & 92.1\% & 91.6\% & 95.1\% \\ \hline
+Enhanced & 93.1\% & 93.6\% & 95.1\% \\ \hline
+ResNet-18 & 93.8\% & 92.1\% & 96.3\% \\ \hline
+MobileNetV2 & 95.6\% & 96.0\% & 95.1\% \\ \hline
+ResNet-50 & 93.6\% & 95.3\% & 95.8\% \\ \hline
+\end{tabular}
+\caption{Resultados de precisión (tasa de aciertos) de los experimentos.}
+\label{tabla:resultados_precision}
+\end{table}
+\subsection{Análisis de Resultados}
+\begin{enumerate}
+    \item \textbf{Superioridad del método SAHS:} Nuestro método SAHS superó a CLAHE en la mayoría de los casos, con mejoras notables en AlexNet, Compact, Enhanced y ResNet-18.
+    
+    \item \textbf{Rendimiento por arquitectura:}
+    \begin{itemize}
+        \item ResNet-18 mostró la mayor mejora con SAHS, alcanzando un 96.3\% de precisión.
+        \item MobileNetV2 y ResNet-50 tuvieron un rendimiento similar con CLAHE y SAHS, con una ligera ventaja para SAHS en ResNet-50.
+    \end{itemize}
+    
+    \item \textbf{Consistencia:} SAHS demostró ser más consistente en la mejora de la precisión a través de diferentes arquitecturas, sugiriendo una mejor adaptabilidad a diversos modelos de CNN.
+    
+    \item \textbf{Eficacia en arquitecturas más simples:} La mejora fue más pronunciada en arquitecturas más simples como AlexNet y Compact, indicando que SAHS puede ser especialmente beneficioso cuando se utilizan modelos menos complejos.
+\end{enumerate}
+
+
+\section{Resultados Segmentación Automática}
+Los resultados obtenidos de la evaluación se presentan a continuación, detallando el rendimiento para cada uno de los 10 modos de entrenamiento. Las métricas clave incluyen la mejor precisión de validación, el número de épocas entrenadas hasta la convergencia o detención temprana, la pérdida de evaluación final y la precisión de evaluación final.
+
+\begin{table}[htbp] % Se recomienda [htbp] para mejor flotación
+    \centering
+    \caption{Resultados Detallados por Modo de Entrenamiento}
+    \label{tab:detailed_results}
+    % \small % Opcional: reduce el tamaño de fuente si es necesario
+    \begin{tabularx}{\textwidth}{@{} l >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X @{}}
+        \toprule
+        \textbf{Modo} & \makecell{\textbf{Mejor Precisión}\\\textbf{de Validación}} & \makecell{\textbf{Épocas}\\\textbf{Entrenadas}} & \makecell{\textbf{Pérdida de}\\\textbf{Evaluación Final}} & \makecell{\textbf{Precisión de}\\\textbf{Evaluación Final}} \\
+        \midrule
+        k0 & 0.8870 & 32 & 0.37881 & 0.8870 \\
+        k1 & 0.7212 & 57 & 1.01564 & 0.7212 \\
+        k2 & 0.7380 & 46 & 0.75595 & 0.7380 \\
+        k3 & 0.7163 & 47 & 0.74818 & 0.7163 \\
+        k4 & 0.7139 & 63 & 0.98626 & 0.7139 \\
+        k5 & 0.6923 & 72 & 0.93360 & 0.6923 \\
+        k6 & 0.6226 & 53 & 0.99640 & 0.6226 \\
+        k7 & 0.6755 & 59 & 0.85054 & 0.6755 \\
+        k8 & 0.6346 & 58 & 1.04511 & 0.6346 \\
+        k9 & 0.6082 & 56 & 0.97770 & 0.6082 \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+El rendimiento promedio del modelo a través de los 10 modos evaluados es de una Precisión de Evaluación Final de  \textbf{DSC} = $0.7010$, con una desviación estándar de $0.0753$. La pérdida de evaluación final promedio fue de $0.86882$. Estos valores indican una variabilidad en el rendimiento entre los diferentes modos, lo cual es esperado en experimentos con particiones de datos o configuraciones ligeramente distintas.

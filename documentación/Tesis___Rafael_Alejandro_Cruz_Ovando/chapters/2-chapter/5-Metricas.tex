@@ -1,0 +1,33 @@
+\section{Métricas de Evaluación}
+\label{sec:metricas_evaluacion_teoria}
+La evaluación cuantitativa del rendimiento de los algoritmos desarrollados es fundamental. Se utilizarán diferentes métricas según la tarea.
+
+\subsection{Para Segmentación (Coeficiente de Dice)}
+\label{ssec:metricas_segmentacion}
+El rendimiento de la segmentación de la región pulmonar (resultado del proceso de alineación y normalización) se evaluará principalmente mediante el Coeficiente de Similitud de Dice (DSC), también conocido como puntuación F1 de solapamiento. Dados una máscara de segmentación predicha $M_{\text{pred}}$ y una máscara de referencia (ground truth) $M_{\text{GT}}$, el DSC se define como:
+$\text{DSC}(M_{\text{GT}}, M_{\text{pred}}) = \frac{2 \cdot |M_{\text{GT}} \cap M_{\text{pred}}|}{|M_{\text{GT}}| + |M_{\text{pred}}|}$
+donde $| \cdot |$ denota el número de píxeles en la región (área) y $\cap$ representa la intersección. El DSC varía entre 0 (ninguna superposición) y 1 (superposición perfecta). Un valor más alto indica una mejor segmentación.
+Otras métricas como la Distancia de Hausdorff o el Jaccard Index (IoU, Intersection over Union), donde $\text{IoU} = \text{DSC} / (2 - \text{DSC})$, también son comunes pero el Dice es prevalente en la literatura de segmentación médica \cite{taha2015metrics}.
+
+\subsection{Para Clasificación}
+\label{ssec:metricas_clasificacion}
+Para la tarea de clasificación de enfermedades (sano, neumonía, COVID-19), se utilizarán las siguientes métricas, derivadas de la matriz de confusión:
+Sea $TP$ (Verdaderos Positivos), $TN$ (Verdaderos Negativos), $FP$ (Falsos Positivos), $FN$ (Falsos Negativos) para una clase específica.
+\begin{itemize}
+\item \textbf{Precisión (Accuracy):} Proporción de predicciones correctas sobre el total.
+$\text{Accuracy} = \frac{TP+TN}{TP+TN+FP+FN}$
+\item \textbf{Sensibilidad (Recall o Tasa de Verdaderos Positivos):} Proporción de positivos reales que fueron correctamente identificados.
+$\text{Sensibilidad} = \frac{TP}{TP+FN}$
+\item \textbf{Especificidad (Tasa de Verdaderos Negativos):} Proporción de negativos reales que fueron correctamente identificados.
+$\text{Especificidad} = \frac{TN}{TN+FP}$
+\item \textbf{Puntuación F1 (F1-Score):} Media armónica de la precisión (valor predictivo positivo) y la sensibilidad, útil para clases desequilibradas.
+$\text{Precisión (PPV)} = \frac{TP}{TP+FP}$
+$\text{F1-Score} = 2 \cdot \frac{\text{Precisión (PPV)} \cdot \text{Sensibilidad}}{\text{Precisión (PPV)} + \text{Sensibilidad}}$
+\item \textbf{Curva ROC (Receiver Operating Characteristic):} Gráfico de la Sensibilidad (TPR) vs. 1 - Especificidad (FPR) para diferentes umbrales de clasificación.
+\item \textbf{Área Bajo la Curva ROC (AUC):} Medida de la capacidad general del clasificador para distinguir entre clases. Un AUC de 1 representa un clasificador perfecto, mientras que 0.5 representa un clasificador aleatorio \cite{fawcett2006introduction}.
+\end{itemize}
+Estas métricas proporcionarán una evaluación exhaustiva del rendimiento de los clasificadores de enfermedades desarrollados. La validación cruzada se empleará para obtener estimaciones más robustas de estas métricas y evaluar la generalización del modelo \cite{kohavi1995study}.
+
+% (Sugerencia: Tabla \ref{tab:matriz_confusion_ejemplo}: Un ejemplo de una matriz de confusión para un problema de 3 clases (Sano, Neumonía, COVID-19) y cómo se calcularían TP, TN, FP, FN para una clase específica, por ejemplo, COVID-19.)
+
+Este marco teórico proporciona los cimientos para entender la metodología, los experimentos y los resultados que se presentarán en los capítulos subsiguientes de esta tesis.

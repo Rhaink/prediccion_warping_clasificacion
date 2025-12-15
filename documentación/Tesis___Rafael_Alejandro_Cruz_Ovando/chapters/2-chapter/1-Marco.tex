@@ -1,0 +1,28 @@
+\chapter{Marco Teórico y Antecedentes}
+\label{cap:marco_teorico}
+
+Este capítulo establece el contexto científico y técnico en el que se enmarca la presente tesis. Se revisan los conceptos fundamentales y los trabajos previos más relevantes en las áreas de detección de patologías pulmonares mediante radiografías de tórax, segmentación y normalización de la región pulmonar, extracción de características y clasificación mediante aprendizaje automático. El objetivo es proporcionar una base sólida para comprender la motivación, el diseño y la contribución de la metodología MaShDL-CNN Hybrid propuesta.
+
+\subsection{Métodos Tradicionales y Basados en Aprendizaje Profundo}
+\label{ssec:metodos_tradicionales_dl}
+
+Históricamente, los esfuerzos para desarrollar sistemas de Diagnóstico Asistido por Computadora (CADx) para CXR se basaron en técnicas de procesamiento de imágenes tradicional y reconocimiento de patrones. Estos sistemas a menudo implicaban una segmentación inicial de la región pulmonar, seguida de la extracción de características diseñadas manualmente (e.g., descriptores de textura, forma, intensidad) y, finalmente, la clasificación mediante algoritmos de aprendizaje automático convencionales como Máquinas de Soporte Vectorial (SVM), árboles de decisión o redes neuronales simples \cite{suzuki2017overview, ginneken2001computer}. Si bien estos enfoques lograron ciertos éxitos, su rendimiento a menudo estaba limitado por la robustez de la segmentación y la capacidad de las características diseñadas manualmente para capturar la compleja variabilidad de los patrones patológicos.
+
+La última década ha sido testigo de una revolución en el campo del análisis de imágenes médicas, impulsada en gran medida por los avances en Aprendizaje Profundo (Deep Learning, DL), y en particular, por las Redes Neuronales Convolucionales (CNN) \cite{lecun2015deep, litjens2017survey}. Las CNNs han demostrado una capacidad sobresaliente para aprender jerarquías de características directamente a partir de los datos de imagen, eliminando la necesidad de una ingeniería de características manual y, a menudo, superando el rendimiento de los métodos tradicionales en diversas tareas, incluyendo la detección y clasificación de enfermedades en CXR \cite{rajpurkar2017chexnet, wang2020covid, ozturk2020automated, shaik2023comprehensive, ciompi2023towards}. Arquitecturas como AlexNet \cite{krizhevsky2012imagenet}, VGG \cite{simonyan2014very}, ResNet \cite{he2016deep}, DenseNet \cite{huang2017densely}, e Inception \cite{szegedy2015going}, así como modelos más recientes y específicos para tareas médicas (e.g., U-Net para segmentación \cite{ronnerberger2015unet}), han sido adaptadas o utilizadas como base para el análisis de CXR.
+
+% (Sugerencia: Tabla \ref{tab:comparativa_metodos_cxr}: Una tabla comparativa que resuma las ventajas y desventajas de los métodos tradicionales vs. los basados en aprendizaje profundo para el análisis de CXR. Columnas: Característica (e.g., Extracción de Features, Dependencia de Datos, Interpretabilidad, Rendimiento Típico), Métodos Tradicionales, Métodos de Aprendizaje Profundo.)
+
+\subsection{Desafíos Existentes en el Análisis Automatizado de CXR}
+\label{ssec:desafios_cxr}
+
+A pesar del éxito de los modelos de DL, persisten varios desafíos en el análisis automatizado de CXR:
+\begin{itemize}
+\item \textbf{Variabilidad de los Datos y Calidad de Imagen:} Las CXR pueden variar significativamente en términos de contraste, ruido, resolución y artefactos, dependiendo del equipo, el protocolo de adquisición y la configuración \cite{zech2018variable}.
+\item \textbf{Ambigüedad y Superposición Anatómica:} La naturaleza 2D de las CXR implica la superposición de múltiples estructuras 3D (costillas, corazón, diafragma, vasos pulmonares), lo que puede dificultar la identificación de patologías sutiles \cite{borghesi2020radiographic}.
+\item \textbf{Variabilidad Inter-Paciente:} Las diferencias en la anatomía, la edad, el sexo, la constitución física y el grado de inspiración del paciente introducen una gran variabilidad geométrica en la apariencia de la región pulmonar.
+\item \textbf{Disponibilidad y Anotación de Datos:} Aunque existen grandes conjuntos de datos públicos de CXR (e.g., CheXpert \cite{irvin2019chexpert}, MIMIC-CXR \cite{johnson2019mimic}, PadChest \cite{bustos2020padchest}, COVID-19 Image Data Collection \cite{cohen2020covid}), la obtención de anotaciones precisas y consistentes (e.g., segmentaciones, etiquetas de patologías múltiples) a gran escala sigue siendo un desafío costoso y laborioso \cite{park2020methodologic}.
+\item \textbf{Desequilibrio de Clases:} Ciertas patologías son mucho menos frecuentes que otras, lo que puede llevar a modelos sesgados si no se maneja adecuadamente durante el entrenamiento \cite{johnson2019mimic}.
+\item \textbf{Interpretabilidad y Confianza:} Los modelos de DL, a menudo considerados "cajas negras", necesitan mejorar en términos de explicabilidad para ganar la confianza de los clínicos y facilitar su adopción \cite{holzinger2019causability, anwar2022explainable}.
+\end{itemize}
+La normalización y alineación de la forma pulmonar, tema central de esta tesis, busca abordar directamente el desafío de la variabilidad geométrica inter-paciente y de adquisición.
+

@@ -1,0 +1,102 @@
+% % Asegúrate de que estos comandos están definidos en tu preámbulo:
+% % \newcommand{\mat}[1]{\mathbf{#1}}   
+% % \newcommand{\vect}[1]{\bm{#1}} % Requiere \usepackage{bm}
+% % \newcommand{\transpose}{\mathsf{T}}
+% % \newcommand{\R}{\mathbb{R}} 
+% % \newcommand{\set}[1]{\mathcal{#1}} % Ejemplo de macro para conjuntos, si se usa
+
+% \section{Metodología de Evaluación Cuantitativa}
+% \label{sec:evaluacion}
+
+% El rendimiento del proceso de segmentación se cuantifica mediante la comparación de la máscara predicha inicial, $\mat{M}_{\text{pred,initial}}$, con su correspondiente máscara ground truth, $\mat{M}_{GT}$, para cada imagen $\mat{I}$ en el conjunto de datos de prueba. El dominio espacial de estas máscaras es $\Omega$, que corresponde a las dimensiones de la imagen.
+
+% \subsection{Métrica de Superposición: Coeficiente de Dice}
+% La métrica fundamental empleada para esta evaluación es el Coeficiente de Dice (DSC). Este coeficiente mide el grado de superposición entre las dos máscaras binarias y, para una imagen dada, se define formalmente como:
+% \begin{equation}
+% \text{DSC}(\mat{M}_{\text{pred,initial}}, \mat{M}_{GT}) = \frac{2 \cdot |\mat{M}_{\text{pred,initial}} \cap \mat{M}_{GT}|}{|\mat{M}_{\text{pred,initial}}| + |\mat{M}_{GT}|},
+% \label{eq:dice_coefficient_eval_math}
+% \end{equation}
+% donde $|\cdot|$ denota la cardinalidad del conjunto de píxeles (es decir, el área de la región en píxeles) y $\cap$ representa la operación de intersección entre los conjuntos de píxeles que constituyen las máscaras. Un valor de $\text{DSC}=1$ significa una concordancia perfecta entre la predicción y la referencia, mientras que $\text{DSC}=0$ indica una ausencia total de superposición.
+
+% \subsection{Proceso de Evaluación para el Conjunto de Prueba}
+% El procedimiento de evaluación se aplica sistemáticamente a cada una de las $N_{\text{test}}$ imágenes que componen el conjunto de prueba:
+% \begin{enumerate}
+%     \item Para la $j$-ésima imagen de prueba, $\mat{I}_j$, se dispone de:
+%     \begin{itemize}
+%         \item La máscara predicha $\mat{M}_{\text{pred,initial}}^{(j)}$, obtenida a partir del ajuste del modelo de forma, como se detalla en la Sección~\ref{sec:mascara_predicha_asm}.
+%         \item La máscara ground truth correspondiente $\mat{M}_{GT}^{(j)}$, generada a partir de las anotaciones de referencia, según se describe en la Sección~\ref{sec:generacion_mascaras_gt}.
+%     \end{itemize}
+%     \item Se calcula el Coeficiente de Dice $\text{DSC}_j$ para esta $j$-ésima imagen mediante la aplicación de la Ecuación~\eqref{eq:dice_coefficient_eval_math}:
+%     \begin{equation}
+%     \text{DSC}_j = \text{DSC}(\mat{M}_{\text{pred,initial}}^{(j)}, \mat{M}_{GT}^{(j)}).
+%     \label{eq:dsc_j_instance} % Etiqueta para esta instancia específica
+%     \end{equation}
+%     \item Este proceso se repite para todas las imágenes del conjunto de prueba, lo que resulta en un conjunto de $N_{\text{test}}$ coeficientes de Dice, denotado como $\mathcal{D}_{\text{scores}} = \{\text{DSC}_j\}_{j=1}^{N_{\text{test}}}$.
+% \end{enumerate}
+
+% \subsection{Análisis Estadístico y Visualización de Resultados}
+% El rendimiento global del proceso de segmentación se caracteriza mediante el análisis estadístico del conjunto de scores $\mathcal{D}_{\text{scores}}$. Se calculan las siguientes estadísticas descriptivas para resumir la distribución de estos coeficientes:
+% \begin{itemize}
+%     \item Media Aritmética: $\overline{\text{DSC}} = \frac{1}{N_{\text{test}}} \sum_{j=1}^{N_{\text{test}}} \text{DSC}_j$.
+%     \item Desviación Estándar Muestral: $s_{\text{DSC}} = \sqrt{\frac{1}{N_{\text{test}}-1} \sum_{j=1}^{N_{\text{test}}} (\text{DSC}_j - \overline{\text{DSC}})^2}$ (usando $s$ para desviación estándar muestral para distinguirla de $\sigma$ poblacional o de modos de SSM).
+%     \item Mediana, Valor Mínimo y Valor Máximo observados en el conjunto $\mathcal{D}_{\text{scores}}$.
+% \end{itemize}
+% Estos agregados estadísticos proporcionan una medida sumaria del rendimiento promedio del modelo y de su consistencia a través del conjunto de prueba.
+
+% De forma complementaria al análisis numérico, se realiza una inspección cualitativa mediante la generación de imágenes de superposición para cada muestra de prueba. Como se ilustra en la Figura~\ref{fig:evaluation_overlay_example_math}, estas visualizaciones presentan la imagen original $\mat{I}_j$ junto con los contornos delineados por la máscara ground truth $\mat{M}_{GT}^{(j)}$ y la máscara predicha $\mat{M}_{\text{pred,initial}}^{(j)}$. El valor del Coeficiente de Dice $\text{DSC}_j$, calculado para esa instancia específica, acompaña a esta representación visual. Este enfoque permite la identificación de patrones en los casos de alta concordancia (e.g., $\text{DSC} \approx 0.95$) y en aquellos donde la segmentación presenta mayores discrepancias, ofreciendo así una perspectiva que enriquece la interpretación de las métricas cuantitativas.
+
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.6\textwidth]{Figures/overlay_idx57_dice0.955_TwoCt_PP_TwoCt_PP.png} 
+%     \caption{Visualización de la evaluación para una muestra del conjunto de prueba. La imagen original $\mat{I}_j$ se muestra con el contorno de la máscara ground truth $\mat{M}_{GT}^{(j)}$ (representado en verde) y el contorno de la máscara predicha $\mat{M}_{\text{pred,initial}}^{(j)}$ (representado en rojo). El Coeficiente de Dice (DSC) calculado para esta instancia es $\text{DSC}_j = 0.95$.}
+%     \label{fig:evaluation_overlay_example_math}
+% \end{figure}
+
+% Esta metodología de evaluación, centrada en la formulación matemática del Coeficiente de Dice y complementada con un análisis estadístico riguroso y visualizaciones detalladas, permite una valoración robusta y transparente del rendimiento de nuestro pipeline de segmentación pulmonar.
+
+\section{Evaluación Cuantitativa}
+\label{sec:evaluacion_simplified}
+
+Para medir qué tan bien funciona nuestro método de segmentación, comparamos la máscara que nuestro modelo predice ($\mat{M}_{\text{predicha}}$) con la máscara perfecta o ground truth ($\mat{M}_{GT}$), para cada imagen del conjunto de prueba. Estas máscaras fueron generadas como se describió en la Sección~\ref{sec:generacion_mascaras_simplified}.
+
+\subsection{Métrica de Superposición: Coeficiente de Dice (DSC)}
+La principal métrica que usamos es el Coeficiente de Dice (DSC). El DSC mide qué tanto se parecen o se superponen dos máscaras. Se calcula así:
+\begin{equation}
+\text{DSC} = \frac{2 \times \text{Área de Superposición entre } \mat{M}_{\text{predicha}} \text{ y } \mat{M}_{GT}}{\text{Área Total de } \mat{M}_{\text{predicha}} + \text{Área Total de } \mat{M}_{GT}}.
+\label{eq:dice_coefficient_simplified}
+\end{equation}
+En esta fórmula:
+\begin{itemize}
+    \item "Área de Superposición" es el número de píxeles que son blancos (parte del pulmón) en \textit{ambas} máscaras, $\mat{M}_{\text{predicha}}$ y $\mat{M}_{GT}$.
+    \item "Área Total" es el número de píxeles que son blancos en cada máscara individualmente.
+\end{itemize}
+Un DSC de 1 significa que la predicción y el ground truth son idénticos (perfecto). Un DSC de 0 significa que no se superponen en absoluto.
+
+\subsection{Proceso de Evaluación}
+Para cada imagen en nuestro conjunto de prueba (supongamos que hay $N_{\text{test}}$ imágenes):
+\begin{enumerate}
+    \item Tomamos la máscara predicha por nuestro modelo para esa imagen, $\mat{M}_{\text{predicha}}^{(j)}$.
+    \item Tomamos la máscara ground truth correspondiente, $\mat{M}_{GT}^{(j)}$.
+    \item Calculamos el DSC para esa imagen, $\text{DSC}_j$, usando la fórmula anterior.
+\end{enumerate}
+Al final, tendremos una lista con $N_{\text{test}}$ valores de DSC, uno por cada imagen de prueba.
+
+\subsection{Análisis de Resultados}
+Para entender el rendimiento general, calculamos estadísticas sobre la lista de valores de DSC:
+\begin{itemize}
+    \item \textbf{Media (Promedio):} El valor promedio de DSC de todas las imágenes.
+    \item \textbf{Desviación Estándar:} Cuánto varían los valores de DSC alrededor de la media.
+    \item \textbf{Mediana, Mínimo y Máximo:} Para ver el rango y el valor central de los DSC obtenidos.
+\end{itemize}
+Estos números nos dan una idea general de qué tan bien y qué tan consistentemente funciona nuestro método.
+
+Además, es útil ver visualmente cómo se comparan las máscaras. Para cada imagen de prueba, podemos superponer los contornos de la máscara predicha y la máscara ground truth sobre la radiografía original. Esto nos ayuda a entender por qué el DSC es alto o bajo en casos específicos.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\textwidth]{Figures/overlay_idx57_dice0.955_TwoCt_PP_TwoCt_PP.png} 
+    \caption{Ejemplo de visualización para evaluar la segmentación. Se muestran los contornos del ground truth (ej. en verde) y de la predicción (ej. en rojo) sobre la imagen, junto con el valor de DSC para esa imagen $\text{DSC}_j = 0.9$.}
+    \label{fig:evaluation_overlay_example_simplified}
+\end{figure}
+
+Esta forma de evaluar, usando el DSC y visualizaciones, nos permite valorar de manera robusta el rendimiento de la segmentación.

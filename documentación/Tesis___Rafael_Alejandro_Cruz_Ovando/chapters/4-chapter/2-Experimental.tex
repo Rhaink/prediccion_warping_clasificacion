@@ -1,0 +1,583 @@
+\chapter{Introducción al Problema y Enfoque Metodológico}
+\label{chap:introduccion_mat}
+    \section{Contexto de la Segmentación Pulmonar}
+    La segmentación precisa de los campos pulmonares en imágenes médicas, como las radiografías de tórax (CXR), es un paso fundamental en el diagnóstico asistido por computadora (CAD) y en el análisis cuantitativo de diversas patologías pulmonares. La correcta delimitación de los pulmones permite la extracción de características relevantes, la medición de volúmenes, la detección de anomalías y el seguimiento de la progresión de enfermedades. Sin embargo, la segmentación pulmonar en CXR presenta desafíos debido a la variabilidad en la forma y apariencia de los pulmones entre pacientes, la superposición de estructuras anatómicas (e.g., costillas, clavículas, corazón) y la posible presencia de artefactos o patologías que alteran los contornos.
+
+    \section{El Pipeline MaShDl-CNN: Una Visión General Híbrida}
+    Para abordar estos desafíos, se ha propuesto el pipeline MaShDl-CNN (Model-based Shape and Deep Learning - Convolutional Neural Network). Este es un enfoque híbrido que combina las fortalezas de los modelos estadísticos de forma (SSM), que codifican el conocimiento a priori sobre la variabilidad de la forma pulmonar, con el poder de las redes neuronales convolucionales (CNN) para aprender características visuales complejas directamente de los datos de la imagen.
+    
+    El pipeline MaShDl-CNN se puede conceptualizar en varias fases interconectadas:
+    \begin{enumerate}
+        \item \textbf{Preparación de Datos:} Carga y organización del conjunto de datos de radiografías y sus correspondientes anotaciones de landmarks.
+        \item \textbf{Construcción del Modelo Estadístico de Forma (SSM):} A partir de un conjunto de entrenamiento de formas pulmonares (representadas por landmarks), se construye un SSM que captura la variabilidad principal de la forma. Esto implica la densificación de landmarks, el alineamiento mediante Análisis Generalizado de Procrustes (GPA) y la aplicación de Análisis de Componentes Principales (PCA).
+        \item \textbf{Estimación de Pose Inicial (ESL):} Se entrena un conjunto de clasificadores basados en CNN para realizar una estimación inicial de la pose (posición, escala y orientación) de los pulmones en una imagen dada.
+        \item \textbf{Extracción de Características MaShDL y Predicción de Coeficientes de Forma:} Utilizando la pose estimada por ESL, se muestrean parches de imagen alrededor de los puntos de una instancia del SSM transformada al espacio de la imagen. Estos parches se utilizan como entrada a otros modelos de CNN para predecir los coeficientes del SSM ($b_k$) que mejor describen la forma pulmonar en la imagen.
+        \item \textbf{Segmentación Final (implícita):} Con los coeficientes $b_k$ predichos, se puede reconstruir la instancia del SSM que mejor se ajusta a la imagen, proporcionando así la segmentación del contorno pulmonar.
+    \end{enumerate}
+
+    \section{Objetivo de este Documento: Detalle Matemático}
+    El presente documento tiene como objetivo principal proporcionar una descripción matemática detallada y rigurosa de las fases metodológicas clave del pipeline MaShDl-CNN. Se pondrá especial énfasis en la formulación matemática de cada componente, las ecuaciones subyacentes y la justificación de las elecciones metodológicas desde una perspectiva teórica. Si bien la implementación de ciertos componentes (como los clasificadores ESL y MaShDL) involucra redes neuronales, este documento se centrará en los aspectos matemáticos del modelado de formas, la estimación de pose y la extracción de características, más que en los detalles arquitectónicos de las redes neuronales mismas. Se busca ofrecer una comprensión profunda de los fundamentos matemáticos que sustentan el pipeline MaShDl-CNN.
+
+\chapter{Fase 1: Preparación y Caracterización del Conjunto de Datos}
+    \label{chap:datos}
+    \section{Descripción del Conjunto de Datos Base}
+    \label{ssec:conjunto_datos_mat} % Nueva label para evitar colisión
+    El presente trabajo utiliza un conjunto de datos público de radiografías de tórax, comúnmente conocido como el \textit{COVID-19 Radiography Dataset} \cite{Rahman2021covid}. Este conjunto de datos ha sido ampliamente utilizado en la investigación relacionada con la detección y análisis de COVID-19, así como para otras patologías pulmonares. Contiene imágenes de radiografías de tórax en vista posteroanterior (PA) clasificadas en varias categorías, incluyendo COVID-19, Neumonía Viral y Normal.
+    
+    Para los propósitos de este proyecto de segmentación de pulmones, el enfoque principal recae en la delimitación anatómica de los pulmones, independientemente del diagnóstico patológico original de las imágenes. Las imágenes del dataset están predominantemente en formato PNG y presentan una variedad de resoluciones. El conjunto de datos original también incluye archivos de metadatos que asocian cada imagen con un identificador único y una categoría. En algunos casos, pueden existir anotaciones iniciales o landmarks escasos (e.g., 15 puntos por pulmón) que sirven como punto de partida para el proceso de densificación de landmarks detallado en la Sección~\ref{ssec:densificacion_mat}. % Referencia a la sección ya integrada
+    
+    En el contexto de este proyecto, se asume que la estructura de directorios del dataset original, junto con los archivos de metadatos como `indices_maestro_1.csv` (que mapea índices internos a identificadores de imagen y categorías) y `coordenadas_maestro_1.csv` (que contiene los landmarks originales), se encuentra accesible en el directorio base `Tesis/`, específicamente en subdirectorios como `COVID-19_Radiography_Dataset/`, `indices/`, y `coordenadas/`.
+
+    \section{Representación Matemática de las Formas Iniciales}
+        % Definición de un landmark, una forma como conjunto de landmarks.
+        % X_k = {p_1, ..., p_N_inicial}_k
+    Cada imagen $I_k$ en el conjunto de datos está asociada con un conjunto inicial de $N_{inicial}$ landmarks (puntos de referencia anatómicos). Cada landmark $j$ de la imagen $k$ es un punto en el espacio 2D, denotado como $\vect{p}_{kj} = (x_{kj}, y_{kj}) \in \realset^2$.
+    Por lo tanto, la forma inicial para la imagen $k$ se representa como un conjunto de estos puntos:
+    \begin{equation}
+        \vect{X}_k = \{\vect{p}_{k1}, \vect{p}_{k2}, \dots, \vect{p}_{kN_{inicial}}\}
+    \end{equation}
+    Alternativamente, la forma $\vect{X}_k$ puede ser representada como una matriz de $N_{inicial} \times 2$:
+    \begin{equation}
+        \mat{X}_k = \begin{bmatrix} x_{k1} & y_{k1} \\ x_{k2} & y_{k2} \\ \vdots & \vdots \\ x_{kN_{inicial}} & y_{kN_{inicial}} \end{bmatrix}
+    \end{equation}
+    En este trabajo, $N_{inicial}=15$. Estos landmarks iniciales son la entrada para el proceso de densificación descrito en la Sección~\ref{ssec:densificacion_mat}.
+
+    \section{División del Conjunto de Datos}
+    \label{ssec:data_splitting_mat} % Nueva label
+    Para el desarrollo y la evaluación robusta de los modelos, el conjunto de datos total se divide en tres subconjuntos mutuamente excluyentes: entrenamiento, validación y prueba. Esta división es fundamental en el aprendizaje automático para evitar el sobreajuste y para obtener una estimación insesgada del rendimiento del modelo en datos no vistos.
+    Sea $\mathcal{D}$ el conjunto total de $N$ muestras disponibles. Se particiona $\mathcal{D}$ en:
+    \begin{itemize}
+        \item $\mathcal{D}_{train}$: Conjunto de entrenamiento, utilizado para aprender los parámetros de los modelos (e.g., el SSM y los clasificadores ESL).
+        \item $\mathcal{D}_{val}$: Conjunto de validación, empleado para ajustar hiperparámetros y para la detección temprana de sobreajuste durante el entrenamiento.
+        \item $\mathcal{D}_{test}$: Conjunto de prueba, reservado para la evaluación final del rendimiento del pipeline completo.
+    \end{itemize}
+    La asignación de muestras a estos conjuntos se realiza típicamente de forma aleatoria, manteniendo ciertas proporciones (e.g., 65\% entrenamiento, 15\% validación, 20\% prueba). Si existen categorías o estratos relevantes en los datos (e.g., tipo de patología), se puede emplear una estratificación para asegurar que la distribución de estas categorías sea similar en todos los subconjuntos. Para la tarea de segmentación de la estructura pulmonar per se, una división aleatoria simple puede ser suficiente si no se esperan sesgos significativos relacionados con las categorías originales del dataset.
+    Los índices de las imágenes pertenecientes a cada subconjunto se almacenan para su uso consistente a lo largo del pipeline.
+
+\chapter{Fase 2: Modelado Estadístico de la Forma (SSM)}
+    \label{chap:ssm}
+    % Esta sección se basará fuertemente en metodologia_ssm.tex
+
+    \section{Densificación de Landmarks mediante B-Splines Cúbicas}
+        \label{ssec:densificacion_mat}
+El conjunto de datos original puede proporcionar un número limitado de landmarks anotados manualmente (e.g., $N_{inicial}=15$ puntos por pulmón). Para construir un Modelo Estadístico de Forma (SSM) robusto y detallado, es beneficioso trabajar con una representación de forma más densa. En este proyecto, se optó por un conjunto de $N_{final}=144$ landmarks por estructura pulmonar.
+
+El proceso de densificación transforma los $N_{inicial}$ landmarks originales $\vect{P}_{orig} = \{\vect{p}_1, \vect{p}_2, \dots, \vect{p}_{N_{inicial}}\}$ en $N_{final}$ landmarks. Se utilizan B-splines cúbicas ($p=3$) para la interpolación. Una curva B-spline $C(u)$ de grado $p$ se define como:
+\begin{equation}
+C(u) = \sum_{i=0}^{n} \vect{P}_i N_{i,p}(u)
+\label{eq:bspline_curve_merged} % Nueva label para evitar conflicto
+\end{equation}
+donde $\vect{P}_i$ son los $n+1$ puntos de control (los $N_{inicial}$ landmarks) y $N_{i,p}(u)$ son las funciones base B-spline definidas recursivamente por la fórmula de Cox-de Boor:
+\begin{equation}
+N_{i,0}(u) = 
+\begin{cases} 
+1 & \text{si } t_i \le u < t_{i+1} \\
+0 & \text{en caso contrario} 
+\end{cases}
+\label{eq:bspline_base_0_merged} % Nueva label
+\end{equation}
+\begin{equation}
+N_{i,p}(u) = \frac{u - t_i}{t_{i+p} - t_i} N_{i,p-1}(u) + \frac{t_{i+p+1} - u}{t_{i+p+1} - t_{i+1}} N_{i+1,p-1}(u)
+\label{eq:bspline_base_p_merged} % Nueva label
+\end{equation}
+Los $t_j$ son los elementos del vector de nudos. Los 15 landmarks originales sirven como puntos de control para la B-spline cúbica. Luego, se muestrea uniformemente esta curva para obtener los 144 puntos finales. Este proceso se aplica de forma independiente a cada contorno pulmonar (izquierdo y derecho, o superior e inferior según la convención de los datos originales).
+
+La Figura~\ref{fig:densificacion_ejemplo} (originalmente de `metodologia_ssm.tex`) ilustra este proceso.
+% \begin{figure}[h!]
+%    \centering
+%    % Se mantiene la referencia a la figura ya existente en metodologia_ssm.tex
+%    \includegraphics[width=0.7\textwidth]{../results/plots_densification/densification_example_idx_0.png}
+%    \caption{Ejemplo visual del proceso de densificación de landmarks. Los puntos originales (15) se muestran como marcadores más grandes, y los puntos interpolados (144) forman los contornos continuos.}
+%    \label{fig:densificacion_ejemplo} % Label ya definida
+% \end{figure}
+
+Adicionalmente, `tesis_mashdl_cnn.tex` menciona una forma alternativa de interpolación lineal para la densificación, que se presenta aquí por completitud aunque el método B-spline es el primario:
+Si se tienen $N_{orig}$ landmarks originales $\vect{P}_{orig} = \{\vect{p}_1, \vect{p}_2, \dots, \vect{p}_{N_{orig}}\}$ que definen un contorno poligonal, se pueden insertar $m_i$ puntos entre cada par de landmarks consecutivos $(\vect{p}_i, \vect{p}_{i+1})$ mediante interpolación lineal:
+\begin{equation}
+    \vect{p}_{i,j}' = (1 - \lambda_j)\vect{p}_i + \lambda_j\vect{p}_{i+1}, \quad \text{para } j=1, \dots, m_i
+    \label{eq:linear_interpolation_densification}
+\end{equation}
+donde $\lambda_j = j/(m_i+1)$. El número de puntos $m_i$ a insertar entre cada par puede ser fijo o ajustarse para lograr una densidad de puntos relativamente uniforme a lo largo del contorno, hasta alcanzar el total deseado de $N_{final}=144$ puntos.
+Sin embargo, el método preferido y utilizado para la generación de los datos de 144 puntos en este proyecto es la interpolación mediante B-splines cúbicas debido a su capacidad para generar contornos más suaves y representativos anatómicamente.
+
+    \section{Alineamiento de Formas mediante Análisis Generalizado de Procrustes (GPA)}
+        \label{ssec:gpa_mat}
+Una vez que se dispone de un conjunto de formas densificadas (los $N_{final}=144$ landmarks por muestra), el siguiente paso crucial antes de construir el SSM es alinear estas formas. El Alineamiento Generalizado de Procrustes (GPA) es una técnica estándar para este propósito. Su objetivo es superponer un conjunto de formas minimizando una medida de distancia entre ellas, eliminando las variaciones de pose (traslación, rotación y escala) que no son intrínsecas a la forma misma.
+
+Cada forma, representada por una matriz de $N_{final} \times D$ (e.g., $144 \times 2$), $\mat{X}_k$, se transforma para minimizar la suma de las distancias cuadradas a una forma media de referencia, $\hat{\vect{\mu}}$, que a su vez se actualiza iterativamente. El proceso detallado es el siguiente (adaptado de la descripción en `metodologia_ssm.tex` y complementado con la perspectiva de `tesis_mashdl_cnn.tex`):
+
+\begin{enumerate}
+    \item \textbf{Centrado:} Cada forma $\mat{X}_k$ se centra en el origen restando su centroide $\bar{\vect{x}}_k = \frac{1}{N_{final}} \sum_{j=1}^{N_{final}} \vect{x}_{kj}$ a cada uno de sus puntos.
+    \begin{equation}
+        \mat{X}_k' = \mat{X}_k - \mathbf{1} \bar{\vect{x}}_k^T
+        \label{eq:gpa_centering_merged}
+    \end{equation}
+    donde $\mathbf{1}$ es un vector columna de unos de tamaño $N_{final}$.
+
+    \item \textbf{Escalado (Normalización):} Cada forma centrada $\mat{X}_k'$ se escala a un tamaño unitario. Una métrica común es la norma de Frobenius de la forma centrada: $s_k = ||\mat{X}_k'||_F = \sqrt{\sum_{j=1}^{N_{final}} \sum_{d=1}^{D} (x'_{kjd})^2}$. La forma escalada es:
+    \begin{equation}
+        \mat{X}_k'' = \frac{\mat{X}_k'}{s_k}
+        \label{eq:gpa_scaling_merged}
+    \end{equation}
+
+    \item \textbf{Estimación de la Forma Media Inicial:} Se elige arbitrariamente una forma del conjunto (e.g., $\mat{X}_1''$) o se calcula la media de las formas pre-alineadas (centradas y escaladas) como la estimación inicial de la forma media, $\hat{\vect{\mu}}_0$.
+
+    \item \textbf{Alineamiento Iterativo:} Este proceso se repite hasta la convergencia:
+    \begin{enumerate}
+        \item \textbf{Alineamiento Individual:} Para cada forma $\mat{X}_k''$, se busca la transformación de rotación óptima $\mat{R}_k$ que minimice la distancia de Procrustes (suma de cuadrados de las diferencias) a la forma media actual $\hat{\vect{\mu}}_{iter}$:
+        \begin{equation}
+            \mat{R}_k = \arg \min_{\mat{R}} || \hat{\vect{\mu}}_{iter} - \mat{X}_k'' \mat{R} ||_F^2
+            \label{eq:gpa_rotacion_optima_merged}
+        \end{equation}
+        Esta rotación óptima $\mat{R}_k$ se encuentra mediante la Descomposición en Valores Singulares (SVD) de la matriz $\mat{M} = (\mat{X}_k'')^T \hat{\vect{\mu}}_{iter}$. Si $\mat{M} = \mat{U}\mat{\Sigma}\mat{V}^T$, entonces $\mat{R}_k = \mat{V}\mat{U}^T$. Se debe asegurar que $\det(\mat{R}_k)=1$ para evitar reflexiones. La forma alineada es $\mat{X}_{k,aligned} = \mat{X}_k'' \mat{R}_k$.
+
+        \item \textbf{Re-estimación de la Forma Media:} La nueva forma media $\hat{\vect{\mu}}_{iter+1}$ se calcula promediando todas las formas alineadas $\mat{X}_{k,aligned}$:
+        \begin{equation}
+            \hat{\vect{\mu}}_{iter+1} = \frac{1}{N} \sum_{k=1}^{N} \mat{X}_{k,aligned}
+            \label{eq:gpa_mean_reestimation_merged}
+        \end{equation}
+        donde $N$ es el número total de formas en el conjunto de entrenamiento.
+
+        \item \textbf{Normalización de la Nueva Media:} La nueva media $\hat{\vect{\mu}}_{iter+1}$ se centra y escala a tamaño unitario, similar a los pasos 1 y 2, para servir como referencia en la siguiente iteración.
+
+        \item \textbf{Convergencia:} El proceso itera hasta que la diferencia entre $\hat{\vect{\mu}}_{iter+1}$ y $\hat{\vect{\mu}}_{iter}$ (e.g., $||\hat{\vect{\mu}}_{iter+1} - \hat{\vect{\mu}}_{iter}||_F$) sea menor que un umbral predefinido $\epsilon$, o se alcance un número máximo de iteraciones.
+    \end{enumerate}
+\end{enumerate}
+El resultado del GPA es un conjunto de formas de entrenamiento alineadas, $\mathcal{S}_{aligned} = \{\mat{X}_{k,aligned}\}_{k=1}^N$, y la forma media final del conjunto de entrenamiento, $\hat{\vect{\mu}}_{GPA}$.
+
+Las Figuras~\ref{fig:gpa_raw_overlay} (superposición antes de GPA), \ref{fig:gpa_aligned_overlay} (superposición después de GPA), \ref{fig:gpa_convergence} (convergencia del GPA) y \ref{fig:mean_shape_gpa_viz} (visualización de la forma media GPA) ilustran este proceso. (Nota: Las etiquetas de las figuras se han mantenido o ajustado para consistencia).
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.7\textwidth]{../results/plots_gpa/gpa_raw_landmarks_overlay_144pts.png}
+%     \caption{Superposición de los landmarks del conjunto de entrenamiento (144 puntos por forma) *antes* de aplicar el Análisis Generalizado de Procrustes. Se muestra también la forma media cruda.}
+%     \label{fig:gpa_raw_overlay} % Label ya definida
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.7\textwidth]{../results/plots_gpa/gpa_aligned_landmarks_overlay_144pts.png}
+%     \caption{Superposición de los landmarks del conjunto de entrenamiento (144 puntos por forma) *después* de aplicar el Análisis Generalizado de Procrustes. Se observa una mejor alineación y la forma media resultante del GPA.}
+%     \label{fig:gpa_aligned_overlay} % Label ya definida
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.7\textwidth]{../results/plots_gpa/gpa_convergence_144pts.png}
+%     \caption{Curva de convergencia del algoritmo GPA, mostrando la disminución de la norma de la diferencia entre la forma media de iteraciones sucesivas.}
+%     \label{fig:gpa_convergence} % Label ya definida
+% \end{figure}
+
+% \begin{figure}[H] % Esta figura es referenciada como fig:mean_shape_gpa en tesis_mashdl_cnn.tex
+%     \centering
+%     \includegraphics[width=0.6\textwidth]{../results/plots_gpa/mean_shape_gpa_144pts.png}
+%     \caption{Forma media de los pulmones (144 landmarks) obtenida después de aplicar GPA al conjunto de entrenamiento. Esta forma media representa la configuración promedio de los landmarks en el espacio alineado.}
+%     \label{fig:mean_shape_gpa_viz} % Nueva label para esta instancia de la figura
+% \end{figure}
+
+    \section{Construcción del Modelo Estadístico de Forma (SSM) con PCA}
+        \label{ssec:pca_ssm_mat}
+Una vez que las formas del conjunto de entrenamiento han sido alineadas mediante GPA (Sección~\ref{ssec:gpa_mat}), se aplica el Análisis de Componentes Principales (PCA) para construir el Modelo Estadístico de Forma (SSM). El PCA es una técnica de reducción de dimensionalidad que identifica los patrones de variación más significativos (modos de variación) en los datos de forma.
+
+Cada forma alineada $\mat{X}_{k,aligned}$ (compuesta por $N_{final}=144$ landmarks 2D) se representa como un vector $\vect{x}_k \in \realset^{2N_{final}}$ concatenando las coordenadas $(x,y)$ de sus landmarks. El proceso de PCA es el siguiente:
+\begin{enumerate}
+    \item \textbf{Cálculo de la forma media vectorizada:} Se calcula la forma media $\bar{\vect{x}}$ del conjunto de $N$ formas alineadas y vectorizadas:
+    \begin{equation}
+        \bar{\vect{x}} = \frac{1}{N} \sum_{k=1}^N \vect{x}_k
+        \label{eq:pca_mean_vector_merged}
+    \end{equation}
+    \item \textbf{Cálculo de la matriz de covarianza:} Se construye la matriz de datos $\mat{D}_x$, donde cada columna es una forma $\vect{x}_k - \bar{\vect{x}}$. La matriz de covarianza $\mat{S} \in \realset^{2N_{final} \times 2N_{final}}$ se calcula como:
+    \begin{equation}
+        \mat{S} = \frac{1}{N-1} \mat{D}_x \mat{D}_x^T 
+        \label{eq:matriz_covarianza_merged}
+    \end{equation}
+    \item \textbf{Descomposición de Eigenvalores:} Se resuelve el problema de eigenvalores para $\mat{S}$:
+    \begin{equation}
+        \mat{S}\vect{\phi}_j = \lambda_j \vect{\phi}_j
+        \label{eq:pca_eigen_merged}
+    \end{equation}
+    donde $\lambda_j$ son los eigenvalores (varianzas) y $\vect{\phi}_j$ son los eigenvectores correspondientes (modos de variación o componentes principales). Los eigenvectores se ordenan según sus eigenvalores de mayor a menor.
+    \item \textbf{Selección de Componentes Principales:} Se seleccionan los primeros $m < 2N_{final}$ eigenvectores, correspondientes a los $m$ mayores eigenvalores, que capturan un porcentaje suficiente de la varianza total de los datos (e.g., 95-99\%). Estos forman la matriz de modos de variación $\mat{\Phi}_m = [\vect{\phi}_1, \vect{\phi}_2, \dots, \vect{\phi}_m]$.
+\end{enumerate}
+Cualquier forma $\vect{x}$ del conjunto (o una nueva forma similar) puede entonces ser aproximada por el SSM como una deformación de la forma media a lo largo de estos modos de variación:
+\begin{equation}
+    \vect{x} \approx \bar{\vect{x}} + \mat{\Phi}_m \vect{b}_m
+    \label{eq:ssm_model_merged}
+\end{equation}
+donde $\vect{b}_m = (b_1, b_2, \dots, b_m)^T$ es un vector de parámetros de forma que controla la contribución de cada modo de variación. Estos parámetros suelen estar limitados, por ejemplo, a $b_j \in [-c\sqrt{\lambda_j}, +c\sqrt{\lambda_j}]$ (e.g., $c=3$) para el modo $j$-ésimo, para asegurar que las formas generadas sean plausibles.
+
+Las Figuras~\ref{fig:pca_variance_explained} (gráfico de varianza explicada) y \ref{fig:pca_mode_variation_example} (ejemplo de visualización de un modo de variación) ilustran aspectos clave del SSM construido. (Nota: Las etiquetas de las figuras se han mantenido o ajustado para consistencia).
+
+% \begin{figure}[H]
+%     \centering
+%     % La figura pca_explained_variance_144pts.png es la misma que pca_explained_variance_plot.png
+%     % referenciada en tesis_mashdl_cnn.tex, se usa la de metodologia_ssm.tex por ser más específica.
+%     \includegraphics[width=0.7\textwidth]{../results/plots_pca/pca_explained_variance_144pts.png}
+%     \caption{Gráfico de la varianza acumulada explicada por los componentes principales del SSM. Este gráfico ayuda a determinar el número de modos $m$ necesarios para capturar un porcentaje deseado de la variabilidad total de la forma.}
+%     \label{fig:pca_variance_explained} % Label ya definida
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     % La figura pca_mode_1_visualization_144pts.png es la misma que pca_mode_1_visualization.png
+%     % referenciada en tesis_mashdl_cnn.tex, se usa la de metodologia_ssm.tex.
+%     \includegraphics[width=0.9\textwidth]{../results/plots_pca/pca_mode_1_visualization_144pts.png} 
+%     \caption{Visualización del primer modo de variación del SSM. Se muestra la forma media (centro/gris) y las deformaciones resultantes de variar el parámetro $b_1$ en $\pm c\sqrt{\lambda_1}$ (e.g., $c=2$ o $3$).}
+%     \label{fig:pca_mode_variation_example} % Nueva label para esta instancia
+% \end{figure}
+% Se pueden añadir referencias a fig:modo2_pca y fig:modo3_pca si se desea mostrar más ejemplos de modos.
+
+\chapter{Fase 3: Estimación de Pose Inicial (ESL) - Fundamentos Matemáticos}
+    \label{chap:esl_mat}
+    % Esta sección expandirá la descripción de ESL de tesis_mashdl_cnn.tex con más detalle matemático.
+
+    \section{Definición Paramétrica de la Pose}
+        \label{ssec:esl_pose_definition_mat}
+        La pose de un objeto en una imagen 2D puede ser descrita por parámetros de traslación, rotación y escala. En el contexto de ESL, la pose inicial de los pulmones se parametriza mediante una caja delimitadora orientada (OBB). Sin embargo, para simplificar la detección inicial, a menudo se trabaja primero con una caja delimitadora alineada a los ejes (AABB), definida por sus límites $L_1 = x_{min}$, $L_2 = y_{min}$, $L_3 = x_{max}$, y $L_4 = y_{max}$.
+        
+        A partir de una AABB, los parámetros de pose se pueden definir como:
+        \begin{itemize}
+            \item \textbf{Traslación} ($\vect{T}$): El centro de la AABB.
+                \begin{align}
+                    T_x &= (L_1 + L_3) / 2 \\
+                    T_y &= (L_2 + L_4) / 2
+                \end{align}
+            \item \textbf{Escala} ($\vect{S}$): Las dimensiones de la AABB.
+                \begin{align}
+                    S_{width} &= L_3 - L_1 \\
+                    S_{height} &= L_4 - L_2
+                \end{align}
+            \item \textbf{Orientación} ($\theta$): Para una AABB, el ángulo de orientación con respecto a los ejes de la imagen es $\theta = 0$. La fase de estimación de orientación de ESL buscará refinar este ángulo.
+        \end{itemize}
+        El objetivo de los clasificadores ESL es estimar estos parámetros $(\hat{T}_x, \hat{T}_y, \hat{S}_{width}, \hat{S}_{height}, \hat{\theta})$ para una imagen dada.
+
+    \section{Generación del Ground Truth para ESL a partir de Landmarks Densificados}
+        \label{ssec:esl_gt_mat}
+    El primer paso en la preparación de datos para el entrenamiento de los clasificadores ESL es la generación de parámetros de pose \textit{ground truth} (GT). Estos parámetros sirven como la referencia veraz contra la cual se compararán las predicciones de los clasificadores durante su entrenamiento. En el contexto de MaShDl-CNN, estos GT se derivan de los $N_{final}=144$ landmarks por pulmón, previamente generados (Sección~\ref{ssec:densificacion_mat}) y alineados (Sección~\ref{ssec:gpa_mat}), correspondientes a cada imagen del conjunto de entrenamiento.
+
+    Para cada conjunto de $N_{final}$ landmarks $\{\vect{p}_j = (x_j, y_j)\}_{j=1}^{N_{final}}$ de una imagen de entrenamiento, se calculan los parámetros de una caja delimitadora alineada a los ejes (AABB) que encierra dichos puntos. Las coordenadas de esta AABB se definen por:
+    \begin{align}
+        x_{min} &= \min_{j} \{x_j\} & y_{min} &= \min_{j} \{y_j\} \\
+        x_{max} &= \max_{j} \{x_j\} & y_{max} &= \max_{j} \{y_j\}
+    \end{align}
+    A partir de estos valores extremos, se obtienen los parámetros de la AABB:
+    \begin{itemize}
+        \item Límites de la caja: $L_1 = x_{min}$, $L_2 = y_{min}$, $L_3 = x_{max}$, $L_4 = y_{max}$.
+        \item Centro de la caja (parámetros de traslación $T_x, T_y$):
+            \begin{align}
+                T_x &= (x_{min} + x_{max}) / 2 \label{eq:esl_tx_gt} \\
+                T_y &= (y_{min} + y_{max}) / 2 \label{eq:esl_ty_gt}
+            \end{align}
+        \item Dimensiones de la caja (parámetros de escala $S_{width}, S_{height}$):
+            \begin{align}
+                S_{width} &= x_{max} - x_{min} \label{eq:esl_sw_gt} \\
+                S_{height} &= y_{max} - y_{min} \label{eq:esl_sh_gt}
+            \end{align}
+        \item Ángulo de orientación $\theta$: Para una AABB, se considera $\theta = 0$.
+    \end{itemize}
+    Estos parámetros $(\{L_k\}_{k=1}^4, T_x, T_y, S_{width}, S_{height}, \theta=0)$ para todas las muestras de entrenamiento constituyen el ground truth para la fase ESL. La Figura~\ref{fig:esl_gt_aabb_example_merged} ilustra un ejemplo de esta AABB GT generada.
+
+    % \begin{figure}[H]
+    %     \centering
+    %     \includegraphics[width=0.7\textwidth]{../results/esl_visualizations/gt_generator/gt_aabb_sample_idx_832.png} 
+    %     \caption{Ejemplo de una AABB Ground Truth (rectángulo azul) generada a partir de los 144 landmarks (puntos verdes) para una muestra de entrenamiento. La imagen original se muestra de fondo.}
+    %     \label{fig:esl_gt_aabb_example_merged} % Nueva label para evitar conflicto
+    % \end{figure}
+
+    \section{Formulación de la Detección de Límites de Contorno y Extracción de Parches}
+        \label{ssec:esl_line_detection_mat}
+    Una vez obtenidos los parámetros GT de la AABB para cada imagen de entrenamiento, el siguiente paso es extraer regiones de imagen (parches) que servirán como datos de entrada para los clasificadores ESL dedicados a la detección de las líneas $L_1, L_2, L_3, L_4$ de la AABB.
+
+    Para una línea $L_k$ dada (donde $k \in \{1,2,3,4\}$) y una imagen de entrenamiento $I$:
+    \begin{itemize}
+        \item \textbf{Parche Positivo:} Se extrae un parche de imagen $\Omega_{pos}$ de tamaño $N_p \times N_p$ (e.g., $64 \times 64$ píxeles). El centro de este parche se sitúa sobre la posición ground truth de la línea $L_{k,GT}$. Si $L_k$ es una línea vertical (e.g., $L_1$ en $x=x_{L1,GT}$), el centro del parche en la coordenada $y$ se toma como el centro vertical de la AABB GT ($T_{y,GT}$). Análogamente, si $L_k$ es una línea horizontal (e.g., $L_2$ en $y=y_{L2,GT}$), el centro del parche en la coordenada $x$ se toma como el centro horizontal de la AABB GT ($T_{x,GT}$). Este parche se etiqueta como positivo (clase 1).
+        
+        \item \textbf{Parches Negativos:} Para cada parche positivo, se generan $N_{neg}$ (e.g., 3) parches negativos $\Omega_{neg,j}$. Estos se extraen de manera similar al parche positivo en términos de la coordenada secundaria (e.g., misma $T_{y,GT}$ para $L_1$), pero sus posiciones en la coordenada primaria (e.g., coordenada $x$ para $L_1$) se eligen aleatoriamente, asegurando que estén a una distancia mínima $\delta_L$ de la posición $L_{k,GT}$. El umbral $\delta_L$ es típicamente una fracción del ancho o alto de la AABB GT (e.g., $\delta_L = 0.1 \times S_{width,GT}$). Estos parches se etiquetan como negativos (clase 0).
+    \end{itemize}
+    Todos los parches extraídos se normalizan (usualmente a un rango de intensidad de $[0,1]$) y se les puede aplicar aumento de datos, como la adición de ruido gaussiano, antes de ser almacenados. La Figura~\ref{fig:esl_line_patches_example_merged} muestra ejemplos de estos parches.
+
+    La conceptualización matemática de la detección de límites de contorno, aunque implementada mediante una CNN, se basa en la idea de aprender una función que, dado un parche, prediga la probabilidad de que dicho parche esté centrado en la línea de interés. El clasificador $C_{L_k}$ aprende a distinguir parches que contienen la línea $L_k$ de aquellos que no. Durante la inferencia, se realiza una búsqueda deslizando una ventana a lo largo de la imagen (o una región de interés) y evaluando cada parche con el clasificador $C_{L_k}$. La posición del parche que obtiene la máxima probabilidad se considera la posición estimada de la línea $\hat{L}_k$.
+
+    % \begin{figure}[H]
+    %     \centering
+    %     \includegraphics[width=0.9\textwidth]{../results/esl_visualizations/line_patches/line_patches_idx794_l1.png} % Ejemplo
+    %     \caption{Ejemplos de parches generados para el clasificador de la línea $L_1$. Se muestra un parche positivo (izquierda) y parches negativos (derecha), todos normalizados y con posible ruido añadido.}
+    %     \label{fig:esl_line_patches_example_merged} % Nueva label
+    % \end{figure}
+
+    \section{Formulación de la Estimación de Orientación y Extracción de Parches}
+        \label{ssec:esl_orientation_mat}
+    El quinto clasificador ESL se encarga de estimar la orientación $\theta$ de la AABB. Para entrenar este clasificador, se generan parches de la siguiente manera:
+    \begin{enumerate}
+        \item Se extrae un \textit{parche base} $\Omega_{base}$ de la imagen de entrenamiento $I$, centrado en el centroide $(T_{x,GT}, T_{y,GT})$ de la AABB GT. Las dimensiones de este parche base son típicamente mayores que las de la AABB (e.g., escaladas por un factor $\kappa > 1$, como `BASE_PATCH_PADDING_FACTOR = 1.1` en la implementación) para incluir contexto y asegurar que la AABB completa esté contenida después de la rotación.
+        \item Este parche base $\Omega_{base}$ se rota mediante un conjunto discreto de ángulos de prueba $\{\alpha_r\}$ (e.g., de $-30^\circ$ a $+30^\circ$ en pasos de $5^\circ$). Sea $\Omega^{(r)}$ el parche resultante de rotar $\Omega_{base}$ por un ángulo $\alpha_r$.
+        \item Cada parche rotado $\Omega^{(r)}$ se reescala al tamaño final $N_p \times N_p$ (e.g., $64 \times 64$), se normaliza y se le puede añadir ruido.
+        \item La etiqueta para $\Omega^{(r)}$ es positiva (clase 1) si el ángulo de rotación aplicado $|\alpha_r|$ es menor o igual a un umbral angular pequeño $\delta_{\theta}$ (e.g., $5^\circ$), indicando que la orientación del parche está "cerca" de la canónica (0 grados). De lo contrario, la etiqueta es negativa (clase 0).
+    \end{enumerate}
+    La Figura~\ref{fig:esl_orientation_patches_example_merged} ilustra este proceso. El clasificador de orientación $C_{\theta}$ aprende a distinguir parches que tienen una orientación cercana a la canónica de aquellos que están significativamente rotados. Durante la inferencia, se extrae un parche base de la imagen (centrado en la AABB estimada por los clasificadores de línea), se rota a través de los mismos ángulos de prueba, y el ángulo que produce la máxima probabilidad del clasificador $C_{\theta}$ se selecciona como la orientación estimada $\hat{\theta}$.
+
+    % \begin{figure}[H]
+    %     \centering
+    %     \includegraphics[width=0.95\textwidth]{../results/esl_visualizations/orientation_patches/orientation_patches_idx455.png} % Ejemplo
+    %     \caption{Ejemplos de parches generados para el clasificador de orientación. Se muestra el parche base original (izquierda) y una selección de parches rotados (normalizados y con ruido) con sus respectivos ángulos de rotación aplicados y la etiqueta de clase resultante.}
+    %     \label{fig:esl_orientation_patches_example_merged} % Nueva label
+    % \end{figure}
+
+    \section{Composición de la Pose Estimada y Proceso de Inferencia}
+        \label{ssec:esl_prediction_composition_mat}
+    Una vez entrenados los cinco clasificadores ESL ($C_{L1}, C_{L2}, C_{L3}, C_{L4}, C_{\theta}$), se pueden utilizar para estimar la pose inicial (parámetros de traslación $\vect{T}=(T_x, T_y)$, escala $\vect{S}=(S_{width}, S_{height})$, y orientación $\theta$) de los pulmones en una imagen de prueba no vista. El proceso de inferencia es el siguiente:
+
+    Dada una imagen de entrada $I_{test}$:
+    \begin{enumerate}
+        \item \textbf{Predicción de Límites de Contorno:} Para cada línea $L_k \in \{L_1, L_2, L_3, L_4\}$, se realiza una búsqueda mediante ventana deslizante. Se extraen parches a lo largo de una trayectoria perpendicular a la orientación esperada de la línea (inicialmente $\theta=0$), dentro de un rango de búsqueda predefinido en la imagen. Cada parche se normaliza y se alimenta al clasificador $C_{Lk}$ correspondiente. La posición que obtiene la máxima puntuación (probabilidad) del clasificador se considera la posición estimada $\hat{L}_k$ de la línea.
+
+        \item \textbf{Cálculo de Traslación y Escala Iniciales:} A partir de las posiciones estimadas de las cuatro líneas $(\hat{L}_1, \hat{L}_2, \hat{L}_3, \hat{L}_4)$, se calculan los parámetros de traslación $\hat{T}_x, \hat{T}_y$ y escala (ancho $\hat{S}_{width}$, alto $\hat{S}_{height}$) de la AABB, de forma análoga a las Ecuaciones~\ref{eq:esl_tx_gt}-\ref{eq:esl_sh_gt}:
+            \begin{align}
+                \hat{T}_x &= (\hat{L}_1 + \hat{L}_3) / 2 \\
+                \hat{T}_y &= (\hat{L}_2 + \hat{L}_4) / 2 \\
+                \hat{S}_{width} &= \hat{L}_3 - \hat{L}_1 \\
+                \hat{S}_{height} &= \hat{L}_4 - \hat{L}_2
+            \end{align}
+        Es importante asegurar que $\hat{L}_1 < \hat{L}_3$ y $\hat{L}_2 < \hat{L}_4$. Si las predicciones iniciales no cumplen esto, se pueden aplicar correcciones heurísticas (e.g., intercambiarlas o basarse en la línea con mayor confianza).
+
+        \item \textbf{Predicción de Orientación:} Se extrae un parche base de la imagen $I_{test}$, centrado en $(\hat{T}_x, \hat{T}_y)$ y con dimensiones proporcionales a $(\hat{S}_{width}, \hat{S}_{height})$ (usando `BASE_PATCH_PADDING_FACTOR`). Este parche base se rota a través del mismo conjunto de ángulos de prueba discretos $\{\alpha_r\}$ utilizado durante el entrenamiento. Cada parche rotado se normaliza y se evalúa con el clasificador de orientación $C_{\theta}$. El ángulo $\alpha_r$ que produce la máxima puntuación se selecciona como la orientación estimada $\hat{\theta}$.
+    \end{enumerate}
+    El conjunto de parámetros $(\hat{T}_x, \hat{T}_y, \hat{S}_{width}, \hat{S}_{height}, \hat{\theta})$ constituye la pose ESL predicha. La Figura~\ref{fig:esl_prediction_example_merged} muestra un ejemplo de la AABB predicha y rotada.
+
+    % \begin{figure}[H]
+    %     \centering
+    %     \includegraphics[width=0.7\textwidth]{../results/esl_visualizations/predictions/esl_prediction_idx241.png} % Ejemplo
+    %     \caption{Ejemplo de predicción de pose ESL. La caja delimitadora estimada, rotada según el ángulo $\hat{\theta}$ predicho, se superpone en color verde sobre la imagen de prueba.}
+    %     \label{fig:esl_prediction_example_merged} % Nueva label
+    % \end{figure}
+
+\chapter{Fase 4: Extracción de Características MaShDL - Fundamentos Matemáticos}
+    \label{chap:mashdl_mat}
+    La fase MaShDL (Model-based Shape and Deep Learning) tiene como objetivo predecir los coeficientes $\vect{b}$ del Modelo Estadístico de Forma (SSM) directamente a partir de características de la imagen. Esto se logra entrenando clasificadores (o regresores) que toman como entrada parches de imagen muestreados alrededor de los puntos de una instancia de forma y predicen los coeficientes del SSM.
+
+    \section{Transformación de Instancias del SSM al Espacio de la Imagen}
+        \label{ssec:mashdl_ssm_instance_transform_mat}
+        Una instancia de forma generada por el SSM, $\vect{x}_{model} \approx \bar{\vect{x}} + \mat{\Phi}_m \vect{b}_m$, está en el espacio canónico del SSM (alineado y normalizado). Para muestrear parches de una imagen $I$, esta forma canónica debe ser transformada al espacio de la imagen utilizando la pose $(\hat{\vect{T}}, \hat{\vect{S}}, \hat{\theta})$ estimada por la fase ESL.
+        
+        Sea $\vect{x}_{model,j} = (x_j, y_j)$ el $j$-ésimo landmark de la instancia del SSM en coordenadas canónicas. La transformación a coordenadas de imagen $\vect{x}_{img,j} = (x'_j, y'_j)$ implica:
+        \begin{enumerate}
+            \item \textbf{Escalado no uniforme:} Los spans (rangos) de la forma media canónica $\bar{\vect{x}}$ en las direcciones $x$ e $y$, denotados $span_x^{canon}$ y $span_y^{canon}$, se escalan para coincidir con las dimensiones $\hat{S}_{width}$ y $\hat{S}_{height}$ de la AABB estimada por ESL. Los factores de escala son:
+            \begin{align}
+                s_x &= \hat{S}_{width} / span_x^{canon} \\
+                s_y &= \hat{S}_{height} / span_y^{canon}
+            \end{align}
+            Las coordenadas escaladas $\vect{x}_{scaled,j} = (x_j \cdot s_x, y_j \cdot s_y)$.
+            \item \textbf{Rotación:} Se aplica la rotación estimada $\hat{\theta}$ alrededor del centroide de la forma escalada (que corresponde al centroide de la forma canónica, usualmente el origen). Si $\mat{R}(\hat{\theta})$ es la matriz de rotación:
+            \begin{equation}
+                \vect{x}_{rot,j} = \mat{R}(\hat{\theta}) \vect{x}_{scaled,j}
+            \end{equation}
+            \item \textbf{Traslación:} Finalmente, se traslada la forma rotada para que su centroide coincida con el centroide estimado $\hat{\vect{T}} = (\hat{T}_x, \hat{T}_y)$ de la AABB en la imagen:
+            \begin{equation}
+                \vect{x}_{img,j} = \vect{x}_{rot,j} + \hat{\vect{T}}
+            \end{equation}
+        \end{itemize}
+        Este proceso se aplica a todos los $N_{final}$ landmarks de la instancia del SSM para obtener su configuración en el espacio de la imagen, $\mat{X}_{img}$.
+
+    \section{Muestreo de Parches alrededor de Puntos de Forma Transformados}
+        \label{ssec:mashdl_patch_sampling_mat}
+        Una vez que la instancia del SSM, $\mat{X}_{img}$, se ha transformado al espacio de la imagen, se extraen parches de imagen alrededor de cada uno de sus $N_{final}$ puntos. Para cada punto $\vect{x}_{img,j}$:
+        \begin{itemize}
+            \item Se extrae un parche $\Omega_j$ de tamaño $Q \times Q$ (e.g., $Q=25$) centrado en $\vect{x}_{img,j}$.
+            \item El parche se normaliza en intensidad (e.g., a $[0,1]$).
+        \end{itemize}
+        El conjunto de $N_{final}$ parches $\{\Omega_1, \Omega_2, \dots, \Omega_{N_{final}}\}$ se concatena (después de aplanarlos) para formar un único vector de características $\vect{f} \in \realset^{N_{final} \cdot Q^2}$. Este vector $\vect{f}$ representa la apariencia local alrededor de la instancia de forma actual.
+
+    \section{Discretización de los Coeficientes del Modelo de Forma ($b_k$)}
+        \label{ssec:mashdl_b_discretization_mat}
+        Para entrenar clasificadores que predigan los coeficientes $b_k$ del SSM, estos coeficientes continuos se discretizan en $B_{bins}$ (e.g., 3) contenedores o clases. Para un coeficiente $b_k$ con desviación estándar $\sigma_k = \sqrt{\lambda_k}$ (obtenida del PCA):
+        \begin{enumerate}
+            \item El rango de $b_k$ se limita típicamente a $[-c \cdot \sigma_k, +c \cdot \sigma_k]$ (e.g., $c=3$).
+            \item Este rango se divide uniformemente en $B_{bins}$ intervalos.
+            \item El valor continuo $b_k$ se asigna al índice del bin al que pertenece.
+        \end{itemize}
+        Por ejemplo, para $B_{bins}=3$, los bins podrían representar valores "negativo alto", "cercano a cero" y "positivo alto" del coeficiente $b_k$. La etiqueta $y_k$ para el clasificador del modo $k$ será el índice de este bin.
+
+    \section{Objetivo de Aprendizaje para los Clasificadores MaShDL}
+        \label{ssec:mashdl_learning_objective_mat}
+        Para cada modo de variación $k$ del SSM (desde $1$ hasta $m$), se entrena un clasificador independiente $C_k^{MaShDL}$.
+        El objetivo de $C_k^{MaShDL}$ es aprender a predecir la etiqueta del bin discretizado $y_k$ del coeficiente $b_k$, dado el vector de características de parches $\vect{f}$ extraído de una instancia de forma generada con un conjunto de coeficientes $\vect{b}$ donde $b_k$ es el valor de interés y los $b_j (j<k)$ son los valores GT ya conocidos (o predichos en una cascada).
+        
+        Matemáticamente, se busca aprender la función:
+        \begin{equation}
+            \hat{y}_k = C_k^{MaShDL}(\vect{f} | b_1, \dots, b_{k-1})
+        \end{equation}
+        donde $\vect{f}$ se extrae usando una forma generada por $\bar{\vect{x}} + \sum_{j=1}^{k-1} \phi_j b_j + \sum_{j=k}^{m} \phi_j b_j^{init}$ (donde $b_j^{init}$ pueden ser cero o valores perturbados para generar ejemplos positivos y negativos para $b_k$).
+        
+        Durante el entrenamiento, se generan ejemplos positivos (donde $b_k$ es el valor GT para la imagen) y negativos (donde $b_k$ es un valor perturbado) para cada modo $k$. Los clasificadores $C_k^{MaShDL}$ aprenden a distinguir entre las apariencias de los parches correspondientes a diferentes valores (bins) del coeficiente $b_k$.
+
+\chapter{Diseño Experimental y Configuración Matemática}
+    \label{chap:diseno_experimental_mat}
+            La validación empírica de los constructos teóricos previamente delineados se fundamenta en un diseño experimental riguroso y una configuración precisa del entorno computacional. Este apartado detalla la procedencia y naturaleza del conjunto de datos, los parámetros específicos empleados en cada fase metodológica y las herramientas matemáticas subyacentes a la implementación.
+
+            \subsection{Conjunto de Datos y Origen}
+            El estudio se basa en un conjunto de datos de imágenes médicas, específicamente radiografías torácicas, de las cuales se han extraído manualmente las coordenadas de los contornos pulmonares. Cada contorno, inicialmente representado por $N_{inicial}=15$ landmarks, constituye una instancia o muestra $X_k$ en nuestro análisis. La naturaleza de estos datos es crucial, pues la variabilidad inherente a las formas pulmonares en esta población de estudio es el objeto principal que el Modelo Estadístico de Forma (SSM) busca parametrizar.
+            La especificación del número total de muestras (N) y la referencia detallada de la fuente del conjunto de datos se omiten en este resumen matemático, pero son componentes importantes del diseño experimental completo.
+
+            \subsection{Parámetros de la Densificación de Landmarks}
+            El primer paso metodológico, la densificación de landmarks, transforma cada conjunto de $N_{inicial}=15$ puntos a $N_{final}=144$ puntos. Este proceso se realiza mediante la interpolación con B-splines cúbicas (grado $p=3$), tal como se describe en la Ecuación~\ref{eq:bspline_curve}. La elección de B-splines cúbicas obedece a su capacidad para generar curvas suaves ($C^2$ continuas) que representan adecuadamente las formas anatómicas, evitando las oscilaciones que podrían surgir con polinomios de grado superior. El vector de nudos para cada B-spline se define de manera estándar, usualmente normalizado y uniforme, para asegurar una interpolación consistente a lo largo de la curva. La Figura~\ref{fig:densificacion_ejemplo} ilustra el resultado de este proceso.
+
+            \subsection{Configuración del Análisis Generalizado de Procrustes (GPA)}
+            El GPA se aplica al conjunto de $N$ formas densificadas $X_k \in \mathbb{R}^{144 \times 2}$. Los pasos clave son:
+            \begin{enumerate}
+                \item \textbf{Centrado:} Cada forma $X_k$ se traslada para que su centroide coincida con el origen.
+                \item \textbf{Escalado:} Cada forma centrada $X_k'$ se escala a tamaño unitario. Se utiliza la norma de Frobenius del centroide, $s_k = ||X_k'||_F$, para la normalización, resultando en $X_k'' = X_k'/s_k$. Esta elección asegura que todas las formas contribuyan de manera equitativa al análisis, independientemente de su tamaño original.
+                \item \textbf{Alineamiento Iterativo:}
+                \begin{itemize}
+                    \item La forma media inicial $\hat{\mu}_0$ se selecciona como una de las formas del conjunto (e.g., la primera forma $X_1''$).
+                    \item En cada iteración, cada forma $X_k''$ se alinea a la forma media actual $\hat{\mu}_{iter}$ mediante una transformación de rotación $R_k$ que minimiza la distancia de Procrustes, como se indica en la Ecuación~\ref{eq:gpa_rotacion_optima}. La rotación óptima se obtiene vía SVD de $(X_k'')^T \hat{\mu}_{iter}$.
+                    \item La forma media se re-estima como el promedio de las formas alineadas: $\hat{\mu}_{iter+1} = \frac{1}{N} \sum_{k=1}^{N} X_{k,aligned}$.
+                    \item La nueva media $\hat{\mu}_{iter+1}$ se normaliza (centrado y escalado).
+                    \item La convergencia se alcanza cuando la norma de la diferencia entre medias sucesivas, $||\hat{\mu}_{iter+1} - \hat{\mu}_{iter}||_F$, es inferior a un umbral $\epsilon$ (e.g., $\epsilon = 10^{-6}$). Las Figuras~\ref{fig:gpa_raw_overlay}, \ref{fig:gpa_aligned_overlay}, y \ref{fig:gpa_convergence} muestran la efectividad y convergencia del proceso. La forma media final $\hat{\mu}_{final}$ se visualiza en la Figura~\ref{fig:forma_media_gpa}.
+                \end{itemize}
+            \end{enumerate}
+
+            \subsection{Parámetros del Análisis de Componentes Principales (PCA)}
+            El PCA se aplica al conjunto de $N$ formas alineadas y vectorizadas $x_k \in \mathbb{R}^{288}$.
+            \begin{enumerate}
+                \item \textbf{Matriz de Covarianza:} Se calcula la matriz de covarianza $S \in \mathbb{R}^{288 \times 288}$ a partir de los datos centrados, según la Ecuación~\ref{eq:matriz_covarianza}.
+                \item \textbf{Análisis de Eigenvalores:} Se resuelve el problema de eigenvalores $S \Phi_i = \lambda_i \Phi_i$ (Ecuación~\ref{eq:pca_eigen}) para obtener los eigenvalores $\lambda_i$ (varianzas) y los eigenvectores $\Phi_i$ (modos de variación).
+                \item \textbf{Selección de Modos:} El número de modos $m$ a retener en el SSM (Ecuación~\ref{eq:ssm_model}) se determina analizando la varianza explicada acumulada. Se busca retener un porcentaje significativo de la varianza total, típicamente entre el 95\% y el 99\%. La Figura~\ref{fig:varianza_explicada_pca} muestra esta relación, donde se observa que un número reducido de modos (e.g., $m \approx 15-20$) suele ser suficiente. Los primeros modos de variación (Figuras~\ref{fig:modo1_pca}, \ref{fig:modo2_pca}, \ref{fig:modo3_pca}) ilustran las deformaciones anatómicas más prominentes. Los parámetros de forma $b_i$ para la generación de nuevas instancias se suelen restringir al intervalo $[-c\sqrt{\lambda_i}, +c\sqrt{\lambda_i}]$, donde $c$ es una constante (e.g., $c=2$ o $c=3$) para asegurar la plausibilidad anatómica.
+            \end{enumerate}
+            La rigurosidad en la definición de estos parámetros y la correcta aplicación de los métodos matemáticos son esenciales para la validez y reproducibilidad de los resultados del SSM.
+    % Se añadirán aquí las secciones para ESL y MaShDL
+    \section{Parámetros de la Estimación de Pose Inicial (ESL)}
+        \label{ssec:parametros_esl}
+        La fase de ESL involucra la extracción de parches y el entrenamiento de clasificadores. Los parámetros matemáticos y conceptuales clave incluyen:
+        \begin{itemize}
+            \item \textbf{Tamaño del Parche para Clasificadores de Línea y Orientación ($N_p$):} Define la dimensión de la ventana de imagen utilizada como entrada para las CNNs de ESL (e.g., $64 \times 64$ píxeles).
+            \item \textbf{Ángulos de Rotación para el Clasificador de Orientación ($\{\alpha_r\}$):} Conjunto discreto de ángulos utilizados para generar parches rotados para entrenar el clasificador de orientación (e.g., $\{-30^\circ, -25^\circ, \dots, +25^\circ, +30^\circ\}$ en pasos de $5^\circ$).
+            \item \textbf{Umbral Angular para Etiquetas de Orientación ($\delta_{\theta}$):} Define el rango de ángulos (e.g., $\pm 5^\circ$) alrededor de la orientación canónica ($0^\circ$) que se considera una etiqueta positiva para el clasificador de orientación.
+            \item \textbf{Factor de Relleno del Parche Base para Orientación ($\kappa$):} Factor por el cual se escalan las dimensiones de la AABB GT para extraer el parche base antes de la rotación (e.g., $\kappa = 1.1$), para asegurar que la AABB completa esté contenida después de rotaciones.
+            \item \textbf{Distancia Mínima para Parches Negativos de Línea ($\delta_L$):} Fracción del ancho/alto de la AABB GT que define la separación mínima entre un parche positivo de línea y los parches negativos generados.
+        \end{itemize}
+
+    \section{Parámetros de la Extracción de Características MaShDL}
+        \label{ssec:parametros_mashdl}
+        La extracción de características para los clasificadores MaShDL también se rige por parámetros importantes:
+        \begin{itemize}
+            \item \textbf{Tamaño de Parche de Landmark ($Q$):} Dimensión de los pequeños parches extraídos alrededor de cada uno de los $N_{final}$ puntos de la instancia del SSM transformada (e.g., $Q=25$, resultando en parches de $25 \times 25$ píxeles).
+            \item \textbf{Número de Bins para Discretización de $b_k$ ($B_{bins}$):} Número de categorías en las que se divide cada coeficiente continuo $b_k$ del SSM para la clasificación (e.g., $B_{bins}=3$).
+            \item \textbf{Factor de Clamp para $b_k$ ($c$):} Múltiplo de la desviación estándar $\sigma_k$ utilizado para definir el rango $[-c\sigma_k, +c\sigma_k]$ dentro del cual se discretizan los valores de $b_k$ (e.g., $c=3$).
+        \end{itemize}
+
+\chapter{Resultados y Discusión (Enfoque Matemático/Estadístico)}
+    \label{chap:resultados_mat}
+    % (Adaptado de metodologia_ssm.tex, sec:resultados_ssm y tesis_mashdl_cnn.tex)
+    \section{Resultados del Modelado Estadístico de Forma (SSM)}
+% Presentación de los resultados obtenidos en la construcción del SSM.
+
+\subsection{Forma Media del GPA}
+\label{ssec:forma_media_gpa_results} % Renombrar label para evitar colisión si es necesario
+Tras aplicar el Análisis Generalizado de Procrustes (GPA) al conjunto de entrenamiento de formas pulmonares (cada una representada por 144 landmarks), se obtiene una forma media que representa la configuración promedio de los pulmones en el dataset, libre de variaciones de escala, rotación y traslación. Esta forma media es fundamental, ya que sirve como el origen del espacio de formas sobre el cual se construye el SSM.
+
+La Figura~\ref{fig:forma_media_gpa} (a generar posteriormente) mostrará la visualización de esta forma media. Se espera que represente un contorno pulmonar típico y bien definido.
+
+% Placeholder para la figura
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.6\textwidth]{../results/plots_gpa/gpa_mean_shape_144pts.png}
+%     \caption{Forma media de los contornos pulmonares (144 puntos) obtenida después del alineamiento con GPA. Se muestran los dos contornos (izquierdo/derecho o superior/inferior según la convención de los datos) que componen la forma completa.}
+%     \label{fig:forma_media_gpa}
+% \end{figure}
+
+\subsection{Varianza Explicada por PCA}
+\label{ssec:varianza_explicada_pca_results} % Renombrar label
+El Análisis de Componentes Principales (PCA) no solo proporciona los modos de variación, sino que también cuantifica cuánta de la varianza total en el conjunto de datos es explicada por cada modo. El eigenvalor $\lambda_i$ asociado al eigenvector $\Phi_i$ es directamente proporcional a la varianza explicada por ese modo.
+
+Para determinar cuántos modos de variación son necesarios para capturar la mayor parte de la variabilidad de la forma, se suele analizar el gráfico de varianza explicada acumulada (a veces llamado "scree plot"). Este gráfico muestra el porcentaje de la varianza total que es capturado al incluir sucesivamente los componentes principales, ordenados de mayor a menor eigenvalor.
+
+La Figura~\ref{fig:varianza_explicada_pca} (a generar posteriormente) presentará este gráfico. Típicamente, se observa que un número relativamente pequeño de componentes principales captura un alto porcentaje de la varianza total (e.g., 90-99\%), lo que permite una representación compacta y eficiente de la variabilidad de la forma. Esto es crucial para la eficiencia del SSM.
+
+% Placeholder para la figura
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.7\textwidth]{../results/plots_pca/pca_explained_variance_144pts.png}
+%     \caption{Varianza explicada acumulada por los componentes principales del SSM construido sobre los landmarks de 144 puntos. Se indica el número de componentes retenidos (e.g., 15) y el umbral de varianza informativa (e.g., 95\%).}
+%     \label{fig:varianza_explicada_pca}
+% \end{figure}
+
+\subsection{Interpretación de los Modos Principales de Variación}
+\label{ssec:modos_variacion_pca_results} % Renombrar label
+Los eigenvectores $\Phi_i$ del PCA, también conocidos como modos de variación, describen las principales direcciones en las que las formas pulmonares varían respecto a la forma media $\bar{x}$. Cada modo captura un patrón específico de deformación. Para visualizar el efecto de un modo $\Phi_i$, se pueden generar nuevas formas variando el parámetro $b_i$ correspondiente en la Ecuación~\ref{eq:ssm_model}, comúnmente en un rango de $\pm k \cdot \sqrt{\lambda_i}$ (por ejemplo, $k=1, 2, 3$ desviaciones estándar) mientras se mantienen los demás parámetros $b_j (j \ne i)$ en cero.
+
+Las Figuras~\ref{fig:modo1_pca}, \ref{fig:modo2_pca}, etc. (a generar posteriormente) mostrarán la forma media y las variaciones producidas al moverse a lo largo de los primeros modos principales de variación. Por ejemplo, el primer modo podría capturar la variación global en el tamaño o la elongación del pulmón, el segundo modo podría estar relacionado con la curvatura del ápex o la base, y así sucesivamente. El análisis de estos modos es crucial para entender la naturaleza de la variabilidad anatómica presente en el conjunto de datos.
+
+% Placeholders para las figuras de los modos
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=\textwidth]{../results/plots_pca/pca_mode_1_visualization_144pts.png}
+%     \caption{Visualización del primer modo principal de variación del SSM (144 puntos). Se muestra la forma media (gris, superpuesta) y las variaciones generadas al sumar/restar múltiplos (e.g., $\pm 2$) de la desviación estándar del modo a la forma media.}
+%     \label{fig:modo1_pca}
+% \end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=\textwidth]{../results/plots_pca/pca_mode_2_visualization_144pts.png}
+%     \caption{Visualización del segundo modo principal de variación del SSM (144 puntos).}
+%     \label{fig:modo2_pca}
+% \end{figure}
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=\textwidth]{../results/plots_pca/pca_mode_3_visualization_144pts.png}
+%     \caption{Visualización del tercer modo principal de variación del SSM (144 puntos).}
+%             \label{fig:modo3_pca} % Asegurar que el label sea único si se añaden más
+%             \end{figure}
+    \section{Evaluación de la Estimación de Pose Inicial (ESL)}
+        \label{ssec:resultados_esl}
+        La evaluación del rendimiento de la fase ESL se centra en cuantificar la precisión con la que se estiman los parámetros de pose $(\hat{T}_x, \hat{T}_y, \hat{S}_{width}, \hat{S}_{height}, \hat{\theta})$ en comparación con los parámetros ground truth derivados de los landmarks manuales (Sección~\ref{ssec:esl_gt_mat}). Esta evaluación se realiza típicamente sobre un conjunto de prueba $\mathcal{D}_{test}$ que no fue utilizado durante el entrenamiento de los clasificadores ESL.
+        
+        Las métricas comunes para evaluar la precisión de la pose incluyen:
+        \begin{itemize}
+            \item \textbf{Error de Traslación:} La distancia euclidiana entre el centroide predicho $\hat{\vect{T}}=(\hat{T}_x, \hat{T}_y)$ y el centroide GT $\vect{T}_{GT}=(T_{x,GT}, T_{y,GT})$:
+            \begin{equation}
+                Error_T = || \hat{\vect{T}} - \vect{T}_{GT} ||_2
+            \end{equation}
+            \item \textbf{Error de Escala:} Diferencias relativas o absolutas entre las dimensiones predichas $(\hat{S}_{width}, \hat{S}_{height})$ y las dimensiones GT $(S_{width,GT}, S_{height,GT})$. Por ejemplo, el error relativo promedio:
+            \begin{equation}
+                Error_S = \frac{1}{2} \left( \frac{|\hat{S}_{width} - S_{width,GT}|}{S_{width,GT}} + \frac{|\hat{S}_{height} - S_{height,GT}|}{S_{height,GT}} \right)
+            \end{equation}
+            \item \textbf{Error de Orientación:} La diferencia absoluta entre el ángulo predicho $\hat{\theta}$ y el ángulo GT $\theta_{GT}$ (que es 0 para AABBs):
+            \begin{equation}
+                Error_{\theta} = |\hat{\theta} - \theta_{GT}|
+            \end{equation}
+            \item \textbf{Índice de Jaccard (IoU) de la Caja Delimitadora:} Si se considera la caja delimitadora orientada (OBB) resultante de la pose estimada, se puede calcular el IoU entre la OBB predicha y la OBB GT.
+            \begin{equation}
+                IoU = \frac{\text{Area}(\text{OBB}_{pred} \cap \text{OBB}_{GT})}{\text{Area}(\text{OBB}_{pred} \cup \text{OBB}_{GT})}
+            \end{equation}
+        \end{itemize}
+        Los resultados de estas métricas, promediados sobre el conjunto de prueba, proporcionan una medida cuantitativa de la efectividad de la fase ESL. Se podrían presentar distribuciones de estos errores (e.g., histogramas o boxplots) para analizar la robustez del método.
+        % La generación de figuras específicas para la distribución de errores de ESL se abordará
+        % en la fase de modificación de scripts Python, si se determina necesario.
+
+    \section{Análisis de los Coeficientes $b_k$ del SSM}
+        \label{ssec:resultados_b_coeficientes}
+        Los coeficientes $b_k$ del SSM (Ecuación~\ref{eq:ssm_model_merged}) representan los pesos de cada modo de variación principal $\vect{\phi}_k$ necesario para reconstruir una forma específica a partir de la forma media $\bar{\vect{x}}$. El análisis de la distribución de estos coeficientes en el conjunto de entrenamiento puede ofrecer información valiosa:
+        \begin{itemize}
+            \item \textbf{Distribución de $b_k$ por Modo:} Para cada modo $k$, los coeficientes $b_k$ calculados para todas las formas del conjunto de entrenamiento deberían, idealmente, seguir una distribución aproximadamente normal (o al menos unimodal y centrada en cero si los datos fueron bien normalizados por PCA). La varianza de esta distribución es $\lambda_k$.
+            \item \textbf{Correlación entre Coeficientes:} Dado que los componentes principales (eigenvectores $\vect{\phi}_k$) son ortogonales, los coeficientes $b_k$ deberían ser incorrelacionados entre sí.
+        \end{itemize}
+        Se pueden generar histogramas de los valores de $b_k$ para los primeros modos de variación para visualizar sus distribuciones. Estos histogramas pueden ayudar a verificar la calidad del modelo SSM y a entender cómo se distribuye la variabilidad de la forma a lo largo de cada modo.
+        % La generación de histogramas para los coeficientes b_k se abordará
+        % en la fase de modificación de scripts Python, si se determina necesario.
+
+\chapter{Conclusiones y Perspectivas Matemáticas}
+    \label{chap:conclusiones_mat}
+            En el presente estudio, se ha detallado la fundamentación matemática y la configuración experimental para la construcción de un Modelo Estadístico de Forma (SSM) a partir de contornos pulmonares. El proceso inicia con una etapa de densificación de landmarks, donde representaciones escasas de 15 puntos se enriquecen a 144 puntos mediante la aplicación de B-splines cúbicas (Ecuaciones~\ref{eq:bspline_curve}-\ref{eq:bspline_base_p}). Esta interpolación no solo incrementa la densidad de puntos, sino que también asegura una representación suave y continua de los contornos, esencial para capturar las sutilezas de la anatomía pulmonar. La Figura~\ref{fig:densificacion_ejemplo} ofrece una evidencia visual de la efectividad de esta transformación.
+
+            Subsiguientemente, el Análisis Generalizado de Procrustes (GPA) se emplea para alinear el conjunto de formas densificadas. Este método iterativo elimina sistemáticamente las variaciones de traslación, escala y rotación, proyectando todas las formas a un espacio común de referencia. La minimización de la distancia de Procrustes (Ecuación~\ref{eq:gpa_rotacion_optima}) y la convergencia del algoritmo (Figura~\ref{fig:gpa_convergence}) garantizan un alineamiento óptimo, resultando en una forma media $\hat{\mu}_{final}$ (Figura~\ref{fig:forma_media_gpa}) que representa la morfología pulmonar promedio del conjunto de datos, libre de las citadas variaciones extrínsecas. Las Figuras~\ref{fig:gpa_raw_overlay} y \ref{fig:gpa_aligned_overlay} contrastan el estado de las formas antes y después del GPA, respectivamente, demostrando la importancia de este preprocesamiento.
+
+            Una vez alineadas las formas, se procede a la construcción del SSM mediante el Análisis de Componentes Principales (PCA). Cada forma alineada se vectoriza, y se calcula la matriz de covarianza del conjunto (Ecuación~\ref{eq:matriz_covarianza}). La resolución del problema de eigenvalores para esta matriz (Ecuación~\ref{eq:pca_eigen}) revela los modos principales de variación $\Phi_i$ y sus correspondientes varianzas $\lambda_i$. Estos modos, que son ortogonales entre sí, describen las direcciones de máxima variabilidad en el espacio de formas. El modelo final (Ecuación~\ref{eq:ssm_model}) permite aproximar cualquier forma como una deformación de la forma media a lo largo de estos modos. La Figura~\ref{fig:varianza_explicada_pca} demuestra que una fracción sustancial de la varianza total puede ser explicada por un número reducido de modos, lo que subraya la capacidad del PCA para la reducción de dimensionalidad. Las visualizaciones de los primeros modos (Figuras~\ref{fig:modo1_pca}-\ref{fig:modo3_pca}) ofrecen una interpretación anatómica de las principales fuentes de variabilidad morfológica.
+
+            Los resultados obtenidos, tanto en términos de las métricas de convergencia como de las visualizaciones generadas, validan la robustez de la cadena metodológica implementada para el SSM. El SSM construido encapsula de manera compacta la variabilidad de la forma pulmonar presente en el conjunto de datos, proveyendo una herramienta poderosa para análisis posteriores.
+
+            Como perspectivas futuras, este SSM constituye una base sólida para diversas aplicaciones. En el contexto del proyecto MaShDl-CNN, se perfila como un componente crucial para la segmentación de imágenes pulmonares, donde puede actuar como un prior de forma. Adicionalmente, el modelo podría emplearse para estudios de morfometría, cuantificando diferencias entre poblaciones o correlacionando parámetros de forma con variables clínicas. La evaluación cuantitativa de la capacidad de generalización del modelo, mediante el uso de conjuntos de datos de prueba independientes, y la exploración de su rendimiento en tareas de segmentación automática, representan líneas de investigación prometedoras. Asimismo, la extensión del modelo a 3D o la incorporación de información de textura junto con la forma podrían refinar aún más su aplicabilidad clínica y de investigación.
+            
+            La fase de Estimación de Pose Inicial (ESL), aunque implementada con CNNs, se basa en principios de detección de características y optimización de pose. Su robustez es crucial para el correcto funcionamiento de las etapas subsecuentes. Futuras investigaciones podrían explorar métodos de ESL más sofisticados o la integración directa de la estimación de pose dentro de arquitecturas de aprendizaje profundo de extremo a extremo.
+            
+            La etapa MaShDL, que busca predecir los coeficientes del SSM a partir de parches de imagen, representa el núcleo de la hibridación. La validez de este enfoque depende de la capacidad de las CNNs para aprender la relación entre la apariencia local de la imagen y los parámetros globales de forma. El análisis de la precisión de la predicción de los coeficientes $b_k$ y el impacto de estos en la calidad de la segmentación final son áreas clave para la evaluación y futuras mejoras. La exploración de diferentes arquitecturas de CNN para la predicción de $b_k$, así como estrategias de entrenamiento más avanzadas, podrían conducir a mejoras significativas en el rendimiento general del pipeline.

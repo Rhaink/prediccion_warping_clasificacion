@@ -1,0 +1,80 @@
+\chapter{Diseño Experimental y Configuración}
+\label{cap:diseno_experimental}
+
+Para evaluar el rendimiento del sistema propuesto y analizar la influencia de diversos factores en la precisión de la predicción de puntos anatómicos, se diseñó y ejecutó una serie de experimentos. En esta sección se describe la composición del conjunto de datos, los parámetros de los modelos y la metodología experimental empleada.
+
+\section{Dataset y Preprocesamiento}
+Se empleó un dataset de radiografías de tórax constituido por un total de \textbf{1000 imágenes}. Cada imagen fue anotada manualmente con 15 puntos de referencia anatómicos por un único observador. Las imágenes, con una resolución original de $299 \times 299$ píxeles, se redimensionaron a $64 \times 64$ píxeles y se convirtieron a escala de grises para su procesamiento. El dataset presenta una distribución equitativa entre casos de pacientes sanos y pacientes con neumonía.
+
+Para la evaluación experimental, el dataset principal se dividió en conjuntos de entrenamiento y prueba, utilizando una proporción del \textbf{80\% para entrenamiento (800 imágenes)} y el \textbf{20\% restante para prueba (200 imágenes)}. Esta partición se realizó de forma reproducible (mediante una semilla aleatoria fija). El conjunto de entrenamiento se destinó al alineamiento de formas, la extracción de regiones de búsqueda y plantillas (templates), y el entrenamiento de los modelos de apariencia. El conjunto de prueba, compuesto por imágenes no utilizadas durante la fase de entrenamiento, se reservó exclusivamente para la evaluación de la precisión predictiva.
+
+\section{Configuración de Modelos y Parámetros}
+Para cada punto anatómico $j$, se entrenó un modelo de Análisis de Componentes Principales (PCA). El número de componentes principales $m_j$ se determinó para cada punto de manera que se retuviera el \textbf{95\% de la varianza total explicada} a partir de los parches de apariencia del conjunto de entrenamiento.
+
+Las dimensiones de los parches de apariencia, extraídos para cada punto anatómico, no son fijas; estas varían y se derivan de la caja delimitadora (bounding box) de la región de búsqueda asociada a cada punto. Por ejemplo, para el punto `Coord1`, el parche resultante posee dimensiones de $39 \times 34$ píxeles.
+
+Como métrica del error de reconstrucción para seleccionar el punto óptimo durante la predicción, se utilizó la \textbf{norma L2} (distancia euclidiana). Esta norma cuantifica la diferencia entre el parche original y su reconstrucción obtenida a partir del subespacio PCA.
+
+\section{Métricas de Evaluación}
+La precisión de la predicción para cada punto anatómico $j$ en el conjunto de prueba se cuantificó mediante métricas basadas en la distancia entre la coordenada predicha $\hat{\mathbf{p}}_j = (\hat{x}_j, \hat{y}_j)$ y la coordenada de referencia (ground truth) anotada manualmente $\mathbf{p}_{gt,j} = (x_{gt,j}, y_{gt,j})$. Las principales métricas empleadas incluyen:
+
+\begin{itemize}
+    \item \textbf{Error Euclidiano por Instancia:} Distancia euclidiana entre la predicción y la referencia para cada instancia de prueba $i$ y punto anatómico $j$:
+    $$ E_{Euclidiano, ij} = \left\| \hat{\mathbf{p}}_{ij} - \mathbf{p}_{gt,ij} \right\|_2 = \sqrt{(\hat{x}_{ij} - x_{gt,ij})^2 + (\hat{y}_{ij} - y_{gt,ij})^2} $$
+    donde $i$ indexa las imágenes de prueba y $j$ los puntos anatómicos.
+    \item \textbf{Error Euclidiano Promedio por Punto:} Promedio del error euclidiano para un punto $j$, calculado sobre todas las $N_{test}$ imágenes del conjunto de prueba:
+    $$ \mean{E}_{Euclidiano, j} = \frac{1}{N_{test}} \sum_{i=1}^{N_{test}} E_{Euclidiano, ij} $$
+    \item \textbf{Mediana del Error Euclidiano por Punto:} Mediana de los errores euclidianos para un punto $j$ en el conjunto de prueba. Esta medida de tendencia central es menos sensible a valores atípicos.
+    \item \textbf{Desviación Estándar del Error Euclidiano por Punto:} Desviación estándar de los errores euclidianos para un punto $j$ en el conjunto de prueba, la cual indica la dispersión de dichos errores.
+\end{itemize}
+
+\subsection{Procedimiento Experimental y Pruebas Preliminares}
+El procedimiento experimental general siguió la secuencia de etapas descrita en la Sección \ref{cap:metodologia}. No obstante, con el fin de comprender el impacto de la variabilidad inherente a las imágenes y la efectividad de ciertas técnicas de preprocesamiento, se realizaron varias pruebas preliminares:
+
+\begin{enumerate}
+    \item \textbf{Prueba 1 (Dataset de 200 imágenes):} Se empleó un dataset inicial de 200 imágenes para evaluar el rendimiento base del algoritmo en ausencia de alineamiento.
+    \item \textbf{Prueba 2 (Dataset de 400 imágenes con variaciones):} Se incorporaron 200 imágenes adicionales al dataset, incluyendo ejemplos con traslaciones, rotaciones y cambios de escala atípicos. El objetivo era determinar la respuesta del algoritmo ante estas variaciones geométricas.
+    \item \textbf{Prueba 3 (Normalización de Contraste SAHS):} Sobre el dataset de 400 imágenes, se aplicó una técnica de normalización de contraste basada en SAHS previamente a la extracción de parches y al entrenamiento del modelo. Dicha técnica había evidenciado previamente resultados favorables en combinación con Redes Neuronales Convolucionales (CNNs).
+    \item \textbf{Prueba 4 (Dataset de 800 imágenes):} Se expandió el dataset a 800 imágenes (manteniendo la omisión del alineamiento) para analizar el comportamiento del algoritmo base frente a un volumen mayor de datos, el cual incluía las imágenes con las variaciones introducidas.
+\end{enumerate}
+Estos experimentos preliminares resultaron fundamentales para identificar los desafíos principales del sistema y orientaron el desarrollo de soluciones más robustas, como la posterior implementación del alineamiento de formas.
+
+\section{Configuración Experimental SAHS}
+Se utilizó un conjunto de datos de 2,700 imágenes de radiografías de tórax, con 1,350 imágenes de pacientes saludables y 1,350 de pacientes con neumonía, las cuales fueron usadas para entrenar y probar los modelos de CNN. Estas imágenes se encuentran separadas de origen al momento de la descarga, lo cual implica que ambas clases podrían tener condiciones diferentes inherentes a su fuente original. Por lo anterior resulta obligado un ajuste de contraste para garantizar que las imágenes tanto normales como de neumonía se encuentren en las mismas condiciones de brillo y contraste. Estas imágenes fueron tomadas de la base de datos COVID-19\_Radiography\_Dataset de Kaggle. Utilizamos seis arquitecturas de CNN diferentes: AlexNet, Compact, Enhanced, ResNet-18, MobileNetV2 y ResNet-50, todas disponibles en la plataforma MVTEC Deep Learning Tool. Cada modelo fue entrenado y evaluado. El conjunto de datos consistió en radiografías de tórax etiquetadas como "normal" y "neumonía". Se utilizó validación cruzada de 5 pliegues para evaluar el rendimiento de los modelos.
+
+
+\section{Diseño Experimental Segmentación Automática}
+El diseño experimental se centró en la evaluación de un modelo híbrido para la segmentación de estructuras pulmonares. Se realizaron múltiples ejecuciones, cada una evaluando el modelo bajo un conjunto de parámetros de configuración específicos. La configuración de los hiperparámetros y la arquitectura del modelo se establecieron de la siguiente manera:
+
+\begin{table}[h!]
+    \centering
+    \caption{Parámetros de Configuración del Modelo}
+    \label{tab:config_params}
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor} \\
+        \midrule
+        Tasa de Aprendizaje Inicial ($\alpha$) & 0.0005 \\
+        Factor de Reducción de Tasa de Aprendizaje & 0.2 \\
+        Paciencia para Reducción de Tasa de Aprendizaje & 7 épocas \\
+        Decaimiento de Peso (AdamW) & 0.0001 \\
+        Tamaño del Lote ($N_b$) & 32 \\
+        Épocas Máximas ($E_{max}$) & 100 \\
+        Paciencia para Detención Temprana ($P_{es}$) & 15 épocas \\
+        Filtros Convolucionales ($F_c$) & [32, 64, 128] \\
+        Tamaños de Kernel Convolucionales ($K_c$) & [(3, 3), (3, 3), (3, 3)] \\
+        Tamaños de Pooling Convolucionales ($P_c$) & [(2, 2), (2, 2), (2, 2)] \\
+        Uso de Normalización por Lotes (CNN) & Sí \\
+        Unidades Ocultas Densely Connected ($U_d$) & [128, 64] \\
+        Tasa de Dropout (DNN) ($\delta_d$) & 0.3 \\
+        Uso de Normalización por Lotes (DNN) & Sí \\
+        Dimensión de Características por Parche ($D_p$) & 64 \\
+        Tamaño del Parche ($Q_p$) & 25 \\
+        Número de Modos de Entrenamiento ($M$) & 10 \\
+        Semilla Aleatoria & 42 \\
+        División de Validación & 0.2 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El modelo fue entrenado y evaluado a través de 10 modos distintos, cada uno representando una configuración o partición de datos específica, con el objetivo de evaluar la robustez y generalización del modelo.

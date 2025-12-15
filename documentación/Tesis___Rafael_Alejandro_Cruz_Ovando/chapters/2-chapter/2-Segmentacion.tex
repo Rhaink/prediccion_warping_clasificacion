@@ -1,0 +1,68 @@
+\section{Segmentación y Normalización de la Región Pulmonar}
+\label{sec:segmentacion_normalizacion}
+
+La segmentación precisa de la región pulmonar es a menudo un paso precursor esencial en los sistemas CADx para CXR. Al aislar los pulmones del resto de la imagen, se puede enfocar el análisis en la región de interés, reducir la influencia de estructuras irrelevantes y facilitar la extracción de características específicas del pulmón \cite{van2006segmentation_cxr, mansoor2015segmentation}. La normalización, por otro lado, busca estandarizar ciertas propiedades de la región segmentada, como su forma, tamaño u orientación, para permitir comparaciones más justas entre diferentes imágenes o pacientes.
+
+\subsection{Técnicas Comunes de Segmentación Pulmonar en CXR}
+\label{ssec:tecnicas_segmentacion_cxr}
+Se han propuesto numerosas técnicas para la segmentación de pulmones en CXR, que pueden clasificarse en varias categorías:
+\begin{itemize}
+\item \textbf{Basadas en Umbralización:} Explotan las diferencias de intensidad entre el parénquima pulmonar (más radiolúcido) y las estructuras circundantes (e.g., costillas, corazón, más radiopacos). Métodos como la umbralización global o adaptativa de Otsu pueden ser un primer paso, pero a menudo requieren refinamientos debido a la variabilidad de contraste \cite{saad2014lung}.
+\item \textbf{Basadas en Regiones:} Técnicas como el crecimiento de regiones (region growing) comienzan con puntos semilla dentro de los pulmones y expanden la región basándose en criterios de homogeneidad de intensidad o textura \cite{dai2017region_placeholder}.
+\item \textbf{Basadas en Contornos Activos (Snakes y Level Sets):} Estos métodos evolucionan una curva (o superficie en 3D) para ajustarse a los bordes de los pulmones, minimizando una función de energía que considera tanto la suavidad de la curva como su adherencia a los gradientes de la imagen \cite{xu2012lung, kass1988snakes}.
+\item \textbf{Basadas en Modelos Estadísticos (Forma y Apariencia):} Los Modelos de Forma Activa (ASM) y los Modelos de Apariencia Activa (AAM) utilizan conocimiento previo sobre la forma y/o apariencia promedio de los pulmones y sus variaciones para guiar la segmentación \cite{cootes1995active, cootes2001active}. El método MaShDL de esta tesis se encuadra en esta familia.
+\item \textbf{Basadas en Aprendizaje Profundo:} Más recientemente, las CNNs, especialmente arquitecturas como U-Net \cite{ronnerberger2015unet} y sus variantes (e.g., Attention U-Net \cite{oktay2018attention}, UNet++ \cite{zhou2018unetplusplus}), han demostrado un rendimiento de vanguardia en la segmentación de pulmones en CXR, aprendiendo a identificar los límites pulmonares directamente de los datos \cite{ait2018lung, novikov2018fully, zhou2021review_segmentation}.
+\end{itemize}
+% (Sugerencia: Figura \ref{fig:ejemplos_segmentacion_cxr}: Mostrar una CXR y los resultados de segmentación pulmonar obtenidos con 2-3 métodos diferentes, por ejemplo, un método tradicional y uno basado en U-Net, y el propuesto en esta tesis si ya se tienen resultados preliminares visuales.)
+
+\subsection{Modelos Deformables: Modelos Estadísticos de Forma (SSM)}
+\label{ssec:ssm_teoria}
+Los Modelos Estadísticos de Forma (SSM) son una técnica poderosa y bien establecida para modelar la variabilidad geométrica de una clase de objetos. Un SSM representa una colección de formas mediante una forma media y un conjunto de modos de variación que describen cómo las instancias individuales pueden desviarse de esta media \cite{cootes1995active, davies2008statistical}.
+
+\subsubsection{Construcción de un SSM: Puntos Característicos (Landmarks)}
+\label{sssec:landmarks_ssm}
+La base de un SSM es un conjunto de entrenamiento de $N_s$ formas, donde cada forma $i$ está representada por un conjunto de $N_{\text{lmk}}$ puntos característicos (landmarks) correspondientes anatómicamente: $X_i = \{p_{i,j} \in \mathbb{R}^d\}_{j=1}^{N_{\text{lmk}}}$, donde $p_{i,j}$ es el $j$-ésimo landmark de la $i$-ésima forma en $d$ dimensiones (para CXR, $d=2$). La calidad y consistencia de la anotación de estos landmarks es crucial para la efectividad del SSM. En esta tesis, se utilizan $N_{\text{lmk}}=144$ landmarks para definir el contorno de la región pulmonar.
+
+\subsubsection{Alineación de Formas: El Problema de Procrustes Generalizado (GPA)}
+\label{sssec:gpa}
+Antes de poder analizar la variación de forma intrínseca, es necesario eliminar las diferencias de pose (traslación, rotación y escala global) entre las formas del conjunto de entrenamiento. Esto se logra mediante el Análisis de Procrustes Generalizado (GPA) \cite{gower1975generalized, dryden1998statistical}. El GPA alinea iterativamente todas las formas a una forma media común (que también se actualiza en cada iteración) minimizando una medida de distancia entre las formas.
+
+El procedimiento GPA, implementado, típicamente involucra los siguientes pasos:
+\begin{itemize}
+    \item \textbf{Centrado:} Cada forma $X_i$ se traslada para que su centroide coincida con el origen. Si $c_i = \frac{1}{N_{\text{lmk}}} \sum_{j=1}^{N_{\text{lmk}}} p_{i,j}$, la forma centrada es $X_i^c = X_i - \mathbf{1}c_i^T$. (Nota: $\mathbf{1}$ es un vector columna de unos de dimensión $N_{\text{lmk}}$).
+    \item \textbf{Escalado:} Cada forma centrada $X_i^c$ se escala a un tamaño unitario (e.g., norma de Frobenius igual a 1). $X_i^{cs} = X_i^c / \|X_i^c\|_F$.
+    \item \textbf{Estimación de la Media Inicial:} Se calcula una forma media inicial $X_{\text{ref}}$ a partir de las formas $X_i^{cs}$.
+    \item \textbf{Alineación Iterativa:} 
+        \begin{enumerate}
+            \item Para cada forma $X_i^{cs}$, encontrar la transformación de similitud (solo rotación en este espacio pre-escalado y centrado) $R_i$ que mejor alinee $X_i^{cs}$ con la referencia actual $X_{\text{ref}}$. Esto se resuelve minimizando $\|X_{\text{ref}} - X_i^{cs} R_i\|_F^2$. La solución para $R_i$ se obtiene mediante la Descomposición en Valores Singulares (SVD) de la matriz $(X_i^{cs})^T X_{\text{ref}} = U \Lambda V^T$, donde $R_i = V U^T$. 
+            \item Aplicar las rotaciones: $X_i^{\text{aligned}} = X_i^{cs} R_i$.
+            \item Recalcular la forma media $X_{\text{ref}}$ a partir de todas las $X_i^{\text{aligned}}$.
+            \item Normalizar la nueva $X_{\text{ref}}$ (centrarla y escalarla a tamaño unitario).
+            \item Repetir hasta que la forma media $X_{\text{ref}}$ converja (i.e., el cambio entre iteraciones sea menor que una tolerancia).
+        \end{enumerate}
+\end{itemize}
+El resultado es un conjunto de formas $\{X_i^{\text{aligned}}\}$ alineadas en un espacio de forma común, y la forma media final $X_{\text{mean}}$.
+
+% (Sugerencia: Figura \ref{fig:gpa_ilustracion}: Una figura similar a la sugerida para el Capítulo 3, mostrando (a) un conjunto de contornos pulmonares desalineados y (b) los mismos contornos después de la aplicación de GPA, superpuestos y alineados con la forma media resultante.)
+
+\subsubsection{Análisis de Componentes Principales (PCA) para Modelar la Variación de Forma}
+\label{sssec:pca_forma}
+Una vez que las $N_s$ formas están alineadas, cada forma $X_i^{\text{aligned}}$ se vectoriza en un vector columna $x_i \in \mathbb{R}^{N_{\text{lmk}} \cdot d}$. Se construye una matriz de datos $D = [x_1, x_2, \dots, x_{N_s}]$. Se aplica PCA a esta matriz:
+\begin{itemize}
+    \item Se calcula el vector de forma media global $\bar{x} = \frac{1}{N_s} \sum_{i=1}^{N_s} x_i$.
+    \item Se calcula la matriz de covarianza de los datos centrados $(x_i - \bar{x})$: $S = \frac{1}{N_s-1} \sum_{i=1}^{N_s} (x_i - \bar{x})(x_i - \bar{x})^T$.
+    \item Se encuentran los eigenvectores $\phi_k$ y eigenvalores $\lambda_k$ de $S$, donde $S\phi_k = \lambda_k \phi_k$. Los eigenvectores (modos de variación) se ordenan según sus eigenvalores decrecientes.
+    \item Se seleccionan los primeros $m$ eigenvectores, $P = [\phi_1, \phi_2, \dots, \phi_m]$, que capturan un porcentaje suficiente de la varianza total (e.g., 95-99\%).
+\end{itemize}
+Cualquier forma $x$ en el conjunto (o una nueva instancia) puede ser aproximada por el modelo lineal:
+$x \approx \bar{x} + Pb$
+donde $b = [b_1, b_2, \dots, b_m]^T$ es un vector de parámetros de forma (o coeficientes de modo). Cada $b_k$ controla la magnitud de la variación a lo largo del $k$-ésimo modo $\phi_k$. Estos coeficientes suelen estar restringidos, por ejemplo, $b_k \in [-3\sqrt{\lambda_k}, +3\sqrt{\lambda_k}]$.
+La implementación de esta etapa almacenan $\bar{x}$, $P$, y las desviaciones estándar de los eigenvalores ($\sqrt{\lambda_k}$) respectivamente.
+
+% (Sugerencia: Figura \ref{fig:modos_variacion_pulmon}: Similar a la sugerida para Cap. 3, mostrando la forma media pulmonar y la variación inducida por los primeros 2-3 modos b1​,b2​,b3​ (e.g., forma media ±2σk​ϕk​).)
+% (Sugerencia: Tabla \ref{tab:varianza_explicada_pca_ssm}: Tabla mostrando el número de modo, eigenvalor, varianza explicada individual y acumulada para los m modos seleccionados, justificando la elección de m≈15.)
+
+\subsection{Estimación de Pose (Escala, Traslación, Rotación)}
+\label{ssec:estimacion_pose}
+Antes de que un SSM pueda ser ajustado a una nueva imagen, se requiere una estimación inicial de la pose global (escala $S$, traslación $T$, y rotación $\Theta$) del objeto en la imagen. Esta estimación sirve para inicializar el modelo de forma cerca de la solución correcta. En esta tesis, se utiliza un sistema basado en Efficient Subspace Learning (ESL) para este propósito. Los detalles de ESL se abordarán en la sección de metodología (Capítulo 3), pero su función es proporcionar los parámetros ($S,T,\Theta$) que transforman la forma media canónica del SSM al espacio de la imagen de entrada. Investigaciones recientes también exploran el uso de CNNs para la regresión directa de parámetros de pose o la detección de landmarks clave para una estimación de pose robusta \cite{cao2014face, meyer2018deep}.
+

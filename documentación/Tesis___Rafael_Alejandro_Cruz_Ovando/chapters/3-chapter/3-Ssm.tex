@@ -1,0 +1,287 @@
+% \section{Construcción del Modelo Estadístico de Forma (SSM)}
+% \label{sec:ssm}
+
+% La variabilidad inherente en la morfología de los pulmones se observa a través de un conjunto de entrenamiento compuesto por $N$ nubes de puntos (formas) densificadas. Como se detalló en la Sección~\ref{sec:densificacion_forma}, cada forma consta de $K_{total}=144$ puntos. Este conjunto de formas de entrenamiento se define formalmente como:
+% \begin{equation}
+% \hspace*{\fill}
+% \mathcal{S}' = \left\{ \mat{S}'^{(j)} \in \R^{K_{total} \times d} \mid j = 1, \dots, N \right\},
+% \label{eq:training_shapes_set}
+% \hspace*{\fill}
+% \end{equation}
+% donde cada forma $\mat{S}'^{(j)}$ es una matriz que representa $K_{total}$ puntos en $d=2$ dimensiones (2D), y el superíndice $'$ denota que estas son las formas antes del alineamiento.
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=0.8\columnwidth]{Figures/01_raw_training_shapes.png}
+%     \caption{Ejemplos de formas de entrenamiento $\mat{S}'^{(j)}$ del conjunto $\mathcal{S}'$ antes del alineamiento, mostrando la variabilidad inherente en posición, escala y orientación.}
+%     \label{fig:raw_shapes}
+% \end{figure}
+
+% Dicha variabilidad se captura y modela de manera compacta y eficiente mediante un Modelo Estadístico de Forma (SSM) lineal. La construcción de un SSM robusto es un pilar fundamental de nuestra metodología, permitiendo representar cualquier forma pulmonar plausible como una deformación de una forma media, controlada por un conjunto reducido de parámetros. Este proceso consta de dos etapas cruciales: el alineamiento de las formas de entrenamiento y la subsecuente aplicación del Análisis de Componentes Principales (PCA).
+
+% \subsection{Alineamiento Procrustes Generalizado (GPA)}
+% \label{sec:gpa}
+% Antes de poder analizar estadísticamente la variabilidad de la forma, es imperativo eliminar las variaciones extrínsecas debidas a la traslación, rotación y escala uniforme presentes en las formas de entrenamiento. El Alineamiento Procrustes Generalizado (GPA) \cite{gower1975generalized} es un método iterativo estándar para este fin. El GPA alinea simultáneamente todo el conjunto de $N$ formas a un espacio común, minimizando una medida global de la diferencia de forma.
+
+% El proceso, detallado en el Algoritmo~\ref{alg:gpa}, comienza seleccionando una forma de referencia inicial. Subsecuentemente, cada forma del conjunto se alinea a esta referencia. Para alinear una forma $\mat{S}_{\text{target}}$ a una forma de referencia $\mat{S}_{\text{ref}}$, se busca la transformación de similitud óptima (escala $s \in \R^+$, matriz de rotación $\mat{R} \in \text{SO}(d)$, y vector de traslación $\vect{t}_0 \in \R^d$) que minimiza la suma de las distancias Euclidianas al cuadrado entre los puntos correspondientes:
+% \begin{equation}
+% \hspace*{\fill}
+% E(\mat{S}_{\text{ref}}, \mat{S}_{\text{target}}) = \min_{s, \mat{R}, \vect{t}_0} \left\| \mat{S}_{\text{ref}} - \left(s \mat{S}_{\text{target}} \mat{R} + \mathbf{1}\vect{t}_0^\transpose\right) \right\|_F^2,
+% \label{eq:procrustes_error}
+% \hspace*{\fill}
+% \end{equation}
+% donde $\| \cdot \|_F$ denota la norma de Frobenius, $\mat{S}_{\text{ref}}, \mat{S}_{\text{target}} \in \R^{K_{total} \times d}$, $\mat{R} \in \R^{d \times d}$ es la matriz de rotación, $\vect{t}_0 \in \R^{d \times 1}$ es el vector de traslación, y $\mathbf{1} \in \R^{K_{total} \times 1}$ es un vector columna de unos. La solución a este problema de minimización (es decir, encontrar $s, \mat{R}, \vect{t}_0$ para transformar $\mat{S}_{\text{target}}$) implica los siguientes pasos:
+% \begin{enumerate}
+%     \item Centrar ambas formas en el origen. Se calculan los centroides $\overline{\vect{s}}_{\text{ref}} = \frac{1}{K_{total}}\mat{S}_{\text{ref}}^\transpose\mathbf{1}$ y $\overline{\vect{s}}_{\text{target}} = \frac{1}{K_{total}}\mat{S}_{\text{target}}^\transpose\mathbf{1}$ (vectores $d \times 1$). Las formas centradas son:
+%     \begin{equation}
+%     \hspace*{\fill}
+%     \mat{S}_{\text{ref,c}} = \mat{S}_{\text{ref}} - \mathbf{1}\overline{\vect{s}}_{\text{ref}}^\transpose, \quad
+%     \mat{S}_{\text{target,c}} = \mat{S}_{\text{target}} - \mathbf{1}\overline{\vect{s}}_{\text{target}}^\transpose.
+%     \label{eq:centering_proc}
+%     \hspace*{\fill}
+%     \end{equation}
+
+%     \begin{figure}[htbp] 
+%     \centering
+%     \includegraphics[width=0.6\columnwidth]{Figures/02_centering_one_shape.png}
+%     \caption{Ilustración del proceso de centrado de una forma. Izquierda: forma original con su centroide. Derecha: la misma forma después de trasladar su centroide al origen.}
+%     \label{fig:centering_shape}
+% \end{figure}
+
+%     \item Resolver el problema de Procrustes Ortogonal para encontrar la matriz de rotación $\mat{R}$ que mejor alinea $\mat{S}_{\text{target,c}}$ con $\mat{S}_{\text{ref,c}}$. Se calcula la matriz de covarianza cruzada $\mat{M} \in \R^{d \times d}$:
+%     \begin{equation}
+%     \hspace*{\fill}
+%         \mat{M} = \mat{S}_{\text{target,c}}^\transpose \mat{S}_{\text{ref,c}}.
+%         \label{eq:procrustes_M}
+%         \hspace*{\fill}
+%     \end{equation}
+%     Se realiza la Descomposición en Valores Singulares (SVD) de $\mat{M}$, tal que $\mat{M} = \mat{U} \mat{\Sigma} \mat{V}^\transpose$. La matriz de rotación óptima $\mat{R}$ se obtiene como:
+%     \begin{equation}
+%     \hspace*{\fill}
+%         \mat{R} = \mat{V} \mat{U}^\transpose.
+%         \label{eq:procrustes_R}
+%         \hspace*{\fill}
+%     \end{equation}
+%     Es crucial asegurar que $\mat{R}$ sea una rotación propia ($\det(\mat{R})=1$). Si $\det(\mat{R})=-1$, se puede ajustar, por ejemplo, multiplicando la última columna de $\mat{V}$ por $-1$ si $d=2$ y luego recalculando $\mat{R}$, o de forma más general, $\mat{R} = \mat{V} \text{diag}(1, \dots, \det(\mat{V}\mat{U}^\transpose)) \mat{U}^\transpose$.
+
+%     \item Calcular la escala óptima $s$:
+%     \begin{equation}
+%     \hspace*{\fill}
+%     s = \frac{\text{tr}\left(\mat{S}_{\text{ref,c}}^\transpose \mat{S}_{\text{target,c}} \mat{R}\right)}{\text{tr}\left(\mat{S}_{\text{target,c}}^\transpose \mat{S}_{\text{target,c}}\right)} = \frac{\text{tr}\left(\mat{M}^\transpose \mat{R}\right)}{\left\|\mat{S}_{\text{target,c}}\right\|_F^2}.
+%     \label{eq:procrustes_scale}
+%     \hspace*{\fill}
+%     \end{equation}
+
+%     \item Calcular la traslación óptima $\vect{t}_0$ (vector columna $d \times 1$):
+%     \begin{equation}
+%     \hspace*{\fill}
+%     \vect{t}_0 = \overline{\vect{s}}_{\text{ref}} - s \mat{R} \overline{\vect{s}}_{\text{target}}.
+%     \label{eq:procrustes_translation}
+%     \hspace*{\fill}
+%     \end{equation}
+% \end{enumerate}
+
+% Una vez todas las formas se han alineado con respecto a la referencia actual, se calcula una nueva forma media a partir del conjunto de formas alineadas. Esta nueva media se convierte en la forma de referencia para la siguiente iteración del algoritmo. El proceso iterativo continúa hasta que se alcanza la convergencia (e.g., cuando el cambio en la forma media entre iteraciones sucesivas cae por debajo de una tolerancia $\epsilon > 0$). Al finalizar, el resultado es un conjunto de $N$ formas alineadas, denotado como $\tilde{\mathcal{S}}$, que residen en un espacio de forma común:
+% \begin{equation}
+% \hspace*{\fill}
+% \tilde{\mathcal{S}} = \left\{ \tilde{\mat{S}}^{(j)} \in \R^{K_{total} \times d} \mid j = 1, \dots, N \right\},
+% \label{eq:aligned_shapes_set_gpa}
+% \hspace*{\fill}
+% \end{equation}
+% donde cada $\tilde{\mat{S}}^{(j)}$ representa una forma individual después del alineamiento GPA, y el superíndice $\sim$ denota alineamiento.
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=0.6\textwidth]{Figures/06_final_aligned_shapes.png}
+%     \caption{Conjunto de formas de entrenamiento $\tilde{\mathcal{S}}$ después del Alineamiento Procrustes Generalizado, superpuestas en un espacio de forma común. La forma media final $\overline{\mat{S}}$ se muestra en rojo.}
+%     \label{fig:aligned_shapes_gpa}
+% \end{figure}
+
+% % El Algoritmo 1 se mantiene como lo proporcionaste, con las siguientes consideraciones:
+% % 1. Usar K_total en lugar de k.
+% % 2. Asegurar que las transposiciones usan \transpose.
+% % 3. Las variables de formas (S_ref, S_target, S_ref_c, etc.) son consistentes con el texto.
+% % 4. El resultado de alinear S_target a S_ref es s * S_target * R + 1*t_0^T.
+% % El algoritmo es bastante detallado y extenso para reproducirlo aquí con todos los micro-ajustes, 
+% % pero sigue las correcciones de notación y variables aplicadas en el texto.
+% % Asumo que el lector puede seguir estas directrices para el pseudocódigo.
+% % Lo más importante es:
+% % - Línea 1: S^{(j)} \in \R^{K_{total} \times d}
+% % - Línea 26: \tilde{S}^{(j)} <- s * S^{(j)} * R + 1 * t_0^T (usando S^{(j)} original)
+
+% \begin{algorithm}[htbp]
+% \caption{Alineamiento Procrustes Generalizado (GPA)}
+% \label{alg:gpa}
+% \begin{algorithmic}[1]
+%     \State \textbf{Entrada:} Conjunto de $N$ formas $\{\mat{S}'^{(j)} \in \R^{\Ktotal \times \dval}\}_{j=1}^N$. Tolerancia $\epsilon > 0$.
+%     \State \textbf{Salida:} Conjunto de $N$ formas alineadas $\{\tilde{\mat{S}}^{(j)}\}_{j=1}^N$. Forma media $\overline{\mat{S}}$.
+%     \Statex
+%     \State \textbf{Inicialización:}
+%     \State \quad $\mat{S}_{\text{ref\_iter}} \leftarrow \mat{S}'^{(1)}$ \Comment{Seleccionar referencia inicial}
+%     \State \quad $\overline{\mat{S}}_{\text{prev}} \leftarrow \mat{0}^{\Ktotal \times \dval}$
+%     \State \quad \textbf{Para} $j = 1 \text{ \textbf{hasta} } N$ \textbf{hacer}
+%     \State \quad \quad \Comment{Alinear $\mat{S}'^{(j)}$ a $\mat{S}_{\text{ref\_iter}}$}
+%     \State \quad \quad Calcular $s_j, \mat{R}_j, \vect{t}_{0,j}$ para alinear $\mat{S}'^{(j)}$ a $\mat{S}_{\text{ref\_iter}}$
+%     \State \quad \quad $\tilde{\mat{S}}^{(j)}_{\text{temp}} \leftarrow s_j \mat{S}'^{(j)} \mat{R}_j + \mathbf{1}\vect{t}_{0,j}^\transpose$
+%     \State \quad \quad $\overline{\mat{S}}_{\text{prev}} \leftarrow \overline{\mat{S}}_{\text{prev}} + \tilde{\mat{S}}^{(j)}_{\text{temp}}$
+%     \State \quad \textbf{Fin Para}
+%     \State \quad $\overline{\mat{S}}_{\text{prev}} \leftarrow \overline{\mat{S}}_{\text{prev}} / N$
+%     \State \quad \Comment{Opcional: Normalizar $\overline{\mat{S}}_{\text{prev}}$ (escala, orientación)}
+%     \Statex
+%     \State \textbf{Repetir}
+%     \State \quad $\overline{\mat{S}}_{\text{curr}} \leftarrow \mat{0}^{\Ktotal \times \dval}$
+%     \State \quad \textbf{Para} $j = 1 \text{ \textbf{hasta} } N$ \textbf{hacer}
+%     \State \quad \quad \Comment{Alinear $\mat{S}'^{(j)}$ (original) a la media actual $\overline{\mat{S}}_{\text{prev}}$}
+%     \State \quad \quad Calcular $s_j, \mat{R}_j, \vect{t}_{0,j}$ para alinear $\mat{S}'^{(j)}$ a $\overline{\mat{S}}_{\text{prev}}$
+%     \State \quad \quad $\tilde{\mat{S}}^{(j)}_{\text{temp}} \leftarrow s_j \mat{S}'^{(j)} \mat{R}_j + \mathbf{1}\vect{t}_{0,j}^\transpose$
+%     \State \quad \quad $\overline{\mat{S}}_{\text{curr}} \leftarrow \overline{\mat{S}}_{\text{curr}} + \tilde{\mat{S}}^{(j)}_{\text{temp}}$
+%     \State \quad \textbf{Fin Para}
+%     \State \quad $\overline{\mat{S}}_{\text{curr}} \leftarrow \overline{\mat{S}}_{\text{curr}} / N$
+%     \State \quad \Comment{Opcional: Normalizar $\overline{\mat{S}}_{\text{curr}}$}
+%     \State \quad \textbf{Si} $\| \overline{\mat{S}}_{\text{curr}} - \overline{\mat{S}}_{\text{prev}} \|_F < \epsilon$ \textbf{entonces}
+%     \State \quad \quad \textbf{romper bucle}
+%     \State \quad \textbf{Fin Si}
+%     \State \quad $\overline{\mat{S}}_{\text{prev}} \leftarrow \overline{\mat{S}}_{\text{curr}}$
+%     \State \textbf{Hasta} convergencia
+%     \Statex
+%     \State $\overline{\mat{S}} \leftarrow \overline{\mat{S}}_{\text{curr}}$
+%     \State \Comment{Alinear todas las $\mat{S}'^{(j)}$ originales a la $\overline{\mat{S}}$ final}
+%     \State \textbf{Para} $j = 1 \text{ \textbf{hasta} } N$ \textbf{hacer}
+%     \State \quad Calcular $s_j, \mat{R}_j, \vect{t}_{0,j}$ para alinear $\mat{S}'^{(j)}$ a $\overline{\mat{S}}$
+%     \State \quad $\tilde{\mat{S}}^{(j)} \leftarrow s_j \mat{S}'^{(j)} \mat{R}_j + \mathbf{1}\vect{t}_{0,j}^\transpose$
+%     \State \textbf{Fin Para}
+% \end{algorithmic}
+% \end{algorithm}
+
+% \subsection{Análisis de Componentes Principales (PCA)}
+% \label{sec:pca_ssm}
+
+% Con las formas de entrenamiento alineadas $\{\tilde{\mat{S}}^{(j)}\}_{j=1}^N$ del conjunto $\tilde{\mathcal{S}}$ (Ecuación~\eqref{eq:aligned_shapes_set_gpa}), se construye el modelo lineal de variabilidad mediante PCA. Primero, cada forma alineada $\tilde{\mat{S}}^{(j)} \in \R^{K_{total} \times d}$ se vectoriza concatenando sus $K_{total} \times d$ coordenadas de landmarks en un único vector $\tilde{\vect{s}}^{(j)} \in \R^{K_{total}d}$. Estos $N$ vectores de forma alineada se utilizan para el análisis.
+
+% La forma media del conjunto de entrenamiento alineado se calcula como:
+% \begin{equation}
+% \hspace*{\fill}
+% \overline{\vect{s}} = \frac{1}{N} \sum_{j=1}^N \tilde{\vect{s}}^{(j)}.
+% \label{eq:mean_shape_vector} % Nueva etiqueta para evitar conflicto si \overline{\mat{S}} también se define
+% \hspace*{\fill}
+% \end{equation}
+% Posteriormente, cada vector de forma $\tilde{\vect{s}}^{(j)}$ se centra restando el vector de forma media: $\vect{s}_{\text{cent}}^{(j)} = \tilde{\vect{s}}^{(j)} - \overline{\vect{s}}$. Estos $N$ vectores centrados $\vect{s}_{\text{cent}}^{(j)}$ se disponen como las filas de una matriz de datos centrados $\mat{X}_{\text{cent}} \in \R^{N \times K_{total}d}$.
+% La matriz de covarianza de los datos $\mat{C} \in \R^{K_{total}d \times K_{total}d}$ se estima como:
+% \begin{equation}
+% \hspace*{\fill}
+% \mat{C} = \frac{1}{N-1} \mat{X}_{\text{cent}}^\transpose \mat{X}_{\text{cent}}.
+% \label{eq:covariance_matrix}
+% \hspace*{\fill}
+% \end{equation}
+% Los eigenvectores de $\mat{C}$, denotados $\vect{p}_i \in \R^{K_{total}d}$, son los componentes principales (modos de variación), y los eigenvalores correspondientes $\lambda_i$ indican la varianza explicada por cada componente. Se ordenan tal que $\lambda_1 \ge \lambda_2 \ge \dots \ge \lambda_{K_{total}d} \ge 0$.
+
+% Los $m$ eigenvectores $\vect{p}_1, \dots, \vect{p}_m$ asociados con los $m$ eigenvalores más grandes (y por tanto, mayor varianza) se organizan como las columnas de una matriz de modos de variación $\mat{P} = [\vect{p}_1, \dots, \vect{p}_m] \in \R^{K_{total}d \times m}$. El número de modos $m$ se elige típicamente para capturar un porcentaje deseado de la varianza total (e.g., 95\%) o se fija a un valor predefinido, donde $m \le \min(N-1, K_{total}d)$.
+
+% Cualquier forma $\vect{s}$ (representada como un vector en el espacio alineado) perteneciente al espacio modelado por el SSM puede entonces ser aproximada como una combinación lineal de la forma media y los modos de variación:
+% \begin{equation}
+% \hspace*{\fill}
+% \vect{s}(\vect{b}) = \overline{\vect{s}} + \mat{P} \vect{b},
+% \label{eq:ssm_reconstruction}
+% \hspace*{\fill}
+% \end{equation}
+% donde $\vect{b} = (b_1, \dots, b_m)^\transpose \in \R^m$ es un vector de $m$ parámetros de forma. Cada parámetro $b_i$ controla la magnitud de la variación a lo largo del $i$-ésimo modo principal $\vect{p}_i$. La varianza de $b_i$ en el conjunto de entrenamiento es $\lambda_i$, por lo que $\sqrt{\lambda_i}$ es su desviación estándar. Esto permite restringir los parámetros $\vect{b}$ a un rango plausible, típicamente $b_i \in [-c\sqrt{\lambda_i}, c\sqrt{\lambda_i}]$ (e.g., $c=3$), para generar formas realistas.
+
+% La construcción del SSM proporciona un modelo paramétrico compacto de la forma pulmonar, esencial para etapas posteriores de predicción y ajuste.
+
+% \begin{figure}[htbp] 
+%     \centering
+%     \includegraphics[width=0.9\columnwidth]{Figures/pca_explained_variance_visualization.png}
+%     \caption{Gráfico de varianza explicada acumulada por los componentes principales del SSM. Este tipo de gráfico ayuda a determinar el número de modos $m$ necesarios para capturar un porcentaje deseado de la variabilidad total de la forma en el conjunto de entrenamiento.}
+%     \label{fig:pca_variance}
+% \end{figure}
+
+% \begin{figure}[htbp] 
+%     \centering
+%     \includegraphics[width=1\columnwidth]{Figures/pca_mode_1_visualization_144pts.png} 
+%     \caption{Visualización de la variación de la forma inducida por los primeros modos principales del SSM. Se muestra la forma media $\overline{\vect{s}}$ y las variaciones a lo largo de los primeros modos (e.g., $\overline{\vect{s}} \pm c\sqrt{\lambda_i}\vect{p}_i$). Estos modos capturan las deformaciones más significativas observadas en el conjunto de entrenamiento.}
+%     \label{fig:ssm_mode_variation_detailed}
+% \end{figure}
+
+\section{Construcción del Modelo Estadístico de Forma (SSM)}
+\label{sec:ssm_simplified}
+
+La variabilidad en la morfología de los pulmones se estudia a partir de un conjunto de $N$ nubes de puntos (formas). Cada forma tiene $\Ktotal$ puntos. El conjunto de formas de entrenamiento iniciales es:
+\begin{equation}
+\mathcal{S}' = \left\{ \mat{S}'^{(j)} \in \R^{\Ktotal \times \dval} \mid j = 1, \dots, N \right\},
+\label{eq:training_shapes_set_simplified}
+\end{equation}
+donde cada $\mat{S}'^{(j)}$ es una matriz de $\Ktotal$ puntos en $\dval=2$ dimensiones, y $'$ indica que son formas antes del alineamiento.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\columnwidth]{Figures/01_raw_training_shapes.png}
+    \caption{Ejemplos de formas de entrenamiento $\mat{S}'^{(j)}$ antes del alineamiento, mostrando variabilidad en posición, escala y orientación.}
+    \label{fig:raw_shapes_simplified}
+\end{figure}
+
+Esta variabilidad se modela con un Modelo Estadístico de Forma (SSM) lineal. El SSM representa cualquier forma plausible como una deformación de una forma media. Esto implica dos pasos: alineamiento y Análisis de Componentes Principales (PCA).
+
+\subsection{Alineamiento Procrustes Generalizado (GPA)}
+\label{sec:gpa_simplified}
+Para analizar la variabilidad de la forma, primero eliminamos las diferencias de traslación, rotación y escala. El Alineamiento Procrustes Generalizado (GPA) \cite{gower1975generalized} es un método iterativo que alinea todas las $N$ formas a un espacio común.
+
+El GPA busca la transformación de similitud óptima (escala $s$, rotación $\mat{R}$, traslación $\vect{t}_0$) que minimiza la diferencia entre una forma objetivo $\mat{S}_{\text{target}}$ y una forma de referencia $\mat{S}_{\text{ref}}$:
+\begin{equation}
+E(\mat{S}_{\text{ref}}, \mat{S}_{\text{target}}) = \min_{s, \mat{R}, \vect{t}_0} \matrixnorm{ \mat{S}_{\text{ref}} - \left(s \mat{S}_{\text{target}} \mat{R} + \vecuno \transpose{\vect{t}_0}\right) }^2,
+\label{eq:procrustes_error_simplified}
+\end{equation}
+donde $\matrixnorm{\cdot}$ es la norma de Frobenius y $\vecuno$ es un vector columna de unos.
+Este proceso implica centrar las formas, encontrar la rotación, escala y traslación óptimas. El GPA aplica esto iterativamente: se alinea cada forma a una referencia (inicialmente una forma del conjunto, luego la media actualizada), se calcula una nueva forma media, y se repite hasta la convergencia.
+
+El resultado es un conjunto de $N$ formas alineadas:
+\begin{equation}
+\tilde{\mathcal{S}} = \left\{ \tilde{\mat{S}}^{(j)} \in \R^{\Ktotal \times \dval} \mid j = 1, \dots, N \right\},
+\label{eq:aligned_shapes_set_gpa_simplified}
+\end{equation}
+donde $\tilde{\mat{S}}^{(j)}$ es una forma alineada.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Figures/06_final_aligned_shapes.png}
+    \caption{Conjunto de formas de entrenamiento $\tilde{\mathcal{S}}$ después del Alineamiento Procrustes Generalizado, superpuestas. La forma media $\mean{\mat{S}}$ (o $\overline{\mat{S}}$) se muestra en rojo.}
+    \label{fig:aligned_shapes_gpa_simplified}
+\end{figure}
+
+\subsection{Análisis de Componentes Principales (PCA)}
+\label{sec:pca_ssm_simplified}
+
+Con las formas alineadas $\{\tilde{\mat{S}}^{(j)}\}$, se construye el modelo de variabilidad. Cada forma $\tilde{\mat{S}}^{(j)}$ se vectoriza a $\tilde{\vect{s}}^{(j)} \in \R^{\Ktotal\dval}$.
+
+La forma media del conjunto alineado es:
+\begin{equation}
+\mean{\vect{s}} = \frac{1}{N} \sum_{j=1}^N \tilde{\vect{s}}^{(j)}.
+\label{eq:mean_shape_vector_simplified}
+\end{equation}
+Se aplica PCA a las desviaciones de las formas respecto a esta media. La matriz de covarianza de los datos centrados $\mat{X}_{\text{cent}}$ (donde cada fila es $\tilde{\vect{s}}^{(j)} - \mean{\vect{s}}$) se estima como:
+\begin{equation}
+\mat{C} = \frac{1}{N-1} \transpose{\mat{X}_{\text{cent}}} \mat{X}_{\text{cent}}.
+\label{eq:covariance_matrix_simplified}
+\end{equation}
+Los eigenvectores $\vect{p}_i$ de $\mat{C}$ son los componentes principales (modos de variación) y los eigenvalores $\lambda_i$ indican la varianza explicada.
+
+Se seleccionan los $m$ eigenvectores $\vect{p}_1, \dots, \vect{p}_m$ con mayor varianza, formando la matriz $\mat{P} = [\vect{p}_1, \dots, \vect{p}_m]$.
+Cualquier forma $\vect{s}$ del modelo SSM se representa como:
+\begin{equation}
+\vect{s}(\vect{b}) = \mean{\vect{s}} + \mat{P} \vect{b},
+\label{eq:ssm_reconstruction_simplified}
+\end{equation}
+donde $\vect{b} = \transpose(b_1, \dots, b_m)$ es un vector de parámetros de forma. Cada $b_i$ controla la variación a lo largo del modo $\vect{p}_i$, usualmente restringido (e.g., $b_i \in [-3\sqrt{\lambda_i}, 3\sqrt{\lambda_i}]$) para generar formas realistas.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\columnwidth]{Figures/pca_explained_variance_visualization.png}
+    \caption{Varianza explicada acumulada por los componentes principales, útil para elegir $m$.}
+    \label{fig:pca_variance_simplified}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\columnwidth]{Figures/pca_mode_1_visualization_144pts.png} 
+    \caption{Visualización de la variación de la forma inducida por los primeros modos principales del SSM (e.g., $\mean{\vect{s}} \pm c\sqrt{\lambda_i}\vect{p}_i$).}
+    \label{fig:ssm_mode_variation_detailed_simplified}
+\end{figure}

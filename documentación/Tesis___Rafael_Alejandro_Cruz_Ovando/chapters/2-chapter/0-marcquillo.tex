@@ -1,0 +1,165 @@
+\chapter{Marco Teórico y Antecedentes}
+\label{cap:marco_teorico}
+
+\section{Introducción a la Localización de Puntos de Referencia Anatómicos en Imágenes Médicas}
+\label{sec:intro_landmarks}
+
+La localización precisa de puntos de referencia anatómicos (landmarks) en imágenes médicas es un paso fundamental en numerosos procedimientos de análisis cuantitativo y diagnóstico asistido por computadora. En el contexto de las radiografías de tórax (CXR), estos landmarks son cruciales para evaluar la forma, el tamaño y la posición de órganos vitales como los pulmones y el corazón. Esta evaluación permite el seguimiento de patologías, la planificación de tratamientos y la investigación clínica. La automatización de la detección de estos puntos presenta desafíos considerables debido a la variabilidad inherente en la anatomía humana, las diferencias en la adquisición de imágenes (ruido, contraste, resolución), y la posible presencia de patologías que alteran la apariencia típica de las estructuras.
+
+\subsection{Importancia y Aplicaciones en el Análisis Cuantitativo}
+\label{ssec:importancia_aplicaciones}
+Los landmarks sirven como anclajes espaciales que permiten la correspondencia entre diferentes imágenes o entre una imagen y un modelo anatómico. Su localización precisa es un prerrequisito para:
+\begin{itemize}
+    \item \textbf{Segmentación de órganos:} Delimitar regiones de interés, como los campos pulmonares o el contorno cardíaco.
+    \item \textbf{Registro de imágenes:} Alinear imágenes tomadas en diferentes momentos o con diferentes modalidades.
+    \item \textbf{Análisis morfométrico:} Cuantificar variaciones de forma y tamaño asociadas a procesos patológicos o de crecimiento.
+    \item \textbf{Guiado en intervenciones:} Proveer referencias espaciales durante procedimientos quirúrgicos o radioterápicos.
+    \item \textbf{Modelado estadístico:} Construir modelos de la variabilidad anatómica normal y patológica en poblaciones.
+\end{itemize}
+En radiografías de tórax, por ejemplo, la posición de landmarks en los ápices pulmonares, los ángulos costofrénicos o el cayado aórtico puede indicar condiciones como el derrame pleural, la atelectasia o cardiomegalia.
+
+\subsection{Desafíos en la Localización Automática de Landmarks}
+\label{ssec:desafios_localizacion}
+La automatización de la localización de landmarks es una tarea compleja debido a múltiples factores:
+\begin{itemize}
+    \item \textbf{Variabilidad Anatómica Inter-sujeto:} Las diferencias en tamaño, forma y posición de las estructuras anatómicas entre individuos son significativas.
+    \item \textbf{Variabilidad Intra-sujeto:} Factores como la respiración, la postura del paciente y cambios patológicos pueden alterar la posición de los landmarks en un mismo individuo a lo largo del tiempo.
+    \item \textbf{Calidad de Imagen:} Las radiografías pueden presentar ruido, bajo contraste entre tejidos blandos, artefactos y variaciones en la exposición, dificultando la identificación visual de los landmarks.
+    \item \textbf{Superposición de Estructuras:} En imágenes 2D como las CXR, la proyección de múltiples estructuras tridimensionales puede ocultar o confundir la apariencia de los landmarks.
+    \item \textbf{Escasez de Características Locales Distintivas:} Algunos landmarks pueden no estar definidos por bordes fuertes o texturas únicas, sino por su relación espacial con otras estructuras.
+\end{itemize}
+
+\subsection{Enfoques Metodológicos Generales para la Detección de Landmarks}
+\label{ssec:enfoques_generales}
+Históricamente, la detección de landmarks ha evolucionado desde métodos basados en el conocimiento experto y el procesamiento de imágenes clásico (detección de bordes, filtros) hacia enfoques basados en modelos y, más recientemente, en aprendizaje automático profundo. Los enfoques basados en modelos, como los Modelos Activos de Forma (ASM) y los Modelos Activos de Apariencia (AAM) \cite{CootesKittipanyaNgam2004}, aprenden la variabilidad de la forma y la apariencia a partir de conjuntos de datos anotados. El aprendizaje profundo, particularmente las Redes Neuronales Convolucionales (CNNs), ha demostrado un rendimiento sobresaliente en muchas tareas de detección de landmarks al aprender jerarquías de características directamente de los datos \cite{VisionTransformersReview2024}. La metodología de la presente tesis se enmarca en los enfoques basados en modelos estadísticos clásicos, utilizando aprendizaje supervisado.
+
+\section{Fundamentos del Aprendizaje Supervisado para la Localización de Landmarks}
+\label{sec:aprendizaje_supervisado}
+El aprendizaje supervisado constituye un paradigma de la inteligencia artificial y el aprendizaje automático especialmente adecuado para tareas de localización cuando se dispone de datos de entrenamiento anotados. En este enfoque, un modelo computacional aprende a mapear entradas (en este caso, imágenes radiográficas o regiones de estas) a salidas deseadas (las coordenadas de los landmarks) a partir de un conjunto de ejemplos donde un experto humano ha identificado previamente la ubicación correcta de dichos landmarks.
+
+\subsection{Principios del Aprendizaje Supervisado}
+\label{ssec:principios_supervisado}
+Los componentes clave del aprendizaje supervisado en este contexto son:
+\begin{enumerate}
+    \item \textbf{Conjunto de Datos Anotados:} Se requiere un conjunto de imágenes de entrenamiento donde las coordenadas $(x,y)$ de cada landmark de interés han sido cuidadosamente marcadas por uno o varios expertos. La calidad y consistencia de estas anotaciones (ground truth) son cruciales para el rendimiento del modelo.
+    \item \textbf{Representación de Características (Features):} La información de la imagen alrededor de un landmark putativo debe ser representada de una manera que el modelo pueda procesar. Esto puede involucrar la extracción de parches de intensidad de píxeles, gradientes, texturas, o características aprendidas por el propio modelo.
+    \item \textbf{Modelo y Algoritmo de Aprendizaje:} Se elige un modelo (e.g., regresor, clasificador, modelo estadístico) y un algoritmo de aprendizaje que ajusta los parámetros del modelo para minimizar la diferencia entre las predicciones del modelo y las anotaciones de referencia en el conjunto de entrenamiento.
+    \item \textbf{Función de Pérdida (Loss Function):} Cuantifica el error entre la predicción del modelo y la verdad terreno. El algoritmo de aprendizaje busca minimizar esta función.
+    \item \textbf{Generalización:} El objetivo final es que el modelo entrenado pueda generalizar su aprendizaje para localizar landmarks con precisión en imágenes nuevas y no vistas previamente, que no formaron parte del conjunto de entrenamiento.
+\end{enumerate}
+La metodología descrita en el Capítulo \ref{cap:metodologia} de esta tesis se alinea directamente con este paradigma, utilizando un conjunto de mil radiografías anotadas manualmente para entrenar el sistema.
+
+\subsection{Formulación del Problema de Localización}
+\label{ssec:formulacion_problema}
+La localización de un landmark puede formularse como un problema de regresión, donde el objetivo es predecir las coordenadas $(x,y)$ continuas del landmark. Alternativamente, puede abordarse como un problema de clasificación densa (o mapa de calor), donde se predice la probabilidad de que cada píxel sea el landmark, y luego se elige el píxel con la máxima probabilidad. La metodología de esta tesis se enfoca en la predicción directa de coordenadas basada en la minimización de un error de apariencia.
+
+\section{Modelado Estadístico de la Forma y Alineamiento}
+\label{sec:modelado_forma_alineamiento}
+Para manejar la variabilidad geométrica inherente a las estructuras anatómicas (debida a diferencias individuales, pose del paciente, etc.), es esencial realizar un alineamiento de las configuraciones de landmarks antes de construir modelos más complejos. El Análisis Generalizado de Procrustes (GPA) es una técnica estándar y robusta para este propósito en el campo de la morfometría geométrica y el análisis de imágenes médicas.
+
+\subsection{Concepto de Modelos Estadísticos de Forma (SSMs)}
+\label{ssec:concepto_ssm}
+Los Modelos Estadísticos de Forma (SSMs) son modelos generativos que capturan la variabilidad de la forma de un objeto a partir de un conjunto de ejemplos de entrenamiento \cite{HeimannMeinzer2009MIA}. Típicamente, una forma se representa por un conjunto de landmarks correspondientes. Después del alineamiento mediante GPA, se aplica Análisis de Componentes Principales (PCA) a las coordenadas de los landmarks alineados para identificar los principales modos de variación de la forma. Un SSM puede entonces generar nuevas instancias de formas variando los pesos de estos modos. Aunque la metodología de esta tesis no construye un SSM explícito para la predicción, el alineamiento mediante GPA es un paso fundamental compartido con la construcción de SSMs.
+
+\subsection{Análisis Generalizado de Procrustes (GPA)}
+\label{ssec:gpa}
+El GPA es un método iterativo que busca la superposición óptima de múltiples configuraciones de landmarks (formas), minimizando una medida de distancia global entre ellas, usualmente la suma de las distancias euclidianas al cuadrado entre puntos correspondientes. Este proceso implica la normalización de cada configuración respecto a:
+\begin{itemize}
+    \item \textbf{Traslación:} Centrando cada forma en el origen.
+    \item \textbf{Escala:} Normalizando cada forma a un tamaño unitario (e.g., tamaño centroide unitario). El tamaño centroide se calcula como la raíz cuadrada de la suma de las distancias al cuadrado de cada landmark al centroide de la forma.
+    \item \textbf{Rotación:} Rotando cada forma para alinearla óptimamente con una forma media de referencia, que se actualiza iterativamente durante el proceso.
+\end{itemize}
+Matemáticamente, para alinear una forma $\mathbf{S}_k$ (una matriz de $N \times D$ donde $N$ es el número de landmarks y $D$ la dimensionalidad, usualmente 2 o 3) a una forma media actual $\mathbf{M}^{(t)}$, se busca una transformación de similitud (traslación $\mathbf{t}_k$, escala $s_k$, y rotación $\mathbf{R}_k$) tal que $s_k \mathbf{S}_k \mathbf{R}_k + \mathbf{t}_k$ esté lo más cerca posible de $\mathbf{M}^{(t)}$. En GPA, estos pasos se separan: primero se centra y escala, y luego se optimiza la rotación. La matriz de rotación óptima $\mathbf{R}_k$ que minimiza $\|\mathbf{S}''_k \mathbf{R}_k - \mathbf{M}^{(t)}\|_F^2$ (donde $\mathbf{S}''_k$ es la forma centrada y escalada) se puede encontrar mediante Descomposición en Valores Singulares (SVD) de la matriz $(\mathbf{S}''_k)^T \mathbf{M}^{(t)}$.
+
+El resultado del GPA es un conjunto de "coordenadas de forma" o "coordenadas Procrustes" que han sido despojadas de las variaciones de posición, tamaño y orientación, reteniendo únicamente la información de la forma intrínseca. Esta normalización es crucial para que los modelos de apariencia posteriores, como los basados en PCA, no se vean confundidos por estas variaciones globales. El Capítulo \ref{cap:metodologia} (Sección "Alineamiento de Formas") detalla la implementación específica del GPA utilizada.
+
+\section{Modelado Estadístico de la Apariencia Local}
+\label{sec:modelado_apariencia}
+Una vez que las formas han sido alineadas (o, como en la metodología de esta tesis, se han obtenido las posiciones de los landmarks en un espacio normalizado), el siguiente paso en muchos sistemas de detección de landmarks es modelar la variabilidad en la apariencia local alrededor de cada landmark. Esto típicamente implica extraer pequeñas subimágenes o "parches" centradas en cada landmark a lo largo del conjunto de entrenamiento.
+
+\subsection{Concepto de Modelos Estadísticos de Apariencia (SAMs)}
+\label{ssec:concepto_sam}
+Los Modelos Estadísticos de Apariencia (SAMs), a menudo denominados Modelos Activos de Apariencia (AAMs) cuando combinan forma y apariencia, extienden los SSMs para modelar también la variabilidad de la textura o intensidad de los píxeles dentro de la región de la forma \cite{CootesKittipanyaNgam2004}. Para ello, la textura de cada ejemplo de entrenamiento se deforma para que coincida con la forma media (obtenida tras el GPA) y luego se modela la variabilidad de esta textura normalizada, usualmente mediante PCA. La metodología de esta tesis se enfoca en un modelado de apariencia local (parches alrededor de los landmarks) en lugar de una textura global normalizada por la forma, pero el principio de usar PCA para modelar la variabilidad de la apariencia es central.
+
+\subsection{Representación de la Apariencia Local: Extracción de Parches}
+\label{ssec:extraccion_parches_apariencia}
+La apariencia local alrededor de un landmark $j$ en una imagen $i$ se captura extrayendo una subimagen rectangular (parche) $\mathbf{P}_{ij}$ centrada en la coordenada del landmark. Las dimensiones de este parche ($W_{template,j} \times H_{template,j}$ en la metodología de esta tesis) definen la extensión de la vecindad considerada. Estos parches, después de ser vectorizados (transformados en vectores columna $\mathbf{x}_{ij}$), forman el conjunto de datos para entrenar un modelo de apariencia específico para cada tipo de landmark.
+
+\subsection{Análisis de Componentes Principales (PCA) para el Modelado de Apariencia}
+\label{ssec:pca_apariencia}
+El Análisis de Componentes Principales (PCA) es una técnica estadística de reducción de dimensionalidad ampliamente utilizada para construir modelos de apariencia a partir de estos conjuntos de parches vectorizados $\{\mathbf{x}_{ij}\}$. El objetivo de PCA es encontrar un subespacio lineal de menor dimensión que capture la máxima varianza presente en los datos originales.
+
+El proceso de PCA para el conjunto de parches del landmark $j$ implica:
+\begin{enumerate}
+    \item \textbf{Cálculo de la media muestral:} Se determina el parche promedio $\mean{\mathbf{x}}_j = \frac{1}{N} \sum_{i=1}^N \mathbf{x}_{ij}$. Esta media representa la apariencia "típica" del landmark.
+    \item \textbf{Centrado de los datos:} Cada parche $\mathbf{x}_{ij}$ se centra restando la media: $\mathbf{x}'_{ij} = \mathbf{x}_{ij} - \mean{\mathbf{x}}_j$.
+    \item \textbf{Cálculo de la matriz de covarianza:} Se estima la matriz de covarianza $\mathbf{C}_j = \frac{1}{N-1} \sum_{i=1}^N \mathbf{x}'_{ij} (\mathbf{x}'_{ij})^T$.
+    \item \textbf{Resolución del problema de valores propios:} Se calculan los valores propios $\lambda_{jk}$ y los vectores propios (eigenvectores) $\mathbf{v}_{jk}$ de $\mathbf{C}_j$, tal que $\mathbf{C}_j\mathbf{v}_{jk} = \lambda_{jk} \mathbf{v}_{jk}$. Los eigenvectores, ordenados por sus valores propios decrecientes, representan las direcciones de máxima varianza (los "modos de variación" de la apariencia). Estos eigenvectores, reformados a las dimensiones del parche original, a veces se denominan "eigenpatches" o "eigenfaces" en contextos análogos.
+    \item \textbf{Selección de componentes principales:} Se seleccionan los primeros $m_j$ eigenvectores, correspondientes a los $m_j$ mayores valores propios, para formar la matriz de proyección $\mathbf{V}_j = [\mathbf{v}_{j1}, \dots, \mathbf{v}_{jm_j}]$. El número $m_j$ se elige para retener un porcentaje deseado de la varianza total (e.g., 95\%).
+\end{enumerate}
+Un nuevo parche $\mathbf{x}$ puede ser proyectado al subespacio PCA mediante $\boldsymbol{\omega} = \mathbf{V}_j^T (\mathbf{x} - \mean{\mathbf{x}}_j)$, y reconstruido aproximadamente como $\hat{\mathbf{x}} = \mathbf{V}_j\boldsymbol{\omega} + \mean{\mathbf{x}}_j$. El error de reconstrucción $\|\mathbf{x} - \hat{\mathbf{x}}\|_2$ indica cuán bien el modelo PCA representa al parche $\mathbf{x}$. La Sección "Entrenamiento de Modelos de Apariencia" del Capítulo \ref{cap:metodologia} detalla esta aplicación.
+
+\section{Estrategias de Búsqueda y Estimación de la Posición Óptima}
+\label{sec:estrategias_busqueda}
+Una vez construidos los modelos de apariencia, el sistema debe localizar los landmarks en una nueva imagen. Esto implica una estrategia de búsqueda y un criterio para estimar la posición óptima.
+
+\subsection{Definición de Regiones de Búsqueda y Estrategias de Búsqueda}
+\label{ssec:definicion_regiones_busqueda}
+Como se describe en la metodología (Sección "Extracción de Regiones de Búsqueda"), la distribución espacial de cada landmark en el conjunto de entrenamiento alineado permite definir una región de búsqueda ($\mathcal{R}_j$) para ese landmark. Esta restricción es computacionalmente eficiente y reduce falsas detecciones.
+Dentro de $\mathcal{R}_j$, se examinan múltiples ubicaciones candidatas $(y_c, x_c)$. Para cada una, se extrae un parche candidato $\mathbf{P}_{c}$ alineando el punto de anclaje del template del modelo con $(y_c, x_c)$. Este proceso es una forma de búsqueda exhaustiva restringida o "ventana deslizante".
+
+\subsection{Proceso de Coincidencia y Métricas de Similitud/Error}
+\label{ssec:proceso_coincidencia_error}
+Cada parche candidato $\mathbf{P}_{c}$ se vectoriza a $\mathbf{x}_c$ y se evalúa su similitud con el modelo de apariencia $\mathcal{M}_j$ (el modelo PCA para el landmark $j$). Esto se hace proyectando $\mathbf{x}_c$ al subespacio PCA y reconstruyéndolo ($\hat{\mathbf{x}}_c$). La métrica de error es el error de reconstrucción, usualmente la norma L2:
+$$ E_{L2}(\mathbf{x}_c) = \vectornorm{\mathbf{x}_c - \hat{\mathbf{x}}_c}_2 = \sqrt{\sum_{k=1}^D (x_{c,k} - \hat{x}_{c,k})^2} $$
+donde $D$ es la dimensionalidad del parche. Un error bajo indica alta similitud con la apariencia aprendida.
+
+\subsection{Estimación de la Posición Óptima}
+\label{ssec:estimacion_posicion_optima}
+La posición candidata $(y_c, x_c)$ que minimiza el error de reconstrucción $E_{L2}(\mathbf{x}_c)$ se selecciona como la ubicación predicha $\hat{\mathbf{p}}_j$ del landmark $j$. Este principio de minimización del error de reconstrucción es central en la metodología de esta tesis (Capítulo \ref{cap:metodologia}, Sección "Predicción de Coordenadas en Imágenes de Prueba").
+
+\section{Integración y Discusión de los Enfoques (Síntesis y Estado del Arte)}
+\label{sec:integracion_discusion_estado_arte}
+
+\subsection{Sinergia entre el Modelado de Forma (GPA) y Apariencia (PCA)}
+\label{ssec:sinergia_gpa_pca}
+La metodología de esta tesis, aunque no construye un modelo de forma explícito para la predicción, se beneficia del alineamiento de formas (GPA) en la fase de preparación de datos y definición de regiones de búsqueda. El GPA normaliza las variaciones geométricas globales, permitiendo que los modelos de apariencia PCA se centren en la variabilidad intrínseca de la apariencia local de los landmarks. En sistemas más integrados como los AAMs, el GPA es el primer paso para construir el modelo de forma, que luego se combina con un modelo de apariencia de la textura normalizada por la forma \cite{CootesKittipanyaNgam2004}.
+
+\subsection{Revisión de Trabajos Recientes y Aplicaciones en Imágenes Médicas (con énfasis en Radiografías de Tórax)}
+\label{ssec:revision_trabajos_recientes}
+Los modelos estadísticos de forma y apariencia han sido fundamentales en el análisis de imágenes médicas por décadas \cite{HeimannMeinzer2009MIA}. Trabajos seminales como el de van Ginneken et al. (2001) demostraron la utilidad de los AAMs para la segmentación de campos pulmonares en CXR \cite{VanGinneken2001TMI}. Estudios más recientes, aunque a menudo eclipsados por el aprendizaje profundo, continúan aplicando o referenciando estos modelos estadísticos. Por ejemplo, en la monitorización de enfermedades como la EPOC, la localización consistente de landmarks para evaluar cambios morfométricos en CXR sigue siendo relevante \cite{Smith2019MIA}. Desafíos comunes en CXR para estos modelos incluyen la sensibilidad a la inicialización y la dificultad con variaciones de apariencia muy sutiles o patologías complejas \cite{SPIEMedicalImaging2020Example}.
+
+El panorama actual está dominado por las Redes Neuronales Convolucionales (CNNs) y arquitecturas más nuevas como los Vision Transformers (ViTs) para la localización de landmarks \cite{VisionTransformersReview2024, DeepFakeDCNNReview2024}. Estos modelos de aprendizaje profundo pueden aprender representaciones jerárquicas complejas directamente de los datos y a menudo superan a los modelos estadísticos clásicos en términos de precisión bruta, especialmente con grandes conjuntos de datos \cite{Matsopoulos2020Diag}. Sin embargo, los modelos estadísticos clásicos como los basados en GPA y PCA siguen siendo valiosos por su interpretabilidad, menor demanda de datos en algunos casos, y como base teórica para comprender la variabilidad anatómica.
+
+\section{Limitaciones Conocidas de los Modelos Estadísticos Clásicos (PCA para Apariencia)}
+\label{sec:limitaciones_modelos_clasicos}
+Los modelos de apariencia basados en PCA, como el utilizado en esta tesis, presentan limitaciones:
+\begin{itemize}
+    \item \textbf{Linealidad:} PCA es una técnica lineal y puede no capturar eficientemente variaciones no lineales en la apariencia, comunes en imágenes médicas \cite{PCAReliabilityAnthropology2024}.
+    \item \textbf{Sensibilidad a Outliers y Distribución de Datos:} PCA puede ser sensible a outliers en el entrenamiento y funciona óptimamente con datos de distribución gaussiana, lo cual no siempre se cumple.
+    \item \textbf{Captura de Varianza Global:} PCA prioriza la varianza global, pudiendo omitir detalles finos pero discriminativos.
+    \item \textbf{Dependencia del Alineamiento:} La calidad del modelo PCA depende de la precisión del alineamiento de forma previo.
+\end{itemize}
+Estudios recientes han explorado alternativas no lineales para el modelado de apariencia, como el aprendizaje de variedades (manifold learning) y Kernel PCA \cite{Verleysen2007ESANN, NonlinearDimensionalityReductionSurvey, SparseManifoldTransform}, que buscan describir la estructura de los datos sin asumir linealidad. No obstante, PCA se justifica en muchos contextos por su robustez, menor complejidad computacional y eficacia probada.
+
+\section{Métricas de Evaluación para la Localización de Landmarks}
+\label{sec:metricas_evaluacion}
+La evaluación cuantitativa del rendimiento de los algoritmos de localización de landmarks es crucial.
+
+\subsection{Error Punto a Punto (Point-to-Point Error)}
+\label{ssec:error_punto_a_punto}
+La métrica más común es el error euclidiano promedio. Para un landmark $j$ en una imagen $i$, si $\hat{\mathbf{p}}_{ij} = (\hat{x}_{ij}, \hat{y}_{ij})$ es la predicción y $\mathbf{p}_{ij} = (x_{ij}, y_{ij})$ es la referencia, el error es:
+$$ E_{ij} = \sqrt{(\hat{x}_{ij} - x_{ij})^2 + (\hat{y}_{ij} - y_{ij})^2} $$
+Este error se promedia y a menudo se expresa en milímetros (mm) \cite{Competitor2023MICCAI}.
+
+\subsection{Tasa de Detección Exitosa (Successful Detection Rate - SDR)}
+\label{ssec:sdr}
+La SDR es el porcentaje de landmarks predichos dentro de un umbral de distancia (tolerancia) de su posición de referencia (e.g., error $\le$ 2mm, $\le$ 5mm). Proporciona una visión de la distribución de errores \cite{Competitor2023MICCAI}.
+
+\subsection{Otras Métricas Relevantes}
+\label{ssec:otras_metricas}
+Otras métricas incluyen el error máximo, la desviación estándar del error, y el tiempo de cómputo. La comparación con la variabilidad inter e intra-observador en la anotación manual es también importante para contextualizar el rendimiento.
+
+\section{Conclusión del Capítulo del Marco Teórico}
+\label{sec:conclusion_marco_teorico}
+Este capítulo ha sentado las bases teóricas para el desarrollo del sistema de localización de landmarks propuesto. Se ha explorado la importancia de los landmarks, los principios del aprendizaje supervisado, y las técnicas de modelado estadístico de forma (GPA) y apariencia local (PCA). La revisión del estado del arte ha situado estos enfoques en el contexto científico actual, reconociendo sus fortalezas y limitaciones, y se han delineado las métricas estándar para la evaluación. Este marco teórico proporciona el sustento científico para la metodología específica empleada en esta tesis, permitiendo un desarrollo riguroso y una evaluación crítica del sistema propuesto para la localización de puntos de referencia en radiografías de tórax.

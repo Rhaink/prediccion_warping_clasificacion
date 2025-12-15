@@ -1,0 +1,265 @@
+%\usepackage[
+%	citestyle=ieee, 
+%    bibstyle=ieee,
+%    style=numeric-comp,
+%    sorting=none,
+%    doi=false, 
+%    url=true,
+%    maxbibnames=99, % Make sure we are printing all authors in the appendix
+%    ]{biblatex}
+
+
+% Makes the last name first in the bibliography.
+% \DeclareNameAlias{author}{last-first}
+\usepackage[
+    citestyle=ieee, 
+    bibstyle=ieee,
+    style=numeric-comp,
+    sorting=none,
+    doi=false, 
+    url=true,
+    maxbibnames=99, % Mostrar todos los autores en la bibliografía
+]{biblatex}
+
+
+\addbibresource{reference.bib}  % Nombre del archivo .bib
+
+\DeclareNameAlias{author}{family-given}
+\AtEveryBibitem{% Limpiar algunas entradas en la bibliografía
+  \clearlist{language}
+  \clearfield{note}%
+  \ifentrytype{online}{}{\clearfield{url}\clearfield{urlyear}\clearfield{urlmonth}\clearfield{urlday}}%
+}
+
+% Modify the label for 'online' entry type
+\DeclareLabeldate{%
+  \field{date}\field{year}\field{eventdate}\field{origdate}%
+  \literal{nodate}%
+}
+
+\usepackage[spanish]{babel} % Para la correcta separación silábica en español
+
+\usepackage{amsmath}    % Para entornos de ecuación y comandos matemáticos avanzados
+\usepackage{amssymb}    % Para símbolos matemáticos como \mathbb
+\usepackage{bm}         % Para mejor "bold math" (opcional, \mathbf es a menudo suficiente)
+\usepackage{enumitem}   % Para personalizar listas
+% Specify the margins. This is 6.25inches in text with which 
+% can be used to size figures to the correct size.
+\usepackage{comment}
+\usepackage[a4paper, margin=2.5625cm, centering]{geometry}
+\usepackage{eso-pic}					% Packages for layout and graphics 
+\usepackage{graphicx}
+\usepackage{svg}                        % for svg include
+\usepackage{tikz}
+\usetikzlibrary{fadings, chains, shapes.symbols, positioning}
+\usepackage{setspace}
+% \usepackage{tocloft}		 		    % Fixing a bug with page style changes for toc	
+% \tocloftpagestyle{plain}
+\usepackage{bm}                         % Para negritas en símbolos matemáticos
+\usepackage{algorithm}                  % Paquete para algoritmos
+\usepackage[noend]{algpseudocode}
+\usepackage{etoc} 						% Separate tocs for appendix and the rest    
+\usepackage{chngcntr}					% Count figures within chapters
+\usepackage{booktabs}					% Table formatting
+\usepackage{fancyhdr}					% Setting the style for header and footer.
+\usepackage{tabularx}
+\usepackage{multirow}                   % For better tables 
+\usepackage[hidelinks]{hyperref}		% Clickable links
+\usepackage{nameref}					% References with names
+\usepackage[parfill]{parskip}			% New line instead of indent for sections
+\usepackage{tcolorbox}					% Create boxes around content
+\tcbset{colback=white,arc=0mm}
+\usepackage{pgfgantt}                   % For gantt chart 
+\usepackage{amsmath}                    % For math
+% \usepackage{mathdots}
+% \usepackage{yhmath}
+\usepackage{siunitx}
+\usepackage{pdfpages}                  % for pdf insert
+% \usepackage{rotating}                  % sideway figures
+% \usepackage{array}
+% \usepackage{gensymb}
+\usepackage{amssymb}
+\usepackage{mathtools}              % Add text to math arrows.
+\usepackage{float}
+% \usepackage{cancel}
+\usepackage{tocloft}                
+\usepackage{color}
+\usepackage{multirow}
+\usepackage{textcomp}               % Fixing warning for gensyb \perthousand
+\usepackage{svg}                    % including svg files
+\usepackage{caption}                % For subfigures
+\usepackage{subcaption}
+\usepackage{fontspec}               % For Fonts specification
+\usepackage{fontawesome}
+\usepackage{datetime}
+\usepackage{titlesec}               % For title
+\usepackage{longtable}              % For long table
+\usepackage{makecell}
+\usepackage{array, multirow, multicol}
+% \usepackage{smartdiagram}
+\usepackage{overpic}                % overlay graphics
+\usepackage[absolute,overlay]{textpos} % a flexible way to position tex
+\usepackage{lmodern}
+%\usepackage{glossaries}             % For glossarries
+\usepackage{xeCJK}                  % For Chinese
+% \usepackage{xpatch}                 % provides commands for patching existing commands or environments.
+% \usepackage{transparent}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+% \usepackage{listings}              % To include the code
+% \usepackage{pythonhighlight}        % beautiful python code apperance listing
+\usepackage{etoolbox}               % for the groups in nomenclature
+% \usepackage[printonlyused]{acronym} %[nohyperlinks]
+\usepackage{nomencl}               % for nomenclature
+\makenomenclature
+\renewcommand\nomgroup[1]{%
+  \item[\bfseries
+  \ifstrequal{#1}{A}{Abreviaturas}{
+    \ifstrequal{#1}{P}{Constantes Físicas}{%
+      \ifstrequal{#1}{N}{Símbolos matemáticos}{%
+        \ifstrequal{#1}{C}{Constantes matemáticas}{}}}}%
+]}
+
+\counterwithin{figure}{section} 
+\counterwithin{table}{section}
+
+% Specifying fonts
+\setmainfont{TeX Gyre Termes} 
+% \setmainfont{Georgia} 
+\setsansfont{Arial}
+
+\newfontfamily\footerfont{Georgia}
+\newfontfamily\colvillebold{ColvilleBold}[
+    Path = {setup/font/}, % Change this path if you uploaded the font file to a different location
+    Extension = .otf % Change the extension if your font file has a different extension
+]
+\newfontfamily\Opticopperplate{OPTICopperplate}[
+    Path = {setup/font/}, % Change this path if you uploaded the font file to a different location
+    Extension = .otf % Change the extension if your font file has a different extension
+]
+\setCJKmainfont{Noto Serif CJK SC} % Use Noto Serif CJK SC as the CJK font
+\setCJKsansfont{Noto Sans CJK SC} % Use Noto Sans CJK SC as the CJK sans-serif font
+\setCJKmonofont{Noto Sans Mono CJK SC} % Use Noto Sans Mono CJK SC as the CJK monospace font
+
+%\tableofcontents
+%\newcommand{\chapfnt}
+% \chapterfont{\sffamily\fontsize{17}{17}}
+% \sectionfont{\sffamily\fontsize{14}{15}}
+% \subsectionfont{\sffamily\fontsize{13}{15}}
+% \subsubsectionfont{\sffamily\fontsize{12}{15}}
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\huge\bfseries}
+  {Capítulo \thechapter}{17pt}{\Huge}
+
+% \titleformat{\section}
+%   {\normalfont\sffamily\Large\bfseries}
+%   {\thesection}{1em}{}
+
+% Define \faBilibili command
+\newcommand{\faBilibili}{%
+  \includesvg[width=1em]{setup/img/bilibili.svg}% Adjust the width as needed
+}
+
+% Remove the title and make sure that the text is adjusted
+% \usepackage{abstract}
+% \setlength{\absleftindent}{0mm}
+% \renewcommand{\abstractname}{\vspace{-\baselineskip}}
+% \renewcommand{\abstractnamefont}{\sffamily\fontsize{14}{15}}
+% \renewcommand{\abstracttextfont}{\normalfont\fontsize{12}{13}}
+
+% Renaming and setting style of table of contents
+
+\renewcommand*\contentsname{Tabla de Contenido}
+\renewcommand*\cfttoctitlefont{\fontsize{16}{0}\bf\sffamily}
+\renewcommand\cftchapfont{\fontsize{15}{0}\bf}
+\renewcommand\cftchappagefont{\fontsize{14}{0}\bf}
+\renewcommand\cftsecfont{\fontsize{12}{0}}
+\renewcommand\cftsecpagefont{\fontsize{12}{0}}
+\renewcommand\cftsubsecfont{\fontsize{12}{0}}
+\renewcommand\cftsubsecpagefont{\fontsize{12}{0}}
+\captionsetup{font=small}
+
+% Styling the header and footer
+\fancypagestyle{myfancy}{%
+    \fancyhf{}
+    \fancyhead{}
+    \fancyfoot{}
+%     Codigo original-INICIO, Para la tesis debe estar esta configuración
+%     Cambiar para encabezados
+    \fancyhead[OL]{\selectfont\leftmark}
+    \fancyhead[OR]{\selectfont\thepage}
+    \fancyhead[ER]{\selectfont\rightmark}
+    \fancyhead[EL]{\selectfont\thepage}
+%     Codigo original-FIN
+
+%     Codigo modificado-INICIO, Para el protocolo
+%    \fancyhead[OL]{\selectfont\rightmark}% Encabezado izquierdo en páginas impares
+%    \fancyhead[OR]{\selectfont\thepage}% Encabezado derecho en páginas impares
+%    \fancyhead[EL]{\selectfont\rightmark} % Encabezado izquierdo en páginas pares
+%    \fancyhead[ER]{\selectfont\thepage}   % Encabezado derecho en páginas pares
+    %\fancyhead[ER]{\selectfont\rightmark}
+    %\fancyhead[EL]{\selectfont\thepage}
+%     Codigo modificado-FIN
+
+    \setlength{\headheight}{15.5pt}
+    \renewcommand{\headrulewidth}{0.4pt} % Header rule
+    %\renewcommand{\footrulewidth}{0.4pt} % Footer rule
+}
+
+\fancypagestyle{myempty}{%
+    \fancyhf{} % Clear all header and footer fields
+    \setlength{\headheight}{0em}
+    % \cfoot[C]{\selectfont\thepage}
+    % \fancyhead[L]{\selectfont\leftmark}
+    \setlength{\headheight}{15.5pt}
+    \fancyfoot[C]{\thepage} % Centered page number in the footer
+    \renewcommand{\headrulewidth}{0pt} % Remove header rule
+    \renewcommand{\footrulewidth}{0pt} % Remove footer rule
+}
+% \fancyfoot[R]{\footerfont\thepage}
+
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    % \fancyheadoffset{1cm}
+    \setlength{\headheight}{0em}
+    
+    % \fancyhead{}
+    % \fancyfoot{}
+    \renewcommand{\headrulewidth}{0pt}
+    \fancyfoot[C]{\selectfont\thepage}
+}
+
+\titlespacing*{\chapter}{0pt}{0pt}{10pt}
+\AtBeginDocument{\addtocontents{toc}{\protect\thispagestyle{plain}}}
+
+% Making the command for placing text in random locations
+\newcommand\PlaceText[3]{%
+\begin{tikzpicture}[remember picture,overlay]
+\node[outer sep=0pt,inner sep=0pt,anchor=south west] 
+  at ([xshift=#1,yshift=-#2]current page.north west) {#3};
+\end{tikzpicture}%
+}
+
+% Disable hyphenation
+\pretolerance=10000
+\tolerance=2000 
+\emergencystretch=50pt
+
+\renewcommand{\figurename}{Figura }
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+
+\numberwithin{equation}{section} % Numerar ecuaciones según las secciones
+
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+
+
+%Declaración de nuevas unidades
+
+\DeclareSIUnit\kbps{kbps}
+\DeclareSIUnit\mbps{Mbps}
+\DeclareSIUnit\kbps{kbps}
+\DeclareSIUnit\gbps{Gbps}
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}

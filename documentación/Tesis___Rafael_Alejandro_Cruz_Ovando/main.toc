@@ -1,0 +1,113 @@
+\@ifundefined {etoctocstyle}{\let \etoc@startlocaltoc \@gobble \let \etoc@settocdepth \@gobble \let \etoc@depthtag \@gobble \let \etoc@setlocaltop \@gobble }{}
+\babel@toc {spanish}{}\relax 
+\thispagestyle {plain}
+\etoc@depthtag {mtchapter}
+\contentsline {chapter}{Lista de Figuras}{V}{etoc@tocid.1}%
+\contentsline {chapter}{Lista de Tablas}{VI}{chapter*.1}%
+\contentsline {chapter}{\numberline {1}Introducción}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Planteamiento del problema}{3}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Justificación}{6}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Contexto Global y Necesidad Clínica}{6}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Estado del Arte y Limitaciones de Enfoques Existentes}{6}{subsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.2.3}Contribución Científica y Técnica del Trabajo}{7}{subsection.1.2.3}%
+\contentsline {subsection}{\numberline {1.2.4}Impacto y Aplicaciones Potenciales}{8}{subsection.1.2.4}%
+\contentsline {subsection}{\numberline {1.2.5}Relevancia en el Contexto de COVID-19 y Salud Pública}{8}{subsection.1.2.5}%
+\contentsline {subsection}{\numberline {1.2.6}Justificación Metodológica}{9}{subsection.1.2.6}%
+\contentsline {section}{\numberline {1.3}Objetivos}{10}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Objetivo general}{10}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Objetivos específicos}{10}{subsection.1.3.2}%
+\contentsline {chapter}{\numberline {2}Marco Teórico y Estado del Arte}{11}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Radiografías de Tórax en Diagnóstico Médico}{13}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Principios Físicos de la Radiografía Torácica}{13}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Anatomía Torácica y Definición de Landmarks Anatómicos}{14}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}Aplicaciones Clínicas de la Localización de Landmarks}{15}{subsection.2.1.3}%
+\contentsline {section}{\numberline {2.2}Fundamentos de Aprendizaje Profundo para Visión por Computadora}{17}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Redes Neuronales y Representaciones Jerárquicas}{17}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Redes Neuronales Convolucionales}{18}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Operaciones de Submuestreo y Funciones de Activación}{19}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Algoritmo de Retropropagación}{21}{subsection.2.2.4}%
+\contentsline {subsection}{\numberline {2.2.5}Algoritmos de Optimización}{22}{subsection.2.2.5}%
+\contentsline {section}{\numberline {2.3}Arquitecturas Residuales Profundas}{24}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}El Problema de Degradación en Redes Profundas}{24}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Conexiones Residuales y Bloques Residuales}{25}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.3}Arquitecturas de la Familia ResNet}{26}{subsection.2.3.3}%
+\contentsline {subsection}{\numberline {2.3.4}Normalización por Lotes}{27}{subsection.2.3.4}%
+\contentsline {subsection}{\numberline {2.3.5}Ventajas de Arquitecturas Residuales para Imágenes Médicas}{28}{subsection.2.3.5}%
+\contentsline {section}{\numberline {2.4}Aprendizaje por Transferencia en Imágenes Médicas}{29}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Pre-entrenamiento en ImageNet y Representaciones Transferibles}{29}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Estrategias de Fine-Tuning y Adaptación al Dominio Médico}{30}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Brecha de Dominio y Adaptación para Radiografías de Tórax}{32}{subsection.2.4.3}%
+\contentsline {section}{\numberline {2.5}Funciones de Pérdida para Regresión de Coordenadas}{34}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Error Cuadrático Medio}{34}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Wing Loss: Amplificación de Gradientes para Errores Pequeños}{35}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Restricciones Geométricas: Symmetry Loss y Distance Preservation Loss}{37}{subsection.2.5.3}%
+\contentsline {subsubsection}{Symmetry Loss}{37}{subsection.2.5.3}%
+\contentsline {subsubsection}{Distance Preservation Loss}{38}{equation.2.5.10}%
+\contentsline {subsubsection}{Función de Pérdida Combinada}{39}{equation.2.5.11}%
+\contentsline {section}{\numberline {2.6}Enfoques de Regresión para Detección de Landmarks}{40}{section.2.6}%
+\contentsline {subsection}{\numberline {2.6.1}Regresión Directa de Coordenadas}{40}{subsection.2.6.1}%
+\contentsline {subsection}{\numberline {2.6.2}Regresión de Mapas de Calor}{42}{subsection.2.6.2}%
+\contentsline {subsection}{\numberline {2.6.3}Comparación y Selección de Enfoque}{43}{subsection.2.6.3}%
+\contentsline {section}{\numberline {2.7}Estado del Arte en Detección Automática de Landmarks Anatómicos}{46}{section.2.7}%
+\contentsline {subsection}{\numberline {2.7.1}Métodos Basados en Regresión de Coordenadas}{46}{subsection.2.7.1}%
+\contentsline {subsection}{\numberline {2.7.2}Métodos Basados en Mapas de Calor}{48}{subsection.2.7.2}%
+\contentsline {subsection}{\numberline {2.7.3}Métodos Híbridos y Basados en Transformers}{49}{subsection.2.7.3}%
+\contentsline {subsection}{\numberline {2.7.4}Funciones de Pérdida Especializadas y Restricciones Geométricas}{50}{subsection.2.7.4}%
+\contentsline {subsection}{\numberline {2.7.5}Análisis Comparativo y Posicionamiento del Presente Trabajo}{52}{subsection.2.7.5}%
+\contentsline {section}{\numberline {2.8}Síntesis del Marco Teórico}{56}{section.2.8}%
+\contentsline {chapter}{\numberline {3}Metodología}{59}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Introducción}{59}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Conjunto de Datos}{62}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Descripción General y Composición}{62}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Características Técnicas de las Imágenes}{63}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Definición de Landmarks Anatómicos}{64}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}Pares de Landmarks Simétricos y Eje Mediastínico}{65}{subsection.3.2.4}%
+\contentsline {subsection}{\numberline {3.2.5}División del Dataset para Entrenamiento, Validación y Prueba}{67}{subsection.3.2.5}%
+\contentsline {subsection}{\numberline {3.2.6}Calidad y Validación de Anotaciones}{68}{subsection.3.2.6}%
+\contentsline {section}{\numberline {3.3}Arquitectura del Modelo}{71}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Backbone ResNet-18: Extractor de Características Visuales}{71}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Módulo de Regresión: Mapeo de Características a Coordenadas}{73}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Distribución de Parámetros y Complejidad Computacional}{75}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}Arquitectura Experimental: Integración de Coordinate Attention}{76}{subsection.3.3.4}%
+\contentsline {section}{\numberline {3.4}Pipeline de preprocesamiento y aumentación de datos}{78}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Preprocesamiento determinístico}{79}{subsection.3.4.1}%
+\contentsline {subsubsection}{Conversión de espacio de color}{79}{subsection.3.4.1}%
+\contentsline {subsubsection}{Redimensionamiento y transformación de coordenadas}{80}{equation.3.4.1}%
+\contentsline {subsubsection}{Normalización según estadísticas de ImageNet}{81}{equation.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.2}Aumentación estocástica de datos}{82}{subsection.3.4.2}%
+\contentsline {subsubsection}{Reflexión horizontal}{83}{subsection.3.4.2}%
+\contentsline {subsubsection}{Rotación aleatoria limitada}{84}{equation.3.4.8}%
+\contentsline {subsubsection}{Ajustes fotométricos}{85}{equation.3.4.10}%
+\contentsline {subsection}{\numberline {3.4.3}Orden de aplicación y composición de transformaciones}{86}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Síntesis del pipeline}{87}{subsection.3.4.4}%
+\contentsline {section}{\numberline {3.5}Estrategia de Entrenamiento Progresivo}{88}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Fase 1: Entrenamiento del Módulo de Regresión con Backbone Congelado}{88}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Fase 2: Fine-Tuning Completo con Wing Loss}{90}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Fase 3: Incorporación de Symmetry Loss para Consistencia Bilateral}{93}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.4}Fase 4: Complete Loss con Preservación de Distancias Anatómicas}{94}{subsection.3.5.4}%
+\contentsline {subsection}{\numberline {3.5.5}Estrategia de Warm-Start entre Fases}{96}{subsection.3.5.5}%
+\contentsline {section}{\numberline {3.6}Detalles de implementación y reproducibilidad}{98}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Frameworks y librerías}{98}{subsection.3.6.1}%
+\contentsline {subsubsection}{PyTorch}{98}{subsection.3.6.1}%
+\contentsline {subsubsection}{OpenCV}{100}{subsection.3.6.1}%
+\contentsline {subsubsection}{NumPy}{100}{subsection.3.6.1}%
+\contentsline {subsubsection}{scikit-learn}{101}{subsection.3.6.1}%
+\contentsline {subsubsection}{Matplotlib}{101}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Especificaciones de hardware y configuración computacional}{101}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Tiempos de entrenamiento}{102}{subsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.6.4}Protocolos de reproducibilidad}{103}{subsection.3.6.4}%
+\contentsline {subsection}{\numberline {3.6.5}Gestión de experimentos y checkpoints}{105}{subsection.3.6.5}%
+\contentsline {subsection}{\numberline {3.6.6}Síntesis de implementación}{106}{subsection.3.6.6}%
+\contentsline {section}{\numberline {3.7}Métricas de evaluación}{108}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Error Radial Medio (MRE)}{108}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}Error por landmark individual}{110}{subsection.3.7.2}%
+\contentsline {subsection}{\numberline {3.7.3}Métricas de consistencia geométrica}{110}{subsection.3.7.3}%
+\contentsline {subsubsection}{Error de simetría bilateral}{111}{subsection.3.7.3}%
+\contentsline {subsubsection}{Error de preservación de distancias}{111}{equation.3.7.4}%
+\contentsline {subsubsection}{Tasa de validez anatómica}{113}{equation.3.7.7}%
+\contentsline {subsection}{\numberline {3.7.4}Sistema de clasificación por calidad clínica}{114}{subsection.3.7.4}%
+\contentsline {subsubsection}{Definición de categorías}{114}{subsection.3.7.4}%
+\contentsline {subsubsection}{Conversión de MRE a milímetros}{115}{Item.26}%
+\contentsline {subsection}{\numberline {3.7.5}Protocolo de validación}{116}{subsection.3.7.5}%
+\contentsline {subsection}{\numberline {3.7.6}Síntesis de métricas}{116}{subsection.3.7.6}%
+\contentsline {chapter}{Bibliografía}{118}{subsection.3.7.6}%

@@ -1,0 +1,197 @@
+\section{Detalles de implementación y reproducibilidad}
+\label{sec:implementacion}
+
+La Sección~\ref{sec:estrategia_entrenamiento} especificó exhaustivamente la estrategia de entrenamiento progresivo en cuatro fases que incorpora gradualmente funciones de pérdida especializadas y restricciones geométricas. La presente sección documenta los detalles técnicos de implementación computacional que permiten reproducibilidad completa y determinística del trabajo: \textit{frameworks} (entornos de desarrollo) y librerías específicas empleadas con versiones exactas, especificaciones de \textit{hardware} utilizado, protocolos de configuración de semillas aleatorias para garantizar determinismo, y tiempos de entrenamiento medidos empíricamente. La transparencia en documentación de implementación constituye requisito fundamental para validación científica de trabajos basados en aprendizaje profundo aplicado a medicina, donde reproducibilidad de resultados es crítica para eventual traducción clínica de sistemas automáticos de análisis de imágenes médicas \cite{Paszke2019}.
+
+La metodología implementada fue diseñada deliberadamente para ejecución en hardware de consumo general accesible, evitando dependencia de infraestructura computacional especializada de alto costo que limitaría reproducibilidad en contextos académicos y clínicos con presupuestos restringidos. El sistema completo opera exitosamente sobre GPU de gama media con 8GB de memoria VRAM, procesador de consumo general, y 16GB de memoria RAM del sistema, configuración disponible ampliamente en estaciones de trabajo estándar y computadoras portátiles de gama media-alta actuales. Esta accesibilidad de \textit{hardware} facilita replicación independiente del trabajo y democratiza acceso a tecnologías de aprendizaje profundo para investigación médica en instituciones con recursos limitados.
+
+
+\subsection{Frameworks y librerías}
+\label{subsec:frameworks}
+
+La implementación se desarrolló íntegramente en lenguaje Python 3.10, ecosistema dominante para investigación y desarrollo en aprendizaje profundo debido a su expresividad sintáctica, abundancia de librerías especializadas de código abierto, y compatibilidad universal con \textit{frameworks} de aprendizaje automático \cite{Paszke2019, Pedregosa2011}. El \textit{stack} (pila) tecnológico completo se compone de cinco librerías fundamentales, cada una cumpliendo funciones especializadas en el \textit{pipeline} de entrenamiento e inferencia.
+
+\subsubsection{PyTorch}
+\label{subsubsec:pytorch}
+
+PyTorch 2.0.1 \cite{Paszke2019} constituye el \textit{framework} central de aprendizaje profundo empleado para definición de arquitectura neuronal, implementación de funciones de pérdida personalizadas, cómputo de gradientes mediante diferenciación automática, y optimización de parámetros mediante algoritmos basados en gradiente estocástico. PyTorch fue seleccionado sobre alternativas como TensorFlow por tres ventajas críticas para investigación en aprendizaje profundo médico. Primero, paradigma de ejecución imperativa (\textit{eager execution}) que facilita depuración (\textit{debugging}) y experimentación iterativa mediante ejecución inmediata de operaciones sin construcción previa de grafos computacionales estáticos, permitiendo inspección de activaciones y gradientes en tiempo real durante desarrollo. Segundo, ecosistema robusto de modelos preentrenados en ImageNet mediante \texttt{torchvision.models}, facilitando \textit{transfer learning} (aprendizaje por transferencia) sin necesidad de reimplementación de arquitecturas complejas o descarga manual de pesos preentrenados. Tercero, soporte nativo de GPU mediante aceleración CUDA que permite entrenamiento eficiente de redes profundas en hardware de consumo, con transparencia completa en gestión de transferencias CPU-GPU mediante API \texttt{.to(device)} unificada.
+
+Los módulos específicos de PyTorch empleados incluyen:
+\begin{itemize}
+    \item \texttt{torch.nn}: Módulo de capas neuronales para construcción de arquitecturas mediante composición de bloques (\texttt{nn.Linear}, \texttt{nn.Conv2d}, \texttt{nn.BatchNorm2d}, \texttt{nn.Dropout}, \texttt{nn.ReLU}, \texttt{nn.Sigmoid}).
+    \item \texttt{torch.optim}: Implementaciones de algoritmos de optimización (\texttt{optim.Adam} para Fases 1-2, \texttt{optim.AdamW} para Fases 3-4) con soporte de tasas de aprendizaje diferenciadas por grupo de parámetros.
+    \item \texttt{torch.optim.lr\_scheduler}: Programadores de tasa de aprendizaje (\texttt{CosineAnnealingLR} en Fase 2, \texttt{ReduceLROnPlateau} en Fases 3-4) para ajuste adaptativo durante entrenamiento.
+    \item \texttt{torch.utils.data}: Abstracción de conjuntos de datos mediante \texttt{Dataset} y carga eficiente mediante \texttt{DataLoader} con \textit{multi-threading} (multiprocesamiento) para preprocesamiento paralelo.
+    \item \texttt{torchvision.models}: Modelos preentrenados en ImageNet, específicamente \texttt{resnet18} con pesos \texttt{ResNet18\_Weights.IMAGENET1K\_V1} (versión estándar entrenada sobre ILSVRC-2012).
+    \item \texttt{torchvision.transforms}: Transformaciones de aumentación de datos compatibles con tensores (\texttt{Normalize}, \texttt{RandomHorizontalFlip}, \texttt{RandomRotation}, \texttt{ColorJitter}).
+\end{itemize}
+
+La versión PyTorch 2.0.1 fue seleccionada por introducir compilador \texttt{torch.compile} que optimiza grafos computacionales dinámicamente mediante técnicas de \textit{just-in-time compilation} (compilación en tiempo de ejecución), reduciendo sobrecarga de interpretación en bucles de entrenamiento sin sacrificar flexibilidad de ejecución imperativa. Aunque el presente trabajo no utiliza \texttt{torch.compile} explícitamente para preservar transparencia de implementación, la compatibilidad con versiones recientes garantiza longevidad del código ante actualizaciones futuras del ecosistema.
+
+\subsubsection{OpenCV}
+\label{subsubsec:opencv}
+
+OpenCV 4.8.0 (Open Source Computer Vision Library) \cite{Bradski2000} proporciona funciones optimizadas de procesamiento de imágenes para carga de radiografías desde disco, conversión de espacios de color, y redimensionamiento mediante interpolación bilineal. Las funciones específicas empleadas incluyen:
+\begin{itemize}
+    \item \texttt{cv2.imread}: Carga de imágenes PNG de 8 bits desde sistema de archivos con decodificación automática de formato.
+    \item \texttt{cv2.cvtColor}: Conversión de espacio de color monocromático (\texttt{GRAY}) a pseudocromático RGB (\texttt{RGB}) mediante replicación de canal (Sección~\ref{subsubsec:conversion_color}).
+    \item \texttt{cv2.resize}: Redimensionamiento de imágenes de $299 \times 299$ a $224 \times 224$ píxeles mediante interpolación bilineal (\texttt{cv2.INTER\_LINEAR}) con gestión automática de antialiasing (Sección~\ref{subsubsec:redimensionamiento}).
+\end{itemize}
+
+OpenCV fue preferida sobre alternativas como Pillow (PIL) por su rendimiento superior en operaciones vectorizadas sobre matrices de píxeles, implementadas en C++ optimizado con soporte de paralelización automática mediante OpenMP y aceleración SIMD (Single Instruction Multiple Data) en procesadores compatibles. La interoperabilidad perfecta entre representaciones de imagen de OpenCV (\texttt{numpy.ndarray}) y tensores de PyTorch (\texttt{torch.Tensor}) mediante \texttt{torch.from\_numpy} facilita integración sin sobrecarga de conversiones costosas.
+
+\subsubsection{NumPy}
+\label{subsubsec:numpy}
+
+NumPy 1.24.3 \cite{Harris2020} proporciona estructuras de datos de arreglos multidimensionales (\texttt{numpy.ndarray}) y operaciones algebraicas vectorizadas para manipulación eficiente de coordenadas de \textit{landmarks} (puntos de referencia anatómicos), cómputo de transformaciones geométricas (matrices de rotación, reflexiones), y cálculo de estadísticas descriptivas del conjunto de datos. La representación de coordenadas como arreglos NumPy de forma $(N, 15, 2)$ donde $N$ es tamaño de \textit{batch} (lote), 15 son \textit{landmarks}, y 2 son coordenadas $(x,y)$ permite operaciones vectorizadas de transformación aplicadas simultáneamente sobre todos los \textit{landmarks} y muestras mediante \textit{broadcasting} (difusión) automático, evitando bucles explícitos ineficientes en Python puro.
+
+\subsubsection{scikit-learn}
+\label{subsubsec:sklearn}
+
+scikit-learn 1.3.0 \cite{Pedregosa2011} proporciona utilidades de preprocesamiento de datos y división estratificada de conjuntos. La función \texttt{train\_test\_split} se empleó para particionar el conjunto de datos completo de 956 muestras en conjuntos de entrenamiento (70\%), validación (15\%), y prueba (15\%) con estratificación por clase diagnóstica (COVID-19, Viral Pneumonia, Normal), garantizando distribución balanceada de categorías en cada subconjunto como se describe en la Sección~\ref{sec:dataset}. Adicionalmente, \texttt{StandardScaler} se utilizó para verificar estadísticas de normalización del conjunto de datos procesado durante análisis exploratorio previo a entrenamiento.
+
+\subsubsection{Matplotlib}
+\label{subsubsec:matplotlib}
+
+Matplotlib 3.7.2 se empleó exclusivamente para visualización de curvas de entrenamiento (pérdida en función de épocas), distribuciones de errores, y análisis cualitativo de predicciones mediante superposición de \textit{landmarks} predichos sobre radiografías originales durante validación. Aunque visualizaciones no constituyen parte del \textit{pipeline} de entrenamiento o inferencia productivo, fueron instrumentales durante desarrollo para diagnóstico de problemas de convergencia, detección de sobreajuste, y validación cualitativa de consistencia anatómica de predicciones antes de evaluación cuantitativa formal.
+
+
+\subsection{Especificaciones de hardware y configuración computacional}
+\label{subsec:hardware}
+
+El entrenamiento completo de las cuatro fases metodológicas se ejecutó sobre estación de trabajo de consumo general con las siguientes especificaciones técnicas:
+
+\begin{itemize}
+    \item \textbf{GPU}: AMD Radeon RX 6600 con 8GB de memoria VRAM GDDR6, arquitectura RDNA 2, 1792 procesadores de flujo, frecuencia base 1626 MHz, frecuencia máxima 2491 MHz, ancho de banda de memoria 224 GB/s. Soporte de aceleración mediante ROCm 5.6 (Radeon Open Compute) con \textit{backend} PyTorch compatible.
+    \item \textbf{CPU}: AMD Ryzen 5 5600G, 6 núcleos / 12 hilos, frecuencia base 3.9 GHz, frecuencia máxima 4.4 GHz, caché L3 de 16MB. Utilizado para preprocesamiento de datos mediante \textit{multi-threading} en \texttt{DataLoader} (4 \textit{workers} paralelos).
+    \item \textbf{RAM}: 16GB DDR4 3200MHz, suficiente para almacenamiento en memoria del conjunto de datos completo de imágenes redimensionadas (956 muestras $\times$ 224 $\times$ 224 $\times$ 3 canales $\times$ 4 bytes/flotante $\approx$ 578 MB) y estructuras auxiliares de entrenamiento.
+    \item \textbf{Almacenamiento}: SSD NVMe de 512GB, garantizando latencia mínima en carga de imágenes desde disco durante iteración de \textit{batches}. Tiempo de carga de conjunto de datos completo: $< 3$ segundos.
+    \item \textbf{Sistema Operativo}: Ubuntu 22.04.3 LTS con kernel Linux 6.2.0, proporcionando estabilidad de entorno y compatibilidad con \textit{drivers} de GPU de código abierto AMDGPU.
+\end{itemize}
+
+La configuración de GPU AMD RX 6600 representa hardware de gama media accesible (precio de mercado aproximado USD \$250 al momento de desarrollo), demostrando viabilidad de entrenamiento de sistemas de detección de \textit{landmarks} basados en ResNet-18 sin necesidad de GPUs profesionales de alto costo como NVIDIA A100 o V100. La memoria VRAM de 8GB permitió entrenamiento con \textit{batch size} (tamaño de lote) de hasta 32 muestras en Fase 1 (entrenamiento de cabeza con \textit{backbone} congelado) y 8 muestras en Fases 2-4 (\textit{fine-tuning} completo con mayor demanda de memoria por almacenamiento de gradientes en todas las capas). Estos tamaños de \textit{batch} balancean eficiencia computacional (utilización óptima de paralelismo de GPU) con estabilidad de gradientes estocásticos (varianza suficientemente baja para convergencia confiable).
+
+La utilización de GPU AMD mediante \textit{backend} ROCm en lugar de NVIDIA CUDA responde a disponibilidad de hardware y compromiso con ecosistemas de código abierto, demostrando independencia de implementación respecto a fabricante específico de aceleradores. La compatibilidad de PyTorch con múltiples \textit{backends} (CUDA, ROCm, MPS para Apple Silicon) mediante abstracción unificada \texttt{torch.device} garantiza portabilidad completa del código a diferentes plataformas de hardware sin modificaciones algorítmicas.
+
+
+\subsection{Tiempos de entrenamiento}
+\label{subsec:tiempos_entrenamiento}
+
+Los tiempos de entrenamiento medidos empíricamente para cada fase metodológica se presentan en la Tabla~\ref{tab:tiempos_entrenamiento}. Estos tiempos incluyen cómputo de \textit{forward pass} (paso hacia adelante) y \textit{backward pass} (retropropagación), actualización de parámetros, evaluación periódica sobre conjunto de validación, y guardado de \textit{checkpoints} (puntos de control) de modelo tras cada época.
+
+\begin{table}[htbp]
+\centering
+\caption{Tiempos de entrenamiento por fase metodológica medidos sobre hardware especificado en Sección~\ref{subsec:hardware}. Tiempo por época incluye entrenamiento sobre 669 muestras de entrenamiento, validación sobre 143 muestras, y operaciones de almacenamiento.}
+\label{tab:tiempos_entrenamiento}
+\begin{tabular}{lccc}
+\hline
+\textbf{Fase} & \textbf{Épocas} & \textbf{Tiempo/época} & \textbf{Tiempo total} \\
+\hline
+Fase 1: Entrenamiento de cabeza & 15 & 48 seg & 12 min \\
+Fase 2: \textit{Fine-tuning} con \textit{Wing Loss} & 70 & 3 min 12 seg & 3.7 horas \\
+Fase 3: Incorporación de \textit{Symmetry Loss} & 50 & 3 min 18 seg & 2.8 horas \\
+Fase 4: \textit{Loss} completa con distancias & 40 & 3 min 15 seg & 2.2 horas \\
+\hline
+\textbf{Total acumulado} & \textbf{175} & --- & \textbf{8.7 horas} \\
+\hline
+\end{tabular}
+\end{table}
+
+El tiempo total de entrenamiento acumulado de aproximadamente 8.7 horas demuestra factibilidad de desarrollo iterativo y experimentación rápida. Este tiempo permite ejecución de ciclo completo de entrenamiento (cuatro fases secuenciales) en menos de una jornada laboral, facilitando exploración de variaciones metodológicas (diferentes pesos de funciones de pérdida, hiperparámetros de regularización, estrategias de programación de tasa de aprendizaje) mediante experimentación sistemática. La eficiencia temporal contrasta favorablemente con reportes de entrenamiento de modelos de localización de \textit{landmarks} basados en generación de \textit{heatmaps} (mapas de calor espaciales), que típicamente requieren múltiples días de entrenamiento en GPUs de mayor capacidad debido a decodificación espacial costosa y predicción de representaciones de alta dimensión \cite{Payer2016}.
+
+La Fase 1 (entrenamiento de cabeza) exhibe tiempo por época significativamente menor (48 segundos) respecto a fases subsecuentes (3 minutos 12-18 segundos) debido a tres factores. Primero, menor volumen de parámetros optimizados: únicamente 400K parámetros del módulo de regresión se actualizan, mientras que 11.2M parámetros del \textit{backbone} permanecen congelados, reduciendo cómputo de gradientes y operaciones de actualización. Segundo, mayor tamaño de \textit{batch}: 32 muestras por iteración en Fase 1 versus 8 muestras en fases posteriores, resultando en menor número de iteraciones por época (669/32 = 21 iteraciones versus 669/8 = 84 iteraciones). Tercero, ausencia de programadores de tasa de aprendizaje complejos y funciones de pérdida geométricas adicionales que introducen sobrecarga computacional en fases avanzadas.
+
+
+\subsection{Protocolos de reproducibilidad}
+\label{subsec:reproducibilidad}
+
+La reproducibilidad determinística completa de resultados constituye requisito fundamental para validación científica rigurosa de trabajos en aprendizaje profundo. El entrenamiento de redes neuronales mediante optimización estocástica inherentemente involucra múltiples fuentes de aleatoriedad: inicialización de pesos, orden de presentación de muestras mediante \textit{shuffling} (barajado) de \textit{batches}, operaciones estocásticas de \textit{dropout}, y muestreo de transformaciones de aumentación de datos. Sin control estricto de semillas aleatorias, ejecuciones independientes del mismo código producen resultados numéricos diferentes, impidiendo reproducibilidad exacta de métricas reportadas.
+
+El protocolo de reproducibilidad implementado fija semillas de todos los generadores de números pseudoaleatorios empleados en el \textit{pipeline} de entrenamiento, garantizando que ejecuciones subsecuentes sobre el mismo hardware y software produzcan trayectorias de optimización idénticas bit a bit. El código de inicialización ejecutado antes de cualquier operación aleatoria establece:
+
+\begin{verbatim}
+import torch
+import numpy as np
+import random
+
+SEED = 42
+
+# Semilla de generador de Python estándar
+random.seed(SEED)
+
+# Semilla de NumPy para operaciones vectorizadas
+np.random.seed(SEED)
+
+# Semilla de PyTorch para CPU
+torch.manual_seed(SEED)
+
+# Semilla de PyTorch para GPU (si disponible)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+
+# Configuración de determinismo en operaciones de PyTorch
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+\end{verbatim}
+
+La semilla maestra $\texttt{SEED} = 42$ fue seleccionada arbitrariamente pero fijada consistentemente a través de todos los experimentos. Las configuraciones \texttt{cudnn.deterministic = True} y \texttt{cudnn.benchmark = False} fuerzan algoritmos determinísticos en operaciones de convolución aceleradas por cuDNN (CUDA Deep Neural Network library), sacrificando marginal rendimiento (aproximadamente 5-10\% de sobrecarga temporal) a cambio de reproducibilidad perfecta. Sin estas configuraciones, cuDNN selecciona heurísticamente algoritmos de convolución optimizados que pueden producir resultados numéricamente diferentes debido a orden no determinístico de operaciones de punto flotante en paralelización masiva de GPU.
+
+Adicionalmente, el \texttt{DataLoader} de PyTorch se configura con \texttt{worker\_init\_fn} personalizada que inicializa semillas de procesos \textit{worker} de preprocesamiento paralelo de forma determinística:
+
+\begin{verbatim}
+def worker_init_fn(worker_id):
+    np.random.seed(SEED + worker_id)
+    random.seed(SEED + worker_id)
+
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    num_workers=4,
+    worker_init_fn=worker_init_fn
+)
+\end{verbatim}
+
+Esta configuración garantiza que transformaciones estocásticas de aumentación de datos aplicadas en procesos paralelos produzcan secuencias idénticas en ejecuciones repetidas. El parámetro \texttt{shuffle=True} baraja el conjunto de entrenamiento al inicio de cada época, pero el orden de barajado es determinístico dado que el generador de PyTorch fue inicializado con semilla fija.
+
+El protocolo descrito permite reproducción exacta de todos los resultados reportados en el Capítulo~\ref{cap:resultados}, requisito crítico para verificación independiente y auditoría de trabajos en aprendizaje automático médico donde decisiones clínicas pueden depender de predicciones de modelos. La documentación exhaustiva de versiones de \textit{software}, especificaciones de \textit{hardware}, y configuraciones de semillas aleatorias constituye práctica esencial de ciencia reproducible en era de métodos computacionales intensivos.
+
+
+\subsection{Gestión de experimentos y checkpoints}
+\label{subsec:checkpoints}
+
+La gestión sistemática de experimentos y almacenamiento de \textit{checkpoints} (puntos de control) de modelos durante entrenamiento facilita recuperación ante interrupciones, análisis retrospectivo de trayectorias de entrenamiento, y selección de modelo óptimo basado en rendimiento en conjunto de validación. El sistema implementado almacena \textit{checkpoints} tras cada época de entrenamiento, incluyendo:
+
+\begin{itemize}
+    \item Estado completo del modelo: diccionario \texttt{model.state\_dict()} conteniendo valores de todos los parámetros entrenables (11.6M parámetros de ResNet-18 modificada).
+    \item Estado del optimizador: diccionario \texttt{optimizer.state\_dict()} conteniendo momentos acumulados de Adam/AdamW necesarios para reanudar optimización desde época específica sin perturbación de dinámica de convergencia.
+    \item Número de época actual, permitiendo continuación exacta de entrenamiento tras interrupción.
+    \item Métricas de entrenamiento y validación: pérdida de entrenamiento, pérdida de validación, y Error Radial Medio (MRE) en conjunto de validación para época actual.
+\end{itemize}
+
+Los \textit{checkpoints} se almacenan en formato \texttt{.pth} de PyTorch mediante serialización con \texttt{torch.save}, organizados en estructura de directorios jerárquica por fase de entrenamiento:
+
+\begin{verbatim}
+checkpoints/
+├── phase1_head_training/
+│   ├── epoch_01.pth
+│   ├── epoch_02.pth
+│   └── ...
+├── phase2_wing_loss/
+├── phase3_symmetry_loss/
+└── phase4_complete_loss/
+    └── best_model.pth  # Mejor modelo según validación
+\end{verbatim}
+
+La estrategia de \textit{early stopping} (detención temprana) implementada en Fases 2-4 (Sección~\ref{sec:estrategia_entrenamiento}) monitorea pérdida de validación tras cada época, almacenando \textit{checkpoint} especial \texttt{best\_model.pth} cuando se observa nuevo mínimo. Este \textit{checkpoint} contiene el estado de modelo con mejor rendimiento en validación, utilizado para evaluación final en conjunto de prueba (Sección~\ref{subsec:validacion}) y para inicialización de fase subsecuente mediante \textit{warm-start}. La paciencia de 15 épocas en Fase 2 y 10 épocas en Fases 3-4 permite fluctuaciones temporales de pérdida de validación sin detención prematura, balanceando eficiencia de entrenamiento con exploración exhaustiva de espacio de parámetros.
+
+El tamaño de almacenamiento de cada \textit{checkpoint} es aproximadamente 45 MB (11.6M parámetros $\times$ 4 bytes/flotante), resultando en demanda total de aproximadamente 7.9 GB para almacenamiento de todas las épocas de las cuatro fases (175 épocas). Esta demanda es manejable en sistemas de almacenamiento modernos, y permite análisis retrospectivo completo de dinámica de entrenamiento mediante carga de \textit{checkpoints} intermedios para visualización de curvas de aprendizaje y diagnóstico de fenómenos de convergencia.
+
+
+\subsection{Síntesis de implementación}
+\label{subsec:sintesis_implementacion}
+
+Los detalles de implementación documentados en esta sección garantizan reproducibilidad completa del sistema desarrollado: especificaciones exactas de versiones de \textit{software}, configuraciones de \textit{hardware} accesible, protocolos determinísticos de semillas aleatorias, y mediciones empíricas de tiempos de entrenamiento permiten replicación independiente del trabajo en entornos computacionales diversos. La viabilidad de entrenamiento completo en menos de 9 horas sobre GPU de consumo general demuestra accesibilidad de metodologías basadas en aprendizaje profundo para investigación médica en instituciones con recursos limitados, facilitando democratización de tecnologías avanzadas de análisis de imágenes médicas \cite{Paszke2019}.
+
+La siguiente sección define formalmente las métricas de evaluación empleadas para cuantificar rendimiento del sistema desarrollado, estableciendo criterios objetivos de calidad clínica basados en estándares internacionales de precisión en detección de \textit{landmarks} anatómicos.

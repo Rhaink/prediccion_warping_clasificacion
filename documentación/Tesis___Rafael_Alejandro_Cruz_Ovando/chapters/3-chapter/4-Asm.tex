@@ -1,0 +1,119 @@
+% \section{Modelo Estadístico de Apariencia (SAM)}
+% \label{sec:asm}
+
+% Mientras que el Modelo Estadístico de Forma (SSM) captura la variabilidad global de la forma de los pulmones, los Modelos Estadíscticos de Apariencia (SAM) \cite{cootes1995active} se encargan de modelar la apariencia local de la imagen en las proximidades de cada landmark del contorno. Estos modelos de apariencia son cruciales durante la etapa de ajuste iterativo del SSM, ya que guían a los landmarks hacia las posiciones que mejor se corresponden con la estructura esperada en la imagen.
+
+% \subsection{Extracción de Perfiles de Intensidad}
+% Para cada uno de los $K_{total}$ landmarks de la forma media $\overline{\vect{s}}$ obtenida del SSM, se define una dirección normal al contorno en ese punto. Esta normal, $\vect{n}_i$ para el landmark $i$, se calcula típicamente a partir de los puntos vecinos en la forma media para asegurar estabilidad. A lo largo de esta dirección normal, se muestrea un perfil de intensidad de la imagen. Este perfil es un vector unidimensional $\vect{g}_i \in \R^L$, donde $L$ es la longitud del perfil (número de píxeles muestreados). Los puntos de muestreo se toman a intervalos regulares (ej. espaciado de 1 píxel) a ambos lados del landmark, extendiéndose una distancia predefinida perpendicularmente al contorno.
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=1\columnwidth]{Figures/profile_extraction_visualization.png}
+%     \caption{Extracción de un perfil de intensidad para un landmark. El punto rojo es el landmark $i$ en la forma media. La línea azul representa la normal $\vect{n}_i$ al contorno en ese punto. Los puntos verdes a lo largo de la normal indican las ubicaciones donde se muestrean los valores de intensidad de la imagen para formar el perfil $\vect{g}_i$.}
+%     \label{fig:profile_extraction}
+% \end{figure}
+
+% \subsection{Construcción de Modelos Estadísticos de Apariencia}
+% A partir de un conjunto de entrenamiento de $N$ imágenes y sus correspondientes formas alineadas, se extraen $N$ perfiles de intensidad $\{\vect{g}_i^{(j)}\}_{j=1}^N$ para cada landmark $i$. Estos perfiles se utilizan para construir un modelo estadístico de la apariencia esperada en ese landmark. El modelo más comúnmente utilizado asume una distribución Gaussiana multivariada para los perfiles. Para cada landmark $i$, se calcula:
+
+% \begin{itemize}
+%     \item El perfil medio:
+%     \begin{equation}
+%     \hspace*{\fill}
+%     \overline{\vect{g}}_i = \frac{1}{N} \sum_{j=1}^N \vect{g}_i^{(j)}
+%     \label{eq:mean_intensity_profile} % Etiqueta corregida
+%     \hspace*{\fill}
+%     \end{equation}
+    
+%     \item La matriz de covarianza de los perfiles: 
+%     \begin{equation}
+%     \hspace*{\fill}
+%     \mat{\Sigma}_i = \frac{1}{N-1} \sum_{j=1}^N (\vect{g}_i^{(j)} - \overline{\vect{g}}_i)(\vect{g}_i^{(j)} - \overline{\vect{g}}_i)^\transpose
+%     \label{eq:profile_covariance_matrix} % Etiqueta renombrada de eq:mahalanobis_profile_2 para claridad
+%     \hspace*{\fill}
+%     \end{equation}
+% \end{itemize}
+% La matriz de covarianza $\mat{\Sigma}_i \in \R^{L \times L}$ captura la variabilidad y la correlación entre los puntos del perfil en el landmark $i$.
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=1\textwidth]{Figures/composite_model_landmark_0.png}
+%     \caption{Visualización del modelo estadístico de perfil para un landmark (índice 0). (Izquierda) Perfil de intensidad medio normalizado, $\overline{\vect{g}}_0$, y la banda de $\pm 1$ desviación estándar, indicando la variabilidad de la apariencia. (Derecha) Matriz de covarianza de los perfiles, $\mat{\Sigma}_0$, que captura la correlación entre los puntos del perfil de intensidad.}
+%     \label{fig:modelo_perfil_landmark0}
+% \end{figure}
+
+% \subsection{Distancia de Mahalanobis para la Coincidencia de Perfiles}
+% Durante el proceso de ajuste del SSM a una nueva imagen, se busca la mejor posición para cada landmark a lo largo de su normal. Para un punto candidato en la imagen, se extrae un perfil de intensidad observado $\vect{g}_{\text{obs}}$. La bondad de ajuste de este perfil observado con respecto al modelo estadístico del landmark $i$ (compuesto por $\overline{\vect{g}}_i$ de Ecuación~\eqref{eq:mean_intensity_profile} y $\mat{\Sigma}_i$ de Ecuación~\eqref{eq:profile_covariance_matrix}) se mide utilizando la distancia de Mahalanobis:
+% \begin{equation}
+% \hspace*{\fill}
+% D_M^2(\vect{g}_{\text{obs}}, \overline{\vect{g}}_i) = (\vect{g}_{\text{obs}} - \overline{\vect{g}}_i)^\transpose \mat{\Sigma}_i^{-1} (\vect{g}_{\text{obs}} - \overline{\vect{g}}_i)
+% \label{eq:mahalanobis_distance} % Etiqueta corregida
+% \hspace*{\fill}
+% \end{equation}
+% donde $\mat{\Sigma}_i^{-1}$ es la inversa de la matriz de covarianza (o su pseudoinversa si $\mat{\Sigma}_i$ es singular). La distancia de Mahalanobis tiene en cuenta la varianza y covarianza de los datos del perfil, proporcionando una medida de distancia más robusta que la simple distancia Euclidiana, especialmente cuando los elementos del perfil están correlacionados. Un valor más bajo de $D_M^2$ indica una mejor coincidencia entre el perfil observado y el modelo.
+
+% Los perfiles observados $\vect{g}_{\text{obs}}$ y los perfiles medios $\overline{\vect{g}}_i$ suelen normalizarse antes de calcular la distancia de Mahalanobis para hacer la comparación más robusta a cambios globales de iluminación. Una normalización común es la normalización Z-score, donde cada perfil se transforma para tener media cero y desviación estándar unitaria.
+
+% La construcción de estos modelos de perfil para cada uno de los $K_{total}$ landmarks permite al algoritmo ASM identificar con precisión las estructuras de borde correspondientes en nuevas imágenes, guiando el ajuste del modelo de forma.
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=1\textwidth]{Figures/landmark_0_profile_comparison_v2.png}
+%     \caption{Ilustración del cálculo de la distancia de Mahalanobis (Ecuación~\eqref{eq:mahalanobis_distance}) para evaluar la coincidencia entre un perfil de intensidad observado $\vect{g}_{\text{obs}}$ y el perfil medio modelado $\overline{\vect{g}}_i$ para un landmark específico. La distancia considera la estructura de covarianza de los perfiles $\mat{\Sigma}_i$, permitiendo una medida de ajuste que guía la colocación de los landmarks del SSM en nuevas imágenes. Un valor menor de $D_M^2$ indica una mejor correspondencia.}
+% \label{fig:mahalanobis_coincidencia_perfil}
+% \end{figure}
+
+\section{Modelo Estadístico de Apariencia (SAM)}
+\label{sec:sam_simplified}
+
+Los Modelos Estadísticos de Apariencia (SAM) \cite{cootes1995active} modelan la apariencia local de la imagen cerca de cada landmark del contorno. Guían el ajuste del modelo de forma a nuevas imágenes.
+
+\subsection{Extracción de Perfiles de Intensidad}
+Para cada landmark $i$ de la forma media $\mean{\vect{s}}$, se define una normal $\vect{n}_i$ al contorno. A lo largo de esta normal, se muestrea un perfil de intensidad de la imagen, que es un vector $\vect{g}_i \in \R^L$, donde $L$ es la longitud del perfil.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\columnwidth]{Figures/profile_extraction_visualization.png}
+    \caption{Extracción de un perfil de intensidad $\vect{g}_i$ para un landmark, a lo largo de la normal $\vect{n}_i$ al contorno.}
+    \label{fig:profile_extraction_simplified}
+\end{figure}
+
+\subsection{Construcción de Modelos Estadísticos de Apariencia}
+Con $N$ imágenes de entrenamiento, se extraen $N$ perfiles $\{\vect{g}_i^{(j)}\}_{j=1}^N$ para cada landmark $i$. Se asume una distribución Gaussiana multivariada para estos perfiles. Para cada landmark $i$, se calcula:
+
+\begin{itemize}
+    \item El perfil medio:
+    \begin{equation}
+    \mean{\vect{g}}_i = \frac{1}{N} \sum_{j=1}^N \vect{g}_i^{(j)}
+    \label{eq:mean_intensity_profile_simplified}
+    \end{equation}
+    
+    \item La matriz de covarianza de los perfiles: 
+    \begin{equation}
+    \matSigma_i = \frac{1}{N-1} \sum_{j=1}^N (\vect{g}_i^{(j)} - \mean{\vect{g}}_i)\transpose{(\vect{g}_i^{(j)} - \mean{\vect{g}}_i)}
+    \label{eq:profile_covariance_matrix_simplified}
+    \end{equation}
+\end{itemize}
+La matriz $\matSigma_i \in \R^{L \times L}$ captura la variabilidad de la apariencia en el landmark $i$.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{Figures/composite_model_landmark_0.png}
+    \caption{Modelo estadístico de perfil: (Izquierda) Perfil medio $\mean{\vect{g}}_i$ con variabilidad. (Derecha) Matriz de covarianza $\matSigma_i$.}
+    \label{fig:modelo_perfil_landmark_simplified}
+\end{figure}
+
+\subsection{Distancia de Mahalanobis para la Coincidencia de Perfiles}
+Para ajustar el modelo a una nueva imagen, se extrae un perfil observado $\vect{g}_{\text{obs}}$ en un punto candidato. La bondad de ajuste con el modelo del landmark $i$ ($\mean{\vect{g}}_i$ y $\matSigma_i$) se mide con la distancia de Mahalanobis:
+\begin{equation}
+D_M^2(\vect{g}_{\text{obs}}, \mean{\vect{g}}_i) = \transpose{(\vect{g}_{\text{obs}} - \mean{\vect{g}}_i)} \matSigma_i^{-1} (\vect{g}_{\text{obs}} - \mean{\vect{g}}_i)
+\label{eq:mahalanobis_distance_simplified}
+\end{equation}
+donde $\matSigma_i^{-1}$ es la inversa (o pseudoinversa) de la matriz de covarianza. Un valor $D_M^2$ más bajo indica mejor coincidencia. Los perfiles suelen normalizarse antes de este cálculo.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{Figures/landmark_0_profile_comparison_v2.png}
+    \caption{Cálculo de la distancia de Mahalanobis para evaluar la coincidencia entre un perfil observado $\vect{g}_{\text{obs}}$ y el modelo $\mean{\vect{g}}_i, \matSigma_i$.}
+    \label{fig:mahalanobis_coincidencia_perfil_simplified}
+\end{figure}

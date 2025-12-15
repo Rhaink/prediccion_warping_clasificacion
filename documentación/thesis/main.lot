@@ -1,0 +1,51 @@
+\babel@toc {spanish}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Comparacion de metodos de deep learning para deteccion de landmarks medicos}}{26}{table.caption.17}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Evolucion de funciones de perdida para deteccion de landmarks}}{29}{table.caption.18}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Datasets relevantes para deteccion de landmarks medicos}}{32}{table.caption.19}%
+\contentsline {table}{\numberline {3.4}{\ignorespaces Resumen de tecnicas del estado del arte}}{33}{table.caption.20}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Distribucion del dataset por categoria diagnostica}}{35}{table.caption.21}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Descripcion de los 15 landmarks anatomicos}}{36}{table.caption.22}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Division del dataset en conjuntos de entrenamiento, validacion y prueba}}{37}{table.caption.23}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Variabilidad de landmarks en el ground truth}}{37}{table.caption.24}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Asimetria de pares bilaterales en el ground truth}}{38}{table.caption.25}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces Parametros del modelo por componente}}{41}{table.caption.27}%
+\contentsline {table}{\numberline {4.7}{\ignorespaces Comparacion de configuraciones CLAHE}}{42}{table.caption.28}%
+\contentsline {table}{\numberline {4.8}{\ignorespaces Comparacion de funciones de perdida}}{44}{table.caption.29}%
+\contentsline {table}{\numberline {4.9}{\ignorespaces Configuracion del entrenamiento por fase}}{45}{table.caption.30}%
+\contentsline {table}{\numberline {4.10}{\ignorespaces Modelos del ensemble final}}{46}{table.caption.31}%
+\contentsline {table}{\numberline {4.11}{\ignorespaces Especificaciones de hardware}}{48}{table.caption.32}%
+\contentsline {table}{\numberline {4.12}{\ignorespaces Tiempos de entrenamiento}}{48}{table.caption.33}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Estudio de ablacion: contribucion de cada componente}}{52}{table.caption.34}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Evolucion del error por sesion de desarrollo}}{53}{table.caption.36}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Metricas del modelo final (ensemble de 4 modelos + TTA)}}{54}{table.caption.38}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Error por landmark anatomico (ordenado de menor a mayor)}}{54}{table.caption.39}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Error por categoria diagnostica}}{55}{table.caption.41}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Matriz de error (px) por landmark y categoria}}{56}{table.caption.43}%
+\contentsline {table}{\numberline {5.7}{\ignorespaces Rendimiento de modelos individuales con TTA}}{56}{table.caption.45}%
+\contentsline {table}{\numberline {5.8}{\ignorespaces Error de diferentes combinaciones de ensemble}}{58}{table.caption.46}%
+\contentsline {table}{\numberline {5.9}{\ignorespaces Impacto de CLAHE por categoria}}{59}{table.caption.48}%
+\contentsline {table}{\numberline {5.10}{\ignorespaces Comparacion de parametros CLAHE}}{60}{table.caption.50}%
+\contentsline {table}{\numberline {5.11}{\ignorespaces Comparacion de arquitecturas}}{61}{table.caption.51}%
+\contentsline {table}{\numberline {5.12}{\ignorespaces Resumen de resultados principales}}{62}{table.caption.54}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Comparacion contextualizada con trabajos relacionados}}{65}{table.caption.55}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Resumen de decisiones exitosas y su impacto}}{67}{table.caption.56}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Decisiones fallidas y lecciones aprendidas}}{67}{table.caption.57}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7.1}{\ignorespaces Evaluacion del cumplimiento de objetivos especificos}}{73}{table.caption.58}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2}{\ignorespaces Hiperparametros de arquitectura}}{93}{table.caption.62}%
+\contentsline {table}{\numberline {3}{\ignorespaces Hiperparametros de preprocesamiento}}{94}{table.caption.63}%
+\contentsline {table}{\numberline {4}{\ignorespaces Hiperparametros de entrenamiento}}{94}{table.caption.64}%
+\contentsline {table}{\numberline {5}{\ignorespaces Hiperparametros de data augmentation}}{94}{table.caption.65}%
+\contentsline {table}{\numberline {6}{\ignorespaces Modelos del ensemble final}}{95}{table.caption.66}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7}{\ignorespaces Diagramas de arquitectura generados}}{97}{table.caption.68}%
+\contentsline {table}{\numberline {8}{\ignorespaces Figuras de resultados generadas}}{99}{table.caption.72}%
+\contentsline {table}{\numberline {9}{\ignorespaces Scripts de visualizacion}}{101}{table.caption.79}%

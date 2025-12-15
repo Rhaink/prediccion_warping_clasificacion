@@ -1,0 +1,26 @@
+\section{Metodología y Cronograma de actividades}
+
+\subsection{Adquisición de Imágenes y Preprocesamiento}
+El primer paso en este enfoque consiste en adquirir un conjunto de datos de radiografías de tórax que incluya imágenes de pacientes sanos, con neumonía y con COVID-19. Estas imágenes se someten a un preprocesamiento para mejorar su calidad visual y facilitar la extracción de características relevantes. Las técnicas de preprocesamiento utilizadas incluyen la normalización de la intensidad y el ajuste de contraste, lo cual es crucial para asegurar que las imágenes sean comparables entre sí y que las características importantes sean fácilmente identificables \cite{koonsanit2017, prokop2003}.
+
+\subsection{Normalización y Alineación de la Región Pulmonar}
+Debido a la variabilidad en tamaño, forma y orientación de los pulmones en las imágenes radiográficas, es esencial normalizar y alinear la región pulmonar. Este proceso consta de dos fases principales:
+
+\begin{enumerate}
+\item \textbf{Segmentación de la Región Pulmonar:} Se utilizan algoritmos avanzados de visión por computadora para identificar y extraer la región de interés (ROI) correspondiente a los pulmones en cada imagen. Esto incluye técnicas de segmentación basadas en modelos deformables que se adaptan a la forma específica de los pulmones \cite{Shi2008}. La precisión en esta etapa es crucial, ya que una segmentación incorrecta puede afectar negativamente las etapas posteriores del análisis.
+
+      
+\item \textbf{Normalización y Alineación:} Posteriormente, **se aplica** un conjunto de transformaciones geométricas para normalizar la forma, tamaño y orientación de la ROI. Esto asegura que las variaciones no relacionadas con las patologías de interés no afecten el proceso de clasificación. Las transformaciones incluyen ajustes en escala, rotación y deformaciones no rígidas, **alineando** la ROI a una plantilla estándar para facilitar una comparación uniforme entre imágenes \cite{coselmon2004, rueckert1999nonrigid}.
+
+\end{enumerate}
+
+\subsection{Extracción y Selección de Características Discriminantes}
+Una vez normalizadas las imágenes, se procede a la extracción de un conjunto de características significativas para la detección de neumonía y COVID-19. Este proceso incluye técnicas de análisis de textura, bordes y formas, con el objetivo de identificar patrones específicos asociados a cada condición \cite{wu2020deep}. La selección de características se realiza mediante métodos de aprendizaje automático supervisado, como el análisis de componentes principales (PCA), para determinar las características más relevantes para la clasificación \cite{jolliffe2016principal}. Esta etapa es vital para reducir la dimensionalidad del problema y mejorar la precisión del clasificador.
+
+\subsection{Diseño e Implementación del Clasificador}
+Las características seleccionadas se utilizan como entrada para un clasificador basado en aprendizaje automático. Se explorarán varios modelos, incluyendo redes neuronales, máquinas de soporte vectorial (SVM) y bosques aleatorios, para determinar el más efectivo. El clasificador será entrenado, validado y probado utilizando técnicas de validación cruzada para asegurar su generalizabilidad y rendimiento robusto en conjuntos de datos no vistos \cite{goyal2021}. La elección del modelo y su configuración se optimizarán para maximizar la precisión y minimizar los errores de clasificación.
+
+\subsection{Validación y Comparación del Sistema}
+Finalmente, se validará el rendimiento del clasificador desarrollado comparándolo con los estándares actuales y otros métodos existentes utilizando un conjunto de datos independiente. Las métricas de evaluación incluirán precisión, sensibilidad, especificidad y el área bajo la curva ROC (AUC). Además, se llevará a cabo un análisis de los casos de fallo para identificar oportunidades de mejora \cite{erdaw2021}.
+
+En resumen, la solución propuesta integra técnicas de visión por computadora y aprendizaje automático para desarrollar un sistema robusto y eficiente para la detección automática de neumonía y COVID-19 en imágenes de tórax. La combinación de normalización y alineación de la región pulmonar, extracción y selección de características discriminantes, y la implementación de clasificadores avanzados permitirá mejorar significativamente la precisión y fiabilidad del diagnóstico asistido por computadora.

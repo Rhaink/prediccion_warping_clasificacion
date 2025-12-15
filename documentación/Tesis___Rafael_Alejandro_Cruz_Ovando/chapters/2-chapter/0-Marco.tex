@@ -1,0 +1,225 @@
+\chapter{Marco Teórico y Antecedentes}
+\label{cap:marco_teorico}
+
+\section{Introducción al Marco Teórico}
+% Omitimos una introducción general al marco teórico si esto es solo un capítulo de una tesis
+% y vamos directo a las secciones. Si fuera un artículo, aquí iría la introducción al problema.
+
+Este capítulo establece los fundamentos teóricos que sustentan la metodología de investigación para la localización automatizada de puntos de referencia anatómicos en imágenes radiográficas de tórax. Se exploran los conceptos de detección de `landmarks`, las técnicas de alineación de formas, los modelos de apariencia basados en componentes principales y el paradigma del aprendizaje supervisado, contextualizando la elección de estos métodos dentro del estado del arte y reconociendo sus limitaciones.
+
+\section{Detección de Puntos de Referencia Anatómicos en Imágenes Médicas}
+\label{sec:landmark_detection_medical}
+
+La identificación precisa y automática de puntos de referencia anatómicos (landmarks) es un componente crucial en el análisis de imágenes médicas. Estos puntos, que representan localizaciones distintivas y consistentes en las estructuras anatómicas, sirven como base para una amplia gama de aplicaciones clínicas y de investigación \cite{Bishop2006}. Su correcta localización es fundamental para el registro de imágenes multimodales o temporales, la segmentación de órganos, la planificación quirúrgica asistida por computador, la evaluación de la morfología y la cuantificación de cambios patológicos \cite{Szeliski2011}.
+
+En el dominio específico de las radiografías de tórax (CXR), la detección de landmarks como los ápices pulmonares, los ángulos costofrénicos o puntos clave de la silueta cardíaca es esencial para derivar mediciones clínicamente relevantes, evaluar la simetría, detectar anomalías y asistir en el diagnóstico de enfermedades cardiorrespiratorias \cite{Li2021MedicalIA}. Dada la variabilidad inherente en la anatomía humana, la calidad de la imagen (a menudo afectada por bajo contraste y ruido en CXR) y las posibles deformaciones debidas a patologías, la detección automática de landmarks presenta desafíos significativos. Tradicionalmente, esta tarea ha recaído en la interpretación manual por expertos, un proceso laborioso, subjetivo y susceptible a la variabilidad interobservador. Por ello, el desarrollo de sistemas computacionales robustos y precisos para esta tarea es de gran interés.
+
+\section{Aprendizaje Supervisado para la Localización de Landmarks}
+\label{sec:supervised_learning}
+
+La estrategia central de esta investigación se enmarca dentro del paradigma del aprendizaje supervisado. En este enfoque, un modelo algorítmico aprende a mapear entradas (en este caso, imágenes radiográficas) a salidas deseadas (las coordenadas de los landmarks) a partir de un conjunto de datos de entrenamiento previamente etiquetado \cite{Bishop2006, Duda2000Pattern}. La disponibilidad de mil radiografías con anotaciones manuales de landmarks, como se describe en la Sección \ref{sec:vis_general} de la metodología de esta tesis, permite entrenar los componentes del sistema para que reconozcan los patrones visuales y espaciales asociados a cada landmark. El objetivo es que el sistema generalice este aprendizaje para localizar con precisión los landmarks en imágenes no vistas durante el entrenamiento.
+
+\section{Preprocesamiento de Datos y Alineación de Formas}
+\label{sec:preprocessing_alignment}
+
+La variabilidad en los datos de imagen puede provenir de múltiples fuentes. El preprocesamiento busca reducir la variabilidad extrínseca para enfocar el análisis en las características intrínsecas de interés.
+
+\subsection{Normalización y Escalamiento de Imágenes}
+Las imágenes médicas pueden variar en resolución y dimensiones. La normalización del tamaño de las imágenes a una cuadrícula estándar (e.g., $64 \times 64$ píxeles) es un paso fundamental. Esta normalización asegura que las características extraídas y las dimensiones de los parches de análisis sean consistentes entre imágenes, facilitando la comparabilidad y el aprendizaje del modelo \cite{Gonzalez2018Digital}. La transformación y acotamiento de las coordenadas de los landmarks garantizan su validez dentro de los límites de la imagen reescalada.
+
+\subsection{Análisis Generalizado de Procrustes (GPA) para la Alineación de Formas}
+Los conjuntos de landmarks que definen una forma anatómica están sujetos a variaciones globales de traslación, rotación y escala, que no reflejan la variabilidad intrínseca de la forma en sí, sino más bien diferencias de pose o adquisición. El Análisis Generalizado de Procrustes (GPA) es una técnica estadística diseñada para superponer óptimamente múltiples configuraciones de landmarks, eliminando estas variaciones \cite{Gower1975Generalized, Dryden2016Statistical, Goodall1991Procrustes}.
+
+\subsubsection{Fundamentos Matemáticos del GPA}
+\label{sssec:gpa_math}
+Dado un conjunto de $N$ configuraciones de $k$ puntos (landmarks) en $D$ dimensiones, donde cada configuración $i$ se representa por una matriz $\mathbf{S}_i \in \mathbb{R}^{k \times D}$, el GPA busca una transformación óptima (traslación, rotación y escalamiento uniforme) para cada forma, de modo que se minimice una medida de la suma de cuadrados de las distancias entre las formas y una forma media $\mathbf{M}$ que se estima iterativamente \cite{Goodall1991Procrustes}.
+
+El algoritmo GPA, como se describe en la metodología de esta tesis, sigue estos pasos matemáticos:
+\begin{enumerate}[label=\arabic*., itemsep=5pt] % Aumenta un poco el espacio entre ítems principales
+    \item \textbf{Preprocesamiento de Formas Individuales (por cada forma $\matS_i$):}
+    \begin{itemize}[itemsep=2pt, topsep=2pt] % Ajusta espacio en sub-listas
+        \item \textbf{Centrado:} Se calcula el centroide $\overline{\vecs}_i$:
+              \begin{equation}
+                  \overline{\vecs}_i = \frac{1}{k} \sum_{j=1}^{k} \vecp_{ij}
+                  \label{eq:centroide}
+              \end{equation}
+              donde $\vecp_{ij}$ representa el vector de coordenadas del $j$-ésimo landmark (punto de referencia) de la $i$-ésima configuración. Cada $\vecp_{ij}$ es un vector fila de $D$ dimensiones; Con $D=2$, $\vecp_{ij} = (x_{ij}, y_{ij})$ son las coordenadas 2D del $j$-ésimo landmark de la forma $i$. El centroide $\overline{\vecs}_i$ es, por lo tanto, un vector de $D$ dimensiones que representa la posición media de todos los landmarks de la forma $i$.
+              La forma se centra mediante:
+              \begin{equation}
+                  \matS'_i = \matS_i - \vecuno\overline{\vecs}_i^T
+                  \label{eq:centrado}
+              \end{equation}
+              donde $\vecuno$ es un vector columna de $k$ unos. Esta operación resta el vector centroide $\overline{\vecs}_i$ de cada fila (landmark) de $\matS_i$, trasladando el origen de coordenadas de la forma a su centroide. Esto elimina la variabilidad por traslación \cite{Dryden2016Statistical}.
+
+        \item \textbf{Normalización de Escala:} La escala de cada forma centrada $\matS'_i$ se normaliza dividiéndola por su Tamaño Centroide (Centroid Size), $CS_i$. El Tamaño Centroide es la Norma de Frobenius de la matriz de forma centrada $\matS'_i$.
+              La Norma de Frobenius de una matriz $\mathbf{X} \in \mathbb{R}^{m \times n}$, denotada como $\normF{\mathbf{X}}$, se define como la raíz cuadrada de la suma de los cuadrados de sus elementos:
+              \begin{equation}
+                  \normF{\mathbf{X}} = \sqrt{\sum_{l=1}^{m} \sum_{p=1}^{n} x_{lp}^2}
+                  \label{eq:frobenius_def}
+              \end{equation}
+              En nuestro caso, para la matriz de forma centrada $\matS'_i \in \mathbb{R}^{k \times D}$, donde cada fila $\vecp'_{ij}$ (el $j$-ésimo landmark de la forma $i$ ya centrada) es un vector de $D$ coordenadas, su Tamaño Centroide $CS_i$ se calcula como:
+              \begin{equation}
+                  CS_i = \normF{\matS'_i} = \sqrt{\sum_{j=1}^{k} \normF{\vecp'_{ij}}^2} = \sqrt{\sum_{j=1}^{k} \sum_{d=1}^{D} (p'_{ijd})^2}
+                  \label{eq:centroid_size}
+              \end{equation}
+              donde $\normF{\vecp'_{ij}}^2$ es el cuadrado de la norma euclidiana del vector $\vecp'_{ij}$, y $p'_{ijd}$ es la $d$-ésima coordenada del $j$-ésimo landmark centrado de la forma $i$.
+              Así, la forma normalizada $\matS''_i$ es:
+              \begin{equation}
+                  \matS''_i = \frac{\matS'_i}{CS_i}
+                  \label{eq:normalizacion_escala}
+              \end{equation}
+              Esto asegura que todas las formas tengan una escala comparable (Tamaño Centroide unitario) \cite{Dryden2016Statistical}.
+    \end{itemize}
+
+    \item \textbf{Inicialización de la Forma Media:} Se selecciona arbitrariamente una de las formas preprocesadas (e.g., $\matS''_1$) como la estimación inicial de la forma media, $\matM^{(0)} \in \mathbb{R}^{k \times D}$ \cite{Gower1975Generalized}.
+
+    \item \textbf{Proceso Iterativo de Alineamiento (hasta convergencia):} Para la iteración $t$:
+    \begin{itemize}[itemsep=2pt, topsep=2pt]
+        \item \textbf{Alineamiento a la Forma Media Actual:} Cada forma preprocesada $\matS''_i \in \mathbb{R}^{k \times D}$ se alinea a la forma media actual $\matM^{(t)} \in \mathbb{R}^{k \times D}$ encontrando la matriz de rotación óptima $\matR_i^{(t)} \in \mathbb{R}^{D \times D}$ que minimiza la suma de cuadrados de las distancias euclidianas entre los landmarks correspondientes de la forma rotada y la forma media. Esto es equivalente a minimizar el cuadrado de la Norma de Frobenius de la diferencia:
+              \begin{equation}
+                   \min_{\matR_i^{(t)}} \normF{\matS''_i \matR_i^{(t)} - \matM^{(t)}}^2
+                   \label{eq:minimizacion_procrustes}
+              \end{equation}
+              sujeto a la restricción de que $\matR_i^{(t)}$ sea una matriz ortogonal (es decir, una rotación y posiblemente una reflexión):
+              \begin{equation}
+                  (\matR_i^{(t)})^T \matR_i^{(t)} = \matR_i^{(t)} (\matR_i^{(t)})^T = \matI_D
+                  \label{eq:restriccion_ortogonalidad}
+              \end{equation}
+              donde $\matI_D$ es la matriz identidad de $D \times D$.
+              La solución a este problema de minimización (conocido como problema de Procrustes ortogonal) se obtiene mediante la Descomposición en Valores Singulares (SVD). Se forma la matriz $\matC_i = (\matS''_i)^T \matM^{(t)}$, que es una matriz de $D \times D$. La SVD de una matriz genérica $\mathbf{A} \in \mathbb{R}^{D \times D}$ es una factorización de la forma:
+              \begin{equation}
+                  \mathbf{A} = \mathbf{U} \mathbf{\Sigma} \mathbf{V}^T
+                  \label{eq:svd_def_general}
+              \end{equation}
+              donde:
+              \begin{itemize}[itemsep=1pt, topsep=1pt, leftmargin=*]
+                  \item $\mathbf{U} \in \mathbb{R}^{D \times D}$ es una matriz ortogonal cuyas columnas son los vectores singulares izquierdos de $\mathbf{A}$.
+                  \item $\mathbf{\Sigma} \in \mathbb{R}^{D \times D}$ es una matriz diagonal que contiene los valores singulares no negativos $\sigma_1 \ge \sigma_2 \ge \dots \ge \sigma_D \ge 0$ de $\mathbf{A}$ en su diagonal principal.
+                  \item $\mathbf{V} \in \mathbb{R}^{D \times D}$ es una matriz ortogonal cuyas columnas son los vectores singulares derechos de $\mathbf{A}$, y $\mathbf{V}^T$ es su transpuesta.
+              \end{itemize}
+              Aplicando esto a $\matC_i$, su SVD es $\matC_i = \matU_i \matsigma_i \matV_i^T$. La matriz de rotación óptima $\matR_i^{(t)}$ se calcula como:
+              \begin{equation}
+                  \matR_i^{(t)} = \matV_i \matU_i^T
+                  \label{eq:solucion_rotacion}
+              \end{equation}
+              Para asegurar que $\matR_i^{(t)}$ sea una rotación pura (y no una reflexión), se puede ajustar si $\det(\matR_i^{(t)}) = -1$. Esto se hace multiplicando la columna de $\matV_i$ (o $\matU_i$) correspondiente al valor singular más pequeño por $-1$ antes de calcular $\matR_i^{(t)}$ \cite{Goodall1991Procrustes}. Las formas alineadas son:
+              \begin{equation}
+                  \tilde{\matS}''_i = \matS''_i \matR_i^{(t)}
+                  \label{eq:formas_alineadas}
+              \end{equation}
+
+        \item \textbf{Actualización de la Forma Media:} Se calcula una nueva forma media promediando las coordenadas de los landmarks correspondientes de todas las formas alineadas $\tilde{\matS}''_i$:
+              \begin{equation}
+                  \matM_{\text{raw}}^{(t+1)} = \frac{1}{N} \sum_{i=1}^N \tilde{\matS}''_i
+                  \label{eq:media_raw_update}
+              \end{equation}
+
+        \item \textbf{Normalización de la Nueva Forma Media:} La forma media cruda $\matM_{\text{raw}}^{(t+1)}$ se centra y normaliza en escala (aplicando los mismos procedimientos descritos en el paso 1, ver ecuaciones \eqref{eq:centrado} y \eqref{eq:normalizacion_escala}) para obtener la forma media actualizada $\matM^{(t+1)}$.
+    \end{itemize}
+
+    \item \textbf{Criterio de Convergencia:} El proceso iterativo concluye cuando la diferencia entre la forma media de la iteración actual y la anterior es suficientemente pequeña, medida por la Norma de Frobenius:
+          \begin{equation}
+              \normF{\matM^{(t+1)} - \matM^{(t)}} < \varepsilon
+              \label{eq:convergencia}
+          \end{equation}
+          donde $\varepsilon$ es una tolerancia pequeña predefinida (e.g., $10^{-10}$) \cite{Gower1975Generalized}.
+\end{enumerate}
+
+Las formas resultantes $$\tilde{\mathbf{S}}''_i$$ están alineadas en un espacio común, denominado espacio de Procrustes. Los resultados preliminares de esta tesis (Capítulo \ref{cap:resultados_discusion}) demuestran experimentalmente que sin este paso, la variabilidad por traslaciones, rotaciones y escalas anómalas incrementa significativamente el error de predicción, subrayando la importancia crítica del GPA.
+
+\section{Modelado de la Apariencia Local con Análisis de Componentes Principales (PCA)}
+\label{sec:pca_appearance_modeling}
+
+Una vez que las formas están alineadas, se modela la variabilidad en la apariencia local alrededor de cada landmark.
+
+\subsection{Extracción de Parches y Definición de Regiones de Búsqueda}
+Como se describe en la metodología, se definen regiones de búsqueda para cada landmark basadas en la distribución de sus coordenadas en el conjunto de entrenamiento. Los parches de imagen (subimágenes) extraídos alrededor de la posición de cada landmark capturan la información visual local.
+
+\subsection{Análisis de Componentes Principales (PCA) para Modelos de Apariencia (Eigenpatches)}
+El Análisis de Componentes Principales (PCA) es una técnica estadística fundamental para la reducción de dimensionalidad y el análisis de la varianza en datos multivariados \cite{Jolliffe2002Principal, Bishop2006, Shouno2022PCA}. Aplicado a los parches de imagen vectorizados, PCA permite construir un modelo compacto de la apariencia. El concepto es similar al de ``eigenfaces'' para el reconocimiento facial \cite{Turk1991Eigenfaces}, donde aquí se generan ``eigenpatches''.
+
+\subsubsection{Fundamentos Matemáticos del PCA}
+\label{sssec:pca_math}
+Dado un conjunto de $N$ parches vectorizados $\{\mathbf{x}_{ij}\}_{i=1}^N$ para un landmark $j$, donde cada $\mathbf{x}_{ij} \in \mathbb{R}^{D_p}$ ($D_p$ es el número de píxeles en el parche), el proceso es:
+\begin{enumerate}
+    \item \textbf{Cálculo de la Media Muestral:} Se calcula el parche promedio $\overline{\mathbf{x}}_j$:
+    \begin{equation}
+        \overline{\mathbf{x}}_j = \frac{1}{N} \sum_{i=1}^N \mathbf{x}_{ij}
+        \label{eq:mean_patch}
+    \end{equation}
+    %\cite{Jolliffe2002Principal}.
+
+    \item \textbf{Centrado de los Datos:} Cada parche $\mathbf{x}_{ij}$ se centra para obtener $\mathbf{z}_{ij}$:
+    \begin{equation}
+        \mathbf{z}_{ij} = \mathbf{x}_{ij} - \overline{\mathbf{x}}_j
+        \label{eq:centered_data}
+    \end{equation}
+    Estos forman la matriz de datos centrados $\mathbf{Z}_j \in \mathbb{R}^{N \times D_p}$.
+
+    \item \textbf{Cálculo de la Matriz de Covarianza:} La matriz de covarianza $\mathbf{C}_j$ se calcula como:
+    \begin{equation}
+        \mathbf{C}_j = \frac{1}{N-1} \mathbf{Z}_j^T \mathbf{Z}_j = \frac{1}{N-1} \sum_{i=1}^N \mathbf{z}_{ij} \mathbf{z}_{ij}^T
+        \label{eq:covariance_matrix}
+    \end{equation}
+    %\cite{Bishop2006}.
+
+    \item \textbf{Resolución del Problema de Eigenvalores/Eigenvectores:} Se calculan los eigenvalores $\lambda_{jk}$ y los eigenvectores $\mathbf{v}_{jk}$ de $\mathbf{C}_j$ resolviendo:
+    \begin{equation}
+        \mathbf{C}_j\mathbf{v}_{jk} = \lambda_{jk} \mathbf{v}_{jk}
+        \label{eq:eigen_problem}
+    \end{equation}
+    %\cite{Jolliffe2002Principal}.
+
+    \item \textbf{Selección de Componentes Principales:} Los eigenvectores se ordenan por eigenvalores descendentes. Se seleccionan los primeros $m_j$ eigenvectores, que forman las columnas de la matriz $\mathbf{V}_j$:
+    \begin{equation}
+        \mathbf{V}_j = [\mathbf{v}_{j1}, \dots, \mathbf{v}_{jm_j}] \in \mathbb{R}^{D_p \times m_j}
+        \label{eq:principal_components_matrix}
+    \end{equation}
+    Estos se eligen para que expliquen un porcentaje deseado de la varianza total (e.g., 95\% en esta tesis, ver Capítulo \ref{cap:diseno_experimental}), donde la varianza explicada por $m_j$ componentes es:
+    \begin{equation}
+        \frac{\sum_{l=1}^{m_j} \lambda_{jl}}{\sum_{l=1}^{D_p} \lambda_{jl}}
+        \label{eq:explained_variance}
+    \end{equation}
+    %\cite{Shouno2022PCA}. 
+    Los resultados de esta tesis (Capítulo \ref{cap:resultados_discusion}) confirman que un número reducido de componentes (10-30) captura la mayor parte de la varianza.
+
+    \item \textbf{Proyección al Subespacio de PCA:} Un nuevo parche (centrado) $\mathbf{z}$ se proyecta al subespacio PCA para obtener los coeficientes $\boldsymbol{\omega}$:
+    \begin{equation}
+        \boldsymbol{\omega} = \mathbf{V}_j^T \mathbf{z}
+        \label{eq:pca_projection}
+    \end{equation}
+
+    \item \textbf{Reconstrucción desde el Subespacio PCA:} El parche se reconstruye a partir de sus componentes principales como $\hat{\mathbf{x}}$:
+    \begin{equation}
+        \hat{\mathbf{x}} = \mathbf{V}_j\boldsymbol{\omega} + \overline{\mathbf{x}}_j
+        \label{eq:pca_reconstruction}
+    \end{equation}
+    El error de reconstrucción, $E_{L2}(\mathbf{x})$, se define como la norma $L_2$ de la diferencia entre el parche original y el reconstruido:
+    \begin{equation}
+        E_{L2}(\mathbf{x}) = \|\mathbf{x} - \hat{\mathbf{x}}\|_2
+        \label{eq:reconstruction_error}
+    \end{equation}
+    y se utiliza para la predicción \cite{Martinez2001PCAvsLDA}.
+\end{enumerate}
+
+\section{Proceso de Búsqueda y Coincidencia para la Predicción}
+\label{sec:search_matching}
+La localización de un landmark $j$ en una nueva imagen de prueba se realiza mediante una búsqueda exhaustiva dentro de la región de búsqueda $\mathcal{R}_j$ predefinida (ver Sección \ref{sec:extraccion_region}). Para cada ubicación candidata $(y_c, x_c)$ dentro de $\mathcal{R}_j$, se extrae un parche $\mathbf{P}_c$. Este parche se procesa como se describe en la Sección \ref{sssec:pca_math} para calcular el error de reconstrucción $E_{L2}(\mathbf{x}_c)$. La posición $(y_c, x_c)$ que minimiza este error se selecciona como la ubicación predicha $\hat{\mathbf{p}}_j$.
+
+\section{Estado del Arte y Enfoques Contemporáneos}
+\label{sec:state_of_the_art}
+
+El enfoque metodológico presentado, combinando GPA y PCA, se alinea con los principios de los Modelos Activos de Forma (ASM) \cite{Cootes1995ActiveShape} y los Modelos Activos de Apariencia (AAM) \cite{Cootes2001ActiveAppearance}. Estos han sido métodos canónicos efectivos.
+
+No obstante, el campo ha avanzado, especialmente con el aprendizaje profundo:
+\begin{itemize}
+    \item \textbf{Métodos basados en Regresión Directa con Aprendizaje Profundo:} Las Redes Neuronales Convolucionales (CNNs) pueden regresar directamente las coordenadas de los landmarks \cite{Li2021MedicalIA}.
+    \item \textbf{Métodos basados en Mapas de Calor (Heatmap Regression):} Un enfoque popular con CNNs es predecir mapas de calor, donde la intensidad indica la probabilidad del landmark. El máximo en el mapa de calor localiza el landmark \cite{Wang2022ContextAwareMICCAI}.
+    \item \textbf{Arquitecturas Avanzadas:} Redes como U-Net y sus variantes, a menudo con mecanismos de atención, se utilizan para capturar contexto local y global, mejorando la precisión en CXR \cite{Chen2023SelfSupervisedTMI}.
+\end{itemize}
+Si bien los métodos de aprendizaje profundo a menudo logran un rendimiento de vanguardia \cite{Li2021MedicalIA}, generalmente requieren grandes conjuntos de datos anotados y recursos computacionales. El enfoque clásico propuesto en esta tesis, aunque potencialmente superado en precisión, ofrece ventajas en interpretabilidad y menor demanda de datos, como se discute en las Conclusiones (Capítulo \ref{cap:conclusiones_trabajo_futuro}).
+
+\section{Limitaciones Potenciales del Enfoque Metodológico}
+\label{sec:limitations}
+
+Las limitaciones, detalladas en el Capítulo \ref{cap:conclusiones_trabajo_futuro} de esta tesis, incluyen la linealidad de PCA, la sensibilidad de las regiones de búsqueda, la dependencia de la calidad del entrenamiento, el manejo de oclusiones severas, y aspectos del etiquetado. La linealidad de PCA es una limitación conocida; mientras PCA captura la varianza principal de forma óptima bajo supuestos lineales, las variaciones complejas y no lineales en la apariencia pueden no ser modeladas completamente \cite{Bishop2006, Jolliffe2002Principal}. Las propuestas de Trabajo Futuro (Capítulo \ref{cap:conclusiones_trabajo_futuro}), como la exploración de AAMs o CNNs, buscan abordar algunas de estas limitaciones. Por ejemplo, los AAMs \cite{Cootes2001ActiveAppearance} modelan conjuntamente forma y apariencia, lo que puede ofrecer mayor robustez, y las CNNs \cite{Chen2023SelfSupervisedTMI, Wang2022ContextAwareMICCAI} pueden aprender características no lineales más potentes.

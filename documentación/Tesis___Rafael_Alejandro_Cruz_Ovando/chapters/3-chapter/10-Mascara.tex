@@ -1,0 +1,181 @@
+% \section{Generación de Máscaras de Segmentación y Preparación para Evaluación}
+% \label{sec:generacion_mascaras_evaluacion} 
+
+% Una vez que el proceso de ajuste iterativo del SSM (Active Shape Model - ASM, Sección~\ref{sec:ajuste_asm}) ha convergido, se obtiene una representación final de la forma pulmonar mediante un conjunto de $\Ktotal$ landmarks, $\mat{S}'_{\text{final,img}} \in \R^{\Ktotal \times \dval}$, en el espacio de la imagen. El siguiente paso consiste en convertir esta representación de puntos discretos en una máscara de segmentación binaria que delimite las regiones pulmonares. Paralelamente, se requiere la generación de máscaras ground truth (GT) a partir de anotaciones de referencia para la posterior evaluación del modelo.
+
+% \subsection{Generación de Máscara de Segmentación Predicha a partir del Ajuste ASM}
+% \label{sec:mascara_predicha_asm}
+
+% Los $\Ktotal$ puntos de la forma final ajustada por el ASM, $\mat{S}'_{\text{final,img}} = \{ \vect{p}'_{i,\text{img}} = (x'_{i,\text{img}}, y'_{i,\text{img}}) \}_{i=1}^{\Ktotal}$, se interpretan como los vértices de los contornos pulmonares. Para generar la máscara de segmentación predicha inicial, $\mat{M}_{\text{pred,initial}}$:
+
+% \begin{enumerate}
+%     \item \textbf{División de Contornos Lobulares:} Siguiendo la convención utilizada durante la densificación de landmarks (Sección~\ref{sec:densificacion_forma}, donde $\Ktotal = 2k_d$), los $\Ktotal$ puntos se dividen en dos conjuntos, representando los dos lóbulos pulmonares principales (cada uno con $k_d = \Ktotal/2$ puntos):
+%     \begin{itemize}
+%         \item Contorno del primer lóbulo: $\mathcal{L}_{1,\text{pred}} = \{ \vect{p}'_{i,\text{img}} \}_{i=1}^{\Ktotal/2}$
+%         \item Contorno del segundo lóbulo: $\mathcal{L}_{2,\text{pred}} = \{ \vect{p}'_{i,\text{img}} \}_{i=(\Ktotal/2)+1}^{\Ktotal}$
+%     \end{itemize}
+%     Cada conjunto $\mathcal{L}_{j,\text{pred}}$ forma una secuencia ordenada de vértices que define un polígono $\mathcal{P}_{j,\text{pred}}$.
+
+%     \item \textbf{Rasterización de Polígonos:} Se inicializa una máscara binaria $\mat{M}_{\text{pred,initial}}$ con las mismas dimensiones que la imagen de entrada ($H \times W$), con todos los píxeles establecidos a 0 (fondo). Luego, para cada polígono $\mathcal{P}_{j,\text{pred}}$ (para $j \in \{1,2\}$):
+%     \begin{itemize}
+%         \item Los vértices del polígono se convierten a un formato de enteros adecuado para las rutinas de dibujo.
+%         \item (Opcional) Para mejorar la robustez ante geometrías poligonales complejas (e.g., auto-intersecciones), se pueden aplicar algoritmos de validación y corrección geométrica antes del relleno.
+%         \item Se utiliza un algoritmo de rasterización o relleno de polígonos para asignar un valor de primer plano (e.g., 1 o 255) a todos los píxeles $(u,v)$ que se encuentran dentro de los límites de $\mathcal{P}_{j,\text{pred}}$:
+%         \begin{equation}
+%         \mat{M}_{\text{pred,initial}}(u,v) = 1 \quad \text{si } (u,v) \in \text{interior}(\mathcal{P}_{1,\text{pred}}) \lor (u,v) \in \text{interior}(\mathcal{P}_{2,\text{pred}}),
+%         \label{eq:rasterizacion_pred}
+%         \end{equation}
+%         y $\mat{M}_{\text{pred,initial}}(u,v) = 0$ en caso contrario.
+%     \end{itemize}
+% \end{enumerate}
+
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.7\textwidth]{Figures/fig_asm_final_to_mask_idx20.png}
+%   \caption{Generación de la máscara de segmentación predicha $\mat{M}_{\text{pred,initial}}$ a partir de los $\Ktotal$ landmarks finales $\mat{S}'_{\text{final,img}}$ del ajuste ASM. Izquierda: Puntos $\mat{S}'_{\text{final,img}}$ superpuestos en la imagen. Derecha: Máscara binaria $\mat{M}_{\text{pred,initial}}$ resultante.}
+%   \label{fig:asm_final_to_mask}
+% \end{figure}
+
+% \subsection{Generación de Máscaras Ground Truth}
+% \label{sec:generacion_mascaras_gt}
+
+% Para entrenar y evaluar el modelo de segmentación, se requieren máscaras ground truth (GT) $\mat{M}_{GT}$ que representen la segmentación ideal. Estas se generan a partir de un conjunto de $\Ktotal$ landmarks, denotados como la matriz $\mat{P}_{\Ktotal,s,GT} \in \R^{\Ktotal \times \dval}$, anotados manualmente en un espacio fuente $\mathcal{S}_s$ (dimensiones $W_s \times H_s$).
+
+% \begin{enumerate}
+%     \item \textbf{Transformación de Coordenadas GT al Espacio Objetivo:} Los landmarks $\mat{P}_{\Ktotal,s,GT}$ se transforman al espacio objetivo $\mathcal{S}_t$ (dimensiones $W_t \times H_t$ de la imagen de trabajo) mediante reescalado y ajuste de límites. Para cada landmark $i$, $(x_{s,i,GT}, y_{s,i,GT})$ de $\mat{P}_{\Ktotal,s,GT}$:
+%     \begin{align}
+%     x_{t,i,GT} &= (x_{s,i,GT} \cdot \frac{W_t}{W_s}) \label{eq:gt_scale_x} \\
+%     y_{t,i,GT} &= (y_{s,i,GT} \cdot \frac{H_t}{H_s}) \label{eq:gt_scale_y} \\
+%     x'_{t,i,GT} &= \text{clip}(x_{t,i,GT}, 0, W_t - 1) \label{eq:gt_clip_x} \\
+%     y'_{t,i,GT} &= \text{clip}(y_{t,i,GT}, 0, H_t - 1) \label{eq:gt_clip_y}
+%     \end{align}
+%     Esto produce el conjunto de landmarks GT ajustados, la matriz $\mat{P}'_{\Ktotal,t,GT} \in \R^{\Ktotal \times \dval}$.
+
+%     \item \textbf{Formación de Contornos Lobulares GT y Rasterización:} De manera análoga a la Sección~\ref{sec:mascara_predicha_asm} (Paso 1 y 2), los puntos de $\mat{P}'_{\Ktotal,t,GT}$ se dividen en dos contornos lobulares $\mathcal{L}_{1,GT}$ y $\mathcal{L}_{2,GT}$, que definen polígonos $\mathcal{P}_{1,GT}$ y $\mathcal{P}_{2,GT}$. Estos polígonos se rasterizan para formar la máscara $\mat{M}_{GT}$:
+%     \begin{equation}
+%     \mat{M}_{GT}(u,v) = 1 \quad \text{si } (u,v) \in \text{interior}(\mathcal{P}_{1,GT}) \lor (u,v) \in \text{interior}(\mathcal{P}_{2,GT}),
+%     \label{eq:rasterizacion_gt}
+%     \end{equation}
+%     y $\mat{M}_{GT}(u,v) = 0$ en caso contrario.
+% \end{enumerate}
+
+% El Algoritmo~\ref{alg:generate_gt_mask_formal} resume este proceso.
+
+% \begin{algorithm}[htbp]
+% \caption{Generación de Máscara Ground Truth ($\mat{M}_{GT}$)}
+% \label{alg:generate_gt_mask_formal}
+% \begin{algorithmic}[1]
+% \Require Matriz de $\Ktotal$ coordenadas de landmarks GT, $\mat{P}_{\Ktotal,s,GT} = \{ (x_{s,i,GT}, y_{s,i,GT}) \}_{i=1}^{\Ktotal}$, en el espacio fuente $\mathcal{S}_s$.
+% \Require Dimensiones del espacio fuente $(W_s, H_s)$.
+% \Require Dimensiones del espacio objetivo $(W_t, H_t)$.
+% \Ensure Máscara binaria ground truth $\mat{M}_{GT}$ de dimensiones $H_t \times W_t$.
+
+% \Statex \textbf{Procedimiento:}
+% \State \textbf{Transformación de Coordenadas al Espacio Objetivo:}
+% \State Inicializar $\mat{P}'_{\Ktotal,t,GT}$ (matriz $\Ktotal \times \dval$)
+% \ForAll{landmark $i=1, \dots, \Ktotal$}
+%     \State $(x_{s,i,GT}, y_{s,i,GT}) \leftarrow i\text{-ésima fila de } \mat{P}_{\Ktotal,s,GT}$
+%     \State $x_{t,i,GT} \leftarrow (x_{s,i,GT} \cdot \frac{W_t}{W_s})$ \Comment{Ver Ecuación~\eqref{eq:gt_scale_x}}
+%     \State $y_{t,i,GT} \leftarrow (y_{s,i,GT} \cdot \frac{H_t}{H_s})$ \Comment{Ver Ecuación~\eqref{eq:gt_scale_y}}
+%     \State $x'_{t,i,GT} \leftarrow \text{clip}(x_{t,i,GT}, 0, W_t - 1)$ \Comment{Ver Ecuación~\eqref{eq:gt_clip_x}}
+%     \State $y'_{t,i,GT} \leftarrow \text{clip}(y_{t,i,GT}, 0, H_t - 1)$ \Comment{Ver Ecuación~\eqref{eq:gt_clip_y}}
+%     \State Asignar $(x'_{t,i,GT}, y'_{t,i,GT})$ a la $i$-ésima fila de $\mat{P}'_{\Ktotal,t,GT}$.
+% \EndFor
+
+% \State \textbf{Definición de Contornos Lobulares:}
+% \State $\mathcal{L}_{1,GT} \leftarrow \{ i\text{-ésima fila de } \mat{P}'_{\Ktotal,t,GT} \}_{i=1}^{\Ktotal/2}$
+% \State $\mathcal{L}_{2,GT} \leftarrow \{ i\text{-ésima fila de } \mat{P}'_{\Ktotal,t,GT} \}_{i=(\Ktotal/2)+1}^{\Ktotal}$
+% \State Estos contornos definen los polígonos $\mathcal{P}_{1,GT}$ y $\mathcal{P}_{2,GT}$.
+
+% \State \textbf{Inicialización de la Máscara:}
+% \State $\mat{M}_{GT} \leftarrow$ matriz de dimensiones $H_t \times W_t$ con todos los elementos igual a 0.
+
+% \State \textbf{Rasterización de Polígonos:}
+% \ForAll{$j \in \{1,2\}$}
+%     \State Determinar el conjunto de píxeles $I(\mathcal{P}_{j,GT})$ que constituyen el interior del polígono $\mathcal{P}_{j,GT}$.
+%     \ForAll{píxel $(u,v) \in I(\mathcal{P}_{j,GT})$}
+%         \State $\mat{M}_{GT}(u,v) \leftarrow 1$.
+%     \EndFor
+% \EndFor
+% \State \Return $\mat{M}_{GT}$
+% \end{algorithmic}
+% \end{algorithm}
+
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.7\textwidth]{Figures/fig_gt_mask_generation_idx20.png}
+%   \caption{Proceso de generación de una máscara Ground Truth $\mat{M}_{GT}$. Izquierda: Landmarks GT $\mat{P}'_{\Ktotal,t,GT}$ superpuestos en la imagen (después de la transformación al espacio objetivo). Derecha: Máscara binaria $\mat{M}_{GT}$ resultante.}
+%   \label{fig:gt_mask_generation}
+% \end{figure}
+
+% Con la máscara predicha inicial $\mat{M}_{\text{pred,initial}}$ y la máscara ground truth $\mat{M}_{GT}$ disponibles, se puede proceder a la evaluación cuantitativa del rendimiento de la segmentación, como se detallará en la Sección~\ref{sec:evaluacion}.
+
+\section{Generación de Máscaras de Segmentación}
+\label{sec:generacion_mascaras_simplified} 
+
+Después de ajustar el modelo de forma a una imagen (proceso descrito en la Sección~\ref{sec:ajuste_asm_simplified}), se obtiene un conjunto final de $\Ktotal$ puntos, llamados \textit{landmarks}, que representan el contorno de los pulmones en la imagen. Estos landmarks se almacenan en una matriz $\mat{S}'_{\text{final,img}}$.
+
+El objetivo ahora es crear dos tipos de imágenes binarias (máscaras):
+\begin{enumerate}
+    \item Una máscara predicha por nuestro modelo.
+    \item Una máscara 'perfecta' o ground truth (GT), basada en las anotaciones manuales, para poder evaluar qué tan bien lo hizo el modelo.
+\end{enumerate}
+
+\subsection{Creación de la Máscara Predicha por el Modelo}
+\label{sec:mascara_predicha_simplified}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.7\textwidth]{Figures/fig_asm_final_to_mask_idx20.png}
+  \caption{De los puntos (landmarks) predichos por el modelo (izquierda) a una máscara de segmentación (derecha).}
+  \label{fig:asm_final_to_mask_simplified_v2}
+\end{figure}
+
+Los $\Ktotal$ landmarks de la forma final $\mat{S}'_{\text{final,img}}$ son los vértices de los contornos de los pulmones predichos. Para crear la máscara $\mat{M}_{\text{predicha}}$:
+\begin{enumerate}
+    \item \textbf{Definir los Polígonos Pulmonares:} Los $\Ktotal$ landmarks se dividen en dos grupos, uno para cada pulmón (o lóbulo principal). Cada grupo de puntos forma un polígono (una figura cerrada). Llamaremos a estos polígonos $\set{P}_{\text{pulmón1, predicho}}$ y $\set{P}_{\text{pulmón2, predicho}}$.
+
+    \item \textbf{Rellenar los Polígonos (Rasterización):}
+    Creamos una imagen negra (todos los píxeles con valor 0) del mismo tamaño que la radiografía original. Luego, 'rellenamos' de blanco (píxeles con valor 1) todas las áreas dentro de los polígonos $\set{P}_{\text{pulmón1, predicho}}$ y $\set{P}_{\text{pulmón2, predicho}}$.
+    Matemáticamente, para cada píxel $(u,v)$ en la máscara:
+    \begin{equation}
+    \mat{M}_{\text{predicha}}(u,v) = 1 \quad
+    \label{eq:rasterizacion_pred_simplified_v2}
+    \end{equation}
+    \text{si el píxel } (u,v) \text{ está en alguno de los polígonos predichos.}
+    \\
+    Si no, $\mat{M}_{\text{predicha}}(u,v) = 0$.
+\end{enumerate}
+
+\subsection{Creación de la Máscara Ground Truth}
+\label{sec:mascara_gt_simplified}
+
+Para saber si nuestra predicción es buena, necesitamos una máscara perfecta, llamada ground truth ($\mat{M}_{GT}$). Esta se crea a partir de landmarks anotados. Supongamos que estos landmarks GT, $\mat{P}_{GT, \text{original}}$, fueron anotados en imágenes de un tamaño diferente al que estamos usando.
+
+\begin{enumerate}
+    \item \textbf{Ajustar Coordenadas de Landmarks GT:}
+    Si los landmarks GT originales están en una imagen de tamaño $W_{\text{original}} \times H_{\text{original}}$, y nuestra imagen de trabajo tiene tamaño $W_{\text{trabajo}} \times H_{\text{trabajo}}$, necesitamos reescalar las coordenadas $(x_{\text{original}}, y_{\text{original}})$ de cada landmark GT para que coincidan con el tamaño de nuestra imagen de trabajo:
+    \begin{align}
+    x_{\text{trabajo}} &= x_{\text{original}} \cdot \frac{W_{\text{trabajo}}}{W_{\text{original}}} \\
+    y_{\text{trabajo}} &= y_{\text{original}} \cdot \frac{H_{\text{trabajo}}}{H_{\text{original}}}
+    \end{align}
+    Estos nuevos puntos reescalados forman $\mat{P}'_{GT, \text{trabajo}}$.
+
+    \item \textbf{Definir y Rellenar Polígonos GT:}
+    De forma similar a la máscara predicha, los puntos de $\mat{P}'_{GT, \text{trabajo}}$ se usan para definir los polígonos de los pulmones ground truth, $\set{P}_{\text{pulmón1, GT}}$ y $\set{P}_{\text{pulmón2, GT}}$.
+    Luego, estos polígonos se rellenan para crear la máscara $\mat{M}_{GT}$:
+    \begin{equation}
+    \mat{M}_{GT}(u,v) = 1 \quad 
+    \label{eq:rasterizacion_gt_simplified_v2}
+    \end{equation}
+    \text{si el píxel } (u,v) \text{ está dentro de alguno de los polígonos GT.}
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.7\textwidth]{Figures/fig_gt_mask_generation_idx20.png}
+  \caption{De los puntos (landmarks) ground truth (izquierda) a una máscara de segmentación ground truth (derecha).}
+  \label{fig:gt_mask_generation_simplified_v2}
+\end{figure}
+
+Ahora tenemos una máscara $\mat{M}_{\text{predicha}}$ (lo que el modelo dice) y una máscara $\mat{M}_{GT}$ (lo que debería ser), listas para ser comparadas en la evaluación.

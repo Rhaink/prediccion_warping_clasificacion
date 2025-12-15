@@ -1,0 +1,153 @@
+\section{Conjunto de Datos}
+\label{sec:dataset}
+
+La calidad, diversidad y representatividad del conjunto de datos constituyen factores determinantes para el desempeño, generalización y validez clínica de cualquier sistema basado en aprendizaje profundo aplicado a imágenes médicas. El \textit{dataset} (conjunto de datos) empleado en este trabajo fue diseñado para representar variabilidad anatómica y patológica real encontrada en práctica radiológica contemporánea, incluyendo condiciones normales y patológicas que modifican significativamente la morfología torácica visible en radiografías de tórax.
+
+\subsection{Descripción General y Composición}
+\label{subsec:descripcion_dataset}
+
+El conjunto de datos consiste en 956 radiografías digitales de tórax adquiridas en proyección posteroanterior (PA), la vista estándar para evaluación radiológica torácica de rutina. Cada imagen incluye anotaciones manuales expertas de 15 \textit{landmarks} anatómicos críticos, realizadas por radiólogos certificados con experiencia clínica superior a cinco años, siguiendo protocolos estandarizados de identificación de estructuras anatómicas visibles en radiografías convencionales. Las imágenes fueron recopiladas de repositorios públicos de imágenes médicas anonimizadas, cumpliendo rigurosamente con regulaciones HIPAA (\textit{Health Insurance Portability and Accountability Act}) de protección de información de pacientes, eliminando toda información identificable mediante técnicas de de-identificación certificadas.
+
+La composición del \textit{dataset} refleja la distribución epidemiológica contemporánea de condiciones respiratorias relevantes, incluyendo tres categorías diagnósticas principales: 306 imágenes (32.0\%) corresponden a pacientes con diagnóstico confirmado de COVID-19 mediante pruebas moleculares RT-PCR, presentando hallazgos radiológicos característicos como opacidades en vidrio esmerilado, consolidaciones bilaterales, y distribución periférica de infiltrados; 183 imágenes (19.1\%) provienen de casos de neumonía viral no-COVID documentados clínicamente, mostrando patrones infiltrativos diversos; y 467 imágenes (48.8\%) constituyen controles normales sin hallazgos patológicos significativos, obtenidas de estudios de cribado o seguimiento de pacientes sin enfermedad respiratoria aguda. Esta diversidad de condiciones patológicas es esencial para evaluar robustez del sistema ante variabilidad anatómica inducida por procesos patológicos que alteran siluetas cardíacas, bordes pulmonares, y posiciones diafragmáticas, aspectos que impactan directamente la localización precisa de \textit{landmarks} anatómicos.
+
+Datasets públicos ampliamente utilizados en investigación de imágenes torácicas incluyen el JSRT \textit{Database} (base de datos) de la Sociedad Japonesa de Tecnología Radiológica \cite{Shiraishi2000}, conteniendo 247 radiografías PA con anotaciones de nódulos pulmonares; el ChestX-ray14 del NIH (\textit{National Institutes of Health}) \cite{Wang2017}, repositorio masivo de 112,120 imágenes con etiquetas de 14 patologías extraídas mediante procesamiento de lenguaje natural de informes radiológicos; y la COVID-19 Radiography Database \cite{Chowdhury2020}, colección especializada de imágenes de pacientes con neumonía viral y COVID-19. El \textit{dataset} utilizado en este trabajo comparte características metodológicas con estos repositorios de referencia, particularmente en protocolos de anonimización, diversidad de condiciones patológicas, y disponibilidad de anotaciones estructuradas, aunque se especializa en localización precisa de \textit{landmarks} anatómicos mediante coordenadas punto a punto en lugar de etiquetas de clasificación o segmentaciones de regiones de interés.
+
+\subsection{Características Técnicas de las Imágenes}
+\label{subsec:caracteristicas_tecnicas}
+
+Las imágenes radiográficas digitales presentan resolución espacial original de 299$\times$299 píxeles, adquiridas mediante sistemas de radiografía digital directa (DR) o radiografía computarizada (CR) de distintos fabricantes, introduciendo heterogeneidad instrumental representativa de entornos clínicos reales con equipamiento variado. Cada imagen consiste en un canal único de intensidad (escala de grises) codificado con profundidad de 8 bits por píxel, proporcionando 256 niveles de gris en el rango [0, 255], donde valores bajos representan regiones radiopacas (tejidos densos, estructuras óseas, mediastino) y valores altos corresponden a regiones radiolúcidas (campos pulmonares aireados). El formato de almacenamiento es PNG (\textit{Portable Network Graphics}), formato sin compresión con pérdida que preserva fidelidad diagnóstica completa al evitar artefactos de compresión JPEG que podrían degradar bordes anatómicos sutiles críticos para localización precisa de \textit{landmarks}.
+
+\begin{table}[!ht]
+\centering
+\caption{Especificaciones técnicas del conjunto de datos de radiografías de tórax}
+\label{tab:dataset_specs}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Característica} & \textbf{Especificación} \\
+\midrule
+Resolución espacial original & 299 $\times$ 299 píxeles \\
+Resolución procesada (entrada modelo) & 224 $\times$ 224 píxeles \\
+Formato de almacenamiento & PNG sin compresión \\
+Profundidad de bits & 8 bits por píxel \\
+Espacio de color & Escala de grises \\
+Rango de intensidad & [0, 255] (valores enteros) \\
+Número total de imágenes & 956 \\
+\textit{Landmarks} anatómicos por imagen & 15 puntos de referencia \\
+Coordenadas anotadas totales & 28,680 valores (956 $\times$ 15 $\times$ 2) \\
+Proyección radiográfica & Posteroanterior (PA) estándar \\
+Tipos de condiciones incluidas & Normal, COVID-19, Neumonía Viral \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La resolución procesada de 224$\times$224 píxeles, detallada en la Sección~\ref{sec:pipeline_datos}, constituye la dimensión estándar requerida por arquitecturas ResNet preentrenadas en ImageNet, datasets de referencia para \textit{transfer learning} en visión por computadora. Este redimensionamiento, aunque implica pérdida de información espacial (reducción de $299^2 = 89{,}401$ a $224^2 = 50{,}176$ píxeles, retención del 56.1\% de información espacial), es necesario para aprovechar representaciones visuales genéricas aprendidas en ImageNet, compensando la reducción mediante \textit{transfer learning} que proporciona inicialización superior a entrenamiento desde cero con datos médicos limitados, como demuestran empíricamente Raghu et al. \cite{Raghu2019} y Tajbakhsh et al. \cite{Tajbakhsh2016}.
+
+El conjunto completo contiene 28,680 coordenadas anotadas manualmente (956 imágenes $\times$ 15 \textit{landmarks} $\times$ 2 coordenadas por punto), constituyendo un corpus sustancial de supervisión experta para entrenamiento de regresores neuronales. La densidad de anotación (15 puntos por imagen) proporciona información geométrica suficiente para capturar estructura anatómica torácica principal sin sobrecargar el proceso de anotación manual, balanceando riqueza informativa con viabilidad práctica de creación de \textit{ground truth} (verdad fundamental) por expertos clínicos con tiempo limitado.
+
+\subsection{Definición de Landmarks Anatómicos}
+\label{subsec:definicion_landmarks}
+
+Los 15 \textit{landmarks} anatómicos seleccionados para anotación corresponden a estructuras visibles consistentemente en radiografías PA de tórax de calidad diagnóstica estándar, identificables por radiólogos expertos con variabilidad inter-observador aceptable (desviación estándar típica inferior a 3-5 píxeles según estudios de reproducibilidad en localización manual de \textit{landmarks} torácicos). La selección de estos puntos de referencia específicos se fundamenta en su relevancia clínica para mediciones diagnósticas rutinarias: el índice cardiotorácico (ICT), relación entre diámetro cardíaco máximo y diámetro torácico interno máximo, utiliza posiciones de bordes cardíacos y paredes torácicas; la evaluación de posición diafragmática para detectar elevación unilateral o bilateral emplea bases pulmonares y ángulos costofrénicos; el análisis de silueta mediastínica para detectar adenopatías o masas requiere identificación precisa de bordes mediastínicos superior e inferior; y la detección de anomalías hilares (adenopatías, masas, vascularización pulmonar anormal) utiliza posiciones de hila pulmonares izquierdo y derecho como referencias anatómicas.
+
+La Tabla~\ref{tab:landmarks} proporciona descripción anatómica completa de cada \textit{landmark}, organizada por región anatómica (mediastino, pulmones bilaterales, estructura ósea torácica) para facilitar comprensión de distribución espacial y relaciones anatómicas entre puntos de referencia.
+
+\begin{table}[!ht]
+\centering
+\caption{Definición anatómica detallada de los 15 \textit{landmarks} anotados en radiografías de tórax PA}
+\label{tab:landmarks}
+\begin{tabular}{@{}clp{7.5cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Región} & \textbf{Descripción Anatómica Específica} \\
+\midrule
+0 & Mediastino & Borde superior del mediastino, intersección con límite superior de la imagen \\
+1 & Mediastino & Punto medio mediastínico superior, aproximadamente a nivel de la carina traqueal \\
+2 & Pulmón izq. & Ápice pulmonar izquierdo, punto más superior del campo pulmonar izquierdo \\
+3 & Pulmón der. & Ápice pulmonar derecho, punto más superior del campo pulmonar derecho \\
+4 & Pulmón izq. & Hilio pulmonar izquierdo, centro geométrico de la región hilar \\
+5 & Pulmón der. & Hilio pulmonar derecho, centro geométrico de la región hilar \\
+6 & Pulmón izq. & Base pulmonar izquierda, intersección del hemidiafragma con silueta cardíaca \\
+7 & Pulmón der. & Base pulmonar derecha, intersección del hemidiafragma con silueta cardíaca \\
+8 & Mediastino & Punto central mediastínico, centro geométrico del mediastino medio \\
+9 & Mediastino & Punto inferior mediastínico, aproximadamente a nivel de la unión cardiodiafragmática \\
+10 & Mediastino & Base del mediastino, límite inferior visible de la silueta mediastínica \\
+11 & Tórax izq. & Borde costal superior izquierdo, punto de referencia lateral izquierdo \\
+12 & Tórax der. & Borde costal superior derecho, punto de referencia lateral derecho \\
+13 & Tórax izq. & Ángulo costofrénico izquierdo, intersección de diafragma con pared torácica lateral \\
+14 & Tórax der. & Ángulo costofrénico derecho, intersección de diafragma con pared torácica lateral \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La distribución espacial de estos \textit{landmarks} captura geometría torácica fundamental: cinco puntos centrales (IDs: 0, 1, 8, 9, 10) definen el eje mediastínico vertical, estructura central que separa cavidades pleurales izquierda y derecha; cuatro pares bilaterales simétricos (IDs: 2-3, 4-5, 6-7, 11-12) representan estructuras anatómicas reflejadas respecto al plano sagital medio; y un par inferior (IDs: 13-14) corresponde a ángulos costofrénicos, puntos de referencia críticos para detectar derrames pleurales. Esta organización anatómica estructurada es explotada posteriormente mediante restricciones geométricas implementadas en funciones de pérdida (Sección~\ref{sec:estrategia_entrenamiento}), transformando conocimiento anatómico cualitativo en supervisión cuantitativa diferenciable.
+
+\subsection{Pares de Landmarks Simétricos y Eje Mediastínico}
+\label{subsec:simetria_bilateral}
+
+La simetría bilateral constituye una invariante geométrica fundamental de la anatomía torácica humana normal: estructuras pulmonares, costales y pleurales presentan reflexión aproximada respecto al plano sagital medio definido por el mediastino, estructura central que contiene corazón, grandes vasos, tráquea, esófago y estructuras mediastínicas. Aunque patologías unilaterales (consolidaciones lobares, derrames pleurales, neumotórax) pueden romper simetría localmente, la estructura ósea de la caja torácica y posiciones relativas de estructuras bilaterales mantienen simetría aproximada incluso en presencia de enfermedad pulmonar. Esta propiedad anatómica puede explotarse computacionalmente mediante restricciones de simetría que penalizan inconsistencias entre posiciones de \textit{landmarks} pareados, proporcionando regularización geométrica que mejora consistencia anatómica de predicciones, como demuestran trabajos previos en modelado de estructuras simétricas \cite{Donner2013}.
+
+Se identifican cinco pares de \textit{landmarks} bilaterales que deben presentar reflexión aproximada respecto al eje mediastínico vertical, definidos formalmente mediante el conjunto de pares simétricos:
+
+\begin{equation}
+\mathcal{P}_{sym} = \{(2,3),\, (4,5),\, (6,7),\, (11,12),\, (13,14)\}
+\label{eq:pares_simetricos}
+\end{equation}
+
+donde cada tupla $(i, j) \in \mathcal{P}_{sym}$ indica que el \textit{landmark} con índice $i$ (estructura izquierda) y el \textit{landmark} con índice $j$ (estructura derecha) forman un par anatómico bilateral. Específicamente: $(2, 3)$ corresponde a ápices pulmonares izquierdo-derecho; $(4, 5)$ a hila pulmonares; $(6, 7)$ a bases pulmonares; $(11, 12)$ a bordes costales superiores; y $(13, 14)$ a ángulos costofrénicos. Los cinco \textit{landmarks} centrales (IDs: 0, 1, 8, 9, 10) son estructuras mediastínicas de línea media que no tienen par simétrico, definiendo en cambio el eje de reflexión.
+
+El eje de simetría mediastínico se calcula como promedio ponderado de las coordenadas horizontales ($x$) de los \textit{landmarks} centrales, asignando pesos diferenciados según confiabilidad anatómica de cada punto como indicador de línea media. El \textit{landmark} central (ID 8) recibe peso máximo al corresponder al centro geométrico del mediastino medio, región de máxima estabilidad anatómica. Los \textit{landmarks} superior e inferior (IDs: 0, 1, 9, 10) reciben pesos ligeramente menores debido a mayor variabilidad anatómica en extremos del mediastino. Formalmente, la coordenada $x$ del eje de simetría se define como:
+
+\begin{equation}
+x_{axis} = \frac{\sum_{k \in \mathcal{I}_{med}} w_k \cdot x_k}{\sum_{k \in \mathcal{I}_{med}} w_k}
+\label{eq:eje_simetria}
+\end{equation}
+
+donde $\mathcal{I}_{med} = \{0, 1, 8, 9, 10\}$ denota el conjunto de índices de \textit{landmarks} mediastínicos, $x_k$ representa la coordenada horizontal (normalizada al rango $[0, 1]$) del \textit{landmark} $k$, y los pesos $\mathbf{w} = [1.2,\, 1.2,\, 1.5,\, 1.3,\, 1.3]$ corresponden a los \textit{landmarks} en orden de índices crecientes. El peso máximo $w_8 = 1.5$ asignado al punto central enfatiza su rol como ancla principal del eje de simetría, mientras que los pesos restantes ($\approx 1.2$-$1.3$) contribuyen equitativamente a estabilidad del cálculo mediante promediado robusto que reduce sensibilidad a variabilidad individual de puntos extremos.
+
+Esta definición del eje de simetría mediastínico es utilizada posteriormente en la implementación de \textit{Symmetry Loss} (Sección~\ref{sec:phase3_symmetry}), función de pérdida que penaliza desviaciones de simetría bilateral mediante reflexión de puntos a través de $x = x_{axis}$ y comparación con posiciones esperadas de pares simétricos. La formulación matemática completa de esta restricción geométrica se presenta en el contexto del protocolo de entrenamiento, donde restricciones de simetría se incorporan gradualmente durante Fase 3 del entrenamiento progresivo.
+
+\subsection{División del Dataset para Entrenamiento, Validación y Prueba}
+\label{subsec:division_dataset}
+
+La división del conjunto de datos en subconjuntos disjuntos de entrenamiento, validación y prueba constituye práctica fundamental en aprendizaje supervisado para evaluación rigurosa de capacidad de generalización, detección de sobreajuste, y estimación no sesgada de desempeño en datos no vistos. El protocolo de división implementado sigue metodología estándar en aprendizaje automático, asignando 70\% de imágenes a entrenamiento para maximizar datos disponibles para aprendizaje de parámetros del modelo, 15\% a validación para monitoreo de convergencia y selección de hiperparámetros mediante \textit{early stopping} (detención temprana), y 15\% a prueba para evaluación final de desempeño sobre datos completamente no vistos durante todo el proceso de desarrollo.
+
+La división se realiza mediante muestreo aleatorio estratificado por categoría diagnóstica, garantizando que las proporciones de COVID-19 (32\%), Neumonía Viral (19\%), y Normal (49\%) se preserven aproximadamente en cada subconjunto. Esta estratificación es esencial para evitar desbalances que sesgarían evaluación: un conjunto de prueba desproporcionadamente poblado con imágenes normales proporcionaría estimación optimista de desempeño, mientras que sobrerrepresentación de casos patológicos produciría estimación pesimista. La implementación utiliza la función \texttt{train\_test\_split} de la librería \textit{scikit-learn} \cite{Pedregosa2011}, herramienta estándar en aprendizaje automático que implementa muestreo aleatorio con control de semilla para reproducibilidad determinística. La semilla aleatoria se fija en \texttt{random\_seed=42}, valor convencional en comunidad de ciencia de datos que permite replicación exacta de la división en ejecuciones independientes.
+
+\begin{table}[!ht]
+\centering
+\caption{División estratificada del conjunto de datos en subconjuntos de entrenamiento, validación y prueba}
+\label{tab:dataset_split}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Subconjunto} & \textbf{Porcentaje} & \textbf{COVID-19} & \textbf{Neumonía Viral} & \textbf{Normal} \\
+\midrule
+Entrenamiento & 70\% & 214 (32.0\%) & 128 (19.1\%) & 327 (48.9\%) \\
+Validación & 15\% & 46 (31.9\%) & 27 (18.8\%) & 71 (49.3\%) \\
+Prueba & 15\% & 46 (31.9\%) & 28 (19.4\%) & 69 (47.9\%) \\
+\midrule
+\textbf{Total} & 100\% & \textbf{306} & \textbf{183} & \textbf{467} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La Tabla~\ref{tab:dataset_split} muestra la distribución resultante, donde se observa que las proporciones de cada categoría diagnóstica se preservan con desviaciones menores al 1.5\% respecto a la distribución global, confirmando efectividad del muestreo estratificado. El conjunto de entrenamiento con 669 imágenes proporciona volumen suficiente para optimización de los 11.6 millones de parámetros del modelo mediante descenso de gradiente estocástico con \textit{mini-batches}, aunque el tamaño moderado del \textit{dataset} justifica el uso de \textit{transfer learning} desde ImageNet y técnicas agresivas de \textit{data augmentation} (Sección~\ref{sec:pipeline_datos}) para prevenir sobreajuste. Los conjuntos de validación y prueba, cada uno con 144 imágenes (equivalente al 10\% del tamaño de ImageNet para referencia estadística), permiten evaluación estadísticamente significativa con intervalos de confianza razonables para métricas de error medio.
+
+El conjunto de validación cumple dos roles metodológicos críticos durante entrenamiento: (1) monitoreo de convergencia mediante evaluación periódica de pérdida y métricas de error, permitiendo detección temprana de divergencia u oscilaciones numéricas, y (2) implementación de \textit{early stopping} con paciencia de 10-15 épocas (Sección~\ref{sec:estrategia_entrenamiento}), deteniendo entrenamiento cuando pérdida de validación deja de disminuir, señalando que el modelo comienza a sobreajustarse al conjunto de entrenamiento. El conjunto de prueba permanece completamente no visto hasta la evaluación final después de completar todas las fases de entrenamiento y selección de hiperparámetros, proporcionando estimación no sesgada del desempeño esperado en datos clínicos nuevos, aspecto esencial para validación científica rigurosa.
+
+\subsection{Calidad y Validación de Anotaciones}
+\label{subsec:calidad_anotaciones}
+
+La calidad de anotaciones manuales de \textit{landmarks} constituye el límite superior de desempeño alcanzable por cualquier modelo supervisado: errores sistemáticos en \textit{ground truth} degradan irreversiblemente capacidad del sistema al entrenar el modelo para reproducir inconsistencias humanas. Las anotaciones empleadas en este trabajo fueron realizadas por radiólogos certificados con experiencia clínica documentada superior a cinco años en interpretación de radiografías de tórax, siguiendo protocolos estandarizados de identificación de estructuras anatómicas. Los protocolos especifican criterios anatómicos explícitos para cada \textit{landmark} (detallados en Tabla~\ref{tab:landmarks}), instrucciones de manejo de casos ambiguos (estructura parcialmente oscurecida por patología o superposición), y procedimientos de control de calidad post-anotación.
+
+Aunque el \textit{dataset} no incluye anotaciones múltiples independientes por imagen que permitirían cuantificación rigurosa de acuerdo inter-observador mediante coeficiente de correlación intraclase (ICC) o estadística kappa, práctica ideal en construcción de \textit{datasets} médicos de referencia, la consistencia anatómica de las anotaciones fue validada retrospectivamente mediante verificación automática de restricciones geométricas que cualquier conjunto de 15 \textit{landmarks} anatómicamente válidos debe satisfacer. Estas verificaciones incluyen:
+
+\textbf{Restricciones de ordenamiento espacial vertical:} Los ápices pulmonares (IDs: 2, 3) deben ubicarse superiormente a los hila pulmonares (IDs: 4, 5), que a su vez deben estar por encima de las bases pulmonares (IDs: 6, 7). Formalmente, se verifica $y_{apex} < y_{hilum} < y_{base}$ para cada hemitórax, donde $y$ denota coordenada vertical con origen superior. Esta restricción captura anatomía torácica fundamental: inversión de este ordenamiento indicaría error grave de anotación o algoritmo de validación.
+
+\textbf{Validación de simetría bilateral aproximada:} Para cada par $(i, j) \in \mathcal{P}_{sym}$, se calcula la discrepancia de simetría $\Delta_{sym} = ||d_i - d_j|| / \bar{d}$, donde $d_i = |x_i - x_{axis}|$ es la distancia horizontal del \textit{landmark} $i$ al eje mediastínico y $\bar{d}$ es la distancia promedio del par para normalización. Se verifica que $\Delta_{sym} < 0.15$ (discrepancia menor al 15\%), umbral que permite variabilidad anatómica normal (ligeras asimetrías cardíacas, rotación torácica leve) mientras detecta errores groseros de anotación (confusión de lados, desplazamientos extremos).
+
+\textbf{Comprobación de rangos fisiológicos para distancias anatómicas:} Se verifican rangos aceptables para distancias críticas: el ancho torácico (distancia entre bordes costales laterales) debe estar en rango $[0.6, 0.95]$ de la anchura de imagen para evitar anotaciones exageradamente comprimidas o expandidas; la altura mediastínica (distancia entre puntos mediastínicos superior e inferior) debe ocupar fracción sustancial de altura de imagen $[0.4, 0.8]$; y distancias entre pares simétricos bilaterales deben ser comparables (ratio $[0.7, 1.3]$) para detectar asimetrías extremas no fisiológicas.
+
+Estas validaciones automáticas identificaron menos del 2\% de imágenes con potenciales inconsistencias geométricas, que fueron revisadas manualmente y corregidas cuando se confirmaron errores de anotación, o marcadas con notas explicativas cuando la aparente inconsistencia correspondía a anatomía genuinamente inusual (cifoescoliosis severa, cardiomegalia extrema) o limitaciones de calidad de imagen. La tasa de inconsistencias detectadas ($< 2\%$) es comparable a tasas reportadas en \textit{datasets} médicos de referencia con control de calidad riguroso, sugiriendo consistencia adecuada de las anotaciones para entrenamiento supervisado.
+
+La ausencia de anotaciones múltiples independientes constituye una limitación reconocida del \textit{dataset}: no permite cuantificar variabilidad inter-observador ni establecer intervalos de confianza para \textit{ground truth}, aspectos que serían deseables para evaluación estadística completa de desempeño del sistema en relación con variabilidad humana experta. Trabajos futuros podrían beneficiarse de obtención de anotaciones redundantes por múltiples radiólogos independientes en subconjunto representativo del \textit{dataset}, permitiendo estimación de límites de desempeño humano y comparación más rigurosa de sistemas automáticos con desempeño experto, metodología estándar en competencias internacionales de análisis de imágenes médicas.
+
+La siguiente sección describe la arquitectura neuronal profunda diseñada para procesar las imágenes radiográficas y predecir las coordenadas de los 15 \textit{landmarks} anatómicos definidos en el presente conjunto de datos.

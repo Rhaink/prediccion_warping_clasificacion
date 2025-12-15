@@ -1,0 +1,169 @@
+% \section{Entrenamiento de la Red Neuronal Convolucional (CNN) Híbrida}
+% \label{sec:entrenamiento_cnn}
+
+% Una vez que se han extraído y preparado los datos de parches (Sección~\ref{sec:extraccion_parches_cnn}), se procede al entrenamiento de los clasificadores CNN encargados de predecir los coeficientes de forma $b_j$. Se entrena una red neuronal convolucional híbrida de manera independiente para cada uno de los $m$ modos de variación del SSM (donde $j \in \{1, \dots, m\}$ es el índice del modo). El objetivo de cada red es aprender a mapear la apariencia local de la imagen, representada por los $K_{total}$ parches (ver Figura~\ref{fig:parches_entrada_cnn}), al bin discretizado correspondiente del coeficiente $b_j$.
+
+% \subsection{Arquitectura de la Red Híbrida}
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=0.5\columnwidth]{Figures/ejemplo_parches_entrada_cnn.png}
+%     \caption{Ejemplo de una selección de $N_p=16$ parches de entrada (cada uno de tamaño $Q \times Q$) de los $K_{total}$ extraídos alrededor de los landmarks de una forma proyectada (donde $K_{total}=144$ en este trabajo). Estos parches constituyen la entrada local a la CNN base.}
+%     \label{fig:parches_entrada_cnn}
+% \end{figure}
+
+% La arquitectura de la CNN está diseñada para procesar eficientemente la información de múltiples parches y combinarla para una predicción global del parámetro de forma. La red, detallada en la Figura~\ref{fig:cnn_architecture_detailed}, se compone de las siguientes partes principales:
+% \begin{enumerate}
+%     \item \textbf{CNN Base Compartida ($\mathcal{C}$):} Sea $\mathcal{C}: \R^{Q \times Q \times C_{in}} \to \R^{d_{feat}}$ la transformación no lineal implementada por la CNN base, donde $Q \times Q$ es la dimensión espacial de un parche, $C_{in}$ el número de canales de entrada (usualmente $C_{in}=1$ para imágenes en escala de grises), y $d_{feat}$ la dimensionalidad del vector de características extraído. Esta CNN base típicamente consiste en varias capas convolucionales (ej. con filtros de $3 \times 3$ o $5 \times 5$), seguidas de funciones de activación (ej. ReLU) y, opcionalmente, capas de pooling (ej. MaxPooling) para reducir la dimensionalidad espacial y extraer características robustas. Es crucial que los parámetros (pesos) de esta CNN base $\mathcal{C}$ sean compartidos entre todos los $K_{total}$ parches de una misma imagen. Esta compartición de pesos para la secuencia de parches $\{\vect{x}_l\}_{l=1}^{K_{total}}$, donde cada $\vect{x}_l \in \R^{Q \times Q \times C_{in}}$, se modela mediante la aplicación de $\mathcal{C}$ a cada parche $\vect{x}_l$, produciendo una secuencia de vectores de características $\{\vect{v}_l\}_{l=1}^{K_{total}}$, con $\vect{v}_l = \mathcal{C}(\vect{x}_l) \in \R^{d_{feat}}$.
+    
+%     \item \textbf{Concatenación de Características:} La secuencia de $K_{total}$ vectores de características $\{\vect{v}_l\}_{l=1}^{K_{total}}$ se transforma en un único vector de características global $\vect{V} \in \R^{K_{total} \cdot d_{feat}}$ mediante la concatenación: $\vect{V} = [\vect{v}_1^\transpose, \vect{v}_2^\transpose, \dots, \vect{v}_{K_{total}}^\transpose]^\transpose$. Este vector $\vect{V}$ representa la información combinada de la apariencia local de todos los landmarks de la forma.
+    
+%     \item \textbf{Clasificador DNN ($\mathcal{D}$):} El vector de características concatenado $\vect{V}$ se introduce en un Perceptrón Multicapa (MLP), $\mathcal{D}: \R^{K_{total} \cdot d_{feat}} \to \R^{B}$, también conocido como red densamente conectada (DNN). Este MLP consiste en una o más capas ocultas con funciones de activación (ej. ReLU) y, finalmente, una capa de salida con $B$ neuronas (donde $B$ es el número de bins para $b_j$) y una función de activación softmax. La función softmax convierte las salidas de la red (logits) $\vect{z} = (z_0, \dots, z_{B-1})^\transpose$ en un vector de probabilidades $\vect{p} = (p_0, p_1, \dots, p_{B-1})^\transpose$ sobre los $B$ posibles bins:
+%     \begin{equation}
+%     p_i = \frac{e^{z_i}}{\sum_{l=0}^{B-1} e^{z_l}}, \quad \text{para } i = 0, \dots, B-1.
+%     \label{eq:softmax}
+%     \end{equation}
+%     La predicción final del bin es el índice del bin con la mayor probabilidad, $\hat{y} = \arg\max_i p_i$.
+% \end{enumerate}
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=1\columnwidth]{Figures/cnn_arquitectura_paper_style.png}
+%     \caption{Arquitectura detallada de la CNN Híbrida para la predicción de un coeficiente $b_j$. (1) Los $K_{total}$ parches de entrada (donde $K_{total}=144$). (2) La CNN base compartida $\mathcal{C}$ (ej. con capas Conv, ReLU, Pool) se aplica a cada parche $\vect{x}_l$. (3) Los vectores de características resultantes $\vect{v}_l$ de cada parche se concatenan para formar $\vect{V}$. (4) El vector $\vect{V}$ se introduce en un clasificador DNN ($\mathcal{D}$) con una capa de salida Softmax que produce probabilidades sobre los $B$ bins.}
+%     \label{fig:cnn_architecture_detailed}
+% \end{figure}
+
+% \subsection{Proceso de Entrenamiento}
+% Se entrena una red separada para cada uno de los $m$ modos de forma $b_j$. Para el $j$-ésimo clasificador (correspondiente al modo $b_j$):
+% \begin{itemize}
+%     \item \textbf{Entrada:} Los $K_{total}$ parches extraídos de una imagen de entrenamiento, correspondientes a una instancia de forma (positiva o negativa) generada para el modo $j$.
+%     \item \textbf{Etiqueta (Ground Truth):} La etiqueta one-hot $\vect{y}^{(j)} \in \{0,1\}^B$ del bin al que pertenece el valor del coeficiente $b_j$ de la instancia de forma utilizada para generar los parches.
+%     \item \textbf{Función de Pérdida:} Se utiliza la función de pérdida de entropía cruzada categórica (Categorical Cross-Entropy), que mide la discrepancia entre la distribución de probabilidad predicha $\vect{p}^{(j)}$ y la distribución de probabilidad verdadera (one-hot) $\vect{y}^{(j)}$:
+%     \begin{equation}
+%     \mathcal{L}(\vect{y}^{(j)}, \vect{p}^{(j)}) = - \sum_{l=0}^{B-1} y_l^{(j)} \log(p_l^{(j)}).
+%     \label{eq:categorical_crossentropy}
+%     \end{equation}
+%     \item \textbf{Optimizador:} El descenso de gradiente estocástico (SGD) o sus variantes, como Adam \cite{kingma2014adam} o AdamW \cite{loshchilov2017decoupled} (Adam con decaimiento de peso desacoplado), se utilizan para minimizar la función de pérdida ajustando los parámetros de la red (denotados colectivamente como $\bm{\theta}$) mediante el algoritmo de retropropagación del error (backpropagation).
+%     \item \textbf{Regularización:} Para prevenir el sobreajuste, se pueden emplear técnicas de regularización. El Dropout \cite{srivastava2014dropout}, una forma de regularización estocástica, anula aleatoriamente un subconjunto de las salidas de las neuronas durante cada pasada de entrenamiento para mitigar la co-adaptación de características. También se puede utilizar el decaimiento de peso (regularización L2) en los pesos de la red, $\lambda \sum_{w \in \bm{\theta}} w^2$, donde $\lambda$ es el coeficiente de decaimiento.
+% \end{itemize}
+% El entrenamiento se realiza durante un número determinado de épocas, utilizando un conjunto de validación para monitorear el rendimiento y seleccionar el modelo que mejor generaliza (ej. guardando el modelo con la menor pérdida de validación o la mayor precisión de validación), como se ilustra en la Figura~\ref{fig:historial_entrenamiento_cnn}.
+
+% Este enfoque de entrenar una CNN separada por modo permite que cada red se especialice en aprender las características visuales relevantes para predecir la variación específica capturada por ese modo de forma.
+
+% \begin{figure}[htbp] % Posicionamiento flexible
+%     \centering
+%     \includegraphics[width=1\columnwidth]{Figures/ejemplo_historial_entrenamiento_cnn.png}
+%     \caption{Ilustración del comportamiento típico de las métricas de pérdida y precisión durante el entrenamiento de un clasificador CNN para un modo $b_j$. Se muestran las curvas para los conjuntos de entrenamiento (azul) y validación (rojo). El monitoreo del rendimiento en el conjunto de validación es esencial para la selección del modelo y la detección de sobreajuste.}
+%     \label{fig:historial_entrenamiento_cnn}
+% \end{figure}
+
+% El proceso se resume en el Algoritmo~\ref{alg:entrenamiento_matematico_cnn_acc}.
+
+% \begin{algorithm}[htbp] % Posicionamiento flexible
+% \caption{Entrenamiento del Clasificador CNN Híbrido para un Coeficiente $b_j$}
+% \label{alg:entrenamiento_matematico_cnn_acc}
+% \begin{algorithmic}[1]
+%     \Require Conjunto de datos de entrenamiento $\mathcal{D}_{\text{entrena}} = \{ (\mathcal{X}^{(i)}, \vect{y}^{(j,i)}) \}_{i=1}^{N_{\text{entrena}}}$, donde $\mathcal{X}^{(i)} = \{\vect{x}_1^{(i)}, \dots, \vect{x}_{K_{total}}^{(i)}\}$ son los $K_{total}$ parches de la $i$-ésima muestra y $\vect{y}^{(j,i)}$ es la etiqueta one-hot del bin al que pertenece el coeficiente $b_j$ de dicha muestra.
+%     \Require Conjunto de datos de validación $\mathcal{D}_{\text{val}}$.
+%     \Require Número máximo de épocas $E_{\text{max}}$.
+%     \Require Parámetros del optimizador (ej. tasa de aprendizaje $\alpha_{\text{lr}}$, coeficientes $\beta_1, \beta_2$ para Adam).
+%     \Ensure Parámetros óptimos $\bm{\theta}^*$ de la red CNN híbrida (parámetros de $\mathcal{C}$ y $\mathcal{D}$) para el coeficiente $b_j$.
+
+%     \State Inicializar los parámetros $\bm{\theta}$ de la red neuronal (parámetros $\bm{\theta}_{\mathcal{C}}$ de $\mathcal{C}$ y $\bm{\theta}_{\mathcal{D}}$ de $\mathcal{D}$) con valores aleatorios o predefinidos.
+%     \State $\text{Acc}_{\text{val}}^* \leftarrow 0$ \Comment{Mejor exactitud en validación}
+%     \State $\bm{\theta}^* \leftarrow \bm{\theta}$ \Comment{Parámetros para $\text{Acc}_{\text{val}}^*$}
+
+%     \For{época $e = 1$ hasta $E_{\text{max}}$}
+%         \State Reordenar aleatoriamente las muestras en $\mathcal{D}_{\text{entrena}}$.
+%         \For{cada mini-lote $(\mathcal{X}_{\text{mb}}, \mathcal{Y}_{\text{mb}}^{(j)})$ de tamaño $N_{\text{mb}}$ extraído de $\mathcal{D}_{\text{entrena}}$}
+%             \State \Comment{Fase de propagación hacia adelante}
+%             \State Sea $\mat{V}_{\text{mb}}$ una matriz para almacenar las características concatenadas del mini-lote.
+%             \For{cada secuencia de parches $\mathcal{X}_{\text{sample}} = \{\vect{x}_l\}_{l=1}^{K_{total}}$ en $\mathcal{X}_{\text{mb}}$}
+%                 \State $\{\vect{v}_l\}_{l=1}^{K_{total}} \leftarrow \{\mathcal{C}(\vect{x}_l; \bm{\theta}_{\mathcal{C}})\}_{l=1}^{K_{total}}$ \Comment{Obtener vectores de características de parches}
+%                 \State $\vect{V}_{\text{sample}} \leftarrow [\vect{v}_1^\transpose, \dots, \vect{v}_{K_{total}}^\transpose]^\transpose$ \Comment{Concatenar características para la muestra}
+%                 \State Añadir $\vect{V}_{\text{sample}}$ a $\mat{V}_{\text{mb}}$.
+%             \EndFor
+%             \State $\mat{Z}_{\text{mb}} \leftarrow \mathcal{D}(\mat{V}_{\text{mb}}; \bm{\theta}_{\mathcal{D}})$ \Comment{Obtener logits para el mini-lote}
+%             \State $\mat{P}_{\text{mb}}^{(j)} \leftarrow \text{Softmax}(\mat{Z}_{\text{mb}})$ \Comment{Calcular probabilidades (Eq.~\eqref{eq:softmax})}
+
+%             \State \Comment{Cálculo de la función de pérdida}
+%             \State $\mathcal{L}_{\text{mb}} \leftarrow \mathcal{L}(\mathcal{Y}_{\text{mb}}^{(j)}, \mat{P}_{\text{mb}}^{(j)})$ \Comment{Pérdida de entropía cruzada (Eq.~\eqref{eq:categorical_crossentropy})}
+%             \If{se utiliza regularización L2 (decaimento de peso)}
+%                 \State $\mathcal{L}_{\text{mb}} \leftarrow \mathcal{L}_{\text{mb}} + \lambda \sum_{w \in \bm{\theta}} w^2$ \Comment{Añadir término de regularización}
+%             \EndIf
+
+%             \State \Comment{Retropropagación del error y actualización de parámetros}
+%             \State Calcular el gradiente de $\mathcal{L}_{\text{mb}}$ con respecto a los parámetros $\bm{\theta}$: $\nabla_{\bm{\theta}} \mathcal{L}_{\text{mb}}$.
+%             \State Actualizar $\bm{\theta}$ usando el optimizador y $\nabla_{\bm{\theta}} \mathcal{L}_{\text{mb}}$.
+%             \Comment{Dropout se aplica durante la propagación hacia adelante en entrenamiento.}
+%         \EndFor
+
+%         \State \Comment{Evaluación sobre el conjunto de validación}
+%         \State Calcular la pérdida de validación $\mathcal{L}_{\text{val}}$ y la exactitud $\text{Acc}_{\text{val}}$ sobre $\mathcal{D}_{\text{val}}$ con $\bm{\theta}$.
+%         \If{$\text{Acc}_{\text{val}} > \text{Acc}_{\text{val}}^*$}
+%             \State $\text{Acc}_{\text{val}}^* \leftarrow \text{Acc}_{\text{val}}$
+%             \State $\bm{\theta}^* \leftarrow \bm{\theta}$
+%         \EndIf
+%         \If{criterio de parada temprana satisfecho (ej. $\text{Acc}_{\text{val}}$ no mejora en $P$ épocas)}
+%             \State \textbf{break} \Comment{Finalizar el entrenamiento}
+%         \EndIf
+%     \EndFor
+%     \State \Return $\bm{\theta}^*$
+% \end{algorithmic}
+% \end{algorithm}
+
+\section{Entrenamiento de la Red Neuronal Convolucional (CNN) Híbrida}
+\label{sec:entrenamiento_cnn_simplified}
+
+Una vez preparados los datos de parches (Sección~\ref{sec:extraccion_parches_cnn_simplified}), se entrena una CNN híbrida para cada uno de los $m$ coeficientes de forma $b_j$. Cada CNN aprende a mapear la apariencia local de la imagen (representada por $\Ktotal$ parches) al valor discretizado (bin) del coeficiente $b_j$ correspondiente.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\columnwidth]{Figures/ejemplo_parches_entrada_cnn.png}
+    \caption{Ejemplo de parches de entrada ($Q \times Q$) para la CNN, extraídos alrededor de los landmarks.}
+    \label{fig:parches_entrada_cnn_simplified}
+\end{figure}
+
+\subsection{Arquitectura de la Red Híbrida}
+La arquitectura de la CNN (ver Figura~\ref{fig:cnn_architecture_detailed_simplified}) incluye:
+\begin{enumerate}
+    \item \textbf{CNN Base Compartida ($\mathcal{C}$):} Una CNN base procesa cada uno de los $\Ktotal$ parches de entrada $\vect{x}_l$ (de $Q \times Q$ píxeles) de forma individual. Esta CNN base, con pesos compartidos entre todos los parches, extrae un vector de características $\vect{v}_l = \mathcal{C}(\vect{x}_l)$ para cada parche.
+    
+    \item \textbf{Concatenación de Características:} Los $\Ktotal$ vectores de características $\vect{v}_l$ se concatenan en un único vector global $\vect{V}$.
+    
+    \item \textbf{Clasificador DNN ($\mathcal{D}$):} El vector $\vect{V}$ se introduce en un Perceptrón Multicapa (MLP o DNN). La capa final de este MLP tiene $B$ neuronas (donde $B$ es el número de bins para $b_j$) y una función de activación softmax, que produce un vector de probabilidades $\vect{p}$ sobre los $B$ bins:
+    \begin{equation}
+    p_i = \frac{e^{z_i}}{\sum_{l=0}^{B-1} e^{z_l}},
+    \label{eq:softmax_simplified}
+    \end{equation}
+    donde $z_i$ son las salidas (logits) de la red antes del softmax. El bin predicho es el que tiene mayor probabilidad.
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\columnwidth]{Figures/cnn_arquitectura_paper_style.png}
+    \caption{Arquitectura de la CNN Híbrida: (1) Parches de entrada. (2) CNN base compartida $\mathcal{C}$ aplicada a cada parche. (3) Concatenación de características en $\vect{V}$. (4) Clasificador DNN ($\mathcal{D}$) con salida Softmax.}
+    \label{fig:cnn_architecture_detailed_simplified}
+\end{figure}
+
+\subsection{Proceso de Entrenamiento}
+Para cada modo $b_j$, se entrena una red:
+\begin{itemize}
+    \item \textbf{Entrada:} Los $\Ktotal$ parches de una muestra de entrenamiento.
+    \item \textbf{Etiqueta:} El bin verdadero al que pertenece el coeficiente $b_j$ de esa muestra.
+    \item \textbf{Función de Pérdida:} Entropía cruzada categórica, que mide la diferencia entre la distribución de probabilidad predicha $\vect{p}^{(j)}$ y la verdadera $\vect{y}^{(j)}$ (one-hot):
+    \begin{equation}
+    \mathcal{L}(\vect{y}^{(j)}, \vect{p}^{(j)}) = - \sum_{l=0}^{B-1} y_l^{(j)} \log(p_l^{(j)}).
+    \label{eq:categorical_crossentropy_simplified}
+    \end{equation}
+    \item \textbf{Optimizador:} Un algoritmo como Adam se usa para minimizar la pérdida ajustando los pesos de la red mediante retropropagación.
+    \item \textbf{Regularización:} Técnicas como Dropout o decaimiento de peso se usan para prevenir el sobreajuste.
+\end{itemize}
+El entrenamiento se realiza por varias épocas, usando un conjunto de validación para monitorear el rendimiento y seleccionar el mejor modelo.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\columnwidth]{Figures/ejemplo_historial_entrenamiento_cnn.png}
+    \caption{Ejemplo de curvas de pérdida y precisión durante el entrenamiento, mostrando el rendimiento en los conjuntos de entrenamiento y validación.}
+    \label{fig:historial_entrenamiento_cnn_simplified}
+\end{figure}

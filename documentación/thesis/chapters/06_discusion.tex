@@ -1,0 +1,310 @@
+% =============================================================================
+% CAPITULO 6: DISCUSION
+% =============================================================================
+
+\chapter{Discusion}
+\label{ch:discusion}
+
+Este capitulo analiza e interpreta los resultados obtenidos, comparandolos con el estado del arte, examinando casos exitosos y fallidos, y discutiendo las implicaciones practicas y limitaciones del sistema desarrollado.
+
+% -----------------------------------------------------------------------------
+\section{Interpretacion de Resultados}
+\label{sec:interpretacion}
+% -----------------------------------------------------------------------------
+
+\subsection{Superacion del Objetivo}
+
+El error final de \errorpx{3.71} supera significativamente el objetivo inicial de $<$8 pixeles. Esta diferencia de mas del doble respecto al objetivo merece analisis:
+
+\begin{enumerate}
+    \item \textbf{El objetivo era conservador}: El valor de 8 px se establecio basandose en literatura de deteccion de landmarks faciales, sin considerar las particularidades del dominio medico.
+
+    \item \textbf{Efecto acumulativo de mejoras}: Cada optimizacion (CLAHE, arquitectura, ensemble) contribuyo incrementalmente. La combinacion de todas resulto en una mejora no lineal.
+
+    \item \textbf{Calidad del dataset}: Aunque pequeno, el dataset tiene etiquetado consistente, facilitando el aprendizaje.
+\end{enumerate}
+
+\subsection{Cercania al Limite Teorico}
+
+El error de etiquetado manual se estima en 1.5-2.0 pixeles. Con 3.71 px de error, el modelo esta a solo $\sim$1.7-2.2 px del limite teorico:
+
+\begin{equation}
+    \text{Gap al limite} = 3.71 - 1.75 \approx 1.96 \text{ px}
+    \label{eq:gap_teorico}
+\end{equation}
+
+Este pequeno gap sugiere que:
+\begin{itemize}
+    \item El modelo ha extraido casi toda la informacion disponible en las imagenes
+    \item Mejoras adicionales requeriran datos de mejor calidad (etiquetado mas preciso) o mas datos
+    \item La arquitectura actual es adecuada para este problema
+\end{itemize}
+
+\subsection{Variabilidad por Landmark}
+
+La diferencia de error entre landmarks (2.64-5.63 px) refleja factores anatomicos y de etiquetado:
+
+\begin{itemize}
+    \item \textbf{Landmarks centrales (L9, L10, L11)}: Menor error porque su posicion esta determinada geometricamente por el eje L1-L2. El proceso de etiquetado los coloca automaticamente, reduciendo variabilidad.
+
+    \item \textbf{Landmarks del eje (L1, L2)}: Error intermedio. Son puntos de referencia principales pero requieren juicio subjetivo del etiquetador.
+
+    \item \textbf{Bordes superiores (L12, L13)}: Mayor error. Representan bordes difusos de los pulmones donde la definicion exacta es subjetiva.
+\end{itemize}
+
+\subsection{Impacto de la Patologia}
+
+El analisis por categoria revela patrones clinicamente relevantes:
+
+\begin{itemize}
+    \item \textbf{COVID-19}: La mayor mejora absoluta (11.01 $\rightarrow$ 3.80 px) demuestra que CLAHE es particularmente efectivo para manejar consolidaciones pulmonares. Las opacidades en vidrio esmerilado y consolidaciones oscurecen los bordes anatomicos, y CLAHE los realza.
+
+    \item \textbf{Normal}: El mejor rendimiento (3.50 px) es esperado, ya que las estructuras anatomicas estan claramente definidas.
+
+    \item \textbf{Neumonia Viral}: Error ligeramente mayor (4.35 px), posiblemente porque los infiltrados difusos crean patrones mas irregulares que las consolidaciones focales de COVID-19.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Comparacion con el Estado del Arte}
+\label{sec:comparacion_sota}
+% -----------------------------------------------------------------------------
+
+\subsection{Contextualizacion de Resultados}
+
+La comparacion directa con otros trabajos es compleja debido a diferencias en datasets, modalidades y definiciones de landmarks:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparacion contextualizada con trabajos relacionados}
+    \label{tab:sota_comparison}
+    \begin{tabular}{@{}p{3cm}p{2.5cm}ccc@{}}
+        \toprule
+        \textbf{Trabajo} & \textbf{Modalidad} & \textbf{Landmarks} & \textbf{Error} & \textbf{Notas} \\
+        \midrule
+        SCN \cite{payer2019integrating} & Cefalometrico & 19 & 1.17 mm & Alta resolucion \\
+        HRNet \cite{wang2020deep} & Facial & 68 & 1.2 px & Imagenes naturales \\
+        U-Net \cite{chen2019vertebrae} & Vertebras & 17 & 2.3 px & CT \\
+        \textbf{Este trabajo} & \textbf{Torax RX} & \textbf{15} & \textbf{3.71 px} & \textbf{COVID-19 incluido} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\textbf{Consideraciones importantes}:
+
+\begin{enumerate}
+    \item \textbf{Resolucion de imagen}: Nuestra resolucion de 299x299 px es significativamente menor que las utilizadas en radiografias cefalometricas (tipicamente 2000+ px), lo que hace que el error en pixeles sea menos comparable.
+
+    \item \textbf{Presencia de patologia}: La mayoria de benchmarks de landmarks evaluan en imagenes ``normales''. Nuestro dataset incluye 51\% de imagenes patologicas, aumentando la dificultad.
+
+    \item \textbf{Definicion de landmarks}: Los landmarks toracicos tienen mayor variabilidad anatomica que los cefalometricos, donde las estructuras oseas son mas constantes.
+\end{enumerate}
+
+\subsection{Contribuciones Originales}
+
+Este trabajo aporta al estado del arte:
+
+\begin{enumerate}
+    \item \textbf{Primera demostracion de CLAHE para localizacion de landmarks}: Aunque CLAHE se ha usado para clasificacion, este es el primer trabajo que demuestra su efectividad especifica para tareas de localizacion en radiografias toracicas.
+
+    \item \textbf{Analisis detallado por landmark y patologia}: La granularidad del analisis permite identificar puntos de mejora especificos, ausente en la mayoria de trabajos que reportan solo metricas globales.
+
+    \item \textbf{Metodologia de ensemble selectivo}: La demostracion de que excluir modelos debiles es mas efectivo que ponderarlos es un insight practico para futuros trabajos.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\section{Analisis de Casos}
+\label{sec:analisis_casos}
+% -----------------------------------------------------------------------------
+
+\subsection{Casos Exitosos}
+
+Los mejores resultados (error $<$ 2 px) se observan en:
+
+\begin{itemize}
+    \item Radiografias normales con buen contraste
+    \item Pacientes adultos con anatomia ``tipica''
+    \item Imagenes donde los bordes pulmonares son nitidos
+    \item Landmarks centrales (L9, L10, L11) en todas las categorias
+\end{itemize}
+
+\textbf{Ejemplo de caso exitoso}: Una radiografia normal donde el error promedio fue 1.8 px. La imagen tenia excelente contraste, bordes pulmonares bien definidos y el paciente tenia anatomia simetrica.
+
+\subsection{Casos Fallidos}
+
+Los peores resultados (error $>$ 10 px) ocurren en:
+
+\begin{itemize}
+    \item \textbf{Consolidaciones extensas}: COVID-19 severo con opacidades que cubren $>$50\% del campo pulmonar
+    \item \textbf{Derrame pleural}: Altera significativamente la posicion aparente de L14, L15
+    \item \textbf{Rotacion del paciente}: Lateralizacion que viola la asuncion de simetria
+    \item \textbf{Artefactos de imagen}: Cables, electrodos o dispositivos medicos
+\end{itemize}
+
+\textbf{Ejemplo de caso fallido}: Una radiografia de COVID-19 con consolidacion bilateral extensa donde el error en L14 fue 15.2 px. Los bordes pulmonares estaban completamente oscurecidos por las opacidades, haciendo imposible la localizacion precisa incluso para un humano.
+
+\subsection{Patrones de Error}
+
+El analisis de errores revela patrones sistematicos:
+
+\begin{enumerate}
+    \item \textbf{Sesgo hacia el centro}: En casos dificiles, las predicciones tienden hacia posiciones ``promedio'', resultando en landmarks bilaterales menos separados de lo esperado.
+
+    \item \textbf{Mayor error en Y para costofrenicos}: L14 y L15 tienen mayor variabilidad vertical, reflejada en errores predominantemente en el eje Y.
+
+    \item \textbf{Asimetria residual}: Aunque no se fuerza simetria, el modelo tiende a predecir pares bilaterales mas simetricos que el ground truth, lo cual puede ser ventaja o desventaja dependiendo del caso.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\section{Analisis de Decisiones de Diseno}
+\label{sec:decisiones_diseno}
+% -----------------------------------------------------------------------------
+
+\subsection{Decisiones que Funcionaron}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Resumen de decisiones exitosas y su impacto}
+    \label{tab:successful_decisions}
+    \begin{tabular}{@{}p{4cm}p{3cm}p{5cm}@{}}
+        \toprule
+        \textbf{Decision} & \textbf{Impacto} & \textbf{Justificacion} \\
+        \midrule
+        Wing Loss & -20\% error & Mayor sensibilidad a errores pequenos \\
+        CLAHE (tile=4) & -10\% global, -19\% COVID & Realce local optimo \\
+        hidden\_dim=768 & -8\% error & Mayor capacidad sin overfitting \\
+        Ensemble selectivo & -16\% error & Exclusion de modelos debiles \\
+        TTA con flip & -3\% error & Reduccion de varianza sin costo \\
+        GroupNorm & Estabilidad & Mejor que BatchNorm con batch pequeno \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Decisiones que NO Funcionaron}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Decisiones fallidas y lecciones aprendidas}
+    \label{tab:failed_decisions}
+    \begin{tabular}{@{}p{4cm}p{3cm}p{5cm}@{}}
+        \toprule
+        \textbf{Decision} & \textbf{Resultado} & \textbf{Leccion} \\
+        \midrule
+        Central Alignment Loss & Sin mejora & Restriccion ya satisfecha implicitamente \\
+        Soft Symmetry Loss & Sin mejora & GT no es simetrico \\
+        Category Weights & Empeoro & Causa overfitting en COVID \\
+        Arquitectura jerarquica & +83\% error & Regresion directa aprende geometria \\
+        Weighted ensemble & Sin mejora & Promedio simple es robusto \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\textbf{Insight clave}: Las restricciones geometricas explicitas (alignment loss, symmetry loss, arquitectura jerarquica) no mejoraron porque el modelo de regresion directa ya aprende estas relaciones implicitamente de los datos.
+
+% -----------------------------------------------------------------------------
+\section{Limitaciones}
+\label{sec:limitaciones}
+% -----------------------------------------------------------------------------
+
+\subsection{Limitaciones del Dataset}
+
+\begin{enumerate}
+    \item \textbf{Tamano limitado}: 957 imagenes es un dataset pequeno para deep learning. La generalizacion a poblaciones mas diversas requiere validacion.
+
+    \item \textbf{Sesgo demografico}: No se dispone de informacion demografica. El modelo puede no generalizar a poblaciones diferentes de la de entrenamiento.
+
+    \item \textbf{Variedad de equipos}: Las imagenes provienen de fuentes limitadas. Diferentes equipos de rayos X producen caracteristicas de imagen diferentes.
+
+    \item \textbf{Tipos de patologia}: Solo tres categorias evaluadas. El rendimiento en otras condiciones (TB, cancer, fibrosis) es desconocido.
+\end{enumerate}
+
+\subsection{Limitaciones del Modelo}
+
+\begin{enumerate}
+    \item \textbf{Resolucion fija}: El modelo asume imagenes de 299x299 px. Imagenes de resolucion diferente requieren redimensionamiento.
+
+    \item \textbf{Ausencia de incertidumbre}: El modelo no proporciona intervalos de confianza para sus predicciones.
+
+    \item \textbf{Interpretabilidad limitada}: Como ``caja negra'', es dificil explicar por que falla en casos especificos.
+
+    \item \textbf{Tiempo de inferencia}: El ensemble de 4 modelos con TTA (8 forward passes) puede ser lento para aplicaciones en tiempo real.
+\end{enumerate}
+
+\subsection{Limitaciones del Ground Truth}
+
+\begin{enumerate}
+    \item \textbf{Etiquetador unico}: Las anotaciones provienen de un proceso de etiquetado sin evaluacion inter-observador.
+
+    \item \textbf{Ruido inherente}: El error de etiquetado ($\sim$1.5-2.0 px) establece un limite inferior al rendimiento.
+
+    \item \textbf{Asimetrias no documentadas}: No esta claro si las asimetrias en el GT son anatomicas o errores.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\section{Implicaciones Practicas}
+\label{sec:implicaciones}
+% -----------------------------------------------------------------------------
+
+\subsection{Aplicaciones Clinicas Potenciales}
+
+El sistema desarrollado podria aplicarse en:
+
+\begin{enumerate}
+    \item \textbf{Calculo automatico del indice cardiotoracico}: Utilizando L1, L2 y landmarks laterales para medir la relacion corazon/torax.
+
+    \item \textbf{Triaje rapido}: Deteccion automatica de anomalias de posicion que sugieran patologia.
+
+    \item \textbf{Seguimiento longitudinal}: Comparacion objetiva de landmarks entre estudios sucesivos del mismo paciente.
+
+    \item \textbf{Control de calidad}: Verificacion de posicionamiento correcto del paciente durante la adquisicion.
+\end{enumerate}
+
+\subsection{Consideraciones para Despliegue}
+
+Para uso clinico real, se requereria:
+
+\begin{itemize}
+    \item Validacion en datasets externos
+    \item Aprobacion regulatoria (FDA, CE)
+    \item Integracion con sistemas PACS
+    \item Interfaz de usuario para revision de resultados
+    \item Mecanismos de retroalimentacion para casos fallidos
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Trabajo Futuro}
+\label{sec:trabajo_futuro}
+% -----------------------------------------------------------------------------
+
+\subsection{Mejoras Inmediatas}
+
+\begin{enumerate}
+    \item \textbf{Estimacion de incertidumbre}: Implementar dropout en inferencia (MC Dropout) o ensembles bayesianos para proporcionar intervalos de confianza.
+
+    \item \textbf{Deteccion de casos outlier}: Sistema de alerta cuando las predicciones estan fuera de rangos anatomicos plausibles.
+
+    \item \textbf{Explicabilidad}: Mapas de atencion (Grad-CAM) para visualizar que regiones influyen en cada prediccion.
+\end{enumerate}
+
+\subsection{Extensiones a Mediano Plazo}
+
+\begin{enumerate}
+    \item \textbf{Expansion del dataset}: Incorporacion de mas imagenes, especialmente de otras patologias y demografias.
+
+    \item \textbf{Transfer a otras modalidades}: Adaptacion del modelo a CT de torax o radiografias laterales.
+
+    \item \textbf{Heatmap regression}: Evaluacion de enfoques basados en heatmaps con DSNT para potencial precision subpixel.
+\end{enumerate}
+
+\subsection{Vision a Largo Plazo}
+
+\begin{enumerate}
+    \item \textbf{Sistema de diagnostico asistido}: Integracion de deteccion de landmarks con clasificacion de patologias para un sistema completo de analisis de radiografias.
+
+    \item \textbf{Aprendizaje continuo}: Sistema que mejore con retroalimentacion de radiologos en produccion.
+
+    \item \textbf{Benchmark publico}: Publicacion del dataset y metodologia para facilitar comparacion con futuros trabajos.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+% FIN DEL CAPITULO
+% -----------------------------------------------------------------------------

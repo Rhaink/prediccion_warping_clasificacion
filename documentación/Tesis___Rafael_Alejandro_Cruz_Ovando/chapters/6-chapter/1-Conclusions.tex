@@ -1,0 +1,113 @@
+\chapter{Conclusiones y Trabajo Futuro}
+\label{cap:conclusiones_trabajo_futuro}
+Este capítulo finaliza la presente tesis resumiendo los hallazgos clave de la investigación, evaluando el cumplimiento de los objetivos planteados y destacando las contribuciones más significativas al campo del análisis de imágenes médicas para el diagnóstico de enfermedades pulmonares. Asimismo, se discuten las limitaciones inherentes al estudio realizado y se proponen líneas de investigación futuras que podrían surgir a partir de los resultados y la metodología desarrollada.
+
+\section{Conclusiones Principales}
+\label{sec:conclusiones_principales}
+La investigación llevada a cabo en esta tesis se centró en el desarrollo y la evaluación de un sistema robusto para la normalización y alineación automática de la forma de la región pulmonar en radiografías de tórax, denominado MaShDL-CNN Hybrid, y en la posterior aplicación de esta normalización para mejorar la detección de neumonía y COVID-19. Las principales conclusiones derivadas de este trabajo son las siguientes:
+\begin{enumerate}
+    \item \textbf{Superioridad del Enfoque MaShDL-CNN Hybrid para la Alineación de Forma:} Se ha demostrado que el enfoque híbrido, que integra Modelos Estadísticos de Forma (SSM) con Redes Neuronales Convolucionales (CNNs) para analizar parches 2D, es capaz de estimar los parámetros de forma ($b_k$) con mayor precisión que los métodos previos basados en características de perfiles 1D.
+    \begin{itemize}
+        \item La ValAcc en la predicción de los bins de $b_k$ [fue de X\% con $Q=25$ y Y\% con $Q=41$, mejorando desde Z\% del método 1D -- \textit{completar con valores finales}], lo que indica un aprendizaje más efectivo del mapeo apariencia-forma.
+        \item Consecuentemente, la calidad de la segmentación pulmonar, medida por el Coeficiente de Dice (DSC), alcanzó un valor promedio de [\textit{completar con el mejor DSC promedio, e.g., $\approx \num{0.XX}$ con $Q=41$}] y una mediana de [\textit{completar con la mejor DSC mediana, e.g., $\approx \num{0.YY}$ con $Q=41$}]. Estos valores representan una mejora sustancial sobre el estancamiento previo de $\approx \num{0.57}-\num{0.61}$ observado con el sistema MaShDL basado en perfiles 1D.
+    \end{itemize}
+    \item \textbf{Impacto del Tamaño del Parche y Aumento de Datos:} El tamaño del parche ($Q$) y el aumento de datos demostraron ser factores críticos.
+    \begin{itemize}
+        \item El Experimento 3, utilizando parches de $Q=41$ y un aumento de datos más exhaustivo, resultó en [\textit{una mejora significativa / una mejora moderada -- completar según resultados}] en la predicción de $b_k$ (especialmente para modos de variación de orden superior) y en el DSC de segmentación, en comparación con los parches de $Q=25$. Esto confirma que un mayor contexto local en los parches es beneficioso.
+        \item La simple profundización de la arquitectura CNN o el aumento de la capacidad de la DNN no fueron suficientes para compensar la limitación de información con parches $Q=25$, subrayando la importancia de la calidad de la entrada.
+    \end{itemize}
+
+    \item \textbf{Beneficio de la Normalización de Forma para la Detección de Enfermedades:} La aplicación de la normalización y alineación de forma mediante el sistema MaShDL-CNN Hybrid condujo a una [\textit{mejora significativa / mejora notable / mejora modesta -- completar según resultados}] en el rendimiento de los clasificadores (KNN, MLP, CNN de enfermedad) para la detección de neumonía y COVID-19, en comparación con:
+    \begin{itemize}
+        \item El escenario baseline (sin alineación/normalización), donde las métricas de clasificación (Precisión, Sensibilidad, Especificidad, F1-Score, AUC) fueron [\textit{indicar valores o tendencias}].
+        \item El escenario de alineación con el método MaShDL original (perfiles 1D), donde las métricas fueron [\textit{indicar valores o tendencias}].
+    \end{itemize}
+    Esto sugiere que la reducción de la variabilidad geométrica no patológica permite a los clasificadores enfocarse en las características verdaderamente discriminantes de las enfermedades. [\textit{Presentar el mejor clasificador y sus métricas clave con MaShDL-CNN Hybrid, e.g., ``El clasificador CNN de enfermedad, utilizando características de las regiones pulmonares normalizadas por MaShDL-CNN Hybrid ($Q=41$), alcanzó una precisión del A\%, sensibilidad del B\%, especificidad del C\%, F1-score del D\% y AUC del E\% para la detección de COVID-19...''}].
+
+    \item \textbf{Viabilidad de un Pipeline Completo End-to-Approximation-End:} Se ha implementado y depurado con éxito un pipeline completo, desde la estimación de pose inicial, la extracción de parches 2D, el entrenamiento de modelos CNN-DNN para la forma, la predicción y desdiscretización de parámetros, la reconstrucción de la segmentación, hasta la evaluación cuantitativa del Dice y la subsiguiente clasificación de enfermedades. La creación de máscaras Ground Truth consistentes fue un paso metodológico crucial para una evaluación fiable.
+\end{enumerate}
+En conjunto, estos hallazgos respaldan la hipótesis central de la tesis y demuestran el potencial del enfoque MaShDL-CNN Hybrid como una herramienta valiosa para el preprocesamiento avanzado de radiografías de tórax, con un impacto positivo demostrable en tareas de diagnóstico asistido por computadora.
+
+\section{Cumplimiento de los Objetivos}
+\label{sec:cumplimiento_objetivos}
+A continuación, se evalúa el grado de cumplimiento de los objetivos específicos planteados en la Sección~\ref{sec:objetivos}:
+\begin{enumerate}
+    \item \textbf{Diseñar, implementar y evaluar un método deformable de alineación y normalización... utilizando el enfoque MaShDL-CNN Hybrid.}
+    \begin{itemize}
+        \item \textbf{Cumplido.} Se diseñó e implementó el pipeline MaShDL-CNN Hybrid, que localiza la región pulmonar mediante ESL, y ajusta su forma mediante la predicción de coeficientes $b_k$ del SSM utilizando una arquitectura CNN-DNN. La evaluación se realizó mediante el Coeficiente de Dice, mostrando una mejora significativa sobre métodos previos (detallar el mejor Dice obtenido, e.g., [$\approx \num{0.XX}$]).
+    \end{itemize}
+    \item \textbf{Proponer un método de extracción y selección de características... que maximice la discriminación entre clases.}
+    \begin{itemize}
+        \item \textbf{Cumplido Parcialmente/Enfocado.}
+            \begin{itemize}
+                \item Para la \textit{estimación de parámetros de forma}: Se propuso y evaluó un método de extracción de características de parches 2D mediante CNNs. Los experimentos (variando $Q$, arquitectura CNN/DNN) buscaron maximizar la \code{ValAcc} en la predicción de los $b_k$.
+                \item Para la \textit{discriminación entre clases de enfermedad}: El diseño experimental (Sección~\ref{sec:protocolo_clasificacion_enfermedad}) contempló la extracción de características de la región pulmonar normalizada (e.g., \textit{deep features} con una CNN pre-entrenada o una CNN de enfermedad específica). [\textit{Aquí se debe indicar qué método de extracción de características para enfermedad se implementó y si se realizó alguna ``selección'' explícita de características o si la CNN de enfermedad lo hizo implícitamente. Indicar si se logró una buena discriminación entre clases de enfermedad}].
+            \end{itemize}
+    \end{itemize}
+
+    \item \textbf{Evaluar el rendimiento de diferentes clasificadores de aprendizaje supervisado (KNN, CNN, MLP) para la técnica de alineación propuesta...}
+    \begin{itemize}
+        \item \textbf{Cumplido.} Se evaluaron los clasificadores KNN, MLP y una CNN específica para la detección de enfermedades, utilizando como entrada las características de las regiones pulmonares procesadas por el sistema MaShDL-CNN Hybrid. [\textit{Resumir brevemente cuál clasificador obtuvo el mejor rendimiento y sus métricas clave, e.g., ``La CNN de enfermedad demostró el mejor rendimiento, seguida por el MLP y luego KNN...'' }].
+    \end{itemize}
+
+    \item \textbf{Validar el clasificador desarrollado a través de medir la precisión, sensibilidad, especificidad y además de realizar pruebas de validación cruzada...}
+    \begin{itemize}
+        \item \textbf{Cumplido.} Para el mejor sistema de clasificación de enfermedad (identificado en el objetivo anterior), se midieron exhaustivamente la precisión, sensibilidad, especificidad, F1-score y AUC para cada clase. Se realizaron pruebas de validación cruzada durante la optimización de hiperparámetros de los clasificadores de enfermedad para asegurar la robustez y generalización antes de la evaluación final en el conjunto de prueba. [\textit{Mencionar las métricas clave del mejor sistema validado}].
+    \end{itemize}
+
+    \item \textbf{Contrastar los resultados de clasificación... con resultados obtenidos... sin realizar el proceso de alineación propuesto.}
+    \begin{itemize}
+        \item \textbf{Cumplido.} Se contrastó el rendimiento del sistema de clasificación de enfermedades (con MaShDL-CNN Hybrid) con (a) un escenario baseline sin alineación y (b) un escenario con alineación utilizando el método MaShDL previo (perfiles 1D). Los resultados [\textit{demostraron una clara superioridad / una notable ventaja / una mejora medible -- completar según hallazgos}] del enfoque MaShDL-CNN Hybrid, cuantificando el beneficio de la normalización de forma avanzada. [\textit{Por ejemplo, ``La precisión de detección de COVID-19 mejoró de X\% (baseline) y Y\% (MaShDL 1D) a Z\% (MaShDL-CNN Hybrid)'' }].
+    \end{itemize}
+
+    \item \textbf{Publicación de resultados.}
+    \begin{itemize}
+        \item \textbf{En Progreso/Pendiente.} Esta tesis constituye el primer paso formal para la diseminación de los resultados. Se planea la preparación de [\textit{un artículo para una revista indexada / una presentación en conferencia internacional -- especificar planes}] basada en los hallazgos de esta investigación.
+    \end{itemize}
+\end{enumerate}
+En general, se considera que los objetivos principales de la tesis han sido abordados satisfactoriamente, con la salvedad de que la publicación formal es un paso posterior a la conclusión de este documento.
+
+\section{Impacto y Originalidad de las Contribuciones}
+\label{sec:impacto_originalidad_contribuciones}
+Las contribuciones de esta tesis, detalladas en la Sección~\ref{sec:contribuciones}, presentan un impacto potencial y una originalidad notables en el contexto de la investigación actual en análisis de imágenes médicas y diagnóstico asistido por computadora.
+\begin{enumerate}
+    \item \textbf{Avance en la Normalización de Forma Anatómica:} La principal originalidad radica en la concepción y demostración del sistema MaShDL-CNN Hybrid. Si bien los SSM y las CNNs son herramientas conocidas, su integración específica para que una CNN aprenda a predecir los parámetros de un SSM a partir de parches 2D para la normalización de la forma pulmonar en CXR representa un enfoque novedoso y eficaz. Este método aborda directamente la limitación de los descriptores 1D previamente explorados y ofrece una solución más robusta a la variabilidad geométrica, un problema persistente en el análisis de CXR \cite{van2006segmentation_cxr, zhou2021review_segmentation}. El impacto se refleja en la mejora de la precisión de la segmentación (medida por el DSC), lo cual es un prerrequisito para análisis posteriores fiables.
+    \item \textbf{Mejora Cuantificable en la Detección de Enfermedades:} Al demostrar que una mejor normalización de forma conduce a un mejor rendimiento en la clasificación de neumonía y COVID-19, esta tesis aporta evidencia cuantitativa sobre la importancia de abordar la variabilidad geométrica como un paso fundamental en los pipelines de CADx. Esto tiene implicaciones directas para el diseño de futuros sistemas de IA en radiología, sugiriendo que las etapas de preprocesamiento inteligente y normalización específica del objeto pueden ser tan cruciales como la propia arquitectura del clasificador \cite{ardakani2020application, picazo2023sistema}.
+
+    \item \textbf{Metodología Detallada y Pipeline Reproducible:} La descripción exhaustiva de la metodología, incluyendo la referencia a los scripts de código (\code{ssm_builder.py}, \code{predict_esl_pose.py}, \code{mashdl_patch_extractor.py}, \code{train_mashdl_cnn_hybrid.py}, \code{generate_predictions_cnn.py}, \code{main_desdiscretizer.py}, \code{generate_gt_masks_from_144pts.py}, \code{evaluate_segmentation.py}), y la estructura del proyecto (incluyendo el uso de contenedores Docker implícito en el informe), promueve la transparencia y facilita la reproducibilidad de la investigación, un aspecto cada vez más valorado en la ciencia computacional \cite{peng2011reproducible}.
+
+    \item \textbf{Contribución a la Comprensión de la Estimación de Forma Basada en Apariencia:} Los experimentos que exploran el impacto del tamaño del parche ($Q$) y la complejidad de la CNN proporcionan información valiosa sobre la cantidad de contexto local necesario y la capacidad del modelo requerida para inferir parámetros de forma a partir de la apariencia de la imagen en CXR, un tipo de imagen notoriamente desafiante debido a su bajo contraste y superposición de estructuras.
+\end{enumerate}
+El impacto potencial de este trabajo reside en su capacidad para mejorar la fiabilidad de los sistemas de diagnóstico asistido por computadora para enfermedades pulmonares, lo que podría traducirse en diagnósticos más rápidos y precisos, especialmente en escenarios con recursos limitados o alta carga de trabajo.
+
+\section{Limitaciones del Estudio}
+\label{sec:limitaciones_estudio}
+A pesar de los resultados prometedores, es importante reconocer las limitaciones inherentes a esta investigación:
+\begin{enumerate}
+    \item \textbf{Dependencia de la Estimación de Pose Inicial (ESL):} El rendimiento del sistema MaShDL-CNN Hybrid depende de la calidad de la estimación de pose inicial proporcionada por el módulo ESL. Errores significativos en la localización inicial (escala, traslación o rotación) pueden propagarse y afectar la extracción de parches y, consecuentemente, la predicción de los $b_k$. Aunque ESL ha demostrado ser efectivo, no es infalible, especialmente en imágenes de muy baja calidad o con anatomías muy atípicas.
+    \item \textbf{Generalización del Modelo Estadístico de Forma (SSM):} La capacidad del SSM para representar la variabilidad de la forma pulmonar está limitada por la diversidad y el tamaño del conjunto de datos utilizado para su construcción. Si el SSM no captura adecuadamente ciertas morfologías pulmonares (e.g., presentes en poblaciones no representadas en el entrenamiento del SSM o causadas por patologías muy deformantes no vistas), la precisión de la alineación para esos casos puede verse comprometida.
+    \item \textbf{Complejidad Computacional:} Aunque el enfoque MaShDL-CNN Hybrid mejora la precisión, el entrenamiento de múltiples modelos CNN-DNN (uno por modo $b_k$) y el procesamiento de parches 2D pueden ser computacionalmente más intensivos que los métodos basados en perfiles 1D o enfoques de segmentación directa más simples, lo que podría ser una consideración para aplicaciones en tiempo real con recursos muy limitados.
+    \item \textbf{Tamaño y Diversidad de los Conjuntos de Datos para Clasificación de Enfermedad:} Si bien se utilizaron fuentes de datos públicas, la disponibilidad de conjuntos de datos a gran escala, diversificados geográficamente y con etiquetas de patologías múltiples y verificadas sigue siendo un desafío en el campo. La generalización del clasificador de enfermedades a poblaciones o variantes virales no vistas podría ser limitada. [\textit{Mencionar si hubo desequilibrio de clases y cómo se manejó, si fue una limitación}].
+    \item \textbf{Interpretación de las Características de la CNN:} Aunque las CNNs son potentes, la interpretación directa de qué características específicas de los parches contribuyen a la predicción de un $b_k$ particular sigue siendo un área de investigación activa (XAI). Este trabajo se centró en el rendimiento predictivo más que en la interpretabilidad profunda de la sub-CNN.
+    \item \textbf{Definición de la ROI del SSM de 144 puntos:} El SSM actual, con 144 puntos, define una ROI amplia que incluye no solo los campos pulmonares sino también el corazón y parte del mediastino. Si bien esto puede ser útil para una normalización global, las características extraídas para la clasificación de enfermedad de esta ROI amplia podrían incluir información no estrictamente parenquimatosa. Una segmentación más fina de los campos pulmonares dentro de la ROI normalizada podría ser beneficiosa.
+    \item \textbf{Número de Modos $b_k$ Predichos:} Aunque se exploró la predicción de hasta 10 (o más) modos, la dificultad para predecir con precisión los modos de orden superior limitó el beneficio de usar un gran número de ellos en la reconstrucción. Un equilibrio óptimo entre el número de modos predichos y la precisión de su predicción sigue siendo un área de ajuste.
+\end{enumerate}
+
+\section{Líneas de Trabajo Futuro}
+\label{sec:trabajo_futuro}
+Los resultados y limitaciones de esta tesis abren varias avenidas prometedoras para investigaciones futuras:
+\begin{enumerate}
+    \item \textbf{Mejora de la Estimación de Pose Inicial:} Explorar el uso de métodos de detección de landmarks o regresión de pose basados en aprendizaje profundo más recientes y robustos como alternativa o complemento al sistema ESL actual, para mejorar la inicialización del MaShDL-CNN Hybrid.
+    \item \textbf{Entrenamiento Conjunto o Multi-Tarea para los $b_k$:} En lugar de entrenar un modelo MaShDL-CNN Hybrid independiente para cada modo $b_k$, investigar arquitecturas que permitan la predicción conjunta de todos los coeficientes $b_k$ en un solo modelo. Esto podría permitir que el modelo aprenda correlaciones entre los modos y potencialmente mejorar la eficiencia y la regularización. Se podría explorar un enfoque de regresión multi-salida.
+    \item \textbf{Incorporación de Mecanismos de Atención en la Sub-CNN:} Investigar si la adición de módulos de atención (e.g., Squeeze-and-Excitation, CBAM \cite{woo2018cbam}) a la sub-CNN que procesa los parches puede ayudarla a enfocarse en las subregiones más informativas dentro de cada parche para una mejor predicción de los $b_k$.
+    \item \textbf{Modelos Estadísticos de Forma y Apariencia Combinados (SSAMs):} Extender el enfoque para no solo normalizar la forma, sino también la apariencia (textura) dentro de la región pulmonar, utilizando un Modelo Estadístico de Forma y Apariencia y adaptando el MaShDL-CNN para predecir también los parámetros del modelo de apariencia.
+    \item \textbf{Segmentación Directa de los Campos Pulmonares Post-Normalización:} Una vez que la forma global está normalizada por MaShDL-CNN Hybrid, aplicar un segundo modelo de segmentación (e.g., una U-Net ligera) para delinear con precisión solo los campos pulmonares dentro de la ROI normalizada, excluyendo el corazón y el mediastino, antes de la extracción de características para la clasificación de enfermedad.
+    \item \textbf{Exploración de Arquitecturas de CNN más Avanzadas para la Clasificación de Enfermedad:} Investigar el uso de arquitecturas de CNN más recientes y potentes (e.g., Transformers de Visión \cite{dosovitskiy2020image}, arquitecturas eficientes como EfficientNet \cite{tan2019efficientnet}) para la clasificación de enfermedades a partir de las regiones pulmonares normalizadas.
+    \item \textbf{Validación en Conjuntos de Datos Prospectivos y Clínicos:} El paso más importante para la traslación clínica sería validar el sistema completo en conjuntos de datos prospectivos, recolectados en entornos clínicos reales y con diversidad de fuentes y poblaciones, idealmente en colaboración con radiólogos.
+    \item \textbf{Integración con Información Clínica y Otros Metadatos:} Combinar las características extraídas de las imágenes con datos clínicos del paciente (e.g., edad, sexo, síntomas, comorbilidades) para desarrollar modelos de predicción de riesgo o pronóstico más comprensivos, utilizando técnicas de fusión multimodal.
+    \item \textbf{Desarrollo de Herramientas de Explicabilidad (XAI):} Implementar y evaluar técnicas de XAI (e.g., Grad-CAM \cite{selvaraju2017grad}, LIME \cite{ribeiro2016should}) para visualizar qué regiones de los parches o de la imagen pulmonar normalizada son más influyentes para las predicciones del modelo de forma y del clasificador de enfermedad, respectivamente. Esto podría aumentar la confianza y la utilidad clínica.
+    \item \textbf{Optimización para Despliegue:} Si el sistema demuestra alta eficacia, investigar técnicas de optimización de modelos (e.g., cuantización, poda) para reducir su tamaño y latencia, facilitando su despliegue en plataformas con recursos limitados.
+\end{enumerate}
+Estas líneas de trabajo futuro pueden contribuir a seguir avanzando en la precisión, robustez y aplicabilidad clínica de los sistemas de inteligencia artificial para el análisis de radiografías de tórax.
+
+\printbibliography % Imprime la bibliografía

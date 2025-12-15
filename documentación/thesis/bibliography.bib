@@ -1,0 +1,599 @@
+% =============================================================================
+% BIBLIOGRAFIA - Tesis de Maestria
+% Prediccion de Landmarks Anatomicos en Radiografias de Torax
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% DEEP LEARNING FUNDAMENTALS
+% -----------------------------------------------------------------------------
+
+@article{lecun1998gradient,
+  title={Gradient-based learning applied to document recognition},
+  author={LeCun, Yann and Bottou, L{\'e}on and Bengio, Yoshua and Haffner, Patrick},
+  journal={Proceedings of the IEEE},
+  volume={86},
+  number={11},
+  pages={2278--2324},
+  year={1998},
+  publisher={IEEE}
+}
+
+@inproceedings{krizhevsky2012imagenet,
+  title={ImageNet classification with deep convolutional neural networks},
+  author={Krizhevsky, Alex and Sutskever, Ilya and Hinton, Geoffrey E},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={25},
+  pages={1097--1105},
+  year={2012}
+}
+
+@article{simonyan2014very,
+  title={Very deep convolutional networks for large-scale image recognition},
+  author={Simonyan, Karen and Zisserman, Andrew},
+  journal={arXiv preprint arXiv:1409.1556},
+  year={2014}
+}
+
+@inproceedings{he2016deep,
+  title={Deep residual learning for image recognition},
+  author={He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={770--778},
+  year={2016}
+}
+
+@article{rosenblatt1958perceptron,
+  title={The perceptron: a probabilistic model for information storage and organization in the brain},
+  author={Rosenblatt, Frank},
+  journal={Psychological review},
+  volume={65},
+  number={6},
+  pages={386},
+  year={1958},
+  publisher={American Psychological Association}
+}
+
+@article{rumelhart1986learning,
+  title={Learning representations by back-propagating errors},
+  author={Rumelhart, David E and Hinton, Geoffrey E and Williams, Ronald J},
+  journal={Nature},
+  volume={323},
+  number={6088},
+  pages={533--536},
+  year={1986},
+  publisher={Nature Publishing Group}
+}
+
+@inproceedings{nair2010rectified,
+  title={Rectified linear units improve restricted boltzmann machines},
+  author={Nair, Vinod and Hinton, Geoffrey E},
+  booktitle={Proceedings of the 27th International Conference on Machine Learning},
+  pages={807--814},
+  year={2010}
+}
+
+% -----------------------------------------------------------------------------
+% ATTENTION MECHANISMS
+% -----------------------------------------------------------------------------
+
+@inproceedings{vaswani2017attention,
+  title={Attention is all you need},
+  author={Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N and Kaiser, {\L}ukasz and Polosukhin, Illia},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={30},
+  year={2017}
+}
+
+@inproceedings{hou2021coordinate,
+  title={Coordinate attention for efficient mobile network design},
+  author={Hou, Qibin and Zhou, Daquan and Feng, Jiashi},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={13713--13722},
+  year={2021}
+}
+
+@inproceedings{hu2018squeeze,
+  title={Squeeze-and-excitation networks},
+  author={Hu, Jie and Shen, Li and Sun, Gang},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={7132--7141},
+  year={2018}
+}
+
+@inproceedings{woo2018cbam,
+  title={CBAM: Convolutional block attention module},
+  author={Woo, Sanghyun and Park, Jongchan and Lee, Joon-Young and Kweon, In So},
+  booktitle={Proceedings of the European Conference on Computer Vision},
+  pages={3--19},
+  year={2018}
+}
+
+% -----------------------------------------------------------------------------
+% LANDMARK DETECTION AND LOSS FUNCTIONS
+% -----------------------------------------------------------------------------
+
+@inproceedings{feng2018wing,
+  title={Wing loss for robust facial landmark localisation with convolutional neural networks},
+  author={Feng, Zhen-Hua and Kittler, Josef and Awais, Muhammad and Huber, Patrik and Wu, Xiao-Jun},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={2235--2245},
+  year={2018}
+}
+
+@inproceedings{wang2019adaptive,
+  title={Adaptive wing loss for robust face alignment via heatmap regression},
+  author={Wang, Xinyao and Bo, Liefeng and Fuxin, Li},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages={6971--6981},
+  year={2019}
+}
+
+@inproceedings{nibali2018numerical,
+  title={Numerical coordinate regression with convolutional neural networks},
+  author={Nibali, Aiden and He, Zhen and Morgan, Stuart and Prendergast, Luke},
+  journal={arXiv preprint arXiv:1801.07372},
+  year={2018}
+}
+
+@inproceedings{newell2016stacked,
+  title={Stacked hourglass networks for human pose estimation},
+  author={Newell, Alejandro and Yang, Kaiyu and Deng, Jia},
+  booktitle={European Conference on Computer Vision},
+  pages={483--499},
+  year={2016},
+  organization={Springer}
+}
+
+@inproceedings{sun2019deep,
+  title={Deep high-resolution representation learning for visual recognition},
+  author={Sun, Ke and Xiao, Bin and Liu, Dong and Wang, Jingdong},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={5693--5703},
+  year={2019}
+}
+
+@inproceedings{xiao2018simple,
+  title={Simple baselines for human pose estimation and tracking},
+  author={Xiao, Bin and Wu, Haiping and Wei, Yichen},
+  booktitle={Proceedings of the European Conference on Computer Vision},
+  pages={466--481},
+  year={2018}
+}
+
+@inproceedings{girshick2015fast,
+  title={Fast R-CNN},
+  author={Girshick, Ross},
+  booktitle={Proceedings of the IEEE International Conference on Computer Vision},
+  pages={1440--1448},
+  year={2015}
+}
+
+% -----------------------------------------------------------------------------
+% MEDICAL IMAGING AND LANDMARKS
+% -----------------------------------------------------------------------------
+
+@article{payer2019integrating,
+  title={Integrating spatial configuration into heatmap regression based CNNs for landmark localization},
+  author={Payer, Christian and Stern, Darko and Bischof, Horst and Urschler, Martin},
+  journal={Medical Image Analysis},
+  volume={54},
+  pages={207--219},
+  year={2019},
+  publisher={Elsevier}
+}
+
+@inproceedings{zhong2019attention,
+  title={An attention-guided deep regression model for landmark detection in cephalograms},
+  author={Zhong, Zhusi and Li, Jie and Zhang, Zhenxi and Jiao, Zhicheng and Gao, Xinbo},
+  booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+  pages={540--548},
+  year={2019},
+  organization={Springer}
+}
+
+@article{chen2019vertebrae,
+  title={Vertebrae identification and localization utilizing fully convolutional networks and a hidden Markov model},
+  author={Chen, Hao and Shen, Chun and Qin, Jing and Ni, Dong and Shi, Lin and Cheng, Jack CY and Heng, Pheng-Ann},
+  journal={IEEE Transactions on Medical Imaging},
+  volume={38},
+  number={2},
+  pages={387--399},
+  year={2019},
+  publisher={IEEE}
+}
+
+@article{wang2020deep,
+  title={Deep learning for medical landmark detection},
+  author={Wang, Chunliang and Lundstr{\"o}m, Claes},
+  journal={arXiv preprint arXiv:2012.15087},
+  year={2020}
+}
+
+@article{wang2016benchmark,
+  title={A benchmark for comparison of dental radiography analysis algorithms},
+  author={Wang, Ching-Wei and Huang, Cheng-Ta and Lee, Jia-Hong and Li, Chung-Hsing and Chang, Sheng-Wei and Siao, Ming-Jhih and Lai, Tat-Ming and Ibragimov, Bulat and Vrtovec, Toma{\v{z}} and Ronneberger, Olaf and others},
+  journal={Medical Image Analysis},
+  volume={31},
+  pages={63--76},
+  year={2016},
+  publisher={Elsevier}
+}
+
+@article{cootes1995active,
+  title={Active shape models—their training and application},
+  author={Cootes, Timothy F and Taylor, Christopher J and Cooper, David H and Graham, Jim},
+  journal={Computer Vision and Image Understanding},
+  volume={61},
+  number={1},
+  pages={38--59},
+  year={1995},
+  publisher={Elsevier}
+}
+
+@article{cootes2001active,
+  title={Active appearance models},
+  author={Cootes, Timothy F and Edwards, Gareth J and Taylor, Christopher J},
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  volume={23},
+  number={6},
+  pages={681--685},
+  year={2001},
+  publisher={IEEE}
+}
+
+@inproceedings{lindner2015fully,
+  title={Fully automatic system for accurate localisation and analysis of cephalometric landmarks in lateral cephalograms},
+  author={Lindner, Claudia and Wang, Ching-Wei and Huang, Cheng-Ta and Li, Chung-Hsing and Chang, Sheng-Wei and Cootes, Timothy F},
+  booktitle={Scientific Reports},
+  volume={6},
+  pages={33581},
+  year={2016}
+}
+
+@inproceedings{dollar2010cascaded,
+  title={Cascaded pose regression},
+  author={Doll{\'a}r, Piotr and Welinder, Peter and Perona, Pietro},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={1078--1085},
+  year={2010}
+}
+
+@article{van2017automatic,
+  title={Automatic cephalometric landmark detection using convolutional neural networks},
+  author={Van der Geld, Christos and others},
+  journal={Journal of Medical Imaging},
+  year={2017}
+}
+
+% -----------------------------------------------------------------------------
+% CHEST X-RAY ANALYSIS
+% -----------------------------------------------------------------------------
+
+@article{rajpurkar2017chexnet,
+  title={CheXNet: Radiologist-level pneumonia detection on chest X-rays with deep learning},
+  author={Rajpurkar, Pranav and Irvin, Jeremy and Zhu, Kaylie and Yang, Brandon and Mehta, Hershel and Duan, Tony and Ding, Daisy and Bagul, Aarti and Langlotz, Curtis and Shpanskaya, Katie and others},
+  journal={arXiv preprint arXiv:1711.05225},
+  year={2017}
+}
+
+@article{wang2020covid,
+  title={COVID-Net: A tailored deep convolutional neural network design for detection of COVID-19 cases from chest X-ray images},
+  author={Wang, Linda and Lin, Zhong Qiu and Wong, Alexander},
+  journal={Scientific Reports},
+  volume={10},
+  number={1},
+  pages={1--12},
+  year={2020},
+  publisher={Nature Publishing Group}
+}
+
+@article{jaeger2014automatic,
+  title={Automatic tuberculosis screening using chest radiographs},
+  author={Jaeger, Stefan and Karargyris, Alexandros and Candemir, Sema and Folio, Les and Siegelman, Jenifer and Callaghan, Fiona and Xue, Zhiyun and Palaniappan, Kannappan and Singh, Rahul K and Antani, Sameer and others},
+  journal={IEEE Transactions on Medical Imaging},
+  volume={33},
+  number={2},
+  pages={233--245},
+  year={2014},
+  publisher={IEEE}
+}
+
+@article{candemir2014lung,
+  title={Lung segmentation in chest radiographs using anatomical atlases with nonrigid registration},
+  author={Candemir, Sema and Jaeger, Stefan and Palaniappan, Kannappan and Musco, Jonathan P and Singh, Rahul K and Xue, Zhiyun and Karargyris, Alexandros and Antani, Sameer and Thoma, George and McDonald, Clement J},
+  journal={IEEE Transactions on Medical Imaging},
+  volume={33},
+  number={2},
+  pages={577--590},
+  year={2014},
+  publisher={IEEE}
+}
+
+@article{raoof2012interpretation,
+  title={Interpretation of plain chest roentgenogram},
+  author={Raoof, Suhail and Feigin, David and Sung, Arthur and Raoof, Sabiha and Irugulpati, Lavanya and Rosenow, Edward C},
+  journal={Chest},
+  volume={141},
+  number={2},
+  pages={545--558},
+  year={2012},
+  publisher={Elsevier}
+}
+
+@article{speets2006chest,
+  title={Chest radiography in general practice: indications, diagnostic yield and consequences for patient management},
+  author={Speets, Adrienne M and van der Graaf, Yolanda and Hoes, Arno W and Brouwer, Claudia and Broekhuizen, Angela JM and Horstman, Arend and Buskens, Erik and Waard, Floris and Mali, Willem PTM},
+  journal={British Journal of General Practice},
+  volume={56},
+  number={529},
+  pages={574--578},
+  year={2006},
+  publisher={British Journal of General Practice}
+}
+
+@article{jacobi2020portable,
+  title={Portable chest X-ray in coronavirus disease-19 (COVID-19): A pictorial review},
+  author={Jacobi, Adam and Chung, Michael and Bernheim, Adam and Eber, Corey},
+  journal={Clinical Imaging},
+  volume={64},
+  pages={35--42},
+  year={2020},
+  publisher={Elsevier}
+}
+
+% -----------------------------------------------------------------------------
+% COVID-19 AND MEDICAL IMAGING
+% -----------------------------------------------------------------------------
+
+@article{horry2020covid,
+  title={COVID-19 detection through transfer learning using multimodal imaging data},
+  author={Horry, Michael J and Chakraborty, Subrata and Paul, Manoranjan and Ulhaq, Anwaar and Pradhan, Biswajeet and Saha, Manas and Shukla, Nagesh},
+  journal={IEEE Access},
+  volume={8},
+  pages={149808--149824},
+  year={2020},
+  publisher={IEEE}
+}
+
+@article{abbas2021classification,
+  title={Classification of COVID-19 in chest X-ray images using DeTraC deep convolutional neural network},
+  author={Abbas, Asmaa and Abdelsamea, Mohammed M and Gaber, Mohamed Medhat},
+  journal={Applied Intelligence},
+  volume={51},
+  number={2},
+  pages={854--864},
+  year={2021},
+  publisher={Springer}
+}
+
+% -----------------------------------------------------------------------------
+% IMAGE PREPROCESSING
+% -----------------------------------------------------------------------------
+
+@article{pizer1987adaptive,
+  title={Adaptive histogram equalization and its variations},
+  author={Pizer, Stephen M and Amburn, E Philip and Austin, John D and Cromartie, Robert and Geselowitz, Ari and Greer, Trey and ter Haar Romeny, Bart and Zimmerman, John B and Zuiderveld, Karel},
+  journal={Computer Vision, Graphics, and Image Processing},
+  volume={39},
+  number={3},
+  pages={355--368},
+  year={1987},
+  publisher={Elsevier}
+}
+
+@article{reza2004realization,
+  title={Realization of the contrast limited adaptive histogram equalization (CLAHE) for real-time image enhancement},
+  author={Reza, Ali M},
+  journal={Journal of VLSI Signal Processing Systems for Signal, Image and Video Technology},
+  volume={38},
+  number={1},
+  pages={35--44},
+  year={2004},
+  publisher={Springer}
+}
+
+% -----------------------------------------------------------------------------
+% REGULARIZATION AND NORMALIZATION
+% -----------------------------------------------------------------------------
+
+@article{srivastava2014dropout,
+  title={Dropout: a simple way to prevent neural networks from overfitting},
+  author={Srivastava, Nitish and Hinton, Geoffrey and Krizhevsky, Alex and Sutskever, Ilya and Salakhutdinov, Ruslan},
+  journal={The Journal of Machine Learning Research},
+  volume={15},
+  number={1},
+  pages={1929--1958},
+  year={2014},
+  publisher={JMLR.org}
+}
+
+@inproceedings{ioffe2015batch,
+  title={Batch normalization: Accelerating deep network training by reducing internal covariate shift},
+  author={Ioffe, Sergey and Szegedy, Christian},
+  booktitle={International Conference on Machine Learning},
+  pages={448--456},
+  year={2015},
+  organization={PMLR}
+}
+
+@inproceedings{wu2018group,
+  title={Group normalization},
+  author={Wu, Yuxin and He, Kaiming},
+  booktitle={Proceedings of the European Conference on Computer Vision},
+  pages={3--19},
+  year={2018}
+}
+
+% -----------------------------------------------------------------------------
+% TRANSFER LEARNING
+% -----------------------------------------------------------------------------
+
+@article{pan2009survey,
+  title={A survey on transfer learning},
+  author={Pan, Sinno Jialin and Yang, Qiang},
+  journal={IEEE Transactions on Knowledge and Data Engineering},
+  volume={22},
+  number={10},
+  pages={1345--1359},
+  year={2009},
+  publisher={IEEE}
+}
+
+% -----------------------------------------------------------------------------
+% ENSEMBLE LEARNING
+% -----------------------------------------------------------------------------
+
+@article{dietterich2000ensemble,
+  title={Ensemble methods in machine learning},
+  author={Dietterich, Thomas G},
+  journal={International Workshop on Multiple Classifier Systems},
+  pages={1--15},
+  year={2000},
+  publisher={Springer}
+}
+
+@article{sun2015deep,
+  title={Deep learning face representation by joint identification-verification},
+  author={Sun, Yi and Chen, Yuheng and Wang, Xiaogang and Tang, Xiaoou},
+  journal={Advances in Neural Information Processing Systems},
+  volume={27},
+  year={2014}
+}
+
+@inproceedings{kowalski2017deep,
+  title={Deep alignment network: A convolutional neural network for robust face alignment},
+  author={Kowalski, Marek and Naruniec, Jacek and Trzcinski, Tomasz},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops},
+  pages={88--97},
+  year={2017}
+}
+
+% -----------------------------------------------------------------------------
+% TEST-TIME AUGMENTATION
+% -----------------------------------------------------------------------------
+
+@inproceedings{szegedy2015going,
+  title={Going deeper with convolutions},
+  author={Szegedy, Christian and Liu, Wei and Jia, Yangqing and Sermanet, Pierre and Reed, Scott and Anguelov, Dragomir and Erhan, Dumitru and Vanhoucke, Vincent and Rabinovich, Andrew},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={1--9},
+  year={2015}
+}
+
+@article{moshkov2020test,
+  title={Test-time augmentation for deep learning-based cell segmentation on microscopy images},
+  author={Moshkov, Nikita and Mathe, Botond and Kertesz-Farkas, Attila and Taber, Roman and Micikevicius, Vytautas},
+  journal={Scientific Reports},
+  volume={10},
+  number={1},
+  pages={1--7},
+  year={2020},
+  publisher={Nature Publishing Group}
+}
+
+% -----------------------------------------------------------------------------
+% FACIAL LANDMARK DETECTION
+% -----------------------------------------------------------------------------
+
+@inproceedings{wu2018look,
+  title={Look at boundary: A boundary-aware face alignment algorithm},
+  author={Wu, Wayne and Qian, Chen and Yang, Shuo and Wang, Quan and Cai, Yici and Zhou, Qiang},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={2129--2138},
+  year={2018}
+}
+
+% -----------------------------------------------------------------------------
+% OPTIMIZATION
+% -----------------------------------------------------------------------------
+
+@article{kingma2014adam,
+  title={Adam: A method for stochastic optimization},
+  author={Kingma, Diederik P and Ba, Jimmy},
+  journal={arXiv preprint arXiv:1412.6980},
+  year={2014}
+}
+
+@inproceedings{loshchilov2016sgdr,
+  title={SGDR: Stochastic gradient descent with warm restarts},
+  author={Loshchilov, Ilya and Hutter, Frank},
+  booktitle={International Conference on Learning Representations},
+  year={2017}
+}
+
+% -----------------------------------------------------------------------------
+% ADDITIONAL REFERENCES
+% -----------------------------------------------------------------------------
+
+@book{goodfellow2016deep,
+  title={Deep learning},
+  author={Goodfellow, Ian and Bengio, Yoshua and Courville, Aaron},
+  year={2016},
+  publisher={MIT press}
+}
+
+@article{litjens2017survey,
+  title={A survey on deep learning in medical image analysis},
+  author={Litjens, Geert and Kooi, Thijs and Bejnordi, Babak Ehteshami and Setio, Arnaud Arindra Adiyoso and Ciompi, Francesco and Ghafoorian, Mohsen and Van Der Laak, Jeroen Awm and Van Ginneken, Bram and S{\'a}nchez, Clara I},
+  journal={Medical Image Analysis},
+  volume={42},
+  pages={60--88},
+  year={2017},
+  publisher={Elsevier}
+}
+
+@article{shen2017deep,
+  title={Deep learning in medical image analysis},
+  author={Shen, Dinggang and Wu, Guorong and Suk, Heung-Il},
+  journal={Annual Review of Biomedical Engineering},
+  volume={19},
+  pages={221--248},
+  year={2017},
+  publisher={Annual Reviews}
+}
+
+@article{esteva2019guide,
+  title={A guide to deep learning in healthcare},
+  author={Esteva, Andre and Robicquet, Alexandre and Ramsundar, Bharath and Kuleshov, Volodymyr and DePristo, Mark and Chou, Katherine and Cui, Claire and Corrado, Greg and Thrun, Sebastian and Dean, Jeff},
+  journal={Nature Medicine},
+  volume={25},
+  number={1},
+  pages={24--29},
+  year={2019},
+  publisher={Nature Publishing Group}
+}
+
+@article{russakovsky2015imagenet,
+  title={ImageNet large scale visual recognition challenge},
+  author={Russakovsky, Olga and Deng, Jia and Su, Hao and Krause, Jonathan and Satheesh, Sanjeev and Ma, Sean and Huang, Zhiheng and Karpathy, Andrej and Khosla, Aditya and Bernstein, Michael and others},
+  journal={International Journal of Computer Vision},
+  volume={115},
+  number={3},
+  pages={211--252},
+  year={2015},
+  publisher={Springer}
+}
+
+@inproceedings{deng2009imagenet,
+  title={ImageNet: A large-scale hierarchical image database},
+  author={Deng, Jia and Dong, Wei and Socher, Richard and Li, Li-Jia and Li, Kai and Fei-Fei, Li},
+  booktitle={IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={248--255},
+  year={2009},
+  organization={IEEE}
+}
+
+@article{pytorch2019,
+  title={PyTorch: An imperative style, high-performance deep learning library},
+  author={Paszke, Adam and Gross, Sam and Massa, Francisco and Lerer, Adam and Bradbury, James and Chanan, Gregory and Killeen, Trevor and Lin, Zeming and Gimelshein, Natalia and Antiga, Luca and others},
+  journal={Advances in Neural Information Processing Systems},
+  volume={32},
+  year={2019}
+}
+
+@article{opencv2000,
+  title={The OpenCV library},
+  author={Bradski, Gary},
+  journal={Dr. Dobb's Journal of Software Tools},
+  year={2000}
+}

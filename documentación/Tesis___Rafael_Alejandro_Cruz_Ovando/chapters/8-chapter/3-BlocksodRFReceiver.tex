@@ -1,0 +1,142 @@
+\section{Bloques de RF para un receptor de FM-UWB en CPPSIM}
+
+El receptor demodulación FM-UWB que se propone es el uso de dos demoduladores:
+
+\begin{enumerate}
+    \item Demodudalor regenarativo FM-UWB.
+    \item Demodulador Binario por desplazamientos de frecuencias (o por sus siglas en inglés BFSK).
+\end{enumerate}
+
+\subsection{Demodulador regenerativo: Modelo comportamental del amplificador de bajo ruido}
+
+Para el demodulador regenerativo (figura \ref{fig:003:004:001}) tiene los siguientes bloques:
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=16cm]{chapters/3-chapter/figuras/receptor_fm_uwb.png}
+    \caption{Bloques del demodulador regenerativo FM-UWB.}
+    \label{fig:003:004:001}
+\end{figure}
+
+\begin{enumerate}
+    \item Un amplificador de bajo ruido (o por sus siglas en inglés LNA), con una ganancia de \SI{16}{\decibel} (ganancia de 5).
+    \item Un filtro pasa bajas de primer orden con frecuencia de corte de \SI{4}{\giga\hertz} y una ganancia de 5.
+    \item Un detector de envoltura; formado por un rectificador (puede ser implementado por un diodo o por un circuito cuadrático) y por un filtro pasa bajas con frecuencia de corte de \SI{10}{\mega\hertz} y ganancia de 10.
+\end{enumerate}
+
+Cada bloque en el demodulador regenerativo tiene funciones específicas que contribuyen a la captura y procesamiento de la señal FM-UWB, optimizando la sensibilidad y selectividad del receptor. El LNA amplifica la señal de entrada con bajo nivel de ruido, mientras que el filtro pasa bajas de primer orden elimina las frecuencias indeseadas, preparando la señal para el detector de envolvente, que extrae la modulación de frecuencia de la señal UWB.
+
+Un amplificador de bajo ruido o LNA es un componente clave en sistemas electrónicos sensibles y de comunicación, diseñado para amplificar señales débiles minimizando el ruido adicional que se introduce en el proceso. Esto es fundamental en aplicaciones donde se reciben señales muy débiles, como en radiofrecuencia (RF) o imágenes médicas, donde la claridad de la señal debe mantenerse para un procesamiento efectivo posterior. Los LNAs operan en etapas iniciales del sistema de recepción, donde la señal capturada aún es muy débil y susceptible al ruido. Un LNA ideal debe tener una figura de ruido baja, alta ganancia y una buena adaptación de impedancia para maximizar la transferencia de señal sin reflejos que generen pérdidas adicionales \cite{Libro_FMUWB_1,Libro_UWB_RF,Libro_ElectricityMagnetism2023}, en el capítulo 4 se darán mas detalles del diseño de un LNA. 
+
+
+\subsection{Demodulador regenerativo: Modelo comportamental del primer filtro pasa bajas}
+
+Un filtro pasabajas de primer orden es un circuito que permite el paso de señales de baja frecuencia y atenúa las de alta frecuencia. Este tipo de filtro es básico en diseño de sistemas de procesamiento de señales y se implementa a menudo con componentes pasivos como resistencias y capacitores.
+
+La frecuencia de corte, definida como la frecuencia donde la ganancia es aproximadamente el 70.7\% del valor máximo (\SI{3}{\decibel} menos), marca el límite entre las frecuencias que el filtro permite pasar y aquellas que atenuará considerablemente.
+
+El modelo del sistema descrito se representa mediante la función de transferencia $H(s)$ mostrada en la Ecuación \ref{eq:003:004:001}. Esta ecuación define el comportamiento de un filtro pasa bajas de primer orden, cuya función es permitir el paso de frecuencias por debajo de un valor de corte, $W_0$, mientras atenúa las frecuencias superiores.
+
+\begin{equation}
+    H(s) = G\left[\frac{W_0}{s+W_0}\right]
+    \label{eq:003:004:001}
+\end{equation}
+
+Donde, $W_0$ es la frecuencia de corte del filtro pasa bajas y equivale a $W_0 = 2\pi*f_c$; $f_c$ es la frecuencia medida en Hertz, y $G$ es la ganancia del filtro pasa bajas.
+
+\subsection{Demodulador regenerativo: Modelo comportamental del detector de envoltura}
+
+Un detector de envoltura es un circuito que extrae la envolvente de una señal modulada, comúnmente en aplicaciones de demodulación de señales de amplitud modulada (AM). La envolvente de una señal es la línea que sigue el valor máximo de su amplitud en cada momento, y representa la información o mensaje que la señal original transporta. 
+
+El detector de envoltura funciona típicamente mediante un rectificador seguido de un filtro pasa bajas. En primer lugar, el rectificador, que puede ser un diodo o un circuito cuadrático, convierte la señal alterna en una señal de corriente directa parcial, eliminando la parte negativa de la onda. Luego, el filtro pasa bajas suaviza esta señal, eliminando las altas frecuencias generadas por la rectificación, de modo que se obtenga una señal que sigue de cerca la envolvente de la onda original. 
+
+\section{Simulación del demodulador regenerativo FM-UWB en CppSim}
+
+
+La figura \ref{fig:003:005:001} ilustra el proceso completo de procesamiento de una señal FM de ultra banda ancha (FM-UWB) mediante amplificación, filtrado, rectificación y demodulación. En la primera gráfica, se observa la salida de un amplificador de bajo ruido (LNA), el cual incrementa la amplitud de la señal recibida sin añadir un nivel significativo de ruido adicional, mejorando así la relación señal-ruido. La señal aparece con una amplitud de aproximadamente ±\SI{0.1}{\volt}.
+
+En la segunda gráfica, la señal pasa a través de un filtro pasa bajas de \SI{4}{\giga\hertz}, que permite únicamente el paso de las frecuencias inferiores. El resultado es una señal con una forma triangular, con una amplitud de alrededor de ±\SI{0.2}{\volt}, indicando que el filtrado ha sido efectivo en reducir las frecuencias no deseadas.
+
+La tercera gráfica muestra el resultado de la señal después de pasar por un rectificador, que convierte la señal alterna en continua.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=16cm]{chapters/3-chapter/figuras/demodulador_fm.jpg}
+    \caption{Demodulador regenerativo FM-UWB.}
+    \label{fig:003:005:001}
+\end{figure}
+
+
+Finalmente, en la última gráfica se presenta la señal demodulada de FM-UWB, la cual es el resultado final del proceso. Esta señal es más suave y tiene una frecuencia más baja en comparación con las etapas anteriores, oscilando entre \SI{0.7}{\volt} y \SI{0.9}{\volt}. Esta etapa final representa la señal útil para su análisis o transmisión de información, mostrando cómo, tras la demodulación, se logra obtener una señal que conserva la información transmitida en el sistema de comunicación de ultra banda ancha.
+
+\subsection{Demodulador BFSK: Modelo comportamental del filtro pasa baja y pasa banda de segundo orden Butterworth}
+
+Para el demodulador BFSK consta de los siguientes bloques:
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=16cm]{chapters/3-chapter/figuras/receptor_fsk.png}
+    \caption{Demodulador BFSK.}
+    \label{fig:003:005:002}
+\end{figure}
+
+\begin{enumerate}
+    \item Dos filtros pasa bandas de segundo orden del tipo Butterworth con frecuencia de corte de \SI{1}{\mega\hertz} y \SI{2}{\mega\hertz} con ganancia de 5.
+    \item Dos detectores de envoltura (con filtros pasa bajas de segundo orden del tipo Butterworth con frecuencia de corte de \SI{100}{\kilo\hertz}).
+    \item Restador.
+    \item Comparador.
+\end{enumerate}
+
+Un filtro Butterworth es un tipo de filtro diseñado para tener una respuesta en frecuencia lo más plana posible en la banda de paso, es decir, sin ondulaciones ni picos. A diferencia de otros filtros, como el filtro Chebyshev o el filtro elíptico, el Butterworth prioriza una respuesta suave, lo que lo hace ideal para aplicaciones donde la preservación de la forma de la señal en la banda de paso es crucial. Su pendiente de atenuación aumenta gradualmente con la frecuencia fuera de la banda de paso, y su orden (el número de elementos en el circuito) determina cuán abrupta es esta transición. Este tipo de filtro es ampliamente utilizado en procesamiento de señales y sistemas de comunicación para reducir el ruido sin distorsionar la señal. La función de transferencia de un filtro pasa baja y pasa banda de segundo orden se muestra en las ecuaciones \ref{eq:003:005:001} y \ref{eq:003:005:002}.
+
+\begin{equation}
+    H_1(s) = G\left[\frac{W_0^2}{s^2+\left(\frac{W_0}{Q}\right)s+W_0^2} \right]
+    \label{eq:003:005:001}
+\end{equation}
+
+\begin{equation}
+    H_2(s) = G\left[\frac{\left(\frac{W_0}{Q}\right)s}{s^2+\left(\frac{W_0}{Q}\right)s+W_0^2} \right]
+    \label{eq:003:005:002}
+\end{equation}
+
+Donde el factor de calidad $Q$ tiene que ser igual a 0.7 para ser de tipo Butterworth.
+
+\subsection{Demodulador BFSK: Modelo comportamental del restador y comparador}
+
+Un restador y un comparador son dos circuitos electrónicos utilizados en aplicaciones de procesamiento de señales y control.
+
+\begin{itemize}
+    \item Restador: es un circuito que calcula la diferencia entre dos señales de entrada. Esto se logra generalmente con un amplificador operacional (op-amp) en configuración de restador. La salida del restador es la resta de las tensiones de entrada $V_{OUT} = V_1-v_2$ donde $V_1$ y $V_2$ son las dos entradas. Este tipo de circuito es útil en aplicaciones donde se necesita medir diferencias, como en instrumentación para eliminar señales comunes (ruido), en control de retroalimentación o para detectar pequeñas variaciones en señales.
+
+    \item Comparador:  es un circuito que compara dos tensiones de entrada y determina cuál es mayor. Utiliza un amplificador operacional configurado de modo que su salida se sature en un nivel alto o bajo dependiendo de si una entrada es mayor que la otra. Si la tensión en el terminal no inversor (+) es mayor que la del terminal inversor (−), la salida se establece en un nivel alto; si es menor, la salida se va al nivel bajo. Los comparadores son esenciales en aplicaciones como conversores analógico-digitales (ADC), generadores de señales de onda cuadrada, y sistemas de control donde se necesita una respuesta de encendido/apagado rápida según condiciones específicas.
+\end{itemize}
+
+Ambos circuitos son componentes clave en sistemas de control y procesamiento de señales, aunque cumplen funciones distintas: el restador para operaciones aritméticas y el comparador para decisiones lógicas. \textbf{El comparador tendrá como referencia 0 y entrada el voltaje resultante del restador.}
+
+\section{Simulación del demodulador BFSK en CppSim}
+
+ La primera gráfica de la figura \ref{fig:003:006:001} muestra la señal después de pasar por un filtro pasa banda centrado en \SI{1}{\mega\hertz}. este filtro disminuye la magnitud de las frecuencias fuera de este rango. Como resultado, obtenemos una señal modulada que contiene solo las componentes frecuenciales que el filtro ha permitido pasar. Este proceso es crucial en sistemas de comunicación donde se desea analizar o procesar señales de una banda específica sin interferencias de otras frecuencias.
+
+La segunda gráfica representa la señal luego de ser filtrada por un segundo filtro pasa banda, en este caso centrado en \SI{2}{\mega\hertz}. La señal resultante mantiene las características de modulación que se encuentran en esta banda, aislando otra parte de la señal original. Este proceso de filtrado por diferentes bandas ayuda a segmentar el espectro de la señal en distintas frecuencias de interés para su análisis separado.
+
+Las siguientes dos gráficas muestran las envolventes de las señales que pasaron por los filtros de \SI{1}{\mega\hertz} y \SI{2}{\mega\hertz}, respectivamente. La extracción de envolvente consiste en obtener la forma de amplitud de una señal modulada, eliminando las oscilaciones de alta frecuencia y dejando solo la envolvente. Esto es útil para capturar la variación de amplitud en el tiempo, que puede contener información importante como la modulación de amplitud en la señal. La envolvente representa así el contenido informativo de cada señal filtrada.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=16cm]{chapters/3-chapter/figuras/demodulador_fsk_1.jpg}
+    \caption{Demodulador BFSK 1.}
+    \label{fig:003:006:001}
+\end{figure}
+
+La primera gráfica de la figura \ref{fig:003:006:002} se muestra el resultado de restar las dos envolventes obtenidas en la imagen anterior, específicamente la Señal de Envoltura 1 y la Señal de Envoltura 2. Esta operación de resta ayuda a destacar las diferencias entre las dos señales filtradas, y permite reducir componentes comunes a ambas, como ruido o interferencias de fondo. La señal de salida del restador muestra fluctuaciones en el tiempo que indican diferencias en la modulación entre ambas señales, lo cual es útil en aplicaciones de procesamiento donde se busca comparar cambios en distintas bandas de frecuencia.
+
+La última gráfica de esta segunda imagen muestra el resultado de aplicar un comparador a la señal obtenida tras la resta. Un comparador es un circuito que genera una salida binaria, dependiendo de si la señal de entrada supera un umbral predefinido. Cuando la salida del restador excede este umbral, el comparador emite un nivel alto (por ejemplo, 1 V); de lo contrario, emite un nivel bajo (0 V). El resultado es una señal digital que cambia de estado cada vez que la diferencia entre las envolventes cumple con el criterio del comparador. Esto permite identificar de manera clara los momentos en que ocurren eventos específicos en la señal, como picos o cambios significativos, transformando así la señal analógica en una representación digital para una posible detección o activación en sistemas electrónicos.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=16cm]{chapters/3-chapter/figuras/demodulador_fsk_2.jpg}
+    \caption{Demodulador BFSK 2.}
+    \label{fig:003:006:002}
+\end{figure}
+
+    

@@ -1,0 +1,130 @@
+\section{Arquitecturas Residuales Profundas}
+
+Las redes neuronales convolucionales presentadas en la Sección~2.2 pueden componerse en arquitecturas de profundidad variable, siendo la profundidad un factor determinante en su capacidad de aprendizaje: redes más profundas pueden aprender representaciones jerárquicas más complejas mediante la composición de múltiples transformaciones no lineales. Sin embargo, el entrenamiento de redes extremadamente profundas (con más de 20-30 capas) presentaba desafíos significativos antes del desarrollo de arquitecturas residuales. La observación empírica de que redes más profundas exhibían mayor error de entrenamiento que redes menos profundas sugería la existencia de dificultades de optimización fundamentales que no podían atribuirse únicamente al sobreajuste. Las Redes Neuronales Residuales (del inglés, \textit{Residual Neural Networks}, ResNet), introducidas por He et al.~\cite{He2016}, revolucionaron el diseño de arquitecturas profundas mediante la incorporación de conexiones residuales que permiten el entrenamiento efectivo de redes con cientos de capas.
+
+\subsection{El Problema de Degradación en Redes Profundas}
+
+La intuición convencional sugeriría que agregar capas adicionales a una red neuronal no debería degradar su desempeño: en el peor de los casos, las capas adicionales podrían aprender la función identidad, replicando el desempeño de la red menos profunda. Sin embargo, experimentos empíricos demostraron un fenómeno contraintuitivo denominado \textit{degradación}: a medida que la profundidad de la red aumenta más allá de cierto umbral, tanto el error de entrenamiento como el error de prueba comienzan a aumentar \cite{He2016}.
+
+Este problema de degradación no puede explicarse mediante sobreajuste, ya que el error de entrenamiento (no solo el error de generalización) es superior en redes más profundas. He et al. hipotetizaron que la dificultad radica en que los solucionadores de optimización tienen dificultad para aproximar funciones identidad mediante múltiples capas no lineales. Adicionalmente, el problema del gradiente desvaneciente, donde los gradientes se atenúan exponencialmente al propagarse hacia capas tempranas, complica el entrenamiento de redes muy profundas, aunque técnicas como normalización por lotes y funciones de activación ReLU mitigan parcialmente este efecto \cite{Ioffe2015, Glorot2010}.
+
+Para cuantificar la degradación, considérense dos arquitecturas: una red de $n$ capas con error de entrenamiento $\epsilon_n$, y una red de $n+k$ capas con error $\epsilon_{n+k}$. El fenómeno de degradación se manifiesta cuando $\epsilon_{n+k} > \epsilon_n$ a pesar de que teóricamente las $k$ capas adicionales podrían aprender transformaciones identidad. Experimentos en ImageNet demostraron que redes de 56 capas con arquitectura plana (\textit{plain}) exhibían error de entrenamiento 0.5\% superior a redes de 20 capas, evidenciando la naturaleza empírica del problema \cite{He2016}.
+
+\subsection{Conexiones Residuales y Bloques Residuales}
+
+La arquitectura ResNet aborda el problema de degradación mediante la introducción de conexiones residuales (del inglés, \textit{skip connections} o \textit{shortcut connections}), que permiten que el gradiente fluya directamente a través de la red sin atenuación. En lugar de aprender directamente un mapeo deseado $\mathcal{H}(x)$ desde la entrada $x$ hasta la salida, los bloques residuales aprenden el mapeo residual:
+\begin{equation}
+\mathcal{F}(x) = \mathcal{H}(x) - x
+\label{eq:residual_mapping}
+\end{equation}
+
+La salida del bloque residual se define entonces como:
+\begin{equation}
+y = \mathcal{F}(x, \{W_i\}) + x
+\label{eq:residual_block}
+\end{equation}
+donde $\mathcal{F}(x, \{W_i\})$ representa el mapeo residual implementado por las capas con pesos $\{W_i\}$, y la suma $+x$ representa la conexión de atajo (\textit{shortcut connection}). Si el mapeo óptimo es cercano a la identidad, es más fácil para el optimizador ajustar $\mathcal{F}(x)$ hacia cero que forzar múltiples capas no lineales a aproximar la función identidad directamente.
+
+La hipótesis fundamental de ResNet es que \textbf{es más fácil optimizar el mapeo residual $\mathcal{F}(x)$ que el mapeo original $\mathcal{H}(x)$}. En el caso extremo donde el mapeo identidad es óptimo ($\mathcal{H}(x) = x$), es trivial para el optimizador ajustar los pesos de las capas residuales hacia cero, forzando $\mathcal{F}(x) \approx 0$ y obteniendo $y \approx x$.
+
+He et al. propusieron dos arquitecturas de bloques residuales \cite{He2016}:
+
+\textbf{1. Bloque básico} (utilizado en ResNet-18 y ResNet-34):
+\begin{equation}
+y = \text{ReLU}\left(x + W_2 \sigma(W_1 x + b_1) + b_2\right)
+\label{eq:basic_block}
+\end{equation}
+donde $\sigma$ representa la función de activación ReLU, $W_1$ y $W_2$ son matrices de pesos de capas convolucionales de $3 \times 3$, y $b_1, b_2$ son sesgos. El bloque básico consta de dos capas convolucionales con normalización por lotes y ReLU entre ellas.
+
+\textbf{2. Bloque cuello de botella} (del inglés, \textit{bottleneck block}; utilizado en ResNet-50, ResNet-101, ResNet-152):
+\begin{equation}
+y = \text{ReLU}\left(x + W_3 \sigma(W_2 \sigma(W_1 x + b_1) + b_2) + b_3\right)
+\label{eq:bottleneck_block}
+\end{equation}
+donde $W_1$ es una convolución de $1 \times 1$ que reduce la dimensionalidad, $W_2$ es una convolución de $3 \times 3$ que procesa características en dimensión reducida, y $W_3$ es una convolución de $1 \times 1$ que restaura la dimensionalidad. Esta arquitectura reduce significativamente el costo computacional en redes muy profundas.
+
+Cuando las dimensiones de la entrada $x$ y la salida $y$ difieren (por cambios en el número de canales o resolución espacial), la conexión de atajo debe implementarse mediante una proyección lineal:
+\begin{equation}
+y = \mathcal{F}(x, \{W_i\}) + W_s x
+\label{eq:residual_projection}
+\end{equation}
+donde $W_s$ es una matriz de proyección implementada mediante convolución de $1 \times 1$ con \textit{stride} apropiado para igualar las dimensiones.
+
+\subsection{Arquitecturas de la Familia ResNet}
+
+La familia ResNet comprende múltiples arquitecturas que varían en profundidad, desde ResNet-18 (18 capas con pesos) hasta ResNet-152 (152 capas). La Tabla~\ref{tab:resnet_architectures} presenta las configuraciones arquitectónicas de las variantes más utilizadas.
+
+\begin{table}[h]
+\centering
+\caption{Arquitecturas de la familia ResNet. Los números entre paréntesis indican el número de bloques residuales en cada etapa.}
+\label{tab:resnet_architectures}
+\small
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Capa} & \textbf{Salida} & \textbf{ResNet-18} & \textbf{ResNet-34} & \textbf{ResNet-50} & \textbf{ResNet-101} \\
+\hline
+Conv1 & $112 \times 112$ & \multicolumn{4}{c|}{$7 \times 7$, 64, stride 2} \\
+\hline
+Pool & $56 \times 56$ & \multicolumn{4}{c|}{$3 \times 3$ max pool, stride 2} \\
+\hline
+Conv2\_x & $56 \times 56$ & $\begin{bmatrix} 3 \times 3, 64 \\ 3 \times 3, 64 \end{bmatrix} \times 2$ & $\begin{bmatrix} 3 \times 3, 64 \\ 3 \times 3, 64 \end{bmatrix} \times 3$ & $\begin{bmatrix} 1 \times 1, 64 \\ 3 \times 3, 64 \\ 1 \times 1, 256 \end{bmatrix} \times 3$ & $\begin{bmatrix} 1 \times 1, 64 \\ 3 \times 3, 64 \\ 1 \times 1, 256 \end{bmatrix} \times 3$ \\
+\hline
+Conv3\_x & $28 \times 28$ & $\begin{bmatrix} 3 \times 3, 128 \\ 3 \times 3, 128 \end{bmatrix} \times 2$ & $\begin{bmatrix} 3 \times 3, 128 \\ 3 \times 3, 128 \end{bmatrix} \times 4$ & $\begin{bmatrix} 1 \times 1, 128 \\ 3 \times 3, 128 \\ 1 \times 1, 512 \end{bmatrix} \times 4$ & $\begin{bmatrix} 1 \times 1, 128 \\ 3 \times 3, 128 \\ 1 \times 1, 512 \end{bmatrix} \times 4$ \\
+\hline
+Conv4\_x & $14 \times 14$ & $\begin{bmatrix} 3 \times 3, 256 \\ 3 \times 3, 256 \end{bmatrix} \times 2$ & $\begin{bmatrix} 3 \times 3, 256 \\ 3 \times 3, 256 \end{bmatrix} \times 6$ & $\begin{bmatrix} 1 \times 1, 256 \\ 3 \times 3, 256 \\ 1 \times 1, 1024 \end{bmatrix} \times 6$ & $\begin{bmatrix} 1 \times 1, 256 \\ 3 \times 3, 256 \\ 1 \times 1, 1024 \end{bmatrix} \times 23$ \\
+\hline
+Conv5\_x & $7 \times 7$ & $\begin{bmatrix} 3 \times 3, 512 \\ 3 \times 3, 512 \end{bmatrix} \times 2$ & $\begin{bmatrix} 3 \times 3, 512 \\ 3 \times 3, 512 \end{bmatrix} \times 3$ & $\begin{bmatrix} 1 \times 1, 512 \\ 3 \times 3, 512 \\ 1 \times 1, 2048 \end{bmatrix} \times 3$ & $\begin{bmatrix} 1 \times 1, 512 \\ 3 \times 3, 512 \\ 1 \times 1, 2048 \end{bmatrix} \times 3$ \\
+\hline
+ & $1 \times 1$ & \multicolumn{4}{c|}{Global Average Pooling, FC 1000, Softmax} \\
+\hline
+\textbf{Parámetros} & & \textbf{11.7M} & \textbf{21.8M} & \textbf{25.6M} & \textbf{44.5M} \\
+\hline
+\end{tabular}
+\end{table}
+
+La arquitectura base consta de cinco etapas (Conv1, Conv2\_x, Conv3\_x, Conv4\_x, Conv5\_x), donde cada etapa opera en una resolución espacial específica. Las resoluciones espaciales se reducen progresivamente mediante convoluciones con \textit{stride} 2 al inicio de las etapas Conv3\_x, Conv4\_x y Conv5\_x. ResNet-18 y ResNet-34 utilizan bloques básicos, mientras que ResNet-50, ResNet-101 y ResNet-152 emplean bloques cuello de botella para controlar la complejidad computacional. La capa final aplica \textit{global average pooling} sobre los mapas de características espaciales, reduciendo cada canal a un valor escalar, seguido de una capa completamente conectada para clasificación.
+
+\subsection{Normalización por Lotes}
+
+La normalización por lotes (del inglés, \textit{batch normalization}, BN) es un componente esencial de las arquitecturas ResNet, aplicado después de cada capa convolucional y antes de la función de activación \cite{Ioffe2015}. BN normaliza las activaciones de cada capa utilizando estadísticas del mini-lote actual, reduciendo la dependencia en la inicialización de pesos y permitiendo tasas de aprendizaje más altas.
+
+Para un mini-lote $\mathcal{B} = \{x_1, x_2, \ldots, x_m\}$ de tamaño $m$, la normalización por lotes calcula la media y varianza del mini-lote:
+\begin{align}
+\mu_{\mathcal{B}} &= \frac{1}{m} \sum_{i=1}^{m} x_i \label{eq:bn_mean} \\
+\sigma_{\mathcal{B}}^2 &= \frac{1}{m} \sum_{i=1}^{m} (x_i - \mu_{\mathcal{B}})^2 \label{eq:bn_variance}
+\end{align}
+
+Las activaciones se normalizan:
+\begin{equation}
+\hat{x}_i = \frac{x_i - \mu_{\mathcal{B}}}{\sqrt{\sigma_{\mathcal{B}}^2 + \epsilon}}
+\label{eq:bn_normalize}
+\end{equation}
+donde $\epsilon$ (típicamente $10^{-5}$) es una constante pequeña para estabilidad numérica. Finalmente, se aplica una transformación afín aprendible:
+\begin{equation}
+y_i = \gamma \hat{x}_i + \beta
+\label{eq:bn_scale_shift}
+\end{equation}
+donde $\gamma$ y $\beta$ son parámetros aprendibles que permiten a la red recuperar la capacidad expresiva completa si la normalización resulta subóptima.
+
+Durante la inferencia, BN utiliza estadísticas globales (media y varianza estimadas sobre el conjunto de entrenamiento completo mediante promedio móvil) en lugar de estadísticas del mini-lote, garantizando predicciones deterministas.
+
+BN proporciona múltiples beneficios \cite{Ioffe2015}: (1) reduce el desplazamiento de covarianza interna (\textit{internal covariate shift}), donde las distribuciones de activaciones cambian durante el entrenamiento; (2) permite tasas de aprendizaje significativamente más altas sin divergencia; (3) actúa como regularizador, reduciendo la necesidad de \textit{dropout}; (4) permite la inicialización de pesos menos cuidadosa. Estos factores son particularmente relevantes para redes residuales profundas.
+
+\subsection{Ventajas de Arquitecturas Residuales para Imágenes Médicas}
+
+Las arquitecturas ResNet han demostrado ser particularmente efectivas para aplicaciones en imágenes médicas por múltiples razones \cite{Hosny2018, Esteva2019}:
+
+\textbf{1. Gradientes estables:} Las conexiones residuales proporcionan caminos de gradiente directos desde las capas profundas hasta las capas tempranas, mitigando el problema del gradiente desvaneciente. Durante la retropropagación, el gradiente respecto a la entrada de un bloque residual es:
+\begin{equation}
+\frac{\partial \mathcal{L}}{\partial x} = \frac{\partial \mathcal{L}}{\partial y} \left(1 + \frac{\partial \mathcal{F}}{\partial x}\right)
+\label{eq:residual_gradient}
+\end{equation}
+El término constante $1$ garantiza que el gradiente no se atenúe completamente, incluso si $\partial \mathcal{F}/\partial x$ es pequeño.
+
+\textbf{2. Eficiencia de parámetros:} ResNet-18, con 11.7 millones de parámetros, proporciona un balance óptimo entre capacidad expresiva y eficiencia computacional. Esta propiedad es crítica en aplicaciones médicas donde los conjuntos de datos son típicamente más pequeños que ImageNet (1.2 millones de imágenes), y arquitecturas muy profundas pueden sobreajustar.
+
+\textbf{3. Aprendizaje jerárquico robusto:} Las conexiones residuales permiten que capas tempranas aprendan características de bajo nivel (bordes, texturas) mientras capas profundas aprenden representaciones anatómicas complejas, sin degradación de desempeño asociada a la profundidad extrema.
+
+\textbf{4. Transferibilidad:} Modelos ResNet pre-entrenados en ImageNet han demostrado transferibilidad excepcional a dominios médicos mediante \textit{fine-tuning}, como se discutirá en la Sección~2.4. Las representaciones aprendidas en ImageNet capturan características genéricas de imágenes naturales que son parcialmente relevantes para imágenes médicas.
+
+En el contexto específico de detección de \textit{landmarks} anatómicos en radiografías de tórax, las arquitecturas residuales proporcionan la profundidad necesaria para capturar la complejidad de estructuras anatómicas distribuidas espacialmente, mientras mantienen gradientes estables que facilitan el aprendizaje de regresión de coordenadas precisa.

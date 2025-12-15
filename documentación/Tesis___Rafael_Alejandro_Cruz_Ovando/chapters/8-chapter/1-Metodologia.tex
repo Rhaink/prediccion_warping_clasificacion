@@ -1,0 +1,504 @@
+\chapter{Metodología Propuesta: Alineación y Normalización de la Región Pulmonar con el Enfoque Híbrido MaShDL-CNN}
+\label{cap:metodologia}
+
+La variabilidad inherente en la forma, tamaño, posición y orientación de la región pulmonar en las imágenes radiográficas de tórax constituye un desafío significativo para los sistemas automáticos de diagnóstico. Para mitigar el impacto de estas variaciones y facilitar un análisis más robusto y preciso, esta tesis propone una metodología novedosa denominada MaShDL-CNN Hybrid. Este enfoque se fundamenta en la capacidad de los Modelos Estadísticos de Forma (SSM) para capturar la variabilidad anatómica de los pulmones y en el poder de las Redes Neuronales Convolucionales (CNN) para aprender representaciones jerárquicas a partir de la apariencia local de la imagen.
+
+El pipeline general del sistema MaShDL-CNN Hybrid se ilustra en la Figura~\ref{fig:diagrama_mashdl_cnn_hybrid}. Este conserva la estructura fundamental del localizador denso basado en forma multi-atlas (MaShDL), pero introduce una mejora sustancial al reemplazar el extractor de características basado en perfiles de intensidad 1D (discutido en el Capítulo~\ref{cap:marco_teorico} y evaluado como método previo) por un sistema más potente basado en CNNs que operan sobre parches 2D. La hipótesis central, como se estableció en la Sección~\ref{sec:hipotesis}, es que las CNNs, al analizar parches bidimensionales, pueden aprender mapeos más robustos y discriminantes desde la apariencia local de la imagen hacia los parámetros que definen la forma pulmonar, mejorando así la precisión de la segmentación y, consecuentemente, la detección de patologías.
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=1\linewidth]{ruta/a/tu/diagrama_mashdl_cnn_hybrid.png} % REEMPLAZA con la ruta a tu diagrama
+% \caption[Diagrama de flujo del pipeline MaShDL-CNN Hybrid]{Diagrama de flujo detallado del pipeline MaShDL-CNN Hybrid propuesto. Se muestran las etapas principales: (1) Estimación de Pose Inicial (ESL), (2) Transformación de la Forma Media del SSM y Extracción de Parches 2D, (3) Extracción de Características por Parche mediante Sub-CNN, (4) Agregación de Características, (5) Predicción de bins de Coeficientes de Forma ($b_k$) por modo mediante DNN, (6) Desdiscretización de $b_k$, y (7) Reconstrucción de la Forma Pulmonar y Generación de Máscara. Se indican los scripts principales involucrados.}
+% \label{fig:diagrama_mashdl_cnn_hybrid}
+% \end{figure}
+
+\section{Visión General del Sistema MaShDL-CNN Hybrid}
+\label{sec:vision_general_mashdl_cnn}
+El sistema propuesto opera en las siguientes etapas principales, cada una implementada mediante scripts específicos y utilizando datos precalculados como el SSM:
+\begin{enumerate}
+\item \textbf{Construcción del Modelo Estadístico de Forma (SSM) Pulmonar (Precalculado):} Se utiliza un SSM preexistente, construido a partir de un conjunto de entrenamiento de $N_s$ formas pulmonares, cada una representada por $N_{lmk}=144$ puntos característicos (landmarks). Este modelo, cuyos componentes (forma media, eigenvectores de variación) se almacenan en archivos (\code{pca_mean_vector.npy}, \code{pca_components.npy}), captura las principales variaciones de forma observadas en la población de entrenamiento. La construcción de este SSM se detalla en la Sección~\ref{ssec:ssm_teoria} y se basa en los principios implementados en \code{alignment.py} y \code{ssm_builder.py}.
+
+\item \textbf{Estimación de Pose Inicial (ESL) (Script: \code{predict_esl_pose.py}):} Para una nueva imagen radiográfica de entrada, se emplea un sistema de Aprendizaje Eficiente de Subespacios (ESL) para obtener una estimación inicial de la escala global ($S=(S_w, S_h)$), la traslación ($T=(T_x, T_y)$) y la rotación ($\Theta$) de la región pulmonar.
+
+\item \textbf{Extracción de Parches 2D (Script: \code{mashdl_patch_extractor.py} adaptado):} Utilizando la pose ($S, T, \Theta$) estimada por ESL, la forma media del SSM ($\overline{\mathbf{x}}$) se transforma al espacio de la imagen de entrada. Alrededor de cada uno de los $N_{lmk}$ landmarks de esta forma media transformada, se extraen parches 2D de tamaño $Q \times Q$. Estos parches, junto con las etiquetas de los coeficientes de forma $b_k$ discretizados (para entrenamiento), se almacenan en archivos \code{.npz}.
+
+\item \textbf{Entrenamiento del Modelo MaShDL-CNN Hybrid (Script: \code{train_mashdl_cnn_hybrid.py}):} Para cada modo de variación $k$ del SSM que se desea predecir:
+    \begin{enumerate}
+        \item Una \textbf{Sub-Red CNN} con pesos compartidos procesa cada uno de los $N_{lmk}$ parches 2D de una muestra, extrayendo un vector de características de dimensión fija para cada parche.
+        \item Los vectores de características de todos los parches se \textbf{agregan} (concatenan y aplanan).
+        \item Una \textbf{Red Neuronal Densa (DNN)} toma este vector agregado y predice una distribución de probabilidad sobre un conjunto de bins discretos que representan el coeficiente de forma $b_k$ para ese modo.
+    \end{enumerate}
+    La Sub-CNN y la DNN se entrenan conjuntamente (end-to-end) para cada modo $k$.
+
+\item \textbf{Generación de Predicciones de Forma (Script: \code{generate_predictions_cnn.py}):} Para una nueva imagen (del conjunto de prueba), se extraen sus parches 2D (usando la pose ESL y la forma media). Los modelos MaShDL-CNN Hybrid entrenados (uno por modo $k$) predicen el bin más probable para cada $b_k$.
+
+\item \textbf{Desdiscretización y Reconstrucción de la Forma (Scripts: \code{main_desdiscretizer.py}, \code{evaluate_segmentation.py}):}
+    \begin{enumerate}
+        \item Los bins de $b_k$ predichos se convierten a valores continuos mediante \code{main_desdiscretizer.py}.
+        \item Estos coeficientes $b_k$ continuos, la forma media $\overline{\mathbf{x}}$ y los componentes principales $\mathbf{P}$ del SSM se utilizan para reconstruir la instancia de forma específica en el espacio canónico: $\mathbf{x}_{\text{recon}} = \overline{\mathbf{x}} + \mathbf{P}\mathbf{b}_{\text{cont}}$.
+        \item Finalmente, aplicando la pose ($S, T, \Theta$) estimada por ESL, se transforma $\mathbf{x}_{\text{recon}}$ al espacio de la imagen original, obteniendo la segmentación de la región pulmonar. Esta reconstrucción y transformación ocurren dentro de \code{evaluate_segmentation.py}.
+    \end{enumerate}
+\item \textbf{Generación de Máscaras Ground Truth Consistentes (Script: \code{generate_gt_masks_from_144pts.py}):} Para la evaluación, se generan máscaras de referencia (Ground Truth, GT) a partir de los landmarks GT de 144 puntos, asegurando consistencia con la definición del SSM.
+\item \textbf{Evaluación de la Segmentación (Script: \code{evaluate_segmentation.py}):} La forma pulmonar predicha se convierte en una máscara binaria y se compara con la máscara GT correspondiente utilizando el coeficiente de Dice.
+\end{enumerate}
+A continuación, se detallan los aspectos matemáticos y de implementación de cada una de estas etapas, haciendo referencia a los scripts y archivos de datos clave identificados en el informe de progreso.
+
+\section{Construcción del Modelo Estadístico de Forma (SSM) Pulmonar}
+\label{sec:construccion_ssm_metodologia}
+Como se introdujo en la Sección~\ref{ssec:ssm_teoria}, un Modelo Estadístico de Forma (SSM) es fundamental para representar la variabilidad geométrica de la región pulmonar. Para esta tesis, se utiliza un SSM preexistente, cuyos componentes principales (forma media, eigenvectores y desviaciones estándar de los modos) fueron generados previamente y se almacenan como archivos \code{.npy}. La metodología general para su construcción, relevante para comprender su uso, se basa en los principios descritos a continuación.
+
+\subsection{Adquisición y Definición de Puntos Característicos (Landmarks)}
+\label{ssec:landmarks_ssm_metodologia}
+El SSM se construye a partir de un conjunto de entrenamiento de $N_s$ ejemplos de formas pulmonares. Cada forma se define mediante un conjunto de $N_{lmk}=144$ puntos característicos (landmarks) bidimensionales ($d=2$). Estos landmarks son correspondientes entre todas las formas, es decir, el $j$-ésimo landmark representa el mismo punto anatómico (o pseudo-anatómico si son interpolados) en todas las instancias. Los datos de estos landmarks, una vez procesados y alineados, dan lugar a los componentes del SSM.
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=0.4\linewidth]{ruta/a/tu/landmarks_ejemplo.png} %
+% \caption[Ejemplo de landmarks pulmonares]{Ejemplo de los $N_{lmk}=144$ puntos característicos (landmarks) utilizados para definir el contorno de la región pulmonar en una imagen de radiografía de tórax. Estos puntos forman la base para la construcción del Modelo Estadístico de Forma.}
+% \label{fig:landmarks_ejemplo_metodologia}
+% \end{figure}
+
+\subsection{Alineación de las Formas de Entrenamiento mediante GPA}
+\label{ssec:gpa_metodologia}
+Para aislar la variación de forma intrínseca de las variaciones de pose (traslación, rotación y escala), las $N_s$ formas de entrenamiento se alinean utilizando el Análisis de Procrustes Generalizado (GPA). El proceso iterativo de GPA, tal como se describe en la Sección~\ref{sssec:gpa} y cuya lógica se encuentra en el script \code{alignment.py}, busca minimizar la suma de las distancias cuadradas entre formas correspondientes, resultando en un conjunto de formas alineadas y una forma media consensuada. El algoritmo busca encontrar para cada forma $\mathbf{X}_i$ una transformación de similitud $g_i(\mathbf{X}_i; \mathbf{R}_i, \mathbf{t}_i, s_i) = s_i \mathbf{X}_i \mathbf{R}_i + \mathbf{1}\mathbf{t}_i^T$ que la alinee con una referencia común. En el espacio de Procrustes (formas ya centradas y escaladas), la alineación se centra en encontrar la rotación óptima $\mathbf{R}_i$.
+
+\subsection{Modelado de la Variación de Forma con PCA (Script: \code{ssm_builder.py})}
+\label{ssec:pca_ssm_metodologia}
+Una vez alineadas, las formas se vectorizan (cada forma $\mathbf{X}_i \in \mathbb{R}^{N_{lmk} \times d}$ se convierte en un vector $\mathbf{x}_i \in \mathbb{R}^{N_{lmk} \cdot d}$). Se aplica el Análisis de Componentes Principales (PCA) al conjunto de estos vectores de forma alineados, como se describió en la Sección~\ref{sssec:pca_forma}.
+El PCA descompone la variación total de las formas en un conjunto de modos ortogonales de variación. Cualquier forma $\mathbf{x}$ puede entonces ser aproximada como una combinación lineal de la forma media $\overline{\mathbf{x}}$ y estos modos de variación $\mathbf{P}$:
+$$ \mathbf{x} \approx \overline{\mathbf{x}} + \mathbf{P}\mathbf{b} $$
+donde $\mathbf{P}=[\boldsymbol{\phi}_1, \boldsymbol{\phi}_2, \dots, \boldsymbol{\phi}_m]$ es la matriz cuyas columnas son los $m$ principales eigenvectores (modos de variación) y $\mathbf{b}=[b_1, b_2, \dots, b_m]^T$ es el vector de coeficientes de forma que pondera la contribución de cada modo.
+El script \code{ssm_builder.py} es responsable de realizar esta descomposición PCA a partir de una matriz de datos de formas alineadas y vectorizadas. Las salidas clave de este proceso, utilizadas extensivamente en esta tesis, son:
+\begin{itemize}
+\item \code{pca_mean_vector.npy}: Contiene el vector de forma media $\overline{\mathbf{x}} \in \mathbb{R}^{N_{lmk} \cdot d}$.
+\item \code{pca_components.npy}: Contiene la matriz de componentes principales $\mathbf{P} \in \mathbb{R}^{(N_{lmk} \cdot d) \times m}$.
+\item \code{pca_std_devs.npy}: Contiene las desviaciones estándar $\sigma_k = \sqrt{\lambda_k}$ para cada uno de los $m$ modos, donde $\lambda_k$ es el $k$-ésimo eigenvalor. Según el informe, se utilizan aproximadamente $m \approx 15$ modos principales, que capturan la mayor parte de la variabilidad.
+\end{itemize}
+Estos archivos se encuentran en el directorio \code{data/} del proyecto MaShDL-CNN Hybrid y son cargados por los scripts de entrenamiento, predicción y evaluación.
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=0.8\linewidth]{ruta/a/tu/modos_variacion_ssm.png} %
+% \caption[Visualización de los principales modos de variación del SSM pulmonar]{Ejemplo de los primeros modos de variación del SSM pulmonar. (a) Forma media $\overline{\mathbf{x}}$. (b) Variación a lo largo del primer modo: $\overline{\mathbf{x}} - 2\sigma_1\boldsymbol{\phi}_1$ (izquierda), $\overline{\mathbf{x}}$ (centro), $\overline{\mathbf{x}} + 2\sigma_1\boldsymbol{\phi}_1$ (derecha). (c) Variación similar para el segundo modo $\boldsymbol{\phi}_2$. Esto ilustra cómo diferentes coeficientes $b_k$ deforman la forma media.}
+% \label{fig:modos_variacion_ssm_metodologia}
+% \end{figure}
+
+\begin{table}[H] % Cambiado de tableH
+\centering
+\caption[Varianza explicada por los componentes principales del SSM pulmonar]{Varianza explicada por los primeros $m'$ componentes principales del Modelo Estadístico de Forma pulmonar. Se observa que los primeros $\approx 15$ modos capturan un alto porcentaje de la variabilidad total de la forma.}
+\label{tab:varianza_explicada_ssm_metodologia}
+\begin{tabular}{@{}cccc@{}} % Usar @{} para quitar espacio extra en los bordes
+\toprule
+Modo ($k$) & Eigenvalor ($\lambda_k$) & Varianza Explicada (\%) & Varianza Acumulada (\%) \\
+\midrule
+1 & $\lambda_1$ & $V_1$ & $V_1$ \\
+2 & $\lambda_2$ & $V_2$ & $V_1+V_2$ \\
+\dots & \dots & \dots & \dots \\
+15 & $\lambda_{15}$ & $V_{15}$ & $\sum_{i=1}^{15}V_i$ \\
+\dots & \dots & \dots & \dots \\
+$m$ & $\lambda_m$ & $V_m$ & $\sum_{i=1}^{m}V_i \approx 95-99\%$ \\
+\bottomrule
+\end{tabular}
+\vspace{0.2cm}
+\footnotesize{\textit{Nota: Ejemplo.}}
+\end{table}
+
+\section{Estimación de Pose Inicial con Efficient Subspace Learning (ESL)}
+\label{sec:esl_metodologia}
+Para aplicar el SSM a una imagen de entrada, es necesario primero obtener una estimación aproximada de su pose global: escala $S=(S_w, S_h)$, traslación $T=(T_x, T_y)$, y rotación $\Theta$. Esta tarea se realiza mediante un sistema preexistente basado en Efficient Subspace Learning (ESL), implementado en el script \code{predict_esl_pose.py} (ubicado en el proyecto \code{Tesis/alineamiento/} y reutilizado aquí).
+
+\subsection{Breve Descripción del Método ESL}
+\label{ssec:esl_descripcion_metodologia}
+El método ESL, como se describe en el informe (Sección 2, ``Estimación de Pose Inicial''), ha sido entrenado para predecir estos parámetros de pose. El proceso general implica:
+\begin{enumerate}
+\item Predicción de Líneas Delimitadoras: Se utilizan cuatro clasificadores ESL (para $l_1$ a $l_4$, correspondientes a los bordes izquierdo, superior, derecho e inferior, respectivamente) para escanear la imagen y predecir las posiciones de estas líneas que definen un cuadro delimitador aproximado de la región pulmonar. Cada clasificador (\code{esl_classifier_l*_best.h5}) toma parches de la imagen como entrada.
+\item Cálculo de $S$ y $T$ Iniciales: A partir de las posiciones predichas de estas cuatro líneas ($L_1, L_2, L_3, L_4$), se calcula el centroide ($T_x, T_y$) y las dimensiones ($S_w, S_h$) del cuadro:
+$$ T_x = \frac{L_1+L_3}{2}; \quad T_y = \frac{L_2+L_4}{2} $$
+$$ S_w = L_3-L_1; \quad S_h = L_4-L_2 $$
+\item Predicción de Orientación $\Theta$: Se extrae un parche de la imagen centrado en ($T_x, T_y$) y con un tamaño proporcional a ($S_w, S_h$). Este parche se rota en un rango de ángulos discretos (e.g., $[-30^\circ, 30^\circ]$ en pasos de $5^\circ$). Cada versión rotada se alimenta a un quinto clasificador ESL (\code{esl_classifier_theta_best.h5}) que predice la probabilidad de cada ángulo. El ángulo con la mayor probabilidad se selecciona como $\Theta$.
+\end{enumerate}
+Las funciones clave dentro de \code{predict_esl_pose.py} que implementan esto son \code{predict_line_position} y \code{predict_orientation}. Los modelos Keras \code{.h5} se cargan mediante \code{load_esl_models}.
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=0.9\linewidth]{ruta/a/tu/esl_proceso_detalle.png} 
+% \caption[Proceso de estimación de pose inicial mediante ESL]{Ilustración del proceso de estimación de pose inicial (ESL). (a) Imagen de entrada. (b) Búsqueda y predicción de las líneas delimitadoras $L_1, L_2, L_3, L_4$. (c) Cálculo del centroide $T=(T_x, T_y)$ y la escala $S=(S_w, S_h)$. (d) Extracción del parche base, generación de versiones rotadas y predicción del ángulo de orientación $\Theta$ utilizando el clasificador de orientación.}
+% \label{fig:esl_proceso_metodologia}
+% \end{figure}
+
+\section{Generación de Datos para el Modelo MaShDL-CNN Hybrid}
+\label{sec:generacion_datos_mashdl_cnn}
+Con los componentes del SSM ($\overline{\mathbf{x}}, \mathbf{P}, \{\sigma_k\}$) y la capacidad de estimar la pose inicial ($S,T,\Theta$) mediante ESL, el siguiente paso es generar los datos de entrenamiento y prueba para el modelo MaShDL-CNN Hybrid. Esta tarea es realizada por el script \code{mashdl_patch_extractor.py} (adaptado del proyecto \code{Tesis/alineamiento/} para el nuevo proyecto en \code{Tesis/segmentacion/MaShDL_CNN_Hybrid_Lung_Segmentation/src/}).
+
+\subsection{Transformación de la Forma Media a la Imagen de Entrada}
+\label{ssec:transformacion_forma_media_img}
+Para cada imagen de entrenamiento (o prueba) $I$, primero se estima su pose ($S,T,\Theta$) utilizando el sistema ESL. Luego, la forma media canónica del SSM, $\overline{\mathbf{x}}_{\text{SSM}}$, se transforma a las coordenadas de esta imagen $I$ para obtener $\mathbf{x}_{\text{img}}$. Esta transformación $g_{\text{ESL}}$ implica:
+Escalado: La forma media canónica $\overline{\mathbf{x}}_{\text{SSM}}$ (cuyos puntos $\mathbf{p}_j$ están en un espacio normalizado) se escala utilizando las dimensiones $S_w, S_h$ predichas por ESL y el span (rango de coordenadas) de la propia forma media canónica $\mathrm{span}_x(\overline{\mathbf{x}}_{\text{SSM}}), \mathrm{span}_y(\overline{\mathbf{x}}_{\text{SSM}})$:
+$$ s_x = \frac{S_w}{\mathrm{span}_x(\overline{\mathbf{x}}_{\text{SSM}})}; \quad s_y = \frac{S_h}{\mathrm{span}_y(\overline{\mathbf{x}}_{\text{SSM}})} $$
+Cada punto $\mathbf{p}_j=(p_{jx}, p_{jy})$ se transforma a $(p_{jx} \cdot s_x, p_{jy} \cdot s_y)$.
+Rotación: Los puntos escalados se rotan alrededor del origen (o del centro de la forma media escalada si no estaba centrada) por el ángulo $\Theta$ predicho por ESL, utilizando una matriz de rotación $\mathbf{R}(\Theta)$:
+$$ \mathbf{R}(\Theta) = \begin{pmatrix} \cos\Theta & -\sin\Theta \\ \sin\Theta & \cos\Theta \end{pmatrix} $$
+Traslación: Finalmente, los puntos rotados y escalados se trasladan al centroide $T=(T_x, T_y)$ predicho por ESL.
+El resultado es $\mathbf{x}_{\text{img}} = g_{\text{ESL}}(\overline{\mathbf{x}}_{\text{SSM}}; S,T,\Theta)$, que representa la posición y configuración de la forma media en la imagen actual.
+
+\subsection{Extracción de Parches 2D Alrededor de los Landmarks}
+\label{ssec:extraccion_parches_2d_metodologia}
+Una vez que se tienen los $N_{lmk}=144$ puntos de $\mathbf{x}_{\text{img}}$ en la imagen $I$ (previamente normalizada en intensidad a, por ejemplo, $[0,1]$), se extrae un parche cuadrado de $Q \times Q$ píxeles centrado en cada uno de estos $N_{lmk}$ puntos.
+\begin{itemize}
+\item Tamaño del Parche ($Q$): Este es un hiperparámetro crucial. El informe detalla experimentos con $Q=25$ y un Experimento 3 propuesto con $Q=41$. Un $Q$ mayor captura más contexto local pero incrementa la dimensionalidad de la entrada a la CNN y el costo computacional. La elección de $Q$ busca un equilibrio entre la información contextual y la localidad.
+\item Proceso de Extracción: El script \code{mashdl_patch_extractor.py} (o su adaptación) implementa la función \code{extract_patch} (posiblemente la de \code{predict_esl_pose.py} o una similar) que maneja los casos de borde (cuando un landmark está cerca del borde de la imagen) mediante padding, asegura que el parche final tenga dimensiones $Q \times Q$ (mediante recorte o interpolación si es necesario), y normaliza los valores de los píxeles del parche si no se hizo globalmente en la imagen.
+\item Aumento de Datos (para Entrenamiento): Durante la generación de datos de entrenamiento, el script \code{mashdl_patch_extractor.py} puede aplicar técnicas de aumento de datos. El informe menciona que para el Experimento 3 (con $Q=41$), la variable \code{AUGMENTATION_PROBABILITY} se configuró a $1.0$. Este aumento puede implicar:
+\begin{itemize}
+\item Pequeñas perturbaciones aleatorias a los parámetros de pose ($S,T,\Theta$) de ESL antes de transformar la forma media, generando así landmarks ligeramente diferentes para la extracción de parches.
+\item Ligeras transformaciones afines (rotación, escalado, cizallamiento) aplicadas a los parches ya extraídos.
+\item Ajustes de brillo/contraste en los parches.
+\end{itemize}
+Esto ayuda a que el modelo MaShDL-CNN sea más robusto a pequeñas imprecisiones de ESL y a variaciones en la apariencia.
+\end{itemize}
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=0.7\linewidth]{ruta/a/tu/extraccion_parches_detalle.png} % 
+% \caption[Extracción de parches 2D alrededor de los landmarks de la forma media transformada]{Ilustración del proceso de extracción de parches 2D. (a) Imagen de entrada. (b) Forma media del SSM transformada $\mathbf{x}_{\text{img}}$ (en verde) superpuesta en la imagen, utilizando la pose ($S,T,\Theta$) estimada por ESL. (c) Zoom en un landmark de $\mathbf{x}_{\text{img}}$, mostrando el parche de $Q \times Q$ píxeles (en rojo) extraído de la imagen centrado en ese landmark.}
+% \label{fig:extraccion_parches_metodologia}
+% \end{figure}
+
+\subsection{Estructura de los Datos de Entrada (Archivos NPZ)}
+\label{ssec:estructura_npz_metodologia}
+Los datos generados (parches y etiquetas) se almacenan en archivos con formato \code{.npz} de NumPy, uno por cada modo $k$ del SSM para el cual se entrenará un modelo MaShDL-CNN.
+\begin{itemize}
+\item Nomenclatura de Archivos:  \code{mashdl_mode{K}_Q{Q}_aug_TRAIN_B{B}.npz} para datos de entrenamiento y \code{mashdl_mode{K}_Q{Q}_aug0_TEST_B{B}.npz} para datos de prueba (donde \code{aug0} implicaría sin aumento o un aumento base para test). \code{{K}} es el índice del modo, \code{{Q}} el tamaño del parche, y \code{{B}} el número de bins para la discretización de $b_k$.
+\item Contenido de cada NPZ:
+\begin{itemize}
+\item \code{features_k{K}}: Un array de NumPy. Para $N_{\text{samples}}$ imágenes, este array contiene $N_{\text{samples}}$ conjuntos de $N_{lmk}$ parches. Si los parches se aplanan y concatenan por muestra, la forma podría ser ($N_{\text{samples}}, N_{lmk} \cdot Q^2$). Sin embargo, para alimentar la capa \code{TimeDistributed} de Keras, los datos se cargan y remodelan a ($N_{\text{samples}}, N_{lmk}, Q, Q, 1$) en el script de entrenamiento.
+\item \code{labels_k{K}}: Un array de NumPy de forma ($N_{\text{samples}}$,) que contiene el índice del bin discreto al que pertenece el coeficiente $b_K$ verdadero para cada muestra de entrenamiento (o prueba, si se incluyen).
+\end{itemize}
+\item Ubicación: Estos archivos \code{NPZ} se almacenan en el directorio \code{data/} del proyecto \code{MaShDL_CNN_Hybrid_Lung_Segmentation/}.
+\item Corrección de Rutas: El informe destaca la importancia de la correcta configuración de \code{TESIS_ROOT_DIR} en \code{mashdl_patch_extractor.py} para que \code{data_loader.py} pueda encontrar archivos auxiliares como \code{indices_maestro_1.csv} al cargar metadatos de imágenes. Se solucionó apuntando \code{TESIS_ROOT_DIR} a \code{/workspace}.
+\end{itemize}
+
+\section{Arquitectura del Modelo MaShDL-CNN Hybrid}
+\label{sec:arquitectura_mashdl_cnn_metodologia}
+El núcleo de la propuesta metodológica es el modelo MaShDL-CNN Hybrid, cuya arquitectura y entrenamiento se gestionan mediante el script \code{train_mashdl_cnn_hybrid.py}. Este modelo está diseñado para predecir, para cada modo de variación $k$ del SSM, el bin discretizado del coeficiente de forma $b_k$ correspondiente a una imagen de entrada.
+
+\subsection{Sub-Red CNN para Extracción de Características por Parche}
+\label{ssec:sub_cnn_metodologia}
+Se define una sub-red neuronal convolucional (sub-CNN) relativamente superficial que actúa como extractora de características para cada uno de los $N_{lmk}=144$ parches de $Q \times Q \times 1$ píxeles (asumiendo imágenes en escala de grises) que componen una muestra.
+\begin{itemize}
+\item \textbf{Entrada a la Sub-CNN:} Un único parche, tensor de forma ($Q,Q,1$).
+\item \textbf{Arquitectura (configurable mediante argumentos en \code{train_mashdl_cnn_hybrid.py}):}
+\begin{enumerate}
+\item \textbf{Capas Convolucionales (\code{layers.Conv2D}):}
+\begin{itemize}
+\item Número de capas y filtros por capa: Definido por \code{args.cnn_filters} (e.g., \code{[32, 64]} para dos capas con 32 y 64 filtros, o \code{[32, 64, 128]} para tres capas).
+\item Tamaño del kernel: Definido por \code{args.cnn_kernel_sizes} (e.g., \code{(3,3)} para todos).
+\item Función de activación: Rectified Linear Unit (ReLU), $f(z)=\max(0,z)$.
+\item Padding: \code{'same'} para mantener las dimensiones espaciales después de la convolución (antes del pooling).
+\end{itemize}
+\item \textbf{Normalización por Lotes (\code{layers.BatchNormalization}):} Opcional, activada con \code{args.use_batch_norm_cnn}. Se aplica después de cada capa convolucional (antes de la activación ReLU) para estabilizar y acelerar el entrenamiento.
+\item \textbf{Capas de Submuestreo (\code{layers.MaxPooling2D}):}
+\begin{itemize}
+\item Tamaño del pool: Definido por \code{args.cnn_pool_sizes} (e.g., \code{(2,2)}), reduce las dimensiones espaciales a la mitad.
+\end{itemize}
+\item \textbf{Regularización Dropout (\code{layers.Dropout}):} Opcional, si \code{args.cnn_dropout > 0}. Se aplica después de las capas de pooling para reducir el sobreajuste, desactivando aleatoriamente un porcentaje de neuronas durante el entrenamiento.
+\item \textbf{Aplanamiento (\code{layers.Flatten}):} Convierte el mapa de características 2D final de la última capa de pooling en un vector 1D.
+\item \textbf{Capa Densa de Proyección (\code{layers.Dense}):} Proyecta el vector aplanado a una dimensionalidad fija \code{args.dim_features_per_patch} (e.g., 64 o 128), con activación ReLU. Esta es la salida de características del parche.
+\end{enumerate}
+\item \textbf{Salida de la Sub-CNN:} Un vector de características $\mathbf{f}_{\text{patch}} \in \mathbb{R}^{\text{dim\_features\_per\_patch}}$.
+\end{itemize}
+Esta sub-CNN se define como un modelo Keras independiente (\code{cnn_feature_extractor_submodel}) y luego se aplica a cada uno de los $N_{lmk}$ parches de entrada de una muestra utilizando la capa contenedora \code{tf.keras.layers.TimeDistributed}. Esta capa aplica la misma instancia de la sub-CNN (es decir, con los mismos pesos compartidos) a cada ``paso temporal'' de la secuencia de entrada, donde cada parche se considera un paso temporal.
+Si la entrada al modelo principal es un tensor de parches de forma ($N_{\text{batch}}, N_{lmk}, Q, Q, 1$), la salida de la capa \code{TimeDistributed(cnn_feature_extractor_submodel)} será un tensor de forma ($N_{\text{batch}}, N_{lmk}, \text{dim\_features\_per\_patch}$).
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=0.9\linewidth]{ruta/a/tu/arquitectura_sub_cnn_detalle.png} 
+% \caption[Arquitectura de la Sub-Red CNN para extracción de características por parche]{Diagrama detallado de la arquitectura de la sub-CNN utilizada para procesar cada parche $Q \times Q$. Se muestran las capas convolucionales (Conv), Batch Normalization (BN), MaxPooling (Pool), Dropout (DO), Flatten (F) y la capa Densa final (DenseFeat) que produce el vector de características del parche. Se indican los parámetros configurables como el número de filtros, tamaño de kernel/pool y dimensión de características.}
+% \label{fig:arquitectura_sub_cnn_metodologia}
+% \end{figure}
+
+\subsection{Añadir Características de los Parches}
+\label{ssec:agregacion_features_metodologia}
+Las características extraídas de los $N_{lmk}$ parches para una sola imagen, que forman un tensor de ($N_{lmk}, \text{dim\_features\_per\_patch}$), necesitan ser combinadas en un único vector descriptor global que represente la forma completa presente en la imagen. Esto se logra mediante una capa \code{layers.Flatten()} aplicada a la salida de la capa \code{TimeDistributed}. El resultado es un vector $\mathbf{f}_{\text{global}} \in \mathbb{R}^{N_{lmk} \cdot \text{dim\_features\_per\_patch}}$. Este vector aplanado captura la información conjunta de la apariencia local alrededor de todos los landmarks de la forma media.
+
+\subsection{Red Neuronal Densa (DNN/MLP) para Predicción de Coeficientes de Forma $b_k$}
+\label{ssec:dnn_prediccion_bk_metodologia}
+El vector global de características $\mathbf{f}_{\text{global}}$ se introduce en una Red Neuronal Densa (DNN), también conocida como Perceptrón Multicapa (MLP), que se entrena específicamente para predecir el bin del coeficiente de forma $b_k$ para un modo de variación $k$ particular del SSM. Es importante destacar que se entrena un modelo MaShDL-CNN Hybrid completo (Sub-CNN + Agregación + DNN) de manera independiente para cada modo $k$ que se desea estimar.
+\begin{itemize}
+\item \textbf{Entrada a la DNN:} El vector $\mathbf{f}_{\text{global}}$ de $N_{lmk} \cdot \text{dim\_features\_per\_patch}$ dimensiones.
+\item \textbf{Arquitectura (configurable mediante argumentos en \code{train_mashdl_cnn_hybrid.py}):}
+\begin{enumerate}
+\item \textbf{Capas Densas Ocultas (\code{layers.Dense}):}
+\begin{itemize}
+\item Número de capas y unidades por capa: Definido por \code{args.dnn_hidden_units} (e.g., \code{[128, 64]} para dos capas ocultas).
+\item Función de activación: ReLU.
+\end{itemize}
+\item \textbf{Normalización por Lotes (\code{layers.BatchNormalization}):} Opcional, activada con \code{args.use_batch_norm_dnn}. Se aplica después de cada capa densa oculta (antes de la activación).
+\item \textbf{Regularización Dropout (\code{layers.Dropout}):} Se aplica después de cada capa densa oculta (o BN) con una tasa \code{args.dnn_dropout} (e.g., 0.3 o 0.5) para prevenir el sobreajuste.
+\item \textbf{Capa Densa de Salida (\code{layers.Dense}):}
+\begin{itemize}
+\item Número de unidades: \code{args.num_classes_b_bins} (el número de bins en los que se discretiza $b_k$, e.g., 3, 5 o 7).
+\item Función de activación: softmax. Esto produce una distribución de probabilidad sobre los $B$ bins, indicando la probabilidad de que el coeficiente $b_k$ de la muestra de entrada pertenezca a cada bin.
+$$ P(\text{bin}_j \mid \mathbf{f}_{\text{global}}) = \frac{e^{z_j}}{\sum_{i=1}^{B} e^{z_i}} $$
+donde $z_j$ es la entrada a la unidad $j$ de la capa softmax.
+\item \code{dtype='float32'}: Se especifica para asegurar que la salida de la capa softmax sea de tipo \code{float32}, lo cual es importante si se utiliza entrenamiento con precisión mixta, para evitar problemas de estabilidad numérica con la función de pérdida.
+\end{itemize}
+\end{enumerate}
+\end{itemize}
+La función \code{_build_mashdl_cnn_hybrid_model} en \code{train_mashdl_cnn_hybrid.py} construye este modelo Keras completo.
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=1\linewidth]{ruta/a/tu/arquitectura_completa_mashdl_cnn_metodologia.png} 
+% \caption[Arquitectura completa del modelo MaShDL-CNN Hybrid para un modo k]{Diagrama de la arquitectura completa del modelo MaShDL-CNN Hybrid para la predicción del coeficiente $b_k$ de un modo específico. La entrada consiste en $N_{lmk}$ parches. La sub-CNN (con pesos compartidos vía \code{TimeDistributed}) extrae características de cada parche. Estas características se aplanan y se alimentan a una DNN que produce una distribución de probabilidad sobre los $B$ bins del coeficiente $b_k$.}
+% \label{fig:arquitectura_completa_mashdl_cnn_metodologia}
+% \end{figure}
+
+\subsection{Discretización de los Coeficientes $b_k$}
+\label{ssec:discretizacion_bk_metodologia}
+Dado que la DNN final está formulada como un problema de clasificación (predicción del bin más probable), los valores continuos de los coeficientes de forma $b_k$ (obtenidos al proyectar las formas de entrenamiento del SSM sobre los eigenvectores $\mathbf{P}$) deben ser discretizados en un número finito de categorías o ``bins''. Este proceso se realiza antes del entrenamiento.
+\begin{itemize}
+\item Rango de Discretización: Para cada modo $k$, el rango típico de variación de $b_k$ está relacionado con su desviación estándar $\sigma_k = \sqrt{\lambda_k}$ (donde $\lambda_k$ es el eigenvalor del modo $k$). Comúnmente, se considera un rango de $\pm C_{\text{std}} \cdot \sigma_k$, donde $C_{\text{std}}$ es un factor de clamping (e.g., \code{args.b_clamp_std = 3.0} en el script \code{main_desdiscretizer.py}, que debe coincidir con el usado para generar datos de entrenamiento).
+\item Número de Bins ($B$): Este rango se divide uniformemente en $B = \text{\code{args.num\_classes\_b\_bins}}$ intervalos.
+\item Asignación de Etiquetas: El valor continuo de $b_k$ de una muestra de entrenamiento se asigna al índice del bin (0 a $B-1$) en el que cae. Esta es la etiqueta objetivo para la DNN.
+\end{itemize}
+La función \code{discretize_b} (presente en \code{mashdl_patch_extractor_test.py} y se asume una similar para el entrenamiento) implementa esta lógica:
+Calcula $\min\_val_k = -C_{\text{std}} \cdot \sigma_k$ y $\max\_val_k = C_{\text{std}} \cdot \sigma_k$.
+Si $\sigma_k$ es muy pequeño (cercano a cero), el bin medio se asigna directamente.
+El valor $b_k$ se trunca (clampea) al intervalo $[\min\_val_k, \max\_val_k]$.
+El valor truncado $b_{k,\text{clamped}}$ se normaliza linealmente al rango $[0,1]$:
+$$ b_{k,\text{norm}} = \frac{b_{k,\text{clamped}} - \min\_val_k}{\max\_val_k - \min\_val_k} $$
+(si $\max\_val_k - \min\_val_k > \epsilon_{\text{small}}$).
+El índice del bin se determina como: $\text{bin\_idx} = \lfloor b_{k,\text{norm}} \cdot (B - \epsilon_{\text{edge}}) \rfloor$, donde $\epsilon_{\text{edge}}$ es una constante pequeña para manejar los valores en el borde exacto de $\max\_val_k$.
+El $\text{bin\_idx}$ se asegura de estar en el rango $[0,B-1]$.
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=0.6\linewidth]{ruta/a/tu/discretizacion_bk_detalle.png} 
+% \caption[Proceso de discretización de un coeficiente de forma $b_k$]{Ilustración del proceso de discretización para un coeficiente $b_k$. Se muestra la distribución teórica de $b_k$ (e.g., gaussiana), el rango de clamping definido por $\pm C_{\text{std}}\sigma_k$, y la división de este rango en $B$ bins equidistantes. Un valor continuo $b_k^*$ se mapea al índice del bin correspondiente.}
+% \label{fig:discretizacion_bk_metodologia}
+% \end{figure}
+
+\section{Proceso de Entrenamiento del Modelo MaShDL-CNN Hybrid}
+\label{sec:entrenamiento_mashdl_cnn_metodologia}
+
+El entrenamiento de los modelos MaShDL-CNN Hybrid se lleva a cabo utilizando el script \code{train_mashdl_cnn_hybrid.py}, siguiendo un procedimiento específico para cada modo de variación del SSM.
+
+\subsection{Entrenamiento Secuencial por Modo de Variación $k$}
+\label{ssec:entrenamiento_secuencial_modo}
+Se entrena un modelo MaShDL-CNN Hybrid completo (Sub-CNN + Agregación + DNN) de forma independiente para cada uno de los primeros \code{args.num_modes_to_train} modos de variación del SSM (e.g., $k=0,1,\dots,9$ si se entrenan 10 modos). Esto significa que si se desean predecir $M$ modos, se generarán $M$ modelos Keras distintos, cada uno especializado en predecir el bin de su respectivo coeficiente $b_k$. La Sub-CNN, aunque definida con la misma arquitectura para todos los modos, aprende pesos diferentes en cada uno de estos $M$ entrenamientos, ya que se optimiza conjuntamente con la DNN específica de ese modo.
+
+\subsection{Carga y Preprocesamiento de Datos de Entrenamiento}
+\label{ssec:carga_datos_entrenamiento_cnn}
+Para cada modo $k$, la clase \code{MaShDLCNNTrainer} en \code{train_mashdl_cnn_hybrid.py} implementa la función \code{_load_and_preprocess_patch_data_for_mode}. Esta función es responsable de:
+\begin{enumerate}
+\item Construir el nombre del archivo \code{NPZ} de entrenamiento para el modo $k$ actual, utilizando \code{args.data_filename_template}, \code{args.patch_size_q}, y \code{args.num_classes_b_bins} (e.g., \code{mashdl_mode{k}_Q{Q}_aug_TRAIN_B{B}.npz}).
+\item Cargar el array \code{features_k{k}} (parches aplanados) y el array \code{labels_k{k}} (índices de bins) del archivo \code{NPZ}.
+\item Remodelar el array de características aplanadas a la forma esperada por el modelo: ($N_{\text{samples}}, N_{lmk}, Q, Q, 1$).
+\item Realizar validaciones de datos, como verificar que las etiquetas estén en el rango $[0,B-1]$ y que no haya NaNs/Infs.
+\item Dividir los datos y etiquetas en conjuntos de entrenamiento y validación utilizando \code{sklearn.model_selection.train_test_split}, con una fracción \code{args.validation_split} para validación y un \code{args.random_seed} para reproducibilidad. Se intenta realizar una división estratificada por las etiquetas de los bins si hay suficientes muestras por clase.
+\item Convertir las etiquetas de los bins (enteros) de los conjuntos de entrenamiento y validación a formato categórico (one-hot encoding) usando \code{tf.keras.utils.to_categorical}, ya que se utiliza la función de pérdida \code{categorical_crossentropy}.
+\end{enumerate}
+
+\subsection{Función de Pérdida, Optimizador y Parámetros de Entrenamiento}
+\label{ssec:perdida_optimizador_cnn}
+\begin{itemize}
+\item \textbf{Función de Pérdida:} Para cada modelo por modo, se utiliza la entropía cruzada categórica (\code{categorical_crossentropy}) como función de pérdida. Esta es adecuada para problemas de clasificación multiclase donde la salida es una distribución de probabilidad (obtenida por softmax) sobre las $B$ clases (bins).
+$$ L_{\text{CE}} = - \sum_{j=1}^{B} y_j \log(\hat{y}_j) $$
+donde $y_j$ es 1 si $j$ es la clase verdadera y 0 en caso contrario, y $\hat{y}_j$ es la probabilidad predicha por el modelo para la clase $j$.
+\item \textbf{Optimizador:} El script permite seleccionar entre Adam y AdamW (Adam con Decaimiento de Peso Desacoplado) a través del argumento \code{args.optimizer_type}. La tasa de aprendizaje inicial se establece con \code{args.learning_rate} (e.g., $1 \times 10^{-4}$), y para AdamW, el decaimiento de peso se controla con \code{args.adamw_weight_decay}. La función \code{get_optimizer} maneja la creación de la instancia del optimizador.
+\item \textbf{Métricas:} La principal métrica monitoreada durante el entrenamiento es la \code{accuracy} (precisión de clasificación de los bins).
+\item \textbf{Hiperparámetros de Entrenamiento:}
+\begin{itemize}
+\item Número máximo de épocas: \code{args.epochs} (e.g., 100 o 200).
+\item Tamaño del lote (Batch Size): \code{args.batch_size} (e.g., 32 o 64).
+\end{itemize}
+\item \textbf{Callbacks de Keras:}
+\begin{itemize}
+\item \code{callbacks.ModelCheckpoint}: Guarda el modelo que logra la mejor \code{val_accuracy} en el directorio \code{models/<RunID>/}. El nombre del archivo incluye el \code{RunID} y el índice del modo $k$ (e.g., \code{20250511_095815_MaShDL_CNN_best_k0.h5}).
+\item \code{callbacks.EarlyStopping}: Monitorea \code{val_accuracy} y detiene el entrenamiento si no hay mejora después de \code{args.es_patience} épocas. El informe indica que \code{restore_best_weights} se establece en \code{False}, confiando en \code{ModelCheckpoint}.
+\item \code{callbacks.ReduceLROnPlateau}: Reduce la tasa de aprendizaje por un factor \code{args.reduce_lr_factor} si \code{val_accuracy} no mejora tras \code{args.rlr_patience} épocas, hasta un mínimo \code{args.min_lr}.
+\item \code{callbacks.TerminateOnNaN}: Detiene el entrenamiento si se detecta un valor NaN en la función de pérdida.
+\end{itemize}
+\item \textbf{Opciones de Rendimiento:} El script \code{train_mashdl_cnn_hybrid.py} también incluye opciones para \code{args.use_mixed_precision} (entrenamiento con precisión mixta FP16 para acelerar y reducir memoria en GPUs compatibles) y \code{args.use_xla} (compilación XLA para optimización).
+\end{itemize}
+El historial de entrenamiento (pérdida y exactitud para los conjuntos de entrenamiento y validación, y tasa de aprendizaje si \code{ReduceLROnPlateau} está activo) se registra para cada modo. La función \code{plot_training_history} genera gráficos de estas curvas, que se guardan en el directorio \code{plots/<RunID>/}. Adicionalmente, si \code{args.save_history_npz} está activo, todos los historiales de entrenamiento se guardan en un único archivo \code{NPZ}.
+
+\begin{table}[H] % Cambiado de tableH
+\centering
+\caption[Hiperparámetros clave para el entrenamiento de los modelos MaShDL-CNN Hybrid]{Resumen de los hiperparámetros configurables y sus valores típicos o rangos explorados durante el entrenamiento de los modelos MaShDL-CNN Hybrid para cada modo $b_k$. Estos parámetros se controlan mediante argumentos del script \code{train_mashdl_cnn_hybrid.py}.}
+\label{tab:hiperparametros_entrenamiento_cnn_metodologia}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Parámetro & Argumento del Script & Valor/Rango Típico \\
+\midrule
+Tamaño del Parche & \code{--patch_size_q} & 25, 41 \\
+Filtros CNN & \code{--cnn_filters} & \code{[32,64]}, \code{[32,64,128]} \\
+Tamaños Kernel CNN & \code{--cnn_kernel_sizes} & \code{(3,3)} \\
+Tamaños Pool CNN & \code{--cnn_pool_sizes} & \code{(2,2)} \\
+Dim. Features/Parche & \code{--dim_features_per_patch} & 64, 128 \\
+Unidades Ocultas DNN & \code{--dnn_hidden_units} & \code{[128,64]}, \code{[256,128]} \\
+Dropout DNN & \code{--dnn_dropout} & 0.3, 0.5 \\
+Número de Bins $b_k$ & \code{--num_classes_b_bins} & 3, 5 \\
+Tasa de Aprendizaje & \code{--learning_rate} & $1 \times 10^{-3}$, $1 \times 10^{-4}$ \\
+Optimizador & \code{--optimizer_type} & Adam, AdamW \\
+Decaimiento Peso (AdamW) & \code{--adamw_weight_decay} & $1 \times 10^{-4}$ \\
+Épocas Máximas & \code{--epochs} & 100, 200 \\
+Tamaño del Lote & \code{--batch_size} & 32, 64 \\
+Paciencia Early Stopping & \code{--es_patience} & 20, 30, 50 \\
+Paciencia ReduceLR & \code{--rlr_patience} & 10, 15 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=1\linewidth]{ruta/a/tu/ejemplo_curvas_entrenamiento_cnn.png} 
+% \caption[Ejemplo de curvas de entrenamiento para un modelo MaShDL-CNN Hybrid]{Ejemplo de las curvas de entrenamiento (pérdida y exactitud vs. épocas) para un modo $b_k$ específico. Se muestran las métricas para el conjunto de entrenamiento (Train) y el conjunto de validación (Val). También se puede incluir la curva de la tasa de aprendizaje (Learning Rate) si se utiliza \code{ReduceLROnPlateau}. Estas gráficas son generadas por la función \code{plot_training_history} en \code{train_mashdl_cnn_hybrid.py}.}
+% \label{fig:ejemplo_curvas_entrenamiento_cnn_metodologia}
+% \end{figure}
+
+\section{Generación de Predicciones y Reconstrucción de la Forma}
+\label{sec:prediccion_reconstruccion_forma_metodologia}
+Una vez que los modelos MaShDL-CNN Hybrid han sido entrenados para cada modo $k$ de interés, se pueden utilizar para predecir la forma pulmonar en imágenes nuevas (e.g., del conjunto de prueba). Este proceso implica la predicción de los bins de los coeficientes $b_k$, su desdiscretización a valores continuos, y finalmente la reconstrucción de la forma geométrica.
+
+\subsection{Predicción de Bins de $b_k$ (Script: \code{generate_predictions_cnn.py})}
+\label{ssec:prediccion_bins_bk_metodologia}
+El script \code{generate_predictions_cnn.py} se encarga de generar las predicciones de los bins para el conjunto de datos de prueba.
+\begin{enumerate}
+\item \textbf{Iteración por Modo:} El script itera sobre cada modo $k$ para el cual se ha entrenado un modelo (desde 0 hasta \code{args.num_modes_to_predict - 1}).
+\item \textbf{Carga de Datos de Prueba por Modo:} Para cada modo $k$, la función \code{load_test_patch_data_for_mode} (dentro de \code{generate_predictions_cnn.py}) carga los datos de parches 2D del archivo \code{NPZ} de prueba correspondiente (e.g., \code{mashdl_mode{k}_Q{args.patch_size_q}_aug0_TEST_B{args.num_classes_b_bins}.npz}).
+\begin{itemize}
+\item Filtrado de Ejemplos ``Positivos'': Un aspecto crucial, destacado en el informe, es el manejo de los \code{NPZ} de prueba. Si estos archivos contienen múltiples instancias por imagen original (e.g., una instancia ``positiva'' correspondiente a la forma GT y varias ``negativas'' generadas con $b_k$ perturbados, similar a como se podrían generar para entrenamiento), esta función debe filtrar para quedarse ÚNICAMENTE con la primera instancia de cada imagen original (asumida como la ``positiva''). Esto se controla con el argumento \code{--num_neg_per_pos_in_test_npz}. Si este valor es 0, se asume que el \code{NPZ} de prueba ya contiene solo las instancias positivas. Si es $>0$ (e.g., 3), se toma una de cada $1+3=4$ muestras del \code{NPZ}. Esta corrección es vital para asegurar que se prediga sobre el número correcto de imágenes de prueba y no sobre las variaciones aumentadas.
+\item Los parches cargados se remodelan a la forma ($N_{\text{test\_samples}}, N_{lmk}, Q, Q, 1$).
+\end{itemize}
+\item \textbf{Carga del Modelo Entrenado:} Se carga el modelo MaShDL-CNN Hybrid previamente entrenado y guardado para el modo $k$ actual (e.g., \code{models/<RunID>/<run_id>_MaShDL_CNN_best_k{k}.h5}). El modelo se compila (con un optimizador simple, ya que no se va a reentrenar) para poder realizar predicciones.
+\item \textbf{Predicción:} Se invoca el método \code{model.predict()} sobre los parches de prueba $\mathbf{X}_{\text{test},k}$. Esto devuelve, para cada muestra de prueba, un vector de probabilidades (salida de la capa softmax) sobre los $B$ posibles bins para $b_k$.
+\item \textbf{Obtención del Bin Predicho:} Se aplica \code{numpy.argmax(axis=1)} a las salidas softmax para obtener el índice del bin con la mayor probabilidad para cada muestra de prueba. Este es el bin predicho para $b_k$.
+\item \textbf{Ensamblaje de Predicciones:} Las predicciones de bins para todos los modos se ensamblan en una matriz $\mathbf{B}_{\text{pred\_bins}} \in \mathbb{Z}^{N_{\text{test\_samples}} \times M_{\text{pred}}}$, donde $M_{\text{pred}} = \text{\code{args.num\_modes\_to\_predict}}$. Cada fila $i$ contiene los bins predichos $[\text{bin}(b_{i,0}), \text{bin}(b_{i,1}), \dots, \text{bin}(b_{i,M_{\text{pred}}-1})]$ para la $i$-ésima imagen de prueba.
+\item \textbf{Guardado de Resultados:} La matriz $\mathbf{B}_{\text{pred\_bins}}$ se guarda en un archivo \code{.npy} especificado por \code{args.output_npy_filename} en el directorio \code{args.output_dir} (e.g., \code{results/predictions_cnn/predicted_bins_TEST_MaShDL_CNN_run_ID_Q25_3modes_POS_ONLY.npy}).
+\end{enumerate}
+
+\subsection{Desdiscretización de $b_k$ (Script: \code{main_desdiscretizer.py})}
+\label{ssec:desdiscretizacion_bk_metodologia}
+Los índices de bin predichos, que son enteros, deben ser convertidos de nuevo a valores continuos para los coeficientes $b_k$ para poder reconstruir la forma. Esta tarea la realiza el script \code{main_desdiscretizer.py} (que según el informe fue copiado y utilizado desde el proyecto anterior).
+\begin{enumerate}
+\item \textbf{Entradas Requeridas:}
+\begin{itemize}
+\item El archivo \code{.npy} que contiene la matriz $\mathbf{B}_{\text{pred\_bins}}$ (salida de \code{generate_predictions_cnn.py}).
+\item El archivo \code{pca_std_devs.npy} que contiene las desviaciones estándar $\sigma_k$ para cada modo $k$ del SSM.
+\item Los parámetros de discretización utilizados originalmente durante la generación de datos de entrenamiento: el número de bins $B$ (\code{--num_bins}) y el factor de clamping $C_{\text{std}}$ (\code{--b_clamp_std}). Estos deben coincidir exactamente.
+\end{itemize}
+\item \textbf{Proceso de Desdiscretización (por cada $b_{i,k}$ predicho):}
+\begin{enumerate}
+\item Para un modo $k$ dado, se recupera su desviación estándar $\sigma_k$.
+\item Se calculan los bordes de los $B$ bins (función \code{get_bin_edges} en \code{main_desdiscretizer.py}), que definen los $B$ intervalos $I_j=[e_j, e_{j+1})$ para $j=0,\dots,B-1$.
+$$ \min\_val_k = -C_{\text{std}}\sigma_k; \quad \max\_val_k = C_{\text{std}}\sigma_k $$
+Los bordes $e_j$ se obtienen dividiendo uniformemente el rango $[\min\_val_k, \max\_val_k]$ en $B$ segmentos.
+\item Si el bin predicho para $b_{i,k}$ es $j_{\text{pred}}$, el valor continuo $b_{i,k,\text{cont}}$ se estima como el punto medio del intervalo $I_{j_{\text{pred}}}$:
+$$ b_{i,k,\text{cont}} = \frac{e_{j_{\text{pred}}} + e_{j_{\text{pred}}+1}}{2} $$
+Esto se implementa en la función \code{desdiscretize_b_k}.
+\end{enumerate}
+\item \textbf{Salida:} Una matriz $\mathbf{B}_{\text{cont}} \in \mathbb{R}^{N_{\text{test\_samples}} \times M_{\text{pred}}}$ con los coeficientes $b_k$ continuos estimados. Esta matriz se guarda en un archivo \code{.npy} (e.g., \code{results/predictions_cnn/b_k_continuous_TEST_MaShDL_CNN_run_ID_Q25_3modes_POS_ONLY.npy}). El script también puede generar un informe JSON detallado del proceso.
+\end{enumerate}
+
+\subsection{Reconstrucción de la Forma Pulmonar Segmentada}
+\label{ssec:reconstruccion_forma_metodologia}
+Con la matriz de coeficientes $\mathbf{B}_{\text{cont}}$ y los parámetros de pose ($S,T,\Theta$) estimados por ESL para cada imagen de prueba, se puede reconstruir la forma pulmonar final en el espacio de la imagen. Este proceso se realiza dentro del script \code{evaluate_segmentation.py}.
+\begin{enumerate}
+\item \textbf{Reconstrucción Canónica:} Para cada muestra de prueba $i$, se toma su vector de coeficientes continuos $\mathbf{b}_{i,\text{cont}}=[b_{i,0,\text{cont}}, \dots, b_{i,M_{\text{pred}}-1,\text{cont}}]^T$. Si $M_{\text{pred}}$ es menor que el número total de modos $m$ en el SSM, $\mathbf{b}_{i,\text{cont}}$ se rellena con ceros para los modos superiores no predichos, obteniendo $\mathbf{b}_{i,\text{full}} \in \mathbb{R}^m$. La forma canónica se reconstruye usando la ecuación del SSM:
+$$ \mathbf{x}_{i,\text{recon\_can}} = \overline{\mathbf{x}}_{\text{SSM}} + \mathbf{P}_{\text{SSM}}\mathbf{b}_{i,\text{full}} $$
+donde $\overline{\mathbf{x}}_{\text{SSM}}$ es el vector de forma media del SSM y $\mathbf{P}_{\text{SSM}}$ es la matriz de componentes principales del SSM. El vector resultante $\mathbf{x}_{i,\text{recon\_can}}$ se devectoriza para obtener la matriz de coordenadas de landmarks $\mathbf{X}_{i,\text{recon\_can}} \in \mathbb{R}^{N_{lmk} \times d}$. Esto es manejado por la función \code{generate_shape_instance} en \code{evaluate_segmentation.py}.
+\item \textbf{Clamping Opcional de $b_k$:} El script \code{evaluate_segmentation.py} tiene una opción (\code{--clamp_b_vectors_eval}) para truncar los valores $b_{i,k,\text{cont}}$ predichos al rango $\pm C'_{\text{std}}\sigma_k$ (donde $C'_{\text{std}}$ es \code{args.b_clamp_std_factor_eval}) antes de la reconstrucción. Esto puede ayudar a prevenir formas irrealistas si las predicciones de $b_k$ son extremas.
+\item \textbf{Transformación al Espacio de la Imagen:} La forma canónica reconstruida $\mathbf{X}_{i,\text{recon\_can}}$ se transforma al espacio de la imagen $i$ utilizando los parámetros de pose ($S_i, T_i, \Theta_i$) obtenidos de ESL y los factores de escala derivados del span de la forma media canónica, como se describe en la Sección~\ref{ssec:transformacion_forma_media_img}. La función \code{apply_similarity_transform_eval} en \code{evaluate_segmentation.py} realiza esta transformación, que también puede incorporar un factor de corrección de escala opcional (\code{args.esl_scale_correction_factor}). El resultado es $\mathbf{X}_{i,\text{final\_pred}} \in \mathbb{R}^{N_{lmk} \times d}$, que son los landmarks de la forma pulmonar segmentada en las coordenadas de la imagen $i$.
+\end{enumerate}
+
+\section{Generación de Máscaras Ground Truth Consistentes}
+\label{sec:generacion_gt_masks_metodologia}
+Una evaluación precisa y justa del rendimiento de la segmentación requiere máscaras de referencia (Ground Truth, GT) que sean consistentes con la definición de la forma utilizada por el SSM (es decir, basadas en los mismos $N_{lmk}=144$ puntos). El script \code{generate_gt_masks_from_144pts.py} se desarrolló para esta tarea crucial.
+\begin{itemize}
+\item \textbf{Entradas Clave:}
+\begin{itemize}
+\item \code{landmarks_test_144pts_raw.npy}: Contiene las coordenadas de los $N_{lmk}=144$ landmarks GT para cada imagen de prueba, usualmente en un espacio de coordenadas de referencia (e.g., $64 \times 64$ como se menciona en el informe).
+\item \code{test_indices.txt}: Lista los índices de las imágenes en el conjunto de prueba.
+\item \code{TESIS_ROOT_DIR}: Ruta al directorio raíz del proyecto (\code{/workspace}) para permitir que \code{data_loader.py} cargue las imágenes originales para la generación de superposiciones visuales.
+\end{itemize}
+\item \textbf{Proceso Principal:}
+\begin{enumerate}
+\item \textbf{Carga de Datos:} Se cargan los landmarks GT y los índices de prueba.
+\item \textbf{Reescalado de Landmarks GT:} Los landmarks GT, que están en el espacio de referencia (e.g., $64 \times 64$), deben ser reescalados al tamaño de la imagen objetivo en la cual se realizará la evaluación (e.g., $299 \times 299$, definido por \code{DEFAULT_IMAGE_SIZE}). Los factores de escala son:
+$$ \text{scale}_x = \frac{\text{target\_image\_width}}{\text{source\_landmarks\_space\_width}}; \quad \text{scale}_y = \frac{\text{target\_image\_height}}{\text{source\_landmarks\_space\_height}} $$
+Las coordenadas de los landmarks se multiplican por estos factores. El informe destaca que este paso es fundamental, ya que omitirlo inicialmente resultó en máscaras GT demasiado pequeñas.
+\item \textbf{Creación de Máscara Binaria GT:} Para cada conjunto de $N_{lmk}$ landmarks GT reescalados, se genera una máscara binaria del tamaño de la imagen objetivo. La función \code{create_single_mask_from_144_points_as_two_lobes} se utiliza para este propósito. Esta función:
+\begin{itemize}
+\item Divide los 144 puntos en dos conjuntos de 72, asumiendo que representan dos ``lóbulos'' o mitades de la región pulmonar global (incluyendo corazón, etc., según la definición del SSM de 144 puntos).
+\item Convierte estos conjuntos de puntos en contornos.
+\item Opcionalmente, utiliza la librería Shapely (si está disponible y \code{use_shapely_if_available} es \code{True}) para validar y potencialmente corregir la geometría de los polígonos (e.g., auto-intersecciones) antes del relleno, usando \code{shapely_poly.buffer(0)}.
+\item Rellena los polígonos resultantes en una imagen de máscara vacía usando \code{cv2.fillPoly} con valor 255.
+\end{itemize}
+\item \textbf{Guardado de Máscaras y Superposiciones:}
+\begin{itemize}
+\item Cada máscara binaria GT generada se guarda como una imagen \code{PNG} (e.g., \code{gt_mask_idx790_144pt.png}) en el directorio \code{data/gt_masks_144pts_test_scaled/}.
+\item Se genera un archivo de texto (e.g., \code{data/gt_test_masks_names_144pts_scaled.txt}) que lista las rutas relativas a estas nuevas máscaras GT. Este archivo es utilizado por \code{evaluate_segmentation.py}.
+\item Para validación visual, se generan imágenes de superposición (\code{save_overlay_image_gt}): la imagen original de la CXR (reescalada a $299 \times 299$) se carga, y el contorno de la máscara GT generada se dibuja sobre ella. Estas se guardan en \code{data/gt_overlays_144pts_test_scaled/}.
+\end{itemize}
+\end{enumerate}
+\item \textbf{Manejo de Errores de Ruta:} Similar a \code{mashdl_patch_extractor.py}, se corrigió el \code{TESIS_ROOT_DIR} para asegurar que \code{data_loader.py} pudiera encontrar \code{indices_maestro_1.csv}.
+\end{itemize}
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=1\linewidth]{ruta/a/tu/gt_mask_generation_detalle.png} %
+% \caption[Proceso de generación de máscaras Ground Truth consistentes]{Flujo de trabajo para la generación de máscaras Ground Truth (GT) a partir de los 144 landmarks. (a) Landmarks GT en el espacio original (e.g., $64 \times 64$). (b) Landmarks reescalados al tamaño de la imagen objetivo (e.g., $299 \times 299$). (c) Creación de la máscara binaria rellenando los polígonos definidos por los ``dos lóbulos'' de 72 puntos cada uno. (d) Máscara GT final. (e) Superposición de la máscara GT sobre la imagen radiográfica original para validación visual.}
+% \label{fig:gt_mask_generation_metodologia}
+% \end{figure}
+
+\section{Evaluación de la Segmentación}
+\label{sec:evaluacion_segmentacion_metodologia}
+El rendimiento del método de alineación y normalización MaShDL-CNN Hybrid se evalúa cuantitativamente midiendo la calidad de la segmentación pulmonar resultante. El script \code{evaluate_segmentation.py} (adaptado del proyecto anterior \code{Tesis/alineamiento/}) se utiliza para esta fase.
+\begin{itemize}
+\item \textbf{Entradas Principales:}
+\begin{itemize}
+\item El archivo \code{.npy} con los coeficientes $b_k$ continuos predichos para el conjunto de prueba (salida de \code{main_desdiscretizer.py}).
+\item El archivo \code{esl_test_set_poses.npy} con las poses ($S,T,\Theta$) estimadas por ESL para cada imagen de prueba.
+\item Los componentes del SSM: \code{pca_mean_vector.npy}, \code{pca_components.npy}, \code{pca_std_devs.npy}.
+\item El archivo de texto \code{gt_test_masks_names_144pts_scaled.txt} que lista las máscaras GT generadas en la Sección~\ref{sec:generacion_gt_masks_metodologia}, y la ruta base a su directorio.
+\item \code{test_indices.txt} para mapear los resultados a los índices originales de las imágenes.
+\item La ruta \code{TESIS_ROOT_DIR} para cargar las imágenes originales si se generan superposiciones visuales.
+\end{itemize}
+\item \textbf{Proceso por cada Muestra de Prueba $i$:}
+\begin{enumerate}
+\item Se cargan los $b_{i,k,\text{cont}}$ predichos y la pose ESL ($S_i, T_i, \Theta_i$).
+\item Reconstrucción de la Forma Predicha: Se reconstruye la forma $\mathbf{X}_{i,\text{final\_pred}}$ en el espacio de la imagen, como se detalló en la Sección~\ref{ssec:reconstruccion_forma_metodologia}. Esto incluye el clamping opcional de los $b_k$ y la corrección de escala de ESL.
+\item Creación de la Máscara Predicha: A partir de los $N_{lmk}=144$ puntos de $\mathbf{X}_{i,\text{final\_pred}}$, se genera una máscara binaria $M_{i,\text{pred}}$. El informe y el script exploran dos estrategias para esto:
+
+\begin{itemize}
+\item Dos Contornos (\code{create_mask_from_two_contours}): Similar a la generación de GT, los 144 puntos se dividen en dos conjuntos de 72, se forman polígonos y se rellenan.
+\item Envolvente Convexa (\code{create_mask_from_convex_hull_all}): Se calcula la envolvente convexa de todos los 144 puntos predichos, y el polígono resultante se rellena. Esta tiende a ser una aproximación más general y suave.
+\end{itemize}
+\item \textbf{Carga de la Máscara Ground Truth:} Se carga la máscara $M_{i,\text{GT}}$ correspondiente del archivo listado.
+\item \textbf{Cálculo del Coeficiente de Dice:} Se calcula el DSC entre $M_{i,\text{GT}}$ y $M_{i,\text{pred}}$:
+$$ \text{DSC}_i = \frac{2 \cdot |M_{i,\text{GT}} \cap M_{i,\text{pred}}|}{|M_{i,\text{GT}}| + |M_{i,\text{pred}}|} $$
+\item \textbf{Guardado de Superposiciones (Opcional):} Si \code{args.save_overlays} está activo, o si se está depurando un índice específico, se guarda una imagen de superposición (\code{save_overlay_image}) que muestra la imagen original, el contorno GT (e.g., en verde) y el contorno predicho (e.g., en rojo/azul según el método de máscara).
+\end{itemize}
+\end{itemize}
+
+\item \textbf{Añadir Resultados:} Se calculan estadísticas descriptivas (media, mediana, desviación estándar, mínimo, máximo) sobre los scores de Dice obtenidos para todas las muestras de prueba, por separado para cada método de creación de máscara (Dos Contornos y Envolvente Convexa).
+\item \textbf{Salidas del Script:}
+
+\begin{itemize}
+\item Archivos de texto (\code{dice_scores_test_*.txt}) con los scores de Dice individuales.
+\item Archivos de texto (\code{dice_summary_stats_test_*.txt}) con las estadísticas agregadas.
+\item Opcionalmente, un directorio con las imágenes de superposición (e.g., \code{results/segmentation_overlays_.../}).
+\end{itemize}
+
+
+Los resultados de esta evaluación (Dice scores) son la medida principal del éxito del método MaShDL-CNN Hybrid en cuanto a su capacidad para alinear y normalizar la forma pulmonar con precisión.
+
+% \begin{figure}[H] % Cambiado de figureH
+% \centering
+% %\includegraphics[width=1\linewidth]{ruta/a/tu/ejemplo_evaluacion_segmentacion_detalle.png} 
+% \caption[Ejemplo visual de la evaluación de la segmentación]{Ejemplo de evaluación de la segmentación para una imagen de prueba. (a) Imagen original. (b) Máscara Ground Truth (GT) en verde. (c) Máscara predicha usando el método de ``Dos Contornos'' (en rojo) superpuesta a la GT, con el score de Dice resultante. (d) Máscara predicha usando el método de ``Envolvente Convexa'' (en azul) superpuesta a la GT, con el score de Dice. Los puntos predichos $\mathbf{X}_{\text{final\_pred}}$ también pueden visualizarse.}
+% \label{fig:ejemplo_evaluacion_segmentacion_metodologia}
+% \end{figure}
+
+Este capítulo ha descrito en detalle la arquitectura, implementación y flujo de trabajo del sistema MaShDL-CNN Hybrid propuesto para la alineación y normalización de la forma de la región pulmonar. Los componentes matemáticos y las referencias a los scripts de código proporcionan una comprensión completa de cómo se logra este objetivo. El siguiente capítulo se centrará en el diseño experimental y la configuración utilizados para entrenar, optimizar y validar esta metodología.
