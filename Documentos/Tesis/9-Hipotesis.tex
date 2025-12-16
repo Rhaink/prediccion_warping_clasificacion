@@ -1,21 +1,24 @@
-\section*{Hipótesis}
+\section{Hipótesis}
+\label{sec:hipotesis}
 
 % JUSTIFICACIÓN DE ESTA SECCIÓN:
 % - Define claramente qué se va a demostrar
 % - Establece variables y predicciones cuantificables
 % - Esencial para rigor científico ante jurado exigente
 
-\subsection*{Hipótesis Principal}
+\subsection{Hipótesis Principal}
+\label{subsec:hipotesis-principal}
 
-La incorporación de restricciones geométricas anatómicas en la función de pérdida de redes neuronales convolucionales, combinada con normalización espacial mediante warping afín por partes, mejorará significativamente la robustez de clasificadores de patologías pulmonares ante artefactos de compresión y variabilidad geométrica.
+Como se establece en la Sección~\ref{sec:introduccion}, la variabilidad geométrica representa un desafío fundamental para los sistemas CAD. Se plantea que la incorporación de restricciones geométricas anatómicas en la función de pérdida de redes neuronales convolucionales \citep{lecun1998gradient}, combinada con normalización espacial mediante warping afín por partes, mejorará significativamente la robustez de clasificadores de patologías pulmonares ante artefactos de compresión y variabilidad geométrica.
 
-\subsection*{Variables de Investigación}
+\subsection{Variables de Investigación}
+\label{subsec:variables}
 
 \textbf{Variables Independientes:}
 \begin{itemize}
-    \item Función de pérdida: MSE, Wing Loss, Wing Loss + restricciones geométricas
+    \item Función de pérdida: MSE, Wing Loss \citep{feng2018wing}, Wing Loss + restricciones geométricas
     \item Estrategia de entrenamiento: backbone congelado vs. fine-tuning completo
-    \item Porcentaje de cobertura (fill rate) del warping: 47\%, 96\%, 99\%
+    \item Porcentaje de cobertura (fill rate) del warping: 47\%, 96\%, 99\% (ver definición en Ecuación~\ref{eq:fill-rate})
 \end{itemize}
 
 \textbf{Variables Dependientes:}
@@ -26,7 +29,8 @@ La incorporación de restricciones geométricas anatómicas en la función de p�
     \item Gap de generalización en validación cruzada (\%)
 \end{itemize}
 
-\subsection*{Predicciones Cuantificables}
+\subsection{Predicciones Cuantificables}
+\label{subsec:predicciones}
 
 \begin{enumerate}
     \item \textbf{Predicción de landmarks}: El ensemble de modelos alcanzará un error medio menor a 5 píxeles en imágenes de 224$\times$224.
@@ -36,12 +40,15 @@ La incorporación de restricciones geométricas anatómicas en la función de p�
     \item \textbf{Generalización}: El gap de accuracy en validación cruzada (modelo evaluado en dataset diferente al de entrenamiento) será al menos 2$\times$ menor para el modelo con normalización geométrica.
 \end{enumerate}
 
-\subsection*{Métrica de Evaluación Principal}
+\subsection{Métrica de Evaluación Principal}
+\label{subsec:metrica}
 
 El error de localización de landmarks se define como:
 
-\begin{equation}
+\begin{equation}\label{eq:error-euclidiano}
 E_k = \sqrt{(\hat{x}_k - x_k)^2 + (\hat{y}_k - y_k)^2}
 \end{equation}
 
 donde $(\hat{x}_k, \hat{y}_k)$ son las coordenadas predichas y $(x_k, y_k)$ las coordenadas de referencia (ground truth) para el landmark $k$.
+
+La relevancia de estas predicciones se fundamenta en necesidades clínicas concretas, como se detalla en la Sección~\ref{sec:justificacion}.
