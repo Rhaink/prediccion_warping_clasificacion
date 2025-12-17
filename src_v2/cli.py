@@ -525,6 +525,10 @@ def train(
     final_path = Path(checkpoint_dir) / "final_model.pt"
     trainer.save_model(str(final_path))
     logger.info("Modelo guardado en: %s", final_path)
+    last_path = Path(checkpoint_dir) / "last.pt"
+    if last_path != final_path:
+        trainer.save_model(str(last_path))
+        logger.info("Modelo guardado en: %s", last_path)
 
     logger.info("=" * 60)
     logger.info("Entrenamiento completado!")
