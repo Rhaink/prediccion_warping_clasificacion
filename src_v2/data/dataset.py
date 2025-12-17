@@ -82,6 +82,7 @@ class LandmarkDataset(Dataset):
         self.data_root = Path(data_root)
         self.transform = transform if transform else get_val_transforms()
         self.original_size = (original_size, original_size)
+        self._size_warning_emitted = False
 
     def __len__(self) -> int:
         return len(self.df)
@@ -118,15 +119,26 @@ class LandmarkDataset(Dataset):
         # Obtener landmarks como array (15, 2)
         landmarks = get_landmarks_array(row)
 
+        # Usar tamano real de la imagen para normalizar; alertar si difiere del esperado
+        actual_size = image.size  # (width, height)
+        if actual_size != self.original_size and not self._size_warning_emitted:
+            logger.warning(
+                "Image size mismatch (expected %s, got %s); using actual size for normalization",
+                self.original_size,
+                actual_size
+            )
+            self._size_warning_emitted = True
+
         # Aplicar transformaciones
         image_tensor, landmarks_tensor = self.transform(
-            image, landmarks, self.original_size
+            image, landmarks, actual_size
         )
 
         meta = {
             'image_name': image_name,
             'category': category,
-            'idx': idx
+            'idx': idx,
+            'original_size': actual_size,
         }
 
         return image_tensor, landmarks_tensor, meta

@@ -20,10 +20,66 @@ from src_v2.constants import (
 logger = logging.getLogger(__name__)
 
 
+def _prepare_image_size_tensor(
+    image_size: Any,
+    batch_size: int,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> torch.Tensor:
+    """
+    Normaliza image_size a un tensor (B, 1, 2) para escalar predicciones.
+
+    Args:
+        image_size: Puede ser int/float (lado unico), (W, H), lista de tamaños
+            por muestra, o tensor ya existente.
+        batch_size: Tamaño del batch para broadcasting.
+        device: Dispositivo destino.
+        dtype: Tipo de dato para el tensor final.
+
+    Returns:
+        Tensor de tamaño (B, 1, 2) con anchura y altura por muestra.
+    """
+    if image_size is None:
+        size_tensor = torch.tensor(
+            [DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE], device=device, dtype=dtype
+        )
+        return size_tensor.view(1, 1, 2).expand(batch_size, 1, 2)
+
+    if isinstance(image_size, (int, float)):
+        size_tensor = torch.tensor(
+            [image_size, image_size], device=device, dtype=dtype
+        )
+        return size_tensor.view(1, 1, 2).expand(batch_size, 1, 2)
+
+    size_tensor = torch.as_tensor(image_size, device=device, dtype=dtype)
+
+    if size_tensor.ndim == 0:
+        size_tensor = size_tensor.repeat(2)
+
+    if size_tensor.ndim == 1:
+        if size_tensor.numel() == 1:
+            size_tensor = size_tensor.repeat(2)
+        if size_tensor.numel() != 2:
+            raise ValueError("image_size vector debe tener 2 elementos (W, H)")
+        size_tensor = size_tensor.view(1, 1, 2).expand(batch_size, 1, 2)
+    elif size_tensor.ndim == 2:
+        if size_tensor.shape[1] != 2:
+            raise ValueError("image_size de forma (B, 2) esperado")
+        if size_tensor.shape[0] == 1 and batch_size > 1:
+            size_tensor = size_tensor.expand(batch_size, size_tensor.shape[1])
+        elif size_tensor.shape[0] != batch_size:
+            raise ValueError("image_size debe tener batch_size filas")
+        size_tensor = size_tensor.unsqueeze(1)
+    else:
+        raise ValueError("image_size debe ser escalar, (2,) o (B, 2)")
+
+    return size_tensor
+
+
 def compute_pixel_error(
     pred: torch.Tensor,
     target: torch.Tensor,
-    image_size: int = DEFAULT_IMAGE_SIZE
+    image_size: Any = DEFAULT_IMAGE_SIZE
 ) -> torch.Tensor:
     """
     Calcula error euclidiano en pixeles.
@@ -31,23 +87,39 @@ def compute_pixel_error(
     Args:
         pred: Predicciones (B, 30) o (B, 15, 2) en [0, 1]
         target: Ground truth misma forma
-        image_size: Tamano de imagen para desnormalizar
+        image_size: Tamano de imagen para desnormalizar. Puede ser:
+            - int/float (lado unico, asume imagen cuadrada)
+            - Tupla/lista (width, height)
+            - Lista/array/tensor de tamaños por muestra (B, 2)
+            - None => usa DEFAULT_IMAGE_SIZE
 
     Returns:
         Tensor (B, 15) con error por landmark en pixeles
     """
     B = pred.shape[0]
-    pred = pred.view(B, 15, 2) * image_size
-    target = target.view(B, 15, 2) * image_size
+    pred = pred.view(B, 15, 2)
+    target = target.view(B, 15, 2)
 
-    errors = torch.norm(pred - target, dim=-1)  # (B, 15)
+    size_tensor = _prepare_image_size_tensor(
+        image_size=image_size,
+        batch_size=B,
+        device=pred.device,
+        dtype=pred.dtype,
+    )
+
+    pred = pred * size_tensor
+    target = target * size_tensor
+
+    errors = torch.norm(pred - target, dim=-1)  # (B, 15) o (B, 1, 15) si image_size tenia dims extra
+    if errors.ndim == 3 and errors.shape[1] == 1:
+        errors = errors.squeeze(1)
     return errors
 
 
 def compute_error_per_landmark(
     pred: torch.Tensor,
     target: torch.Tensor,
-    image_size: int = DEFAULT_IMAGE_SIZE
+    image_size: Any = DEFAULT_IMAGE_SIZE
 ) -> Dict[str, float]:
     """
     Calcula error promedio por landmark.
@@ -61,12 +133,46 @@ def compute_error_per_landmark(
     return {name: float(mean_errors[i]) for i, name in enumerate(LANDMARK_NAMES)}
 
 
+def _get_batch_image_sizes(
+    metas: List[dict],
+    default_size: Any = DEFAULT_IMAGE_SIZE
+) -> List[Tuple[float, float]]:
+    """
+    Extrae tamaños de imagen por muestra desde el metadata del DataLoader.
+
+    Args:
+        metas: Lista de metadata (de LandmarkDataset)
+        default_size: Fallback si no hay original_size en meta
+
+    Returns:
+        Lista de tuplas (width, height) por muestra
+    """
+    if isinstance(default_size, (int, float)):
+        fallback = (float(default_size), float(default_size))
+    elif default_size is None:
+        fallback = (float(DEFAULT_IMAGE_SIZE), float(DEFAULT_IMAGE_SIZE))
+    else:
+        fallback = tuple(default_size)
+
+    sizes = []
+    for meta in metas:
+        if meta is None:
+            sizes.append(fallback)
+            continue
+        size = meta.get("original_size")
+        if size and len(size) == 2:
+            sizes.append(tuple(size))
+        else:
+            sizes.append(fallback)
+    return sizes
+
+
 @torch.no_grad()
 def evaluate_model(
     model: torch.nn.Module,
     data_loader: DataLoader,
     device: torch.device,
-    image_size: int = DEFAULT_IMAGE_SIZE
+    image_size: Any = DEFAULT_IMAGE_SIZE
 ) -> Dict[str, Any]:
     """
     Evaluacion completa del modelo.
@@ -75,7 +181,7 @@ def evaluate_model(
         model: Modelo a evaluar
         data_loader: DataLoader de test
         device: Dispositivo
-        image_size: Tamano de imagen
+        image_size: Tamano de imagen (fallback si meta no incluye original_size)
 
     Returns:
         Dict con metricas detalladas
@@ -94,7 +200,8 @@ def evaluate_model(
         outputs = model(images)
 
         # Error por muestra y landmark
-        errors = compute_pixel_error(outputs, landmarks, image_size)  # (B, 15)
+        batch_sizes = _get_batch_image_sizes(metas, image_size)
+        errors = compute_pixel_error(outputs, landmarks, batch_sizes)  # (B, 15)
         all_errors.append(errors.cpu())
         all_preds.append(outputs.cpu())
         all_targets.append(landmarks.cpu())
@@ -163,7 +270,7 @@ def compute_error_per_category(
     pred: torch.Tensor,
     target: torch.Tensor,
     categories: List[str],
-    image_size: int = DEFAULT_IMAGE_SIZE
+    image_size: Any = DEFAULT_IMAGE_SIZE
 ) -> Dict[str, Dict[str, float]]:
     """
     Calcula error promedio por categoria.
@@ -172,7 +279,7 @@ def compute_error_per_category(
         pred: Predicciones (B, 30)
         target: Ground truth (B, 30)
         categories: Lista de categorias por muestra
-        image_size: Tamano de imagen
+        image_size: Tamano de imagen (escalar o por muestra)
 
     Returns:
         Dict {category: {'mean': error, 'std': std, 'count': n}}
@@ -343,7 +450,7 @@ def evaluate_model_with_tta(
     model: torch.nn.Module,
     data_loader: DataLoader,
     device: torch.device,
-    image_size: int = DEFAULT_IMAGE_SIZE
+    image_size: Any = DEFAULT_IMAGE_SIZE
 ) -> Dict[str, Any]:
     """
     Evaluacion completa del modelo con TTA.
@@ -352,7 +459,7 @@ def evaluate_model_with_tta(
         model: Modelo a evaluar
         data_loader: DataLoader de test
         device: Dispositivo
-        image_size: Tamano de imagen
+        image_size: Tamano de imagen (fallback si meta no incluye original_size)
 
     Returns:
         Dict con metricas detalladas
@@ -372,7 +479,8 @@ def evaluate_model_with_tta(
         outputs = predict_with_tta(model, images, device, use_flip=True)
 
         # Error por muestra y landmark
-        errors = compute_pixel_error(outputs, landmarks, image_size)  # (B, 15)
+        batch_sizes = _get_batch_image_sizes(metas, image_size)
+        errors = compute_pixel_error(outputs, landmarks, batch_sizes)  # (B, 15)
         all_errors.append(errors.cpu())
         all_preds.append(outputs.cpu())
         all_targets.append(landmarks.cpu())

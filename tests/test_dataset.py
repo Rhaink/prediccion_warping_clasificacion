@@ -236,6 +236,20 @@ class TestLandmarkDataset:
         assert 'image_name' in meta
         assert 'category' in meta
         assert 'idx' in meta
+        assert 'original_size' in meta
+
+    def test_meta_original_size_matches_image(self, sample_dataframe, sample_data_root):
+        """original_size en meta debe reflejar tamaño real de la imagen."""
+        from src_v2.data.dataset import LandmarkDataset
+
+        dataset = LandmarkDataset(
+            df=sample_dataframe,
+            data_root=str(sample_data_root)
+        )
+
+        _, _, meta = dataset[0]
+
+        assert meta['original_size'] == (299, 299)
 
 
 # =============================================================================

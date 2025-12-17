@@ -36,6 +36,7 @@ from src_v2.constants import (
     DEFAULT_ROTATION_DEGREES,
     DEFAULT_CLAHE_CLIP_LIMIT,
     DEFAULT_CLAHE_TILE_SIZE,
+    ORIGINAL_IMAGE_SIZE,
     # Quick mode constants
     QUICK_MODE_MAX_TRAIN,
     QUICK_MODE_MAX_VAL,
@@ -108,23 +109,46 @@ def get_optimal_num_workers() -> int:
     Obtener numero optimo de workers para DataLoader segun el sistema operativo.
 
     Session 33: Bug B1 fix - num_workers dinamico.
+    Sandbox fix: fallback a 0 si el entorno no permite semaforos/colas.
 
     - Windows: 0 (problemas con multiprocessing en subprocesos)
-    - Linux/Mac: min(4, cpu_count) para multiprocessing seguro
+    - Linux/Mac: min(4, cpu_count) para multiprocessing seguro, salvo restricciones
+      de semaforos; en ese caso usar 0.
 
     Returns:
         int: Numero de workers recomendado
     """
     import os
     import platform
+    import multiprocessing as mp
 
     # Windows tiene problemas con multiprocessing en DataLoader dentro de CLI
     if platform.system() == "Windows" or sys.platform == "win32":
         return 0
 
+    # Permitir override via variable de entorno (debug/sandbox)
+    if os.environ.get("FORCE_NUM_WORKERS_ZERO"):
+        logger.warning("FORCE_NUM_WORKERS_ZERO=1 -> usando num_workers=0")
+        return 0
+    if os.environ.get("NUM_WORKERS_OVERRIDE"):
+        try:
+            return max(0, int(os.environ["NUM_WORKERS_OVERRIDE"]))
+        except ValueError:
+            logger.warning("NUM_WORKERS_OVERRIDE invalido, ignorando")
+
     # Linux y macOS pueden usar multiprocessing
     cpu_count = os.cpu_count() or 4
-    return min(4, cpu_count)
+    candidate = min(4, cpu_count)
+
+    # Verificar que se puedan crear semaforos/locks (algunos sandboxes no lo permiten)
+    try:
+        lock = mp.get_context("fork").Lock()
+        lock.acquire()
+        lock.release()
+        return candidate
+    except Exception as exc:
+        logger.warning("Multiprocessing no disponible (%s); usando num_workers=0", exc)
+        return 0
 
 
 def detect_architecture_from_checkpoint(state_dict: dict) -> dict:
@@ -652,9 +676,13 @@ def evaluate(
     logger.info("Evaluando modelo...")
     if use_tta:
         logger.info("Usando Test-Time Augmentation")
-        results = evaluate_model_with_tta(model, test_loader, torch_device)
+        results = evaluate_model_with_tta(
+            model, test_loader, torch_device, image_size=ORIGINAL_IMAGE_SIZE
+        )
     else:
-        results = evaluate_model(model, test_loader, torch_device)
+        results = evaluate_model(
+            model, test_loader, torch_device, image_size=ORIGINAL_IMAGE_SIZE
+        )
 
     # Mostrar resultados
     logger.info("-" * 40)
@@ -677,16 +705,35 @@ def evaluate(
 
     # Guardar JSON si se especifica
     if output_json:
-        # Convertir numpy types a Python types para JSON
-        results_json = {}
-        for key, value in results.items():
-            if isinstance(value, dict):
-                results_json[key] = {k: float(v) for k, v in value.items()}
-            elif hasattr(value, "item"):
-                results_json[key] = value.item()
-            else:
-                results_json[key] = float(value)
+        # Convertir numpy/torch types a Python types para JSON (maneja dicts anidados)
+        def to_serializable(obj):
+            if isinstance(obj, dict):
+                return {k: to_serializable(v) for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [to_serializable(v) for v in obj]
+            # torch.Tensor / numpy.ndarray (may have more than 1 element)
+            if hasattr(obj, "tolist"):
+                try:
+                    # Scalar tensor/array
+                    if getattr(obj, "numel", lambda: None)() == 1 or getattr(obj, "size", lambda: None) == 1:
+                        return float(obj.item())
+                except Exception:
+                    pass
+                try:
+                    return obj.tolist()
+                except Exception:
+                    return str(obj)
+            if hasattr(obj, "item"):
+                try:
+                    return obj.item()
+                except Exception:
+                    pass
+            try:
+                return float(obj)
+            except Exception:
+                return str(obj)
 
+        results_json = to_serializable(results)
         with open(output_json, "w") as f:
             json.dump(results_json, f, indent=2)
         logger.info("Resultados guardados en: %s", output_json)
@@ -841,27 +888,47 @@ def predict(
         predictions = model(img_tensor)
 
     # Convertir a coordenadas en pixeles
-    landmarks = predictions.squeeze().cpu().numpy()
-    landmarks = landmarks.reshape(NUM_LANDMARKS, 2) * DEFAULT_IMAGE_SIZE
+    landmarks_norm = predictions.squeeze().cpu().numpy().reshape(NUM_LANDMARKS, 2)
+
+    size_array = np.array(original_size, dtype=np.float32)
+    landmarks_original = landmarks_norm * size_array
+    landmarks_original[:, 0] = np.clip(landmarks_original[:, 0], 0, size_array[0] - 1)
+    landmarks_original[:, 1] = np.clip(landmarks_original[:, 1], 0, size_array[1] - 1)
+
+    landmarks_resized = landmarks_norm * DEFAULT_IMAGE_SIZE
+    landmarks_resized = np.clip(landmarks_resized, 0, DEFAULT_IMAGE_SIZE - 1)
 
     # Mostrar resultados
     logger.info("-" * 40)
-    logger.info("LANDMARKS PREDICHOS (pixeles en imagen %dx%d):", DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE)
+    logger.info(
+        "LANDMARKS PREDICHOS (pixeles en imagen original %dx%d):",
+        original_size[0],
+        original_size[1],
+    )
     logger.info("-" * 40)
 
     landmark_dict = {}
     for i, name in enumerate(LANDMARK_NAMES):
-        x, y = landmarks[i]
+        x, y = landmarks_original[i]
         logger.info("  %s: (%.1f, %.1f)", name, x, y)
         landmark_dict[name] = {"x": float(x), "y": float(y)}
+
+    landmark_model_space = {
+        name: {"x": float(x), "y": float(y)}
+        for name, (x, y) in zip(LANDMARK_NAMES, landmarks_resized)
+    }
 
     # Guardar JSON si se especifica
     if output_json:
         result = {
             "image": str(image),
-            "image_size": DEFAULT_IMAGE_SIZE,
-            "original_size": list(original_size),
-            "landmarks": landmark_dict
+            "model_input_size": DEFAULT_IMAGE_SIZE,
+            "original_size": {"width": original_size[0], "height": original_size[1]},
+            "landmarks": landmark_dict,  # pixeles en tamaño original
+            "landmarks_model_space": landmark_model_space,  # pixeles en imagen 224x224
+            "landmarks_normalized": [
+                {"x": float(x), "y": float(y)} for x, y in landmarks_norm
+            ],
         }
         with open(output_json, "w") as f:
             json.dump(result, f, indent=2)
@@ -872,7 +939,7 @@ def predict(
         img_vis = np.array(img_resized)
 
         # Dibujar landmarks
-        for i, (x, y) in enumerate(landmarks):
+        for i, (x, y) in enumerate(landmarks_resized):
             x, y = int(x), int(y)
             cv2.circle(img_vis, (x, y), 3, (255, 0, 0), -1)
             cv2.putText(
@@ -6025,6 +6092,7 @@ def optimize_margin(
             --output-dir outputs/margin_optimization
     """
     import json
+    import warnings
     import shutil
     import time
     from collections import Counter
@@ -6049,6 +6117,14 @@ def optimize_margin(
         compute_fill_rate,
         piecewise_affine_warp,
         scale_landmarks_from_centroid,
+    )
+
+    # Silenciar warning de joblib cuando el entorno no permite multiprocesamiento
+    warnings.filterwarnings(
+        "ignore",
+        message=".*joblib will operate in serial mode.*",
+        category=UserWarning,
+        module="joblib._multiprocessing_helpers",
     )
 
     logger.info("")
@@ -6497,7 +6573,11 @@ def optimize_margin(
                     val_preds.extend(predicted.cpu().numpy())
                     val_labels_list.extend(labels.numpy())
 
-            val_acc = accuracy_score(val_labels_list, val_preds)
+            if val_labels_list:
+                val_acc = accuracy_score(val_labels_list, val_preds)
+            else:
+                logger.warning("  Split val vacío; val_acc=0.0")
+                val_acc = 0.0
 
             if (epoch + 1) % 2 == 0 or epoch == epochs - 1:
                 logger.info("  Epoch %d/%d: Val Acc=%.2f%%", epoch + 1, epochs, val_acc * 100)
@@ -6527,8 +6607,13 @@ def optimize_margin(
                 test_preds.extend(predicted.cpu().numpy())
                 test_labels_list.extend(labels.numpy())
 
-        test_acc = accuracy_score(test_labels_list, test_preds)
-        test_f1 = f1_score(test_labels_list, test_preds, average="macro")
+        if test_labels_list:
+            test_acc = accuracy_score(test_labels_list, test_preds)
+            test_f1 = f1_score(test_labels_list, test_preds, average="macro")
+        else:
+            logger.warning("  Split test vacío; métricas asignadas a 0.0")
+            test_acc = 0.0
+            test_f1 = 0.0
 
         elapsed = time.time() - start_time
 

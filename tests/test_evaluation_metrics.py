@@ -95,6 +95,23 @@ class TestComputePixelError:
 
         assert errors.shape == (4, 15)
 
+    def test_supports_per_sample_image_sizes(self):
+        """Acepta tamaños de imagen diferentes por muestra."""
+        pred = torch.tensor([
+            [0.5, 0.5] + [0.5] * 28,
+            [0.5, 0.5] + [0.5] * 28,
+        ])
+        target = pred.clone()
+        target[0, 0] += 0.1  # Delta en x usando width
+        target[1, 1] += 0.2  # Delta en y usando height
+
+        sizes = torch.tensor([[300, 200], [150, 400]], dtype=torch.float32)
+
+        errors = compute_pixel_error(pred, target, image_size=sizes)
+
+        assert errors[0, 0].item() == pytest.approx(30.0, rel=0.01)
+        assert errors[1, 0].item() == pytest.approx(80.0, rel=0.01)
+
 
 class TestComputeErrorPerLandmark:
     """Tests para compute_error_per_landmark."""
@@ -327,6 +344,30 @@ class TestEvaluateModel:
         evaluate_model(model, loader, device)
 
         assert not model.training
+
+    def test_uses_original_size_from_meta(self):
+        """Escala errores usando original_size cuando está disponible."""
+        base_output = torch.tensor([[0.5] * 30], dtype=torch.float32)
+        model = MockModel(output=base_output)
+        device = torch.device('cpu')
+
+        # Diferencia de 0.1 en eje x -> error debe ser 30 px con width=300
+        target = base_output.clone()
+        target[0, 0] += 0.1
+
+        data = [
+            (
+                torch.rand(1, 3, 224, 224),
+                target,
+                [{'category': 'COVID', 'original_size': (300, 300)}],
+            )
+        ]
+        loader = MockDataLoader(data)
+
+        result = evaluate_model(model, loader, device, image_size=100)
+
+        error_l1 = result['per_landmark']['L1']['mean']
+        assert error_l1 == pytest.approx(30.0, rel=0.01)
 
 
 class TestPredictWithTTA:
