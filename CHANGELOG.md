@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Landmark evaluation scales per-sample image sizes correctly and serializes nested metrics safely.
 - Optimize-margin handles empty val/test splits (quick mode) without numpy runtime warnings.
+- Train/evaluate CSV loader now fails fast on headered/category CSVs instead of silently misparsing.
+- Train split falls back to non-stratified when class counts are too small, avoiding crash on tiny datasets.
 
 ## [2.0.0] - 2025-12-11
 

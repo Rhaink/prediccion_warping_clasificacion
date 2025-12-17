@@ -332,6 +332,26 @@ def train(
     from src_v2.data.utils import load_coordinates_csv
     from src_v2.models import create_model, CombinedLandmarkLoss
     from src_v2.training.trainer import LandmarkTrainer
+    from sklearn.model_selection import train_test_split
+
+    def safe_train_test_split(dataframe, test_size, seed, desc, stratify_col=None):
+        """Stratified split with graceful fallback when class counts are too small."""
+        stratify_vals = dataframe[stratify_col] if stratify_col else None
+        try:
+            return train_test_split(
+                dataframe,
+                test_size=test_size,
+                random_state=seed,
+                stratify=stratify_vals,
+            )
+        except ValueError as exc:
+            logger.warning("%s: fallback to non-stratified split (%s)", desc, exc)
+            return train_test_split(
+                dataframe,
+                test_size=test_size,
+                random_state=seed,
+                stratify=None,
+            )
 
     logger.info("=" * 60)
     logger.info("COVID-19 Landmark Detection - Training")
@@ -371,14 +391,21 @@ def train(
     # Split train/val/test (75/15/10)
     # IMPORTANTE: Siempre usar random_state=42 para el split de datos
     # El seed del modelo solo afecta inicialización, no el split
-    from sklearn.model_selection import train_test_split
     SPLIT_SEED = 42  # Fijo para reproducibilidad
 
-    train_df, temp_df = train_test_split(
-        df, test_size=0.25, random_state=SPLIT_SEED, stratify=df['category']
+    train_df, temp_df = safe_train_test_split(
+        df,
+        test_size=0.25,
+        seed=SPLIT_SEED,
+        desc="Train/temp split",
+        stratify_col='category',
     )
-    val_df, test_df = train_test_split(
-        temp_df, test_size=0.4, random_state=SPLIT_SEED, stratify=temp_df['category']
+    val_df, test_df = safe_train_test_split(
+        temp_df,
+        test_size=0.4,
+        seed=SPLIT_SEED,
+        desc="Val/test split",
+        stratify_col='category',
     )
 
     logger.info("Dataset splits: train=%d, val=%d, test=%d", len(train_df), len(val_df), len(test_df))

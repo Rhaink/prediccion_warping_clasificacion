@@ -62,6 +62,15 @@ def load_coordinates_csv(csv_path: str) -> pd.DataFrame:
     except Exception as e:
         raise ValueError(f"Error al leer CSV {csv_path}: {e}") from e
 
+    # Detectar CSV con encabezados (formato incorrecto)
+    first_image = str(df.loc[0, 'image_name']).lower() if not df.empty else ""
+    if first_image in {'image_name', 'category'} or df['image_name'].str.contains('image_name', case=False).any():
+        raise ValueError(
+            "El CSV parece tener encabezados o columnas desplazadas. "
+            "Formato esperado: sin encabezados, columnas en orden "
+            "[idx, L1_x, L1_y, ..., L15_x, L15_y, image_name (sin .png)]."
+        )
+
     # Validar número de columnas
     expected_cols = 1 + (NUM_LANDMARKS * 2) + 1  # idx + coords + image_name
     if len(df.columns) != expected_cols:

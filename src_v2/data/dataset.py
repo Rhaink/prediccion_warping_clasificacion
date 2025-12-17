@@ -188,20 +188,38 @@ def create_dataloaders(
     df = load_coordinates_csv(csv_path)
 
     # Split estratificado por categoria
-    train_df, temp_df = train_test_split(
-        df,
-        test_size=(val_split + test_split),
-        stratify=df['category'],
-        random_state=random_state
-    )
+    try:
+        train_df, temp_df = train_test_split(
+            df,
+            test_size=(val_split + test_split),
+            stratify=df['category'],
+            random_state=random_state
+        )
+    except ValueError as exc:
+        logger.warning("Split train/temp no estratificado por counts bajos (%s)", exc)
+        train_df, temp_df = train_test_split(
+            df,
+            test_size=(val_split + test_split),
+            stratify=None,
+            random_state=random_state
+        )
 
     val_ratio = val_split / (val_split + test_split)
-    val_df, test_df = train_test_split(
-        temp_df,
-        test_size=(1 - val_ratio),
-        stratify=temp_df['category'],
-        random_state=random_state
-    )
+    try:
+        val_df, test_df = train_test_split(
+            temp_df,
+            test_size=(1 - val_ratio),
+            stratify=temp_df['category'],
+            random_state=random_state
+        )
+    except ValueError as exc:
+        logger.warning("Split val/test no estratificado por counts bajos (%s)", exc)
+        val_df, test_df = train_test_split(
+            temp_df,
+            test_size=(1 - val_ratio),
+            stratify=None,
+            random_state=random_state
+        )
 
     logger.info(
         "Dataset split: Train=%d (%.1f%%), Val=%d (%.1f%%), Test=%d (%.1f%%)",
