@@ -659,12 +659,26 @@ def evaluate(
     if split != "all":
         from sklearn.model_selection import train_test_split
         SPLIT_SEED = 42  # Mismo seed que en training
-        train_df, temp_df = train_test_split(
-            df, test_size=0.25, random_state=SPLIT_SEED, stratify=df['category']
-        )
-        val_df, test_df = train_test_split(
-            temp_df, test_size=0.4, random_state=SPLIT_SEED, stratify=temp_df['category']
-        )
+
+        def safe_split(dataframe, test_size, desc, stratify_col='category'):
+            try:
+                return train_test_split(
+                    dataframe,
+                    test_size=test_size,
+                    random_state=SPLIT_SEED,
+                    stratify=dataframe[stratify_col],
+                )
+            except ValueError as exc:
+                logger.warning("%s: fallback a split sin estratificar (%s)", desc, exc)
+                return train_test_split(
+                    dataframe,
+                    test_size=test_size,
+                    random_state=SPLIT_SEED,
+                    stratify=None,
+                )
+
+        train_df, temp_df = safe_split(df, 0.25, "Split train/temp")
+        val_df, test_df = safe_split(temp_df, 0.4, "Split val/test")
 
         if split == "test":
             df = test_df
@@ -801,6 +815,7 @@ def predict(
         None,
         "--json",
         "-j",
+        "--output-json",
         help="Guardar coordenadas en JSON"
     ),
     # CLAHE preprocessing (debe coincidir con entrenamiento)

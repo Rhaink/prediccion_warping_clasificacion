@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Train/evaluate CSV loader now fails fast on headered/category CSVs instead of silently misparsing.
 - Train split falls back to non-stratified when class counts are too small, avoiding crash on tiny datasets.
 - Train saves both `final_model.pt` and `last.pt` so evaluate can run immediately after training.
+- Evaluate split now falls back to non-stratified for tiny datasets.
+- `predict` accepts `--output-json` alias in addition to `--json`.
 
 ## [2.0.0] - 2025-12-11
 
