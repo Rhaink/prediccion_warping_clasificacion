@@ -661,6 +661,10 @@ def evaluate(
         SPLIT_SEED = 42  # Mismo seed que en training
 
         def safe_split(dataframe, test_size, desc, stratify_col='category'):
+            if len(dataframe) < 2 or int(len(dataframe) * (1 - test_size)) < 1:
+                logger.warning("%s: dataset demasiado pequeño (%d); usando todo en el primer split", desc, len(dataframe))
+                empty = dataframe.iloc[0:0]
+                return dataframe, empty
             try:
                 return train_test_split(
                     dataframe,
@@ -689,6 +693,10 @@ def evaluate(
         else:
             logger.error("Split invalido: %s (usar: test, val, train, all)", split)
             raise typer.Exit(code=1)
+
+    if len(df) == 0:
+        logger.error("Split '%s' sin muestras; no se puede evaluar", split)
+        raise typer.Exit(code=1)
 
     logger.info("Evaluando split '%s': %d muestras", split, len(df))
     logger.info("Transforms: CLAHE=%s (clip=%.1f, tile=%d)", use_clahe, clahe_clip, clahe_tile)
