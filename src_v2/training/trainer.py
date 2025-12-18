@@ -397,14 +397,17 @@ class LandmarkTrainer:
             patience=phase1_patience
         )
 
-        # Phase 2
-        history2 = self.train_phase2(
-            train_loader, val_loader, criterion,
-            epochs=phase2_epochs,
-            backbone_lr=phase2_backbone_lr,
-            head_lr=phase2_head_lr,
-            patience=phase2_patience
-        )
+        # Phase 2 (optional)
+        if phase2_epochs > 0:
+            history2 = self.train_phase2(
+                train_loader, val_loader, criterion,
+                epochs=phase2_epochs,
+                backbone_lr=phase2_backbone_lr,
+                head_lr=phase2_head_lr,
+                patience=phase2_patience
+            )
+        else:
+            history2 = {'train_loss': [], 'val_loss': [], 'train_error_px': [], 'val_error_px': [], 'lr': []}
 
         # Combinar historiales
         combined = {
