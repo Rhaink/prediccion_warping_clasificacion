@@ -1,0 +1,80 @@
+{
+  "experiment": "Fisher Linear Analysis - Warping Validation",
+  "date": "2025-12-20",
+  "dataset": {
+    "train_size": 10514,
+    "test_size": 1746,
+    "class_distribution_train": {
+      "Sano": 7644,
+      "Enfermo": 2870
+    },
+    "class_distribution_test": {
+      "Sano": 1274,
+      "Enfermo": 472
+    }
+  },
+  "pca": {
+    "n_components": 10,
+    "explained_variance_raw": 0.7154760360717773,
+    "explained_variance_warped": 0.7322165966033936
+  },
+  "fisher_ratios": {
+    "raw": [
+      0.04540277644991875,
+      0.13658274710178375,
+      0.0402347557246685,
+      0.27736493945121765,
+      1.3682079043064732e-05,
+      0.015441161580383778,
+      0.019006934016942978,
+      0.01153530552983284,
+      0.0005941394483670592,
+      0.0035469301510602236
+    ],
+    "warped": [
+      0.07585597038269043,
+      0.06999918818473816,
+      0.4031727910041809,
+      0.0021743522956967354,
+      0.012038209475576878,
+      0.0007328758365474641,
+      0.01535717211663723,
+      0.0011568692279979587,
+      0.0029850390274077654,
+      0.00044566247379407287
+    ],
+    "dominant_pc_raw": 4,
+    "dominant_pc_warped": 3
+  },
+  "classification": {
+    "raw": {
+      "accuracy": 0.8487972508591065,
+      "confusion_matrix": [
+        [
+          1179,
+          95
+        ],
+        [
+          169,
+          303
+        ]
+      ]
+    },
+    "warped": {
+      "accuracy": 0.8281786941580757,
+      "confusion_matrix": [
+        [
+          1172,
+          102
+        ],
+        [
+          198,
+          274
+        ]
+      ]
+    },
+    "improvement": -0.020618556701030855,
+    "improvement_percent": -2.4291497975708416
+  },
+  "conclusion": "RAW better or equal to WARPED"
+}

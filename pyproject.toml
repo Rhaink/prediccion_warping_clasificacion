@@ -72,6 +72,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+env = [
+    "FORCE_NUM_WORKERS_ZERO=1",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning",

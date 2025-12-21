@@ -1,0 +1,122 @@
+
+================================================================================
+THESIS VALIDATION: FISHER LINEAR ANALYSIS FOR WARPING
+================================================================================
+
+Verificando existencia de datasets...
+[Dataset] RAW: data/dataset/COVID-19_Radiography_Dataset
+[Dataset] WARPED: outputs/warped_replication_v2
+
+================================================================================
+EXPERIMENTO: VALIDACIÓN DE WARPING VÍA FISHER LINEAR ANALYSIS
+================================================================================
+
+[PASO 1/6] Cargando datasets...
+
+[TRAIN] Cargando 11364 imágenes...
+Cargando train:   0%|          | 0/11364 [00:00<?, ?it/s]Cargando train:   0%|          | 33/11364 [00:00<00:34, 328.19it/s]Cargando train:   1%|          | 77/11364 [00:00<00:28, 392.87it/s]Cargando train:   1%|          | 120/11364 [00:00<00:27, 406.27it/s]Cargando train:   1%|▏         | 164/11364 [00:00<00:26, 416.83it/s]Cargando train:   2%|▏         | 210/11364 [00:00<00:25, 430.04it/s]Cargando train:   2%|▏         | 253/11364 [00:00<00:25, 429.98it/s]Cargando train:   3%|▎         | 298/11364 [00:00<00:25, 434.14it/s]Cargando train:   3%|▎         | 342/11364 [00:00<00:25, 424.84it/s]Cargando train:   3%|▎         | 385/11364 [00:00<00:26, 415.19it/s]Cargando train:   4%|▍         | 435/11364 [00:01<00:24, 437.82it/s]Cargando train:   4%|▍         | 479/11364 [00:01<00:24, 435.40it/s]Cargando train:   5%|▍         | 523/11364 [00:01<00:25, 429.77it/s]Cargando train:   5%|▌         | 569/11364 [00:01<00:24, 437.87it/s]Cargando train:   5%|▌         | 617/11364 [00:01<00:24, 447.35it/s]Cargando train:   6%|▌         | 662/11364 [00:01<00:25, 427.84it/s]Cargando train:   6%|▌         | 705/11364 [00:01<00:25, 424.37it/s]Cargando train:   7%|▋         | 749/11364 [00:01<00:24, 427.42it/s]Cargando train:   7%|▋         | 792/11364 [00:01<00:25, 419.60it/s]Cargando train:   7%|▋         | 835/11364 [00:01<00:25, 418.01it/s]Cargando train:   8%|▊         | 877/11364 [00:02<00:25, 416.99it/s]Cargando train:   8%|▊         | 921/11364 [00:02<00:24, 421.42it/s]Cargando train:   9%|▊         | 966/11364 [00:02<00:24, 427.46it/s]Cargando train:   9%|▉         | 1009/11364 [00:02<00:24, 424.60it/s]Cargando train:   9%|▉         | 1052/11364 [00:02<00:24, 422.08it/s]Cargando train:  10%|▉         | 1095/11364 [00:02<00:25, 408.01it/s]Cargando train:  10%|▉         | 1136/11364 [00:02<00:26, 393.24it/s]Cargando train:  10%|█         | 1176/11364 [00:02<00:26, 380.80it/s]Cargando train:  11%|█         | 1224/11364 [00:02<00:24, 408.58it/s]Cargando train:  11%|█         | 1271/11364 [00:03<00:23, 425.56it/s]Cargando train:  12%|█▏        | 1318/11364 [00:03<00:22, 437.14it/s]Cargando train:  12%|█▏        | 1362/11364 [00:03<00:23, 424.05it/s]Cargando train:  12%|█▏        | 1406/11364 [00:03<00:23, 426.99it/s]Cargando train:  13%|█▎        | 1451/11364 [00:03<00:23, 430.68it/s]Cargando train:  13%|█▎        | 1495/11364 [00:03<00:23, 413.13it/s]Cargando train:  14%|█▎        | 1538/11364 [00:03<00:23, 416.12it/s]Cargando train:  14%|█▍        | 1584/11364 [00:03<00:23, 424.79it/s]Cargando train:  14%|█▍        | 1629/11364 [00:03<00:22, 432.05it/s]Cargando train:  15%|█▍        | 1686/11364 [00:03<00:20, 470.27it/s]Cargando train:  15%|█▌        | 1734/11364 [00:04<00:21, 444.06it/s]Cargando train:  16%|█▌        | 1782/11364 [00:04<00:21, 452.33it/s]Cargando train:  16%|█▌        | 1832/11364 [00:04<00:20, 463.83it/s]Cargando train:  17%|█▋        | 1879/11364 [00:04<00:20, 456.03it/s]Cargando train:  17%|█▋        | 1925/11364 [00:04<00:20, 451.71it/s]Cargando train:  17%|█▋        | 1971/11364 [00:04<00:20, 453.40it/s]Cargando train:  18%|█▊        | 2017/11364 [00:04<00:20, 453.31it/s]Cargando train:  18%|█▊        | 2063/11364 [00:04<00:20, 451.21it/s]Cargando train:  19%|█▊        | 2109/11364 [00:04<00:20, 445.19it/s]Cargando train:  19%|█▉        | 2156/11364 [00:05<00:20, 451.58it/s]Cargando train:  19%|█▉        | 2203/11364 [00:05<00:20, 454.90it/s]Cargando train:  20%|█▉        | 2250/11364 [00:05<00:19, 457.54it/s]Cargando train:  20%|██        | 2300/11364 [00:05<00:19, 468.66it/s]Cargando train:  21%|██        | 2350/11364 [00:05<00:18, 475.09it/s]Cargando train:  21%|██        | 2398/11364 [00:05<00:19, 463.64it/s]Cargando train:  22%|██▏       | 2449/11364 [00:05<00:18, 474.78it/s]Cargando train:  22%|██▏       | 2497/11364 [00:05<00:19, 464.91it/s]Cargando train:  22%|██▏       | 2544/11364 [00:05<00:19, 451.12it/s]Cargando train:  23%|██▎       | 2592/11364 [00:05<00:19, 458.44it/s]Cargando train:  23%|██▎       | 2641/11364 [00:06<00:18, 465.57it/s]Cargando train:  24%|██▎       | 2688/11364 [00:06<00:18, 466.39it/s]Cargando train:  24%|██▍       | 2738/11364 [00:06<00:18, 475.02it/s]Cargando train:  25%|██▍       | 2786/11364 [00:06<00:18, 472.63it/s]Cargando train:  25%|██▍       | 2834/11364 [00:06<00:18, 452.30it/s]Cargando train:  25%|██▌       | 2880/11364 [00:06<00:19, 442.22it/s]Cargando train:  26%|██▌       | 2931/11364 [00:06<00:18, 459.98it/s]Cargando train:  26%|██▌       | 2978/11364 [00:06<00:18, 455.98it/s]Cargando train:  27%|██▋       | 3028/11364 [00:06<00:17, 468.36it/s]Cargando train:  27%|██▋       | 3084/11364 [00:06<00:16, 492.84it/s]Cargando train:  28%|██▊       | 3134/11364 [00:07<00:16, 485.32it/s]Cargando train:  28%|██▊       | 3183/11364 [00:07<00:17, 468.11it/s]Cargando train:  28%|██▊       | 3230/11364 [00:07<00:20, 398.78it/s]Cargando train:  29%|██▉       | 3282/11364 [00:07<00:18, 428.06it/s]Cargando train:  29%|██▉       | 3330/11364 [00:07<00:18, 440.45it/s]Cargando train:  30%|██▉       | 3376/11364 [00:07<00:18, 440.57it/s]Cargando train:  30%|███       | 3421/11364 [00:07<00:17, 441.90it/s]Cargando train:  31%|███       | 3468/11364 [00:07<00:17, 449.06it/s]Cargando train:  31%|███       | 3518/11364 [00:07<00:16, 462.80it/s]Cargando train:  31%|███▏      | 3565/11364 [00:08<00:16, 461.96it/s]Cargando train:  32%|███▏      | 3612/11364 [00:08<00:16, 457.74it/s]Cargando train:  32%|███▏      | 3658/11364 [00:08<00:16, 455.07it/s]Cargando train:  33%|███▎      | 3705/11364 [00:08<00:16, 458.82it/s]Cargando train:  33%|███▎      | 3751/11364 [00:08<00:16, 456.19it/s]Cargando train:  33%|███▎      | 3798/11364 [00:08<00:16, 460.06it/s]Cargando train:  34%|███▍      | 3845/11364 [00:08<00:16, 462.52it/s]Cargando train:  34%|███▍      | 3892/11364 [00:08<00:16, 450.36it/s]Cargando train:  35%|███▍      | 3945/11364 [00:08<00:15, 471.61it/s]Cargando train:  35%|███▌      | 3993/11364 [00:09<00:15, 471.79it/s]Cargando train:  36%|███▌      | 4043/11364 [00:09<00:15, 479.68it/s]Cargando train:  36%|███▌      | 4092/11364 [00:09<00:15, 468.41it/s]Cargando train:  36%|███▋      | 4141/11364 [00:09<00:15, 472.40it/s]Cargando train:  37%|███▋      | 4189/11364 [00:09<00:15, 465.20it/s]Cargando train:  37%|███▋      | 4236/11364 [00:09<00:15, 451.36it/s]Cargando train:  38%|███▊      | 4282/11364 [00:09<00:15, 449.44it/s]Cargando train:  38%|███▊      | 4328/11364 [00:09<00:15, 451.20it/s]Cargando train:  38%|███▊      | 4374/11364 [00:09<00:15, 448.32it/s]Cargando train:  39%|███▉      | 4423/11364 [00:09<00:15, 457.93it/s]Cargando train:  39%|███▉      | 4469/11364 [00:10<00:15, 457.66it/s]Cargando train:  40%|███▉      | 4515/11364 [00:10<00:15, 454.41it/s]Cargando train:  40%|████      | 4563/11364 [00:10<00:14, 461.70it/s]Cargando train:  41%|████      | 4610/11364 [00:10<00:15, 449.91it/s]Cargando train:  41%|████      | 4656/11364 [00:10<00:15, 431.28it/s]Cargando train:  41%|████▏     | 4704/11364 [00:10<00:15, 442.55it/s]Cargando train:  42%|████▏     | 4749/11364 [00:10<00:16, 413.42it/s]Cargando train:  42%|████▏     | 4796/11364 [00:10<00:15, 427.43it/s]Cargando train:  43%|████▎     | 4840/11364 [00:10<00:15, 409.74it/s]Cargando train:  43%|████▎     | 4886/11364 [00:11<00:15, 422.41it/s]Cargando train:  43%|████▎     | 4933/11364 [00:11<00:14, 432.30it/s]Cargando train:  44%|████▍     | 4983/11364 [00:11<00:14, 449.78it/s]Cargando train:  44%|████▍     | 5030/11364 [00:11<00:13, 455.40it/s]Cargando train:  45%|████▍     | 5077/11364 [00:11<00:13, 458.32it/s]Cargando train:  45%|████▌     | 5126/11364 [00:11<00:13, 465.67it/s]Cargando train:  46%|████▌     | 5173/11364 [00:11<00:13, 461.34it/s]Cargando train:  46%|████▌     | 5222/11364 [00:11<00:13, 468.45it/s]Cargando train:  46%|████▋     | 5269/11364 [00:11<00:13, 468.37it/s]Cargando train:  47%|████▋     | 5321/11364 [00:11<00:12, 483.20it/s]Cargando train:  47%|████▋     | 5372/11364 [00:12<00:12, 489.74it/s]Cargando train:  48%|████▊     | 5422/11364 [00:12<00:12, 480.05it/s]Cargando train:  48%|████▊     | 5471/11364 [00:12<00:12, 461.72it/s]Cargando train:  49%|████▊     | 5518/11364 [00:12<00:13, 440.55it/s]Cargando train:  49%|████▉     | 5567/11364 [00:12<00:12, 454.29it/s]Cargando train:  49%|████▉     | 5616/11364 [00:12<00:12, 459.74it/s]Cargando train:  50%|████▉     | 5663/11364 [00:12<00:13, 437.25it/s]Cargando train:  50%|█████     | 5709/11364 [00:12<00:12, 442.58it/s]Cargando train:  51%|█████     | 5757/11364 [00:12<00:12, 452.26it/s]Cargando train:  51%|█████     | 5803/11364 [00:13<00:12, 447.94it/s]Cargando train:  52%|█████▏    | 5857/11364 [00:13<00:11, 472.74it/s]Cargando train:  52%|█████▏    | 5906/11364 [00:13<00:11, 477.69it/s]Cargando train:  52%|█████▏    | 5954/11364 [00:13<00:11, 467.92it/s]Cargando train:  53%|█████▎    | 6005/11364 [00:13<00:11, 479.21it/s]Cargando train:  53%|█████▎    | 6054/11364 [00:13<00:11, 472.07it/s]Cargando train:  54%|█████▎    | 6102/11364 [00:13<00:11, 460.47it/s]Cargando train:  54%|█████▍    | 6149/11364 [00:13<00:11, 446.42it/s]Cargando train:  55%|█████▍    | 6194/11364 [00:13<00:11, 442.94it/s]Cargando train:  55%|█████▍    | 6239/11364 [00:13<00:11, 443.18it/s]Cargando train:  55%|█████▌    | 6290/11364 [00:14<00:11, 461.03it/s]Cargando train:  56%|█████▌    | 6337/11364 [00:14<00:11, 455.56it/s]Cargando train:  56%|█████▌    | 6383/11364 [00:14<00:11, 448.44it/s]Cargando train:  57%|█████▋    | 6428/11364 [00:14<00:11, 443.53it/s]Cargando train:  57%|█████▋    | 6473/11364 [00:14<00:11, 443.29it/s]Cargando train:  57%|█████▋    | 6518/11364 [00:14<00:11, 440.02it/s]Cargando train:  58%|█████▊    | 6564/11364 [00:14<00:10, 445.68it/s]Cargando train:  58%|█████▊    | 6609/11364 [00:14<00:10, 439.43it/s]Cargando train:  59%|█████▊    | 6653/11364 [00:14<00:10, 437.73it/s]Cargando train:  59%|█████▉    | 6706/11364 [00:14<00:10, 462.86it/s]Cargando train:  59%|█████▉    | 6753/11364 [00:15<00:10, 429.72it/s]Cargando train:  60%|█████▉    | 6797/11364 [00:15<00:10, 418.80it/s]Cargando train:  60%|██████    | 6840/11364 [00:15<00:10, 418.27it/s]Cargando train:  61%|██████    | 6890/11364 [00:15<00:10, 439.28it/s]Cargando train:  61%|██████    | 6935/11364 [00:15<00:10, 439.54it/s]Cargando train:  61%|██████▏   | 6982/11364 [00:15<00:09, 446.76it/s]Cargando train:  62%|██████▏   | 7028/11364 [00:15<00:09, 448.72it/s]Cargando train:  62%|██████▏   | 7073/11364 [00:15<00:09, 441.78it/s]Cargando train:  63%|██████▎   | 7120/11364 [00:15<00:09, 447.92it/s]Cargando train:  63%|██████▎   | 7170/11364 [00:16<00:09, 462.94it/s]Cargando train:  64%|██████▎   | 7217/11364 [00:16<00:08, 460.78it/s]Cargando train:  64%|██████▍   | 7264/11364 [00:16<00:09, 451.21it/s]Cargando train:  64%|██████▍   | 7310/11364 [00:16<00:09, 447.91it/s]Cargando train:  65%|██████▍   | 7356/11364 [00:16<00:08, 451.27it/s]Cargando train:  65%|██████▌   | 7405/11364 [00:16<00:08, 459.73it/s]Cargando train:  66%|██████▌   | 7457/11364 [00:16<00:08, 476.09it/s]Cargando train:  66%|██████▌   | 7505/11364 [00:16<00:09, 424.09it/s]Cargando train:  66%|██████▋   | 7549/11364 [00:16<00:09, 422.10it/s]Cargando train:  67%|██████▋   | 7592/11364 [00:17<00:09, 418.63it/s]Cargando train:  67%|██████▋   | 7637/11364 [00:17<00:08, 425.50it/s]Cargando train:  68%|██████▊   | 7681/11364 [00:17<00:08, 428.38it/s]Cargando train:  68%|██████▊   | 7728/11364 [00:17<00:08, 440.23it/s]Cargando train:  68%|██████▊   | 7774/11364 [00:17<00:08, 445.84it/s]Cargando train:  69%|██████▉   | 7820/11364 [00:17<00:07, 447.07it/s]Cargando train:  69%|██████▉   | 7865/11364 [00:17<00:07, 447.18it/s]Cargando train:  70%|██████▉   | 7912/11364 [00:17<00:07, 451.69it/s]Cargando train:  70%|███████   | 7958/11364 [00:17<00:07, 448.41it/s]Cargando train:  70%|███████   | 8005/11364 [00:17<00:07, 451.47it/s]Cargando train:  71%|███████   | 8053/11364 [00:18<00:07, 459.36it/s]Cargando train:  71%|███████▏  | 8101/11364 [00:18<00:07, 463.38it/s]Cargando train:  72%|███████▏  | 8148/11364 [00:18<00:08, 393.96it/s]Cargando train:  72%|███████▏  | 8197/11364 [00:18<00:07, 418.23it/s]Cargando train:  73%|███████▎  | 8248/11364 [00:18<00:07, 442.95it/s]Cargando train:  73%|███████▎  | 8294/11364 [00:18<00:06, 447.39it/s]Cargando train:  73%|███████▎  | 8340/11364 [00:18<00:06, 434.95it/s]Cargando train:  74%|███████▍  | 8386/11364 [00:18<00:06, 437.65it/s]Cargando train:  74%|███████▍  | 8436/11364 [00:18<00:06, 454.17it/s]Cargando train:  75%|███████▍  | 8487/11364 [00:19<00:06, 468.59it/s]Cargando train:  75%|███████▌  | 8535/11364 [00:19<00:06, 465.56it/s]Cargando train:  76%|███████▌  | 8582/11364 [00:19<00:06, 449.10it/s]Cargando train:  76%|███████▌  | 8628/11364 [00:19<00:06, 418.96it/s]Cargando train:  76%|███████▋  | 8671/11364 [00:19<00:06, 414.00it/s]Cargando train:  77%|███████▋  | 8716/11364 [00:19<00:06, 423.41it/s]Cargando train:  77%|███████▋  | 8760/11364 [00:19<00:06, 425.94it/s]Cargando train:  77%|███████▋  | 8804/11364 [00:19<00:05, 427.87it/s]Cargando train:  78%|███████▊  | 8849/11364 [00:19<00:05, 433.16it/s]Cargando train:  78%|███████▊  | 8897/11364 [00:19<00:05, 445.44it/s]Cargando train:  79%|███████▊  | 8943/11364 [00:20<00:05, 447.93it/s]Cargando train:  79%|███████▉  | 8990/11364 [00:20<00:05, 454.00it/s]Cargando train:  80%|███████▉  | 9036/11364 [00:20<00:05, 442.33it/s]Cargando train:  80%|███████▉  | 9081/11364 [00:20<00:05, 431.22it/s]Cargando train:  80%|████████  | 9129/11364 [00:20<00:05, 443.80it/s]Cargando train:  81%|████████  | 9174/11364 [00:20<00:05, 435.41it/s]Cargando train:  81%|████████  | 9218/11364 [00:20<00:04, 434.46it/s]Cargando train:  82%|████████▏ | 9262/11364 [00:20<00:04, 432.34it/s]Cargando train:  82%|████████▏ | 9311/11364 [00:20<00:04, 446.94it/s]Cargando train:  82%|████████▏ | 9356/11364 [00:21<00:04, 425.97it/s]Cargando train:  83%|████████▎ | 9402/11364 [00:21<00:04, 434.49it/s]Cargando train:  83%|████████▎ | 9448/11364 [00:21<00:04, 439.42it/s]Cargando train:  84%|████████▎ | 9493/11364 [00:21<00:04, 441.64it/s]Cargando train:  84%|████████▍ | 9541/11364 [00:21<00:04, 452.39it/s]Cargando train:  84%|████████▍ | 9587/11364 [00:21<00:03, 449.84it/s]Cargando train:  85%|████████▍ | 9633/11364 [00:21<00:03, 445.73it/s]Cargando train:  85%|████████▌ | 9678/11364 [00:21<00:03, 440.23it/s]Cargando train:  86%|████████▌ | 9724/11364 [00:21<00:03, 443.66it/s]Cargando train:  86%|████████▌ | 9769/11364 [00:21<00:03, 437.00it/s]Cargando train:  86%|████████▋ | 9813/11364 [00:22<00:03, 437.00it/s]Cargando train:  87%|████████▋ | 9857/11364 [00:22<00:03, 427.40it/s]Cargando train:  87%|████████▋ | 9906/11364 [00:22<00:03, 442.59it/s]Cargando train:  88%|████████▊ | 9951/11364 [00:22<00:03, 444.12it/s]Cargando train:  88%|████████▊ | 9996/11364 [00:22<00:03, 445.79it/s]Cargando train:  88%|████████▊ | 10044/11364 [00:22<00:02, 455.82it/s]Cargando train:  89%|████████▉ | 10090/11364 [00:22<00:02, 454.89it/s]Cargando train:  89%|████████▉ | 10142/11364 [00:22<00:02, 471.85it/s]Cargando train:  90%|████████▉ | 10190/11364 [00:22<00:02, 459.89it/s]Cargando train:  90%|█████████ | 10245/11364 [00:22<00:02, 480.70it/s]Cargando train:  91%|█████████ | 10294/11364 [00:23<00:02, 478.24it/s]Cargando train:  91%|█████████ | 10342/11364 [00:23<00:02, 472.64it/s]Cargando train:  91%|█████████▏| 10390/11364 [00:23<00:02, 460.54it/s]Cargando train:  92%|█████████▏| 10437/11364 [00:23<00:02, 459.20it/s]Cargando train:  92%|█████████▏| 10483/11364 [00:23<00:01, 454.10it/s]Cargando train:  93%|█████████▎| 10529/11364 [00:23<00:01, 454.16it/s]Cargando train:  93%|█████████▎| 10575/11364 [00:23<00:01, 438.87it/s]Cargando train:  93%|█████████▎| 10619/11364 [00:23<00:01, 438.23it/s]Cargando train:  94%|█████████▍| 10666/11364 [00:23<00:01, 447.41it/s]Cargando train:  94%|█████████▍| 10711/11364 [00:24<00:01, 444.88it/s]Cargando train:  95%|█████████▍| 10764/11364 [00:24<00:01, 467.64it/s]Cargando train:  95%|█████████▌| 10811/11364 [00:24<00:01, 460.63it/s]Cargando train:  96%|█████████▌| 10858/11364 [00:24<00:01, 414.66it/s]Cargando train:  96%|█████████▌| 10913/11364 [00:24<00:01, 449.74it/s]Cargando train:  96%|█████████▋| 10960/11364 [00:24<00:00, 454.62it/s]Cargando train:  97%|█████████▋| 11007/11364 [00:24<00:00, 455.54it/s]Cargando train:  97%|█████████▋| 11054/11364 [00:24<00:00, 451.86it/s]Cargando train:  98%|█████████▊| 11104/11364 [00:24<00:00, 463.79it/s]Cargando train:  98%|█████████▊| 11154/11364 [00:24<00:00, 472.73it/s]Cargando train:  99%|█████████▊| 11202/11364 [00:25<00:00, 467.12it/s]Cargando train:  99%|█████████▉| 11249/11364 [00:25<00:00, 461.67it/s]Cargando train:  99%|█████████▉| 11297/11364 [00:25<00:00, 465.67it/s]Cargando train: 100%|█████████▉| 11344/11364 [00:25<00:00, 460.47it/s]Cargando train: 100%|██████████| 11364/11364 [00:25<00:00, 446.43it/s]
+[TRAIN] Cargadas exitosamente: 10514 imágenes
+[TRAIN] Fallos RAW: 850, WARPED: 0
+[TRAIN] Distribución - Sanos: 7644, Enfermos: 2870
+[TRAIN] Shape - X_raw: (10514, 50176), X_warped: (10514, 50176)
+
+[TEST] Cargando 1895 imágenes...
+Cargando test:   0%|          | 0/1895 [00:00<?, ?it/s]Cargando test:   3%|▎         | 50/1895 [00:00<00:03, 496.51it/s]Cargando test:   5%|▌         | 100/1895 [00:00<00:03, 482.43it/s]Cargando test:   8%|▊         | 150/1895 [00:00<00:03, 488.42it/s]Cargando test:  11%|█         | 199/1895 [00:00<00:03, 484.51it/s]Cargando test:  13%|█▎        | 254/1895 [00:00<00:03, 503.35it/s]Cargando test:  16%|█▌        | 307/1895 [00:00<00:03, 509.71it/s]Cargando test:  19%|█▉        | 358/1895 [00:00<00:03, 499.90it/s]Cargando test:  22%|██▏       | 409/1895 [00:00<00:03, 476.93it/s]Cargando test:  24%|██▍       | 457/1895 [00:00<00:03, 451.70it/s]Cargando test:  27%|██▋       | 509/1895 [00:01<00:02, 469.62it/s]Cargando test:  29%|██▉       | 558/1895 [00:01<00:02, 473.81it/s]Cargando test:  32%|███▏      | 606/1895 [00:01<00:02, 474.77it/s]Cargando test:  35%|███▍      | 661/1895 [00:01<00:02, 494.75it/s]Cargando test:  38%|███▊      | 711/1895 [00:01<00:02, 492.37it/s]Cargando test:  40%|████      | 764/1895 [00:01<00:02, 502.53it/s]Cargando test:  43%|████▎     | 815/1895 [00:01<00:02, 499.96it/s]Cargando test:  46%|████▌     | 866/1895 [00:01<00:02, 486.28it/s]Cargando test:  48%|████▊     | 915/1895 [00:01<00:02, 484.40it/s]Cargando test:  51%|█████     | 965/1895 [00:01<00:01, 487.95it/s]Cargando test:  54%|█████▎    | 1016/1895 [00:02<00:01, 491.38it/s]Cargando test:  56%|█████▋    | 1066/1895 [00:02<00:01, 491.38it/s]Cargando test:  59%|█████▉    | 1116/1895 [00:02<00:01, 490.63it/s]Cargando test:  62%|██████▏   | 1169/1895 [00:02<00:01, 502.13it/s]Cargando test:  64%|██████▍   | 1220/1895 [00:02<00:01, 484.10it/s]Cargando test:  67%|██████▋   | 1269/1895 [00:02<00:01, 471.13it/s]Cargando test:  69%|██████▉   | 1317/1895 [00:02<00:01, 469.86it/s]Cargando test:  72%|███████▏  | 1367/1895 [00:02<00:01, 477.25it/s]Cargando test:  75%|███████▍  | 1415/1895 [00:02<00:01, 477.44it/s]Cargando test:  77%|███████▋  | 1463/1895 [00:03<00:00, 469.13it/s]Cargando test:  80%|███████▉  | 1513/1895 [00:03<00:00, 475.75it/s]Cargando test:  82%|████████▏ | 1561/1895 [00:03<00:00, 475.29it/s]Cargando test:  85%|████████▍ | 1609/1895 [00:03<00:00, 466.14it/s]Cargando test:  88%|████████▊ | 1660/1895 [00:03<00:00, 478.45it/s]Cargando test:  90%|█████████ | 1713/1895 [00:03<00:00, 492.22it/s]Cargando test:  93%|█████████▎| 1763/1895 [00:03<00:00, 490.64it/s]Cargando test:  96%|█████████▌| 1813/1895 [00:03<00:00, 482.40it/s]Cargando test:  99%|█████████▊| 1869/1895 [00:03<00:00, 502.85it/s]Cargando test: 100%|██████████| 1895/1895 [00:03<00:00, 485.84it/s]
+[TEST] Cargadas exitosamente: 1746 imágenes
+[TEST] Fallos RAW: 149, WARPED: 0
+[TEST] Distribución - Sanos: 1274, Enfermos: 472
+[TEST] Shape - X_raw: (1746, 50176), X_warped: (1746, 50176)
+
+================================================================================
+[EXPERIMENTO 1] IMÁGENES RAW (Control)
+================================================================================
+
+[PASO 2/6] Aplicando PCA a RAW...
+[PCA] Varianza explicada acumulada: 0.7155
+[PCA] Forma de salida: Train (10514, 10), Test (1746, 10)
+
+[PASO 3/6] Calculando Fisher Ratios para RAW...
+
+[Fisher] Distribución de clases:
+  - Sanos: 7644 muestras
+  - Enfermos: 2870 muestras
+[Fisher] Ratios calculados: [4.54027764e-02 1.36582747e-01 4.02347557e-02 2.77364939e-01
+ 1.36820790e-05 1.54411616e-02 1.90069340e-02 1.15353055e-02
+ 5.94139448e-04 3.54693015e-03]
+[Fisher] Componente más discriminante: PC4 (J=0.2774)
+
+[PASO 4/6] Aplicando Fisher Weighting a RAW...
+[Fisher Weighting] Pesos aplicados: [0.21307927 0.36957103 0.20058603 0.52665448 0.00369893 0.12426247
+ 0.13786564 0.10740254 0.02437498 0.05955611]
+
+[PASO 5/6] Clasificando con k-NN (k=5) - RAW...
+
+[RESULTADOS RAW]
+              precision    recall  f1-score   support
+
+        Sano     0.8746    0.9254    0.8993      1274
+     Enfermo     0.7613    0.6419    0.6966       472
+
+    accuracy                         0.8488      1746
+   macro avg     0.8180    0.7837    0.7979      1746
+weighted avg     0.8440    0.8488    0.8445      1746
+
+
+================================================================================
+[EXPERIMENTO 2] IMÁGENES WARPED (Target)
+================================================================================
+
+[PASO 2/6] Aplicando PCA a WARPED...
+[PCA] Varianza explicada acumulada: 0.7322
+[PCA] Forma de salida: Train (10514, 10), Test (1746, 10)
+
+[PASO 3/6] Calculando Fisher Ratios para WARPED...
+
+[Fisher] Distribución de clases:
+  - Sanos: 7644 muestras
+  - Enfermos: 2870 muestras
+[Fisher] Ratios calculados: [0.07585597 0.06999919 0.40317279 0.00217435 0.01203821 0.00073288
+ 0.01535717 0.00115687 0.00298504 0.00044566]
+[Fisher] Componente más discriminante: PC3 (J=0.4032)
+
+[PASO 4/6] Aplicando Fisher Weighting a WARPED...
+[Fisher Weighting] Pesos aplicados: [0.27541963 0.2645736  0.63495889 0.04662995 0.10971877 0.02707168
+ 0.12392406 0.03401278 0.05463551 0.02111072]
+
+[PASO 5/6] Clasificando con k-NN (k=5) - WARPED...
+
+[RESULTADOS WARPED]
+              precision    recall  f1-score   support
+
+        Sano     0.8555    0.9199    0.8865      1274
+     Enfermo     0.7287    0.5805    0.6462       472
+
+    accuracy                         0.8282      1746
+   macro avg     0.7921    0.7502    0.7664      1746
+weighted avg     0.8212    0.8282    0.8216      1746
+
+
+================================================================================
+COMPARACIÓN FINAL: RAW vs WARPED
+================================================================================
+Accuracy RAW:    0.8488
+Accuracy WARPED: 0.8282
+Mejora:          -0.0206 (-2.43%)
+
+⚠️  ADVERTENCIA: El warping NO mejoró el rendimiento.
+
+[PASO 6/6] Generando visualizaciones...
+[Viz] Fisher Ratios guardado: results/fisher_ratios_warped.png
+[Viz] Fisher Ratios guardado: results/fisher_ratios_raw.png
+[Viz] PCA Comparison guardado: results/pca_comparison_warped.png
+[Viz] PCA Comparison guardado: results/pca_comparison_raw.png
+[Viz] Dominant Component guardado: results/dominant_component_warped.png
+[Viz] Dominant Component guardado: results/dominant_component_raw.png
+
+[Resultados] Guardados en: results/experiment_results.json
+
+================================================================================
+EXPERIMENTO COMPLETADO
+================================================================================
+
+Revisa los resultados en: results

@@ -57,18 +57,20 @@
     "hidden_dim": 768,
     "dropout_rate": 0.3,
     "head_structure": [
+      {"type": "Flatten"},
+      {"type": "Linear", "in": 512, "out": 512},
+      {"type": "GroupNorm", "groups": 32, "channels": 512},
+      {"type": "ReLU"},
+      {"type": "Dropout", "p": 0.3},
       {"type": "Linear", "in": 512, "out": 768},
-      {"type": "GroupNorm", "groups": 32, "channels": 768},
+      {"type": "GroupNorm", "groups": 48, "channels": 768},
       {"type": "ReLU"},
-      {"type": "Dropout", "p": 0.3},
-      {"type": "Linear", "in": 768, "out": 256},
-      {"type": "GroupNorm", "groups": 16, "channels": 256},
-      {"type": "ReLU"},
-      {"type": "Dropout", "p": 0.3},
-      {"type": "Linear", "in": 256, "out": 30},
+      {"type": "Dropout", "p": 0.15},
+      {"type": "Linear", "in": 768, "out": 30},
       {"type": "Sigmoid"}
     ],
-    "output_format": "30 normalized coordinates [0,1]"
+    "output_format": "30 normalized coordinates [0,1]",
+    "_note": "Corregido 16-Dic-2025: estructura verificada desde checkpoint seed456"
   },
   "preprocessing": {
     "input_size": [299, 299],
