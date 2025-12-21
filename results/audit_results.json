@@ -1,10 +1,10 @@
 {
   "dataset": "outputs/full_warped_dataset",
-  "balanced": true,
-  "raw_accuracy": 0.8273894436519258,
-  "warped_accuracy": 0.8273894436519258,
-  "raw_fisher_max": 0.32248297333717346,
-  "warped_fisher_max": 0.21301379799842834,
-  "raw_explained_variance": 0.7182683348655701,
-  "warped_explained_variance": 0.8258543610572815
+  "balanced": false,
+  "raw_accuracy": 0.8473609129814551,
+  "warped_accuracy": 0.833808844507846,
+  "raw_fisher_max": 0.277365505695343,
+  "warped_fisher_max": 0.2220238596200943,
+  "raw_explained_variance": 0.7154762148857117,
+  "warped_explained_variance": 0.8199223875999451
 }

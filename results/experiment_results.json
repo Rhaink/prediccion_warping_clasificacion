@@ -1,80 +1,38 @@
 {
-  "experiment": "Fisher Linear Analysis - Warping Validation",
-  "date": "2025-12-20",
-  "dataset": {
-    "train_size": 10514,
-    "test_size": 1402,
-    "class_distribution_train": {
-      "Sano": 7644,
-      "Enfermo": 2870
-    },
-    "class_distribution_test": {
-      "Sano": 1020,
-      "Enfermo": 382
-    }
-  },
-  "pca": {
-    "n_components": 10,
-    "explained_variance_raw": 0.7154762744903564,
-    "explained_variance_warped": 0.8199222683906555
-  },
-  "fisher_ratios": {
-    "raw": [
-      0.045402828603982925,
-      0.13658252358436584,
-      0.0402330718934536,
-      0.277367502450943,
-      1.3700187082577031e-05,
-      0.015441321767866611,
-      0.019006676971912384,
-      0.011535117402672768,
-      0.0005940089467912912,
-      0.003553209360688925
-    ],
-    "warped": [
-      0.12569114565849304,
-      0.06193448603153229,
-      0.2220236361026764,
-      0.06723979860544205,
-      0.010397566482424736,
-      0.029134083539247513,
-      0.06161695346236229,
-      0.0003937621950171888,
-      0.012163051404058933,
-      0.041789185255765915
-    ],
-    "dominant_pc_raw": 4,
-    "dominant_pc_warped": 3
-  },
+  "dataset": "outputs/warped_dataset",
+  "balanced": false,
+  "clahe": true,
   "classification": {
     "raw": {
-      "accuracy": 0.8473609129814551,
+      "accuracy": 0.6875,
       "confusion_matrix": [
         [
-          943,
-          77
+          31,
+          16
         ],
         [
-          137,
-          245
+          14,
+          35
         ]
       ]
     },
     "warped": {
-      "accuracy": 0.8345221112696148,
+      "accuracy": 0.6979166666666666,
       "confusion_matrix": [
         [
-          938,
-          82
+          31,
+          16
         ],
         [
-          150,
-          232
+          13,
+          36
         ]
       ]
     },
-    "improvement": -0.012838801711840264,
-    "improvement_percent": -1.5151515151515194
+    "improvement": 0.01041666666666663
   },
-  "conclusion": "RAW better or equal to WARPED"
+  "pca": {
+    "raw_explained_variance": 0.564227819442749,
+    "warped_explained_variance": 0.5886032581329346
+  }
 }

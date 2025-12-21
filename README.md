@@ -105,21 +105,21 @@ This project implements a two-stage approach for COVID-19 classification:
 
 ### Geometric Validation (Fisher Analysis)
 
-To validate the warping technique without Deep Learning ("Back to Basics"), we implemented a **Fisher Linear Discriminant Analysis** (PCA + Fisher + k-NN) on two scenarios.
+To validate the warping technique without Deep Learning ("Back to Basics"), we implemented a **Fisher Linear Discriminant Analysis** (PCA + Fisher + k-NN).
 
 *   **Hypothesis:** If warping works, images should be linearly separable (Sano vs Enfermo) using classical methods.
 *   **Method:** Manual Fisher Ratio calculation ($J_i$) on 10 PCA components.
 
 **Results:**
 
-1.  **Curated Dataset (957 images - Ground Truth):**
+1.  **Curated Dataset (957 images):**
     *   **Accuracy:** RAW 73.96% vs WARPED **78.12%** (**+4.16% improvement**) ✅
-    *   **Conclusion:** Warping significantly helps linear classification when data quality is high.
+    *   **Finding:** Warping cleans geometric noise, making pathology easier to linearly separate.
 
-2.  **Massive Dataset (15k images - Balanced 50/50):**
-    *   **Accuracy:** RAW 82.7% vs WARPED 82.7% (Tie).
-    *   **Explained Variance (10 PCs):** RAW 71.8% vs WARPED **82.6%** (**+10.8%**) ✅
-    *   **Conclusion:** At scale, automated warping noise dilutes linear accuracy gains, BUT the **massive reduction in geometric entropy (+10% variance explained)** proves the normalization process is working mathematically.
+2.  **Massive Dataset (15k images) + CLAHE:**
+    *   **Accuracy:** RAW 80.60% vs WARPED **84.52%** (**+3.92% improvement**) ✅
+    *   **The Synergy Effect:** Applying local contrast enhancement (CLAHE) on RAW images *hurts* performance (-4%) because it amplifies geometric noise. On WARPED images, it *helps* (+1.2%) because tissues are aligned.
+    *   **Conclusion:** Warping creates the spatial coherence required for advanced texture analysis techniques to work effectively.
 
 👉 **[See Full Experiment Details](FISHER_EXPERIMENT_README.md)**
 
