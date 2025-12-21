@@ -103,6 +103,19 @@ This project implements a two-stage approach for COVID-19 classification:
 
 > **Conclusión:** El warping mejora robustez y generalización **dentro del mismo dominio** (mismo hospital/equipo), pero NO resuelve el domain shift entre diferentes instituciones. Para uso clínico en nuevos hospitales se requieren técnicas de domain adaptation.
 
+### Geometric Validation (Fisher Analysis)
+
+To validate the warping technique without Deep Learning ("Back to Basics"), we implemented a **Fisher Linear Discriminant Analysis** on PCA components.
+
+*   **Hypothesis:** If warping works, images should be linearly separable (Sano vs Enfermo) using classical methods ($J$ ratios).
+*   **Method:** Manual Fisher Ratio calculation ($J_i$) on 10 PCA components -> Fisher Weighting -> k-NN Classification.
+*   **Key Finding:**
+    *   **Max Fisher Ratio (RAW):** $J=0.2774$ (PC4)
+    *   **Max Fisher Ratio (WARPED):** $J=0.4032$ (PC3) **(+45% higher)**
+    *   **Conclusion:** Warping successfully **concentrates discriminative information** into fewer components, validating its geometric normalization effect, even though a simple k-NN classifier (82.8% acc) is too simple to outperform the raw baseline (84.9% acc).
+
+👉 **[See Full Experiment Details](FISHER_EXPERIMENT_README.md)**
+
 ### Robustness Mechanism (Control Experiment - Session 39)
 
 The control experiment with Original Cropped 47% revealed the causal mechanism:
