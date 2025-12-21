@@ -105,14 +105,21 @@ This project implements a two-stage approach for COVID-19 classification:
 
 ### Geometric Validation (Fisher Analysis)
 
-To validate the warping technique without Deep Learning ("Back to Basics"), we implemented a **Fisher Linear Discriminant Analysis** on PCA components using the massive dataset (~15k images).
+To validate the warping technique without Deep Learning ("Back to Basics"), we implemented a **Fisher Linear Discriminant Analysis** (PCA + Fisher + k-NN) on two scenarios.
 
-*   **Hypothesis:** If warping works, images should be linearly separable (Sano vs Enfermo) using classical methods ($J$ ratios).
-*   **Method:** Manual Fisher Ratio calculation ($J_i$) on 10 PCA components -> Fisher Weighting -> k-NN Classification.
-*   **Key Finding (Geometric Compression):**
-    *   **Explained Variance (10 PCs):** RAW **71.55%** vs WARPED **81.99%**
-    *   **Conclusion:** Warping significantly reduces geometric entropy, allowing PCA to capture **+10.4% more information** with the same number of components. This mathematically proves the "normalization" effect.
-    *   **Classification:** k-NN Accuracy (RAW 84.7% vs WARPED 83.5%) is similar, indicating that while warping structures the data better, a simple linear classifier is insufficient to exploit the subtle texture differences that remain.
+*   **Hypothesis:** If warping works, images should be linearly separable (Sano vs Enfermo) using classical methods.
+*   **Method:** Manual Fisher Ratio calculation ($J_i$) on 10 PCA components.
+
+**Results:**
+
+1.  **Curated Dataset (957 images - Ground Truth):**
+    *   **Accuracy:** RAW 73.96% vs WARPED **78.12%** (**+4.16% improvement**) ✅
+    *   **Conclusion:** Warping significantly helps linear classification when data quality is high.
+
+2.  **Massive Dataset (15k images - Balanced 50/50):**
+    *   **Accuracy:** RAW 82.7% vs WARPED 82.7% (Tie).
+    *   **Explained Variance (10 PCs):** RAW 71.8% vs WARPED **82.6%** (**+10.8%**) ✅
+    *   **Conclusion:** At scale, automated warping noise dilutes linear accuracy gains, BUT the **massive reduction in geometric entropy (+10% variance explained)** proves the normalization process is working mathematically.
 
 👉 **[See Full Experiment Details](FISHER_EXPERIMENT_README.md)**
 

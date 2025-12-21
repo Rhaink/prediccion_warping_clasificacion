@@ -1,0 +1,10 @@
+{
+  "dataset": "outputs/full_warped_dataset",
+  "balanced": true,
+  "raw_accuracy": 0.8273894436519258,
+  "warped_accuracy": 0.8273894436519258,
+  "raw_fisher_max": 0.32248297333717346,
+  "warped_fisher_max": 0.21301379799842834,
+  "raw_explained_variance": 0.7182683348655701,
+  "warped_explained_variance": 0.8258543610572815
+}
