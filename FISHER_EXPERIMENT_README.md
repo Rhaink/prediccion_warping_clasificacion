@@ -54,6 +54,27 @@ Se realizaron 4 experimentos controlados variando el tamaño del dataset y el pr
 
 ---
 
+## 🚀 Optimización de Hiperparámetros (Grid Search)
+
+Se realizó un barrido de componentes PCA [10-200] y clasificadores sobre el **Dataset Masivo con CLAHE** para encontrar el techo de rendimiento.
+
+### Accuracy vs. Complejidad (k-NN)
+El Warping mantiene una ventaja consistente sobre RAW en todo el espectro de complejidad.
+
+| # Componentes | RAW k-NN | WARPED k-NN | Mejora |
+| :---: | :---: | :---: | :---: |
+| **10** | 81.19% | **84.52%** | **+3.33%** |
+| **50** | 82.63% | **85.38%** | **+2.75%** |
+| **100** | 82.42% | **85.60%** | **+3.18%** |
+| **200** | 82.27% | **85.60%** | **+3.33%** |
+
+### Hallazgos del Grid Search
+1.  **Estabilidad:** El clasificador k-NN sobre imágenes WARPED es muy estable, alcanzando su pico (~85.6%) rápidamente y manteniéndose. RAW fluctúa y se queda estancado en ~82%.
+2.  **Eficiencia:** WARPED logra >84% de accuracy con solo **10 componentes**. RAW necesita modelos lineales complejos (Logistic Regression) y >150 componentes para acercarse a esos valores.
+3.  **Visualización:** Ver `results/grid_accuracy.png` y `results/grid_variance.png` para las curvas de tendencia.
+
+---
+
 ## 🧠 Discusión y "Teoría Unificada"
 
 El análisis cruzado de los 4 escenarios nos permite concluir:

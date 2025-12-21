@@ -1,0 +1,90 @@
+{
+  "raw": [
+    {
+      "n_components": 10,
+      "explained_variance": 0.5598804836319281,
+      "k-NN (k=5)": 0.8118668596237337,
+      "LogisticRegression": 0.7908827785817656,
+      "LinearSVM": 0.788712011577424
+    },
+    {
+      "n_components": 25,
+      "explained_variance": 0.6991580629811366,
+      "k-NN (k=5)": 0.8125904486251809,
+      "LogisticRegression": 0.7995658465991317,
+      "LinearSVM": 0.7959479015918958
+    },
+    {
+      "n_components": 50,
+      "explained_variance": 0.7822860626832194,
+      "k-NN (k=5)": 0.8263386396526773,
+      "LogisticRegression": 0.8227206946454414,
+      "LinearSVM": 0.8248914616497829
+    },
+    {
+      "n_components": 100,
+      "explained_variance": 0.8453396163423696,
+      "k-NN (k=5)": 0.8241678726483358,
+      "LogisticRegression": 0.8509406657018813,
+      "LinearSVM": 0.849493487698987
+    },
+    {
+      "n_components": 150,
+      "explained_variance": 0.8751056714938891,
+      "k-NN (k=5)": 0.8219971056439942,
+      "LogisticRegression": 0.8654124457308249,
+      "LinearSVM": 0.8632416787264834
+    },
+    {
+      "n_components": 200,
+      "explained_variance": 0.8935159898172853,
+      "k-NN (k=5)": 0.8227206946454414,
+      "LogisticRegression": 0.8632416787264834,
+      "LinearSVM": 0.8625180897250362
+    }
+  ],
+  "warped": [
+    {
+      "n_components": 10,
+      "explained_variance": 0.5753568958306682,
+      "k-NN (k=5)": 0.8451519536903039,
+      "LogisticRegression": 0.8147612156295224,
+      "LinearSVM": 0.8118668596237337
+    },
+    {
+      "n_components": 25,
+      "explained_variance": 0.6933627998716433,
+      "k-NN (k=5)": 0.8502170767004341,
+      "LogisticRegression": 0.8350217076700435,
+      "LinearSVM": 0.8306801736613604
+    },
+    {
+      "n_components": 50,
+      "explained_variance": 0.7719816578153484,
+      "k-NN (k=5)": 0.85383502170767,
+      "LogisticRegression": 0.841534008683068,
+      "LinearSVM": 0.8422575976845152
+    },
+    {
+      "n_components": 100,
+      "explained_variance": 0.8401665711292484,
+      "k-NN (k=5)": 0.8560057887120116,
+      "LogisticRegression": 0.8596237337192475,
+      "LinearSVM": 0.8574529667149059
+    },
+    {
+      "n_components": 150,
+      "explained_variance": 0.8744716231101949,
+      "k-NN (k=5)": 0.8560057887120116,
+      "LogisticRegression": 0.8516642547033285,
+      "LinearSVM": 0.8531114327062229
+    },
+    {
+      "n_components": 200,
+      "explained_variance": 0.895415082762495,
+      "k-NN (k=5)": 0.8560057887120116,
+      "LogisticRegression": 0.8560057887120116,
+      "LinearSVM": 0.8574529667149059
+    }
+  ]
+}
