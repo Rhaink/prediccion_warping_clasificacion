@@ -176,7 +176,7 @@ class DatasetLoader:
 
     def __init__(self,
                  raw_root: str = "data/dataset/COVID-19_Radiography_Dataset",
-                 warped_root: str = "outputs/warped_replication_v2",
+                 warped_root: str = "outputs/full_warped_dataset",
                  image_size: int = 224):
         """
         Args:
@@ -201,8 +201,8 @@ class DatasetLoader:
         if not self.warped_root.exists():
             raise FileNotFoundError(f"Warped dataset no encontrado: {self.warped_root}")
 
-        print(f"[Dataset] RAW: {self.raw_root}")
-        print(f"[Dataset] WARPED: {self.warped_root}")
+        print(f"[Dataset] RAW: {self.raw_root.resolve()}")
+        print(f"[Dataset] WARPED (Source of Truth): {self.warped_root.resolve()}")
 
     def load_split(self, split: str = "test", use_massive: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -224,7 +224,7 @@ class DatasetLoader:
             raise FileNotFoundError(f"CSV de mapeo no encontrado: {csv_path}")
 
         df = pd.read_csv(csv_path)
-        print(f"\n[{split.upper()}] Cargando {len(df)} imágenes...")
+        print(f"\n[{split.upper()}] Cargando {len(df)} imágenes desde {self.warped_root}...")
 
         X_raw_list = []
         X_warped_list = []
@@ -266,6 +266,11 @@ class DatasetLoader:
 
             # Cargar WARPED
             warped_path = self.warped_root / split / category / warped_filename
+            
+            # AUDITORIA: Muestreo de rutas para verificar origen correcto
+            if idx % 2000 == 0:
+                print(f"  [AUDIT] Cargando: {warped_path}")
+
             if not warped_path.exists():
                 failed_warped += 1
                 continue
@@ -680,7 +685,7 @@ def main():
     # Configuración
     loader = DatasetLoader(
         raw_root="data/dataset/COVID-19_Radiography_Dataset",
-        warped_root="outputs/warped_replication_v2",
+        warped_root="outputs/full_warped_dataset",
         image_size=224
     )
 
