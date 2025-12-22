@@ -54,24 +54,27 @@ Se realizaron 4 experimentos controlados variando el tamaño del dataset y el pr
 
 ---
 
-## 🚀 Optimización de Hiperparámetros (Grid Search)
+## 🚀 Validación Científica Rigurosa (5-Fold CV)
 
-Se realizó un barrido de componentes PCA [10-200] y clasificadores sobre el **Dataset Masivo con CLAHE** para encontrar el techo de rendimiento.
+Para determinar la robustez del método y el número óptimo de componentes, se realizó una **Validación Cruzada Estratificada de 5 Pliegues** acelerada por GPU (PyTorch) sobre el dataset masivo con CLAHE.
 
-### Accuracy vs. Complejidad (k-NN)
-El Warping mantiene una ventaja consistente sobre RAW en todo el espectro de complejidad.
+### Resultados de Estabilidad
+El método demostró una estabilidad excepcional con una desviación estándar mínima ($\sigma \approx 0.5\%$).
 
-| # Componentes | RAW k-NN | WARPED k-NN | Mejora |
-| :---: | :---: | :---: | :---: |
-| **10** | 81.19% | **84.52%** | **+3.33%** |
-| **50** | 82.63% | **85.38%** | **+2.75%** |
-| **100** | 82.42% | **85.60%** | **+3.18%** |
-| **200** | 82.27% | **85.60%** | **+3.33%** |
+| Componentes ($k$) | Accuracy (Media $\pm$ Std) | Varianza Explicada |
+| :---: | :---: | :---: |
+| 10 | 82.37% $\pm$ 0.53% | 58.14% |
+| 25 | 82.92% $\pm$ 0.52% | 69.79% |
+| **50** | **83.25% $\pm$ 0.51%** | **77.53%** |
+| 75 | 83.23% $\pm$ 0.53% | 81.60% |
+| 100 | 83.32% $\pm$ 0.56% | 84.29% |
+| 150 | 83.29% $\pm$ 0.48% | 87.63% |
+| 200 | 83.28% $\pm$ 0.47% | 89.48% |
 
-### Hallazgos del Grid Search
-1.  **Estabilidad:** El clasificador k-NN sobre imágenes WARPED es muy estable, alcanzando su pico (~85.6%) rápidamente y manteniéndose. RAW fluctúa y se queda estancado en ~82%.
-2.  **Eficiencia:** WARPED logra >84% de accuracy con solo **10 componentes**. RAW necesita modelos lineales complejos (Logistic Regression) y >150 componentes para acercarse a esos valores.
-3.  **Visualización:** Ver `results/grid_accuracy.png` y `results/grid_variance.png` para las curvas de tendencia.
+### Selección de Componentes (Criterio de Parsimonia)
+Aunque el pico numérico se alcanza en $k=100$ (83.32%), seleccionamos **$k=50$** como el óptimo para la tesis.
+*   **Justificación:** La diferencia de accuracy entre 50 y 100 componentes es solo del **0.07%**, lo cual es estadísticamente insignificante (mucho menor que la desviación estándar de 0.51%).
+*   **Eficiencia:** Con solo 50 dimensiones, logramos capturar el 77.5% de la varianza discriminante y obtener un rendimiento equivalente al modelo más complejo.
 
 ---
 
