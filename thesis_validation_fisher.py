@@ -2,11 +2,11 @@
 """
 ROLE: Senior Computer Vision Research Engineer
 PROJECT: Thesis - Geometric Validation of Lung Warping via Fisher Linear Analysis
-STACK: PyTorch (GPU), Numpy, Matplotlib
+STACK: PyTorch (GPU), Numpy, Matplotlib, Scikit-Image
 
 OBJETIVO:
-Validación científica rigurosa usando aceleración por GPU.
-Incluye generación de evidencia visual (Galería de Clasificación).
+Validación científica con generación de evidencia forense detallada.
+Guarda comparativas individuales RAW vs WARPED para análisis cualitativo.
 """
 
 import numpy as np
@@ -18,10 +18,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score
+from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import peak_signal_noise_ratio as psnr
 from tqdm import tqdm
-import gc
 import warnings
 import random
+import shutil
 
 warnings.filterwarnings('ignore')
 plt.style.use('seaborn-v0_8-whitegrid')
@@ -41,6 +43,17 @@ class DatasetLoader:
         if not self.raw_root.exists(): self.raw_root = Path("data/dataset")
         if not self.warped_root.exists(): self.warped_root = Path.cwd() / self.warped_root
 
+    def get_raw_path(self, image_name, category):
+        """Busca la imagen RAW original."""
+        candidates = [
+            self.raw_root / category / "images" / f"{image_name}.png",
+            self.raw_root / category / f"{image_name}.png",
+            self.raw_root / f"{image_name}.png"
+        ]
+        for p in candidates:
+            if p.exists(): return p
+        return None
+
     def load_full_dataset(self, split="train", use_clahe=True):
         csv_path = self.warped_root / split / "images.csv"
         if not csv_path.exists(): csv_path = self.warped_root / "images.csv"
@@ -52,6 +65,8 @@ class DatasetLoader:
         D = self.image_size * self.image_size
         X = np.zeros((N, D), dtype=np.float32)
         y = np.zeros(N, dtype=np.int32)
+        names = []
+        categories = []
         
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4)) if use_clahe else None
         
@@ -62,6 +77,8 @@ class DatasetLoader:
             name = row['image_name']
             cat = row['category']
             w_name = row.get('warped_filename', row.get('filename', f"{name}.png"))
+            
+            # Cargar WARPED
             p_candidates = [
                 self.warped_root / split / cat / w_name,
                 self.warped_root / cat / w_name,
@@ -82,23 +99,22 @@ class DatasetLoader:
             
             X[loaded_count] = img.flatten()
             y[loaded_count] = 0 if cat == 'Normal' else 1
+            names.append(name)
+            categories.append(cat)
             loaded_count += 1
 
-        return torch.from_numpy(X[:loaded_count]), torch.from_numpy(y[:loaded_count])
+        return torch.from_numpy(X[:loaded_count]), torch.from_numpy(y[:loaded_count]), names, categories
 
 class TorchAnalysis:
     def __init__(self, device):
         self.device = device
 
     def fit_pca_efficient(self, X, n_components):
-        # U: (N, q), S: (q,), V: (D, q)
         U, S, V = torch.pca_lowrank(X, q=n_components, center=True, niter=2)
         mean = torch.mean(X, dim=0)
-        
         eigvals = S ** 2 / (X.shape[0] - 1)
         total_var = torch.var(X, dim=0, unbiased=True).sum()
         explained_variance_ratio = eigvals / total_var
-        
         X_pca = torch.mm(X - mean, V)
         return X_pca, explained_variance_ratio, V, mean
 
@@ -135,88 +151,110 @@ class TorchAnalysis:
             mode_val, _ = torch.mode(topk_labels, dim=1)
             return mode_val
 
-    def generate_classification_gallery(self, X_test_cpu, y_test_cpu, y_pred_cpu, output_path, image_size=224):
+    def save_detailed_results(self, X_test_cpu, y_test_cpu, y_pred_cpu, names, categories, loader, output_dir, num_samples=20):
+        """
+        Guarda comparativas individuales RAW vs WARPED para inspección manual.
+        Calcula SSIM/PSNR para cuantificar deformación.
+        """
+        output_dir = Path(output_dir)
+        if output_dir.exists(): shutil.rmtree(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
         y_true = y_test_cpu.numpy()
         y_pred = y_pred_cpu.numpy()
         
-        tp = np.where((y_true == 1) & (y_pred == 1))[0]
-        tn = np.where((y_true == 0) & (y_pred == 0))[0]
-        fp = np.where((y_true == 0) & (y_pred == 1))[0]
-        fn = np.where((y_true == 1) & (y_pred == 0))[0]
-        
-        categories = {
-            "TP (Enfermo Correcto)": tp,
-            "TN (Sano Correcto)": tn,
-            "FP (Sano -> Enfermo)": fp,
-            "FN (Enfermo -> Sano)": fn
+        # Categorizar índices
+        indices = {
+            "TP": np.where((y_true == 1) & (y_pred == 1))[0],
+            "TN": np.where((y_true == 0) & (y_pred == 0))[0],
+            "FP": np.where((y_true == 0) & (y_pred == 1))[0],
+            "FN": np.where((y_true == 1) & (y_pred == 0))[0]
         }
         
-        fig, axes = plt.subplots(4, 5, figsize=(15, 12))
-        plt.subplots_adjust(hspace=0.4, wspace=0.1)
+        print(f"\n[DETALLE] Generando {num_samples} reportes individuales en '{output_dir}'...")
         
-        print(f"[GALERÍA] TP: {len(tp)}, TN: {len(tn)}, FP: {len(fp)}, FN: {len(fn)}")
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
         
-        for row_idx, (label, indices) in enumerate(categories.items()):
-            if len(indices) > 0:
-                selected = np.random.choice(indices, min(5, len(indices)), replace=False)
-            else:
-                selected = []
-                
-            for col_idx in range(5):
-                ax = axes[row_idx, col_idx]
-                if col_idx < len(selected):
-                    idx = selected[col_idx]
-                    img_flat = X_test_cpu[idx].numpy()
-                    img = img_flat.reshape(image_size, image_size)
-                    
-                    ax.imshow(img, cmap='gray')
-                    ax.set_xticks([])
-                    ax.set_yticks([])
-                    
-                    color = 'green' if "Correcto" in label else 'red'
-                    for spine in ax.spines.values():
-                        spine.set_edgecolor(color)
-                        spine.set_linewidth(2)
-                else:
-                    ax.axis('off')
+        for cat_label, idx_list in indices.items():
+            # Crear subcarpeta
+            cat_dir = output_dir / cat_label
+            cat_dir.mkdir(exist_ok=True)
             
-            axes[row_idx, 2].set_title(label, fontsize=12, fontweight='bold', pad=10)
-
-        plt.suptitle("Evidencia de Clasificación (Test Set)", fontsize=16, y=0.95)
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
-        plt.close()
-        print(f"[GALERÍA] Guardada en {output_path}")
+            # Seleccionar muestras
+            if len(idx_list) == 0: continue
+            selected = np.random.choice(idx_list, min(num_samples, len(idx_list)), replace=False)
+            
+            for idx in selected:
+                name = names[idx]
+                category = categories[idx]
+                
+                # 1. Obtener imagen Warped (del tensor)
+                warped_flat = X_test_cpu[idx].numpy()
+                img_warped = warped_flat.reshape(224, 224).astype(np.uint8)
+                
+                # 2. Cargar imagen Raw Original (del disco)
+                raw_path = loader.get_raw_path(name, category)
+                if not raw_path: continue
+                
+                img_raw = cv2.imread(str(raw_path), cv2.IMREAD_GRAYSCALE)
+                img_raw = cv2.resize(img_raw, (224, 224))
+                
+                # Aplicar CLAHE a RAW también para comparación justa visual
+                img_raw_clahe = clahe.apply(img_raw)
+                
+                # 3. Métricas de Deformación
+                # Cuantifican cuánto cambió la imagen (Geometría + Intensidad)
+                val_ssim = ssim(img_raw_clahe, img_warped, data_range=255)
+                val_psnr = psnr(img_raw_clahe, img_warped, data_range=255)
+                
+                # 4. Plot
+                fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+                
+                axes[0].imshow(img_raw_clahe, cmap='gray')
+                axes[0].set_title(f"RAW (Input)\n{name}", fontsize=10)
+                axes[0].axis('off')
+                
+                axes[1].imshow(img_warped, cmap='gray')
+                axes[1].set_title(f"WARPED (Processed)\nSSIM: {val_ssim:.2f} | PSNR: {val_psnr:.1f}", fontsize=10)
+                axes[1].axis('off')
+                
+                real_lbl = "Enfermo" if y_true[idx] == 1 else "Sano"
+                pred_lbl = "Enfermo" if y_pred[idx] == 1 else "Sano"
+                color = "green" if real_lbl == pred_lbl else "red"
+                
+                plt.suptitle(f"{cat_label}: Real={real_lbl} vs Pred={pred_lbl}", color=color, fontsize=14, fontweight='bold')
+                
+                save_path = cat_dir / f"{cat_label}_{name}.png"
+                plt.savefig(save_path, bbox_inches='tight', dpi=100)
+                plt.close()
 
 def run_scientific_validation(args, device):
     print("\n" + "="*70)
-    print("VALIDACIÓN CIENTÍFICA HÍBRIDA (RAM + GPU)")
+    print("ANÁLISIS FORENSE DE CLASIFICACIÓN (GPU)")
     print("="*70)
     
     loader = DatasetLoader(args.raw_dir, args.dataset_dir)
     
-    # 1. Cargar Train
-    X_train_cpu, y_train_cpu = loader.load_full_dataset("train", use_clahe=args.clahe)
-    print(f"[RAM] Train Dataset: {X_train_cpu.shape}")
+    # 1. Cargar Train (solo para ajustar el modelo)
+    X_train_cpu, y_train_cpu, _, _ = loader.load_full_dataset("train", use_clahe=args.clahe)
     
     analyzer = TorchAnalysis(device)
     
-    # Usaremos k=50 (nuestro óptimo) para la inferencia visual
+    # Modelo Óptimo Detectado Previamente
     best_k = 50 
-    print(f"\n[INFERENCIA] Entrenando modelo final con k={best_k} en todo TRAIN...")
+    print(f"\n[MODELO] Ajustando Fisher-PCA (k={best_k}) en todo TRAIN...")
     
     try:
         X_train_gpu = X_train_cpu.to(device)
         y_train_gpu = y_train_cpu.to(device)
         
-        # Pipeline Final
+        # Pipeline
         mean = X_train_gpu.mean(dim=0)
         std = X_train_gpu.std(dim=0) + 1e-8
         X_train_norm = (X_train_gpu - mean) / std
         
-        # PCA
+        # PCA & Fisher
         X_train_pca, _, V, mean_pca = analyzer.fit_pca_efficient(X_train_norm, best_k)
-        
-        # Fisher
         J_weights = analyzer.fisher_score(X_train_pca, y_train_gpu)
         weights = torch.sqrt(J_weights)
         X_train_final = X_train_pca * weights
@@ -228,40 +266,41 @@ def run_scientific_validation(args, device):
         print("Error OOM entrenando modelo final.")
         return
 
-    # 2. Cargar Test y Predecir
-    print("\n[INFERENCIA] Cargando Test Set...")
-    X_test_cpu, y_test_cpu = loader.load_full_dataset("test", use_clahe=args.clahe)
+    # 2. Cargar Test para Análisis
+    print("\n[INFERENCIA] Cargando Test Set con metadatos...")
+    X_test_cpu, y_test_cpu, names_test, cats_test = loader.load_full_dataset("test", use_clahe=args.clahe)
     
     try:
         X_test_gpu = X_test_cpu.to(device)
         
-        # Aplicar transformación guardada
+        # Proyección
         X_test_norm = (X_test_gpu - mean) / std
         X_test_centered = X_test_norm - mean_pca
         X_test_pca = torch.mm(X_test_centered, V)
         X_test_final = X_test_pca * weights
         
-        # Predecir
-        print("[INFERENCIA] Clasificando Test Set...")
+        # Predicción
         y_pred_gpu = analyzer.knn_predict(X_train_final, y_train_gpu, X_test_final, k=5)
         y_pred_cpu = y_pred_gpu.cpu()
         
-        # Métricas Test
-        acc_test = accuracy_score(y_test_cpu.numpy(), y_pred_cpu.numpy())
-        print(f"\n>>> TEST SET ACCURACY (k={best_k}): {acc_test*100:.2f}% <<<")
+        acc = accuracy_score(y_test_cpu.numpy(), y_pred_cpu.numpy())
+        print(f"\n>>> GLOBAL ACCURACY: {acc*100:.2f}% <<<")
         
-        # Generar Galería
-        analyzer.generate_classification_gallery(X_test_cpu, y_test_cpu, y_pred_cpu, "results/classification_gallery.png")
+        # Generar Reporte Detallado
+        analyzer.save_detailed_results(
+            X_test_cpu, y_test_cpu, y_pred_cpu, 
+            names_test, cats_test, loader, 
+            "results/detailed_analysis", num_samples=50
+        )
         
     except RuntimeError as e:
         print(f"Error en inferencia: {e}")
     
-    del X_test_gpu, y_train_gpu, V
     torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset-dir", required=True)
+    parser.add_argument("--dataset-dir", default="outputs/full_warped_dataset")
     parser.add_argument("--raw-dir", default="data/dataset/COVID-19_Radiography_Dataset")
     parser.add_argument("--clahe", action="store_true", default=True)
     args = parser.parse_args()
