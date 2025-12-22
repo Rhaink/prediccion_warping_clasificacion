@@ -5,12 +5,8 @@ PROJECT: Thesis - Geometric Validation of Lung Warping via Fisher Linear Analysi
 STACK: PyTorch (GPU), Numpy, Matplotlib
 
 OBJETIVO:
-Validación científica rigurosa usando aceleración por GPU con gestión inteligente de memoria.
-Usa torch.pca_lowrank para evitar OOM en VRAM de 8GB.
-
-VENTAJAS:
-- Datos en RAM, Cálculo en VRAM.
-- PCA eficiente en memoria.
+Validación científica rigurosa usando aceleración por GPU.
+Incluye generación de evidencia visual (Galería de Clasificación).
 """
 
 import numpy as np
@@ -21,12 +17,11 @@ import argparse
 from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score
 from tqdm import tqdm
-import json
 import gc
-import sys
 import warnings
+import random
 
 warnings.filterwarnings('ignore')
 plt.style.use('seaborn-v0_8-whitegrid')
@@ -60,7 +55,7 @@ class DatasetLoader:
         
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4)) if use_clahe else None
         
-        print(f"[LOADER] Cargando {N} imágenes en memoria (CPU)...")
+        print(f"[LOADER] Cargando {N} imágenes '{split}' en memoria (CPU)...")
         loaded_count = 0
         
         for idx, row in tqdm(df.iterrows(), total=N):
@@ -96,176 +91,173 @@ class TorchAnalysis:
         self.device = device
 
     def fit_pca_efficient(self, X, n_components):
-        """
-        Realiza PCA usando torch.pca_lowrank (SVD aleatorizado eficiente).
-        Esto evita calcular la matriz de covarianza completa o SVD full.
-        """
-        # X ya debe estar en GPU y centrado si se desea, pero pca_lowrank puede centrarlo
-        # center=True por defecto en pca_lowrank
-        
         # U: (N, q), S: (q,), V: (D, q)
         U, S, V = torch.pca_lowrank(X, q=n_components, center=True, niter=2)
-        
-        # Proyección: X @ V = U @ S
-        # Pero ojo, pca_lowrank centra internamente. 
-        # Para proyectar validación necesitamos la media y V.
         mean = torch.mean(X, dim=0)
         
-        # Varianza explicada
         eigvals = S ** 2 / (X.shape[0] - 1)
-        total_var = torch.var(X, dim=0, unbiased=True).sum() # Aproximación de varianza total
+        total_var = torch.var(X, dim=0, unbiased=True).sum()
         explained_variance_ratio = eigvals / total_var
         
-        # Proyección entrenamiento
         X_pca = torch.mm(X - mean, V)
-        
         return X_pca, explained_variance_ratio, V, mean
 
     def fisher_score(self, X_pca, y):
         unique_classes = torch.unique(y)
         means = []
         vars = []
-        
         for c in unique_classes:
             mask = (y == c)
             Xc = X_pca[mask]
             means.append(torch.mean(Xc, dim=0))
             vars.append(torch.var(Xc, dim=0, unbiased=True))
-            
         numerator = (means[0] - means[1]) ** 2
         denominator = vars[0] + vars[1] + 1e-9
         J = numerator / denominator
         return J
 
     def knn_predict(self, X_train, y_train, X_test, k=5):
-        # Lotes pequeños para cdist si es necesario
-        dist_matrix = torch.cdist(X_test, X_train, p=2)
-        topk_vals, topk_indices = torch.topk(dist_matrix, k=k, largest=False, dim=1)
-        topk_labels = y_train[topk_indices]
-        mode_val, _ = torch.mode(topk_labels, dim=1)
-        return mode_val
+        if X_test.shape[0] > 2000:
+            preds = []
+            batch_size = 1000
+            for i in range(0, X_test.shape[0], batch_size):
+                batch = X_test[i:i+batch_size]
+                dist = torch.cdist(batch, X_train, p=2)
+                vals, idx = torch.topk(dist, k=k, largest=False, dim=1)
+                labels = y_train[idx]
+                mode, _ = torch.mode(labels, dim=1)
+                preds.append(mode)
+            return torch.cat(preds)
+        else:
+            dist_matrix = torch.cdist(X_test, X_train, p=2)
+            topk_vals, topk_indices = torch.topk(dist_matrix, k=k, largest=False, dim=1)
+            topk_labels = y_train[topk_indices]
+            mode_val, _ = torch.mode(topk_labels, dim=1)
+            return mode_val
+
+    def generate_classification_gallery(self, X_test_cpu, y_test_cpu, y_pred_cpu, output_path, image_size=224):
+        y_true = y_test_cpu.numpy()
+        y_pred = y_pred_cpu.numpy()
+        
+        tp = np.where((y_true == 1) & (y_pred == 1))[0]
+        tn = np.where((y_true == 0) & (y_pred == 0))[0]
+        fp = np.where((y_true == 0) & (y_pred == 1))[0]
+        fn = np.where((y_true == 1) & (y_pred == 0))[0]
+        
+        categories = {
+            "TP (Enfermo Correcto)": tp,
+            "TN (Sano Correcto)": tn,
+            "FP (Sano -> Enfermo)": fp,
+            "FN (Enfermo -> Sano)": fn
+        }
+        
+        fig, axes = plt.subplots(4, 5, figsize=(15, 12))
+        plt.subplots_adjust(hspace=0.4, wspace=0.1)
+        
+        print(f"[GALERÍA] TP: {len(tp)}, TN: {len(tn)}, FP: {len(fp)}, FN: {len(fn)}")
+        
+        for row_idx, (label, indices) in enumerate(categories.items()):
+            if len(indices) > 0:
+                selected = np.random.choice(indices, min(5, len(indices)), replace=False)
+            else:
+                selected = []
+                
+            for col_idx in range(5):
+                ax = axes[row_idx, col_idx]
+                if col_idx < len(selected):
+                    idx = selected[col_idx]
+                    img_flat = X_test_cpu[idx].numpy()
+                    img = img_flat.reshape(image_size, image_size)
+                    
+                    ax.imshow(img, cmap='gray')
+                    ax.set_xticks([])
+                    ax.set_yticks([])
+                    
+                    color = 'green' if "Correcto" in label else 'red'
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor(color)
+                        spine.set_linewidth(2)
+                else:
+                    ax.axis('off')
+            
+            axes[row_idx, 2].set_title(label, fontsize=12, fontweight='bold', pad=10)
+
+        plt.suptitle("Evidencia de Clasificación (Test Set)", fontsize=16, y=0.95)
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"[GALERÍA] Guardada en {output_path}")
 
 def run_scientific_validation(args, device):
     print("\n" + "="*70)
     print("VALIDACIÓN CIENTÍFICA HÍBRIDA (RAM + GPU)")
     print("="*70)
     
-    print(f">> Cargando dataset desde: {args.dataset_dir}")
     loader = DatasetLoader(args.raw_dir, args.dataset_dir)
     
-    # Cargar en CPU (RAM del sistema)
-    X_all_cpu, y_all_cpu = loader.load_full_dataset("train", use_clahe=args.clahe)
-    print(f"[RAM] Dataset cargado: {X_all_cpu.shape} (Float32)")
+    # 1. Cargar Train
+    X_train_cpu, y_train_cpu = loader.load_full_dataset("train", use_clahe=args.clahe)
+    print(f"[RAM] Train Dataset: {X_train_cpu.shape}")
     
     analyzer = TorchAnalysis(device)
     
-    k_folds = 5
-    skf = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
-    components_list = [10, 25, 50, 75, 100, 150, 200]
-    history = {k: {'acc': [], 'var': []} for k in components_list}
+    # Usaremos k=50 (nuestro óptimo) para la inferencia visual
+    best_k = 50 
+    print(f"\n[INFERENCIA] Entrenando modelo final con k={best_k} en todo TRAIN...")
     
-    y_numpy = y_all_cpu.numpy()
-    
-    print(f"\n[CV] Iniciando {k_folds}-Fold Cross Validation...")
-    
-    fold = 1
-    for train_idx, val_idx in skf.split(np.zeros(len(y_numpy)), y_numpy):
-        print(f"--- Fold {fold}/{k_folds} ---")
+    try:
+        X_train_gpu = X_train_cpu.to(device)
+        y_train_gpu = y_train_cpu.to(device)
         
-        # Mover SOLO el fold actual a GPU
-        # Indices
-        idx_tr = torch.from_numpy(train_idx)
-        idx_val = torch.from_numpy(val_idx)
+        # Pipeline Final
+        mean = X_train_gpu.mean(dim=0)
+        std = X_train_gpu.std(dim=0) + 1e-8
+        X_train_norm = (X_train_gpu - mean) / std
         
-        # Copia a GPU
-        X_train = X_all_cpu[idx_tr].to(device)
-        y_train = y_all_cpu[idx_tr].to(device)
-        X_val = X_all_cpu[idx_val].to(device)
-        y_val = y_all_cpu[idx_val].to(device)
+        # PCA
+        X_train_pca, _, V, mean_pca = analyzer.fit_pca_efficient(X_train_norm, best_k)
         
-        # 1. Standard Scaler (GPU)
-        mean = X_train.mean(dim=0)
-        std = X_train.std(dim=0) + 1e-8
-        X_train_norm = (X_train - mean) / std
-        X_val_norm = (X_val - mean) / std
+        # Fisher
+        J_weights = analyzer.fisher_score(X_train_pca, y_train_gpu)
+        weights = torch.sqrt(J_weights)
+        X_train_final = X_train_pca * weights
         
-        # Liberar memoria original en GPU
-        del X_train, X_val
-        
-        # 2. PCA Eficiente (Low Rank)
-        max_k = max(components_list)
-        X_train_pca_all, var_ratios_all, V, mean_pca = analyzer.fit_pca_efficient(X_train_norm, max_k)
-        
-        # Proyectar validación
-        X_val_centered = X_val_norm - mean_pca
-        X_val_pca_all = torch.mm(X_val_centered, V)
-        
-        # Liberar X_norm para hacer espacio
-        del X_train_norm, X_val_norm, X_val_centered
+        del X_train_gpu, X_train_norm
         torch.cuda.empty_cache()
         
-        # Varianza acumulada
-        cum_var = torch.cumsum(var_ratios_all, dim=0)
-        
-        for k in components_list:
-            # Slice
-            X_tr_k = X_train_pca_all[:, :k]
-            X_val_k = X_val_pca_all[:, :k]
-            
-            # Fisher
-            J_weights = analyzer.fisher_score(X_tr_k, y_train)
-            weights = torch.sqrt(J_weights)
-            
-            # Ponderar
-            X_tr_w = X_tr_k * weights
-            X_val_w = X_val_k * weights
-            
-            # Clasificar
-            preds = analyzer.knn_predict(X_tr_w, y_train, X_val_w, k=5)
-            
-            acc = (preds == y_val).float().mean().item()
-            var_acc = cum_var[k-1].item()
-            
-            history[k]['acc'].append(acc)
-            history[k]['var'].append(var_acc)
-            
-        fold += 1
-        
-        # Limpieza masiva
-        del V, X_train_pca_all, X_val_pca_all, y_train, y_val
-        torch.cuda.empty_cache()
-        gc.collect()
+    except RuntimeError:
+        print("Error OOM entrenando modelo final.")
+        return
 
-    # Reporte
-    print("\n" + "="*40)
-    print("RESULTADOS FINALES (Media +/- Std)")
-    print("="*40)
-    print(f"{ ' K':<5} | {'Accuracy':<20} | {'Varianza Exp.':<20}")
-    print("-" * 50)
+    # 2. Cargar Test y Predecir
+    print("\n[INFERENCIA] Cargando Test Set...")
+    X_test_cpu, y_test_cpu = loader.load_full_dataset("test", use_clahe=args.clahe)
     
-    accuracies = []
-    ks = []
+    try:
+        X_test_gpu = X_test_cpu.to(device)
+        
+        # Aplicar transformación guardada
+        X_test_norm = (X_test_gpu - mean) / std
+        X_test_centered = X_test_norm - mean_pca
+        X_test_pca = torch.mm(X_test_centered, V)
+        X_test_final = X_test_pca * weights
+        
+        # Predecir
+        print("[INFERENCIA] Clasificando Test Set...")
+        y_pred_gpu = analyzer.knn_predict(X_train_final, y_train_gpu, X_test_final, k=5)
+        y_pred_cpu = y_pred_gpu.cpu()
+        
+        # Métricas Test
+        acc_test = accuracy_score(y_test_cpu.numpy(), y_pred_cpu.numpy())
+        print(f"\n>>> TEST SET ACCURACY (k={best_k}): {acc_test*100:.2f}% <<<")
+        
+        # Generar Galería
+        analyzer.generate_classification_gallery(X_test_cpu, y_test_cpu, y_pred_cpu, "results/classification_gallery.png")
+        
+    except RuntimeError as e:
+        print(f"Error en inferencia: {e}")
     
-    for k in components_list:
-        mean_acc = np.mean(history[k]['acc'])
-        std_acc = np.std(history[k]['acc'])
-        mean_var = np.mean(history[k]['var'])
-        accuracies.append(mean_acc)
-        ks.append(k)
-        print(f"{k:<5} | {mean_acc*100:.2f}% (+/- {std_acc*100:.2f}) | {mean_var*100:.2f}%")
-
-    # Plot
-    plt.figure(figsize=(10, 6))
-    plt.plot(ks, accuracies, 'o-', linewidth=2, color='blue', label='Warped + CLAHE')
-    plt.fill_between(ks, 
-                     np.array(accuracies) - np.array([np.std(history[k]['acc']) for k in ks]),
-                     np.array(accuracies) + np.array([np.std(history[k]['acc']) for k in ks]),
-                     alpha=0.2, color='blue')
-    plt.title(f"Performance vs Complejidad (CV)")
-    plt.xlabel("Componentes PCA")
-    plt.ylabel("Accuracy")
-    plt.grid(True)
-    plt.savefig("results/gpu_validation_curve.png")
+    del X_test_gpu, y_train_gpu, V
+    torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
