@@ -2,7 +2,7 @@
 
 **Fecha:** 2025-12-14
 **Estado:** Claims reformulados post-Sesion 35/36/39/52/53/55
-**Ultima actualizacion:** Sesion 55 - Validacion externa y experimento CLAHE
+**Ultima actualizacion:** Sesion 57 - Validacion Geometrica (Fisher) y Optimizacion
 
 ---
 
@@ -12,7 +12,8 @@
 
 | Metrica | Original | Warped | Mejora |
 |---------|----------|--------|--------|
-| Accuracy interna | 98.84% | 99.10% | +0.26% |
+| Accuracy interna (DL) | 98.84% | 99.10% | +0.26% |
+| **Accuracy interna (Fisher)** | **82.00%** | **85.31%** | **+3.31% (Significativo)** |
 | Robustez JPEG Q50 | 16.14% deg | 3.06% deg | **5.3x mejor** |
 | Robustez blur | 14.43% deg | 2.43% deg | **5.9x mejor** |
 | Cross-eval gap | 7.70% | 3.17% | **2.4x mejor** |
@@ -355,8 +356,8 @@ En clasificacion binaria (COVID vs No-COVID):
 ### Sesion 52-53: Clasificador warped_96 y trade-off fill rate
 - `/docs/sesiones/SESION_52_CORRECCION_CLI.md` - Correccion bug CLI
 - `/docs/sesiones/SESION_53_FILL_RATE_TRADEOFF.md` - Analisis trade-off fill rate
-- `/outputs/classifier_replication_v2/` - Clasificador warped_96 (RECOMENDADO)
-- `/outputs/warped_replication_v2/` - Dataset warped_96 (96% fill rate)
+- `/outputs/classifier_replication_v2/` - Clasificador warped_96 (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
+- `/outputs/warped_replication_v2/` - Dataset warped_96 (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 
 ### Sesion 55: Validacion externa FedCOVIDx
 - `/docs/sesiones/SESION_55_VALIDACION_EXTERNA.md` - Documentacion completa
@@ -366,9 +367,9 @@ En clasificacion binaria (COVID vs No-COVID):
 
 ### Datasets generados
 - `/outputs/original_3_classes/` - 15,153 imagenes (3 clases, sin Lung_Opacity)
-- `/outputs/full_coverage_warped_dataset/` - 15,153 imagenes (99% fill rate)
+- `/outputs/full_coverage_warped_dataset/` - 15,153 imagenes (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 - `/outputs/original_cropped_47/` - 15,153 imagenes (47% fill rate, control)
-- `/outputs/warped_replication_v2/` - 15,153 imagenes (96% fill rate, **RECOMENDADO**)
+- `/outputs/warped_replication_v2/` - 15,153 imagenes (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 
 ---
 
