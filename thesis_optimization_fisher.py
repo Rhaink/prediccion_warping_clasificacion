@@ -131,67 +131,76 @@ def run_optimization(args, device):
 def evaluate_configuration(clip, tile, loader, analyzer, device):
     """
     Ejecuta una iteración aislada para garantizar limpieza de memoria al salir del scope.
+    LÓGICA STRICT (ASESOR): PCA sobre Raw -> Standardize Weights -> Fisher
     """
     try:
         print(f"\n>>> Probando: Clip={clip}, Tile={tile}")
         
         # 1. Cargar en CPU
-        # Nota: Esto consume RAM, no VRAM.
         X_train, y_train = loader.load_dataset_with_params("train", clip, tile)
         X_test, y_test = loader.load_dataset_with_params("test", clip, tile)
         
-        # 2. Mover a GPU (Entrenamiento)
-        # Se mueve solo lo necesario y se libera CPU si es posible (aunque aquí lo necesitamos para liberar después)
+        # 2. Mover a GPU
         X_train_gpu = X_train.to(device)
         y_train_gpu = y_train.to(device)
-        
-        # Liberar memoria CPU inmediatamente si ya está en GPU
         del X_train
         
-        # 3. Normalización Estricta (Pixel Z-Score)
+        # --- LÓGICA STRICT ---
+        
+        # 3. PCA sobre Píxeles Crudos (Solo Centrado, NO dividir por STD)
         mean_px = X_train_gpu.mean(dim=0)
-        std_px = X_train_gpu.std(dim=0) + 1e-8
-        X_train_norm = (X_train_gpu - mean_px) / std_px
+        X_train_centered = X_train_gpu - mean_px
         
-        # 4. PCA
-        # X_train_gpu ya no se necesita crudo, podríamos liberarlo si PCA soporta in-place, pero torch.pca_lowrank no.
-        # Pero X_train_norm reemplaza conceptualmente a X_train_gpu para el PCA.
-        del X_train_gpu 
+        # PCA Lowrank
+        # Nota: fit_pca_efficient en TorchAnalysis original hacía (X-mean) internamente si center=True
+        # Aquí lo hacemos manual para control total o usamos la función adaptada.
+        # Vamos a adaptar la lógica inline para ser explícitos.
         
-        X_train_pca, V, mean_pca = analyzer.fit_pca_efficient(X_train_norm, n_components=50)
-        del X_train_norm # Liberar input del PCA
+        U, S, V = torch.pca_lowrank(X_train_centered, q=50, center=False, niter=2)
         
-        # 5. Fisher Weighting
-        J_weights = analyzer.fisher_score(X_train_pca, y_train_gpu)
-        weights = torch.sqrt(J_weights)
-        X_train_final = X_train_pca * weights
+        # Proyectar para obtener Ponderantes (Weights)
+        X_train_weights = torch.mm(X_train_centered, V)
         
-        # Liberar intermedios de Train
-        del X_train_pca
+        del X_train_gpu, X_train_centered
         
-        # 6. Proyección Test (Streaming/Batching si fuera necesario, pero aquí cabe si borramos Train)
+        # 4. Estandarizar Ponderantes (Feature-wise Z-score)
+        # "Poner a competir a los ponderantes en igualdad"
+        w_mean = X_train_weights.mean(dim=0)
+        w_std = X_train_weights.std(dim=0) + 1e-8
+        X_train_std = (X_train_weights - w_mean) / w_std
+        
+        del X_train_weights
+        
+        # 5. Fisher Weighting sobre Ponderantes Estandarizados
+        J_weights = analyzer.fisher_score(X_train_std, y_train_gpu)
+        amplification_factor = torch.sqrt(J_weights)
+        
+        X_train_final = X_train_std * amplification_factor
+        del X_train_std
+        
+        # 6. Proyección Test
         X_test_gpu = X_test.to(device)
-        del X_test # Liberar CPU
+        del X_test
         
-        X_test_norm = (X_test_gpu - mean_px) / std_px
+        # Aplicar misma transformación
+        X_test_centered = X_test_gpu - mean_px
         del X_test_gpu
         
-        X_test_centered = X_test_norm - mean_pca
-        del X_test_norm
-        
-        X_test_pca = torch.mm(X_test_centered, V)
+        X_test_weights = torch.mm(X_test_centered, V)
         del X_test_centered
         
-        X_test_final = X_test_pca * weights
-        del X_test_pca
+        X_test_std = (X_test_weights - w_mean) / w_std
+        del X_test_weights
+        
+        X_test_final = X_test_std * amplification_factor
+        del X_test_std
         
         # 7. Predicción
         y_pred_gpu = analyzer.knn_predict(X_train_final, y_train_gpu, X_test_final, k=5)
         
         acc = accuracy_score(y_test.numpy(), y_pred_gpu.cpu().numpy())
-        print(f"    --> Accuracy: {acc*100:.2f}%")
+        print(f"    --> Accuracy (Strict): {acc*100:.2f}%")
         
-        # Retornar métricas
         return {
             "clip_limit": clip,
             "tile_size": tile,
@@ -204,7 +213,6 @@ def evaluate_configuration(clip, tile, loader, analyzer, device):
         traceback.print_exc()
         return None
     finally:
-        # Limpieza paranoica
         gc.collect()
         torch.cuda.empty_cache()
 

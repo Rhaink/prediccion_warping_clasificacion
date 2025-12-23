@@ -293,21 +293,37 @@ def run_scientific_validation(args, device):
     try:
         X_train_gpu = X_train_cpu.to(device)
         y_train_gpu = y_train_cpu.to(device)
-
-        # Pipeline
-        mean = X_train_gpu.mean(dim=0)
-        std = X_train_gpu.std(dim=0) + 1e-8
-        X_train_norm = (X_train_gpu - mean) / std
-
-        # PCA & Fisher
-        X_train_pca, _, V, mean_pca = analyzer.fit_pca_efficient(X_train_norm, best_k)
-        J_weights = analyzer.fisher_score(X_train_pca, y_train_gpu)
-        weights = torch.sqrt(J_weights)
-        X_train_final = X_train_pca * weights
-
-        del X_train_gpu, X_train_norm
+        
+        # --- LÓGICA STRICT (ASESOR) ---
+        # 1. PCA sobre Píxeles Crudos (Solo Centrado, NO dividir por STD)
+        mean_px = X_train_gpu.mean(dim=0)
+        X_train_centered = X_train_gpu - mean_px
+        
+        # PCA Lowrank
+        U, S, V = torch.pca_lowrank(X_train_centered, q=best_k, center=False, niter=2)
+        
+        # Proyectar para obtener Ponderantes (Weights)
+        X_train_weights = torch.mm(X_train_centered, V)
+        
+        del X_train_gpu, X_train_centered
+        
+        # 2. Estandarizar Ponderantes (Feature-wise Z-score)
+        # "Poner a competir a los ponderantes en igualdad"
+        w_mean = X_train_weights.mean(dim=0)
+        w_std = X_train_weights.std(dim=0) + 1e-8
+        X_train_std = (X_train_weights - w_mean) / w_std
+        
+        del X_train_weights
+        
+        # 3. Fisher Weighting sobre Ponderantes Estandarizados
+        J_weights = analyzer.fisher_score(X_train_std, y_train_gpu)
+        amplification_factor = torch.sqrt(J_weights)
+        
+        X_train_final = X_train_std * amplification_factor
+        del X_train_std
+        
         torch.cuda.empty_cache()
-
+        
     except RuntimeError:
         print("Error OOM entrenando modelo final.")
         return
@@ -320,17 +336,27 @@ def run_scientific_validation(args, device):
 
     try:
         X_test_gpu = X_test_cpu.to(device)
-
-        # Proyección
-        X_test_norm = (X_test_gpu - mean) / std
-        X_test_centered = X_test_norm - mean_pca
-        X_test_pca = torch.mm(X_test_centered, V)
-        X_test_final = X_test_pca * weights
-
+        
+        # --- LÓGICA STRICT (TEST) ---
+        # 1. Proyectar (Mismo PCA)
+        X_test_centered = X_test_gpu - mean_px
+        del X_test_gpu
+        
+        X_test_weights = torch.mm(X_test_centered, V)
+        del X_test_centered
+        
+        # 2. Estandarizar (Mismo Scaler)
+        X_test_std = (X_test_weights - w_mean) / w_std
+        del X_test_weights
+        
+        # 3. Amplificar (Mismo Factor)
+        X_test_final = X_test_std * amplification_factor
+        del X_test_std
+        
         # Predicción
         y_pred_gpu = analyzer.knn_predict(X_train_final, y_train_gpu, X_test_final, k=5)
         y_pred_cpu = y_pred_gpu.cpu()
-
+        
         acc = accuracy_score(y_test_cpu.numpy(), y_pred_cpu.numpy())
         print(f"\n>>> GLOBAL ACCURACY: {acc * 100:.2f}% <<<")
 
