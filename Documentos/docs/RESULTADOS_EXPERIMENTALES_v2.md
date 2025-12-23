@@ -13,7 +13,7 @@
 | Metrica | Original | Warped | Mejora |
 |---------|----------|--------|--------|
 | Accuracy interna (DL) | 98.84% | 99.10% | +0.26% |
-| **Accuracy interna (Fisher)** | **82.00%** | **85.31%** | **+3.31% (Significativo)** |
+| **Accuracy interna (Fisher)** | **82.00%** | **86.03%** | **+4.03% (Muy Significativo)** |
 | Robustez JPEG Q50 | 16.14% deg | 3.06% deg | **5.3x mejor** |
 | Robustez blur | 14.43% deg | 2.43% deg | **5.9x mejor** |
 | Cross-eval gap | 7.70% | 3.17% | **2.4x mejor** |

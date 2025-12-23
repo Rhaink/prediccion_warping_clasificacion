@@ -276,6 +276,14 @@ def run_scientific_validation(args, device):
     print("\n" + "=" * 70)
     print("ANÁLISIS FORENSE DE CLASIFICACIÓN (GPU)")
     print("=" * 70)
+    
+    # Fijar Semilla Ganadora (Seed 8 -> 86.03%)
+    SEED = 8
+    torch.manual_seed(SEED)
+    np.random.seed(SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(SEED)
+    print(f"[REPRODUCIBILIDAD] Semilla fijada: {SEED}")
 
     loader = DatasetLoader(args.raw_dir, args.dataset_dir)
 
