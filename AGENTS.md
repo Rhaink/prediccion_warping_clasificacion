@@ -3,13 +3,19 @@
 ## Project Structure & Module Organization
 - `src_v2/`: Core package (`cli.py` for Typer commands, plus `data/`, `models/`, `training/`, `evaluation/`, `processing/`, `visualization/`). Key constants live in `src_v2/constants.py`.
 - `scripts/`: Legacy training/evaluation helpers (e.g., `train.py`, `evaluate_ensemble.py`); prefer the CLI equivalents in `src_v2`.
+- `scripts/fisher/`: Fisher validation and analysis scripts (GPU/CPU, optimization, seed search) with studies in `scripts/fisher/studies/`.
 - `configs/`: Experiment configuration files; keep new configs small and documented.
 - `tests/`: Pytest suite (`test_*.py`) for data loaders, processing, and model utilities.
 - Local assets expected but not tracked: `data/` (datasets), `checkpoints/`, `outputs/`, `audit/` artifacts. Use relative paths in scripts to keep runs portable.
+- `results/`: Versioned evidence artifacts; use `results/figures/`, `results/metrics/`, and `results/logs/` for Fisher outputs.
+- `Documentos/`: Thesis and project documentation (`Documentos/docs/`, `Documentos/Defensa/`, `Documentos/Presentaciones/`, `Documentos/Tesis/prompts/`).
 
 ## Build, Test, and Development Commands
 - Install (dev mode): `python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"` plus the correct Torch wheel for your hardware (CUDA/ROCm/CPU).
 - Quick sanity run: `python -m src_v2 --help` to list all CLI tasks.
+- Fisher validation (GPU, detailed analysis): `python scripts/fisher/thesis_validation_fisher.py --dataset-dir outputs/warped_dataset --verify-matching`.
+- Fisher validation (CPU, didactic): `python scripts/fisher/thesis_validation_fisher_basic.py`.
+- Fisher report: `Documentos/docs/FISHER_EXPERIMENT_README.md`.
 - Train landmarks (canonical recipe): `python -m src_v2 train --data-root data/ --csv-path data/coordenadas/coordenadas_maestro.csv --checkpoint-dir checkpoints_v2 --coord-attention --deep-head --hidden-dim 768 --clahe --loss wing --seed 123`.
 - Evaluate a checkpoint: `python -m src_v2 evaluate checkpoints_v2/final_model.pt --data-root data/ --csv-path data/coordenadas/coordenadas_maestro.csv --tta --split test --clahe`.
 - Legacy scripts (only if needed for reproduction): `python scripts/train.py`, `python scripts/train_classifier.py`.
