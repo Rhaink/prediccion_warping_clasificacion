@@ -1,0 +1,4 @@
+Accuracy: 0.7188
+Confusion Matrix:
+[[34 13]
+ [14 35]]
