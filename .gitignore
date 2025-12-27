@@ -31,6 +31,7 @@ ENV/
 env/
 
 # --- Datasets (muy grandes, >32GB) ---
+data/
 data/dataset/
 data/coordenadas/
 
