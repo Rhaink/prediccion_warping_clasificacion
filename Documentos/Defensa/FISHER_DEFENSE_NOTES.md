@@ -79,7 +79,7 @@ X_final = X_std * np.sqrt(J)
 
 ## 5. Análisis de Discrepancia: CPU vs GPU (3% de Diferencia)
 
-Durante la validación, notamos que el script de GPU (`thesis_validation_fisher.py`) superaba sistemáticamente al de CPU (`scripts/fisher/thesis_validation_fisher_basic.py`).
+Durante la validación, notamos que el script de GPU (`scripts/fisher/thesis_validation_fisher.py`) superaba sistemáticamente al de CPU (`scripts/fisher/thesis_validation_fisher_basic.py`).
 
 **Causa Raíz:**
 No es el hardware, es la **matemática de pre-procesamiento**.

@@ -101,10 +101,10 @@ Independientemente del accuracy, el Warping siempre aumentó la **Varianza Expli
 
 ### Escenario A (Curado Puro - El mejor caso teórico)
 ```bash
-python thesis_validation_fisher.py --dataset-dir outputs/warped_dataset --verify-matching
+python scripts/fisher/thesis_validation_fisher.py --dataset-dir outputs/warped_dataset --verify-matching
 ```
 
 ### Escenario C (Masivo + CLAHE - El caso de uso real)
 ```bash
-python thesis_validation_fisher.py --dataset-dir outputs/full_warped_dataset --clahe
+python scripts/fisher/thesis_validation_fisher.py --dataset-dir outputs/full_warped_dataset --clahe
 ```

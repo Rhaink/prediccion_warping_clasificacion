@@ -27,11 +27,11 @@ Para asegurar validez científica, no solo "corrimos un script", sino que diseñ
 
 *(Mostrar los gráficos generados en la carpeta `results/`)*
 
-### A. Curva de Aprendizaje (`results/gpu_validation_curve.png`)
+### A. Curva de Aprendizaje (`results/figures/gpu_validation_curve.png`)
 *   **Qué mostrar:** Señale la línea Azul (Warped) vs la línea Gris/Roja (Raw).
 *   **El Argumento:** "Observe cómo la línea azul (Warped) se mantiene consistentemente por encima. Además, note la **estabilidad** (la sombra azul es muy estrecha, $\sigma \approx 0.5\%$), lo que indica que el método es robusto y no depende de qué pacientes seleccionemos."
 
-### B. Varianza Explicada (`results/grid_variance.png`)
+### B. Varianza Explicada (`results/figures/grid_variance.png`)
 *   **Qué mostrar:** La curva de Warped sube más rápido que la de Raw.
 *   **El Argumento:** "Con las mismas 50 componentes, Warping explica el **77.5%** de la información, mientras que Raw solo el **~70%**. Esto prueba matemáticamente que el Warping reduce la entropía geométrica: las imágenes son más coherentes entre sí."
 
@@ -39,7 +39,7 @@ Para asegurar validez científica, no solo "corrimos un script", sino que diseñ
 *   **Qué mostrar:** La separación de colores (Rojo vs Azul).
 *   **El Argumento:** "Aunque usamos métodos lineales, la proyección t-SNE muestra que las clases están comenzando a separarse visualmente gracias a la ponderación de Fisher."
 
-### D. Galería Forense (`results/classification_gallery.png`)
+### D. Galería Forense (`results/figures/classification_gallery.png`)
 *   **Qué mostrar:** Los ejemplos de Aciertos y Fallos.
 *   **El Argumento:** "Hemos auditado visualmente los resultados. Aquí podemos ver cómo el Warping + CLAHE resalta las opacidades pulmonares (Aciertos), y que los errores suelen ser casos muy sutiles o con mala calidad de imagen original."
 
@@ -76,6 +76,6 @@ Para asegurar validez científica, no solo "corrimos un script", sino que diseñ
 Tener lista esta línea de comando para correr una inferencia rápida y generar la galería:
 
 ```bash
-python thesis_validation_fisher.py --dataset-dir outputs/full_warped_dataset --clahe
+python scripts/fisher/thesis_validation_fisher.py --dataset-dir outputs/full_warped_dataset --clahe
 ```
 *(Nota: Esto tarda ~15 segundos en ejecutarse gracias a la GPU)*
