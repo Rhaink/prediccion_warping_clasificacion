@@ -1,0 +1,47 @@
+[
+    {
+        "clip_limit": 1.0,
+        "tile_size": 2,
+        "accuracy": 0.8445322793148881
+    },
+    {
+        "clip_limit": 1.0,
+        "tile_size": 4,
+        "accuracy": 0.8399209486166008
+    },
+    {
+        "clip_limit": 1.0,
+        "tile_size": 8,
+        "accuracy": 0.8372859025032938
+    },
+    {
+        "clip_limit": 2.0,
+        "tile_size": 2,
+        "accuracy": 0.8405797101449275
+    },
+    {
+        "clip_limit": 2.0,
+        "tile_size": 4,
+        "accuracy": 0.8458498023715415
+    },
+    {
+        "clip_limit": 2.0,
+        "tile_size": 8,
+        "accuracy": 0.8458498023715415
+    },
+    {
+        "clip_limit": 4.0,
+        "tile_size": 2,
+        "accuracy": 0.8451910408432147
+    },
+    {
+        "clip_limit": 4.0,
+        "tile_size": 4,
+        "accuracy": 0.8247694334650857
+    },
+    {
+        "clip_limit": 4.0,
+        "tile_size": 8,
+        "accuracy": 0.8320158102766798
+    }
+]
