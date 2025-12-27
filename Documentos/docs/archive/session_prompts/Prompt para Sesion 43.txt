@@ -1,5 +1,8 @@
 # SESION 43 - CONSOLIDACION FINAL Y VERSION TAG
 
+NOTA (2025-12-21): outputs/full_coverage_warped_dataset y outputs/classifier_warped_full_coverage fueron invalidados.
+Este prompt queda como referencia historica (ver docs/reportes/RESUMEN_DEPURACION_OUTPUTS.md).
+
 ## CONTEXTO RAPIDO (LEER OBLIGATORIO)
 
 **Estado del proyecto:** 95% completo (post Sesion 42)

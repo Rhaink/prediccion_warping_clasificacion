@@ -84,11 +84,16 @@ Durante la validación, notamos que el script de GPU (`thesis_validation_fisher.
 **Causa Raíz:**
 No es el hardware, es la **matemática de pre-procesamiento**.
 
-1.  **Normalización de Píxeles (El factor clave):**
-    *   **GPU (Strict):** Normaliza los *píxeles* de entrada (Z-score por columna) ANTES del PCA. Esto ecualiza el contraste de la imagen, haciendo que el PCA se enfoque en estructuras y no en iluminación.
-    *   **CPU (Basic):** Solo centra los datos (resta la media) pero no divide por la desviación estándar (Sklearn PCA default).
+1.  **Normalización de Píxeles vs Centrado (El factor clave):**
+    *   **GPU (Strict - Binario):** Realiza **solo centrado** de píxeles (`X - mean`) antes del PCA. NO divide por la desviación estándar de los píxeles. Esto preserva la estructura de intensidad relativa (importante para rayos X) y evita amplificar ruido de fondo.
+    *   **Multiclase:** SÍ normaliza píxeles completo (`(X-mean)/std`), probablemente necesario por la varianza entre múltiples fuentes de datos.
+    *   **CPU (Basic):** Solo centra (comportamiento default de Sklearn), pero fallaba en la etapa siguiente (ponderación).
 
-2.  **Factor de Amplificación:**
+2.  **Estandarización de Ponderantes (La Clave del 86%):**
+    *   Una vez en el espacio PCA, el método Strict aplica **Z-score a los ponderantes (weights)**. Esto pone a competir todas las características latentes en igualdad de condiciones antes de calcular el Fisher Score.
+    *   Sin esto, el primer componente principal domina el cálculo solo por magnitud.
+
+3.  **Factor de Amplificación:**
     *   **GPU (Strict):** Usa $\sqrt{J}$. Esto es una ponderación "suave".
     *   **CPU (Basic):** Usa $J$. Al ser valores menores a 1 (ej: 0.05), elevar al cuadrado (implícitamente al usar $J$ directamente como peso lineal frente a la varianza) suprime demasiado las características secundarias.
 

@@ -53,7 +53,7 @@ Imagen Original → Predecir Landmarks → Warpear a Forma Canonica → Clasific
 - ResNet-18 con Coordinate Attention
 - Entrenado en imagenes geometricamente normalizadas
 
-**Archivo clave:** `outputs/classifier_replication_v2/best_classifier.pt`
+**Archivo clave:** `outputs/classifier_replication_v2/best_classifier.pt` (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 
 ---
 
@@ -169,8 +169,8 @@ docs/
 ### Datos y Modelos
 ```
 outputs/
-├── warped_replication_v2/          # Dataset warped (96% fill rate)
-├── classifier_replication_v2/      # Clasificador recomendado
+├── warped_replication_v2/          # Dataset warped (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
+├── classifier_replication_v2/      # Clasificador (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 ├── external_validation/            # Resultados en FedCOVIDx
 └── cross_evaluation_valid_3classes/ # Cross-evaluation
 
@@ -191,6 +191,7 @@ GROUND_TRUTH.json         # Valores numericos de referencia
 ### Para Predecir en Nueva Imagen
 ```bash
 # Clasificar una imagen (con warping)
+# NOTA: outputs/classifier_replication_v2 esta invalidado; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md
 python -m src_v2 classify imagen.png \
   --classifier outputs/classifier_replication_v2/best_classifier.pt \
   --warp \
@@ -199,6 +200,7 @@ python -m src_v2 classify imagen.png \
 
 ### Para Evaluar Robustez
 ```bash
+# NOTA: outputs/classifier_replication_v2 y outputs/warped_replication_v2 estan invalidados.
 python -m src_v2 test-robustness \
   outputs/classifier_replication_v2/best_classifier.pt \
   --data-dir outputs/warped_replication_v2
@@ -305,7 +307,7 @@ No resuelve domain shift (~55% en datos externos).
 Trabajo honesto y verificable. Falta rigor estadistico para publicacion.
 
 ### Los Archivos Clave
-- Modelo: `outputs/classifier_replication_v2/best_classifier.pt`
-- Datos: `outputs/warped_replication_v2/`
+- Modelo: `outputs/classifier_replication_v2/best_classifier.pt` (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
+- Datos: `outputs/warped_replication_v2/` (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 - Valores: `GROUND_TRUTH.json`
 - Tests: `tests/` (655 tests)

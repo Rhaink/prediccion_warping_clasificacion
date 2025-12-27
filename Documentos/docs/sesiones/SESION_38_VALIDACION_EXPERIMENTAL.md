@@ -24,6 +24,11 @@ Evidencia: El modelo full_coverage (99% fill) pierde casi toda la robustez:
 
 ### 1.1 Entrenamiento Clasificador Full Coverage
 
+**Nota (2025-12-21):** El dataset `outputs/full_coverage_warped_dataset/` fue invalidado.
+Los resultados y modelos derivados (`outputs/classifier_warped_full_coverage/`,
+`outputs/robustness_warped_full_coverage.json`, `outputs/cross_evaluation_fair/`)
+no deben usarse. Ver `docs/reportes/RESUMEN_DEPURACION_OUTPUTS.md`.
+
 **Comando:**
 ```bash
 .venv/bin/python -m src_v2 train-classifier \

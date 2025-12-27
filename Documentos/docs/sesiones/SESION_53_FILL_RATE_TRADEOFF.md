@@ -107,10 +107,10 @@ Por lo tanto:
 
 ```bash
 # Dataset recomendado
-outputs/warped_replication_v2/
+outputs/warped_replication_v2/  # INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md
 
 # Clasificador recomendado
-outputs/classifier_replication_v2/best_classifier.pt
+outputs/classifier_replication_v2/best_classifier.pt  # INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md
 ```
 
 ### 3.2 Cuándo Usar Cada Dataset

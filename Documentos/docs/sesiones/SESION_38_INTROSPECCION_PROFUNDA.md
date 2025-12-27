@@ -172,6 +172,7 @@ python scripts/filter_3_classes.py \
 python -m src_v2 train-classifier outputs/original_3_classes
 
 # 3. Cross-evaluate
+# NOTA: outputs/classifier_warped_full_coverage y outputs/full_coverage_warped_dataset estan invalidados.
 python -m src_v2 cross-evaluate \
     outputs/original_3_classes/best.pt \
     outputs/classifier_warped_full_coverage/best_classifier.pt \

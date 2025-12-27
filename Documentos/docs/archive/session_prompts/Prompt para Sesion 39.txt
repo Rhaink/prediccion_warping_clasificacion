@@ -1,5 +1,8 @@
 # SESION 39 - EXPERIMENTO DE CONTROL CRITICO
 
+NOTA (2025-12-21): outputs/full_coverage_warped_dataset y outputs/classifier_warped_full_coverage fueron invalidados.
+Este prompt queda como referencia historica (ver docs/reportes/RESUMEN_DEPURACION_OUTPUTS.md).
+
 ## CONTEXTO CRITICO (LEE ESTO PRIMERO)
 
 Esta sesion continua despues de **hallazgos metodologicos importantes** en Sesion 38 que requieren validacion experimental urgente.

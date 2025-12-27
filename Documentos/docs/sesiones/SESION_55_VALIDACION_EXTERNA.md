@@ -56,6 +56,7 @@ Identico al entrenamiento:
 
 ```bash
 # Evaluacion en Dataset3 Original
+# NOTA: outputs/classifier_replication_v2 esta invalidado; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md
 python -m src_v2 evaluate-external \
     outputs/classifier_replication_v2/best_classifier.pt \
     --external-data outputs/external_validation/dataset3 \

@@ -20,6 +20,10 @@ El experimento de control reveló que la robustez tiene **DOS componentes**:
 
 **Problema:** Cross-evaluation actual compara 4 clases vs 3 clases = INVÁLIDO
 
+**Nota (2025-12-21):** `outputs/full_coverage_warped_dataset` y
+`outputs/classifier_warped_full_coverage` fueron invalidados. No usar estos
+artefactos en cross-evaluation (ver reportes/RESUMEN_DEPURACION_OUTPUTS.md).
+
 **Solución:**
 ```bash
 # Paso 1: Crear script para filtrar dataset

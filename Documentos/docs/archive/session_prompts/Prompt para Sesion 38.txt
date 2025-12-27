@@ -1,5 +1,8 @@
 # SESION 38 - VALIDACION EXPERIMENTAL POST-INTROSPECCION
 
+NOTA (2025-12-21): outputs/full_coverage_warped_dataset y outputs/classifier_warped_full_coverage fueron invalidados.
+Este prompt queda como referencia historica (ver docs/reportes/RESUMEN_DEPURACION_OUTPUTS.md).
+
 ## CONTEXTO CRITICO (LEE ESTO PRIMERO)
 
 Esta sesión continúa después de una **introspección crítica multiagente** (Sesión 37) que identificó problemas metodológicos importantes. El proyecto tiene datos REALES pero la narrativa científica requiere REFORMULACIÓN.

@@ -126,7 +126,7 @@ prediccion_warping_clasificacion/
 │   └── session13/                   # Modelos adicionales
 │
 └── outputs/                         # Resultados experimentales
-    ├── full_coverage_warped_dataset/
+    ├── full_coverage_warped_dataset/  # INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md
     ├── original_3_classes/
     └── original_cropped_47/
 ```
@@ -405,7 +405,7 @@ checkpoints/session13/seed789/final_model.pt
 
 ### Datasets:
 - **Principal:** `data/COVID-19_Radiography_Dataset/`
-- **Warped 99%:** `outputs/full_coverage_warped_dataset/`
+- **Warped 99%:** `outputs/full_coverage_warped_dataset/` (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 - **Original 3 clases:** `outputs/original_3_classes/`
 - **Control (cropped 47%):** `outputs/original_cropped_47/`
 

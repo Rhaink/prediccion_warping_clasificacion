@@ -1,6 +1,11 @@
 # Prompt de Continuación - Sesión 52
 ## Objetivo: Corregir clasificador para alcanzar 98.73% accuracy
 
+**NOTA (2025-12-21):** `outputs/warped_replication_v2` y
+`outputs/full_coverage_warped_dataset` fueron invalidados. Cualquier
+clasificador derivado (por ejemplo `outputs/classifier_replication_v2` y
+`outputs/classifier_warped_full_coverage`) no debe usarse.
+
 ---
 
 ## CONTEXTO DEL PROBLEMA

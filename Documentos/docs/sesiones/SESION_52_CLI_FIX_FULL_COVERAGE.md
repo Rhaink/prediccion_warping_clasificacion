@@ -49,12 +49,12 @@ use_full_coverage=use_full_coverage  # <- Usa el parametro
 ## Resultados
 
 ### Dataset Generado
-- **Ubicacion:** `outputs/warped_replication_v2/`
+- **Ubicacion:** `outputs/warped_replication_v2/` (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 - **Fill rate:** 96.15% (promedio)
 - **Imagenes:** 15,153 procesadas sin fallos
 
 ### Clasificador Entrenado
-- **Ubicacion:** `outputs/classifier_replication_v2/`
+- **Ubicacion:** `outputs/classifier_replication_v2/` (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 - **Accuracy:** 99.10% (supera objetivo de 98.73%)
 - **F1 Macro:** 98.45%
 - **Epochs:** 37 (early stopping)
@@ -115,9 +115,9 @@ Esta diferencia no invalida los resultados - de hecho, explica la mayor robustez
 - `README.md` - Documentado flag --use-full-coverage
 
 ### Artefactos Generados
-- `outputs/warped_replication_v2/` - Dataset con full coverage
-- `outputs/classifier_replication_v2/` - Clasificador entrenado
-- `outputs/classifier_replication_v2/robustness_results.json` - Resultados de robustez
+- `outputs/warped_replication_v2/` - Dataset con full coverage (INVALIDADO)
+- `outputs/classifier_replication_v2/` - Clasificador entrenado (INVALIDADO)
+- `outputs/classifier_replication_v2/robustness_results.json` - Resultados de robustez (INVALIDADO)
 
 ## Conclusiones
 

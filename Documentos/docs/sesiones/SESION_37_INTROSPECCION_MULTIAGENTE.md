@@ -222,6 +222,7 @@ Las máscaras pulmonares NO se transforman junto con las imágenes.
    .venv/bin/python -m src_v2 train-classifier \
        --data-dir outputs/full_coverage_warped_dataset
    ```
+   Nota: `outputs/full_coverage_warped_dataset` fue invalidado; no usar (ver reportes/RESUMEN_DEPURACION_OUTPUTS.md).
 
 2. **Re-ejecutar cross-evaluation con información simétrica**
    - Comparar Original (99% info) vs Warped (99% info)
@@ -311,7 +312,7 @@ El proyecto aporta:
 ---
 
 **Archivos generados en esta sesión:**
-- `outputs/full_coverage_warped_dataset/` (15,153 imágenes)
+- `outputs/full_coverage_warped_dataset/` (INVALIDADO; ver reportes/RESUMEN_DEPURACION_OUTPUTS.md)
 - `outputs/visual_analysis/` (7 archivos)
 - `src_v2/processing/warp.py` (warp_mask agregado)
 - `tests/test_processing.py` (6 tests agregados)

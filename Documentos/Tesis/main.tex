@@ -1,6 +1,6 @@
-\documentclass[12pt,letterpaper]{article}
+\documentclass[12pt,letterpaper]{report}
 \usepackage[spanish]{babel}
-\usepackage[letterpaper, margin=2cm]{geometry}
+\usepackage[letterpaper, margin=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{booktabs}
@@ -10,50 +10,107 @@
 \usepackage{enumitem}
 \usepackage{setspace}
 \usepackage[hidelinks]{hyperref}
-\usepackage{amsmath}  % Para ecuaciones
-\usepackage{amssymb}  % Para simbolos matematicos adicionales
-\usepackage{natbib}   % Para citas bibliograficas
-\bibliographystyle{apalike}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{nameref}
+
+% Configuración de bibliografía - Estilo IEEE
+\usepackage[numbers]{natbib}
+\bibliographystyle{IEEEtran}
 
 % Nombres en español
 \renewcommand{\tablename}{Tabla}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\contentsname}{Contenido}
+\renewcommand{\algorithmicforall}{\textbf{para todo}}
+\renewcommand{\algorithmicdo}{\textbf{hacer}}
+\renewcommand{\algorithmicend}{\textbf{fin}}
+\renewcommand{\algorithmicif}{\textbf{si}}
+\renewcommand{\algorithmicthen}{\textbf{entonces}}
+\renewcommand{\algorithmicelse}{\textbf{sino}}
+\renewcommand{\algorithmicwhile}{\textbf{mientras}}
+\renewcommand{\algorithmicrepeat}{\textbf{repetir}}
+\renewcommand{\algorithmicuntil}{\textbf{hasta que}}
+\renewcommand{\algorithmicreturn}{\textbf{devolver}}
+
+% Numeración de ecuaciones, figuras y tablas por capítulo
+\numberwithin{equation}{chapter}
+\numberwithin{figure}{chapter}
+\numberwithin{table}{chapter}
+
+% Evitar hyphenation excesiva
+\pretolerance=5000
+\tolerance=2000
+\emergencystretch=30pt
+
+% BibTeX habilitado - usar natbib con estilo IEEEtran (numérico)
 
 \begin{document}
 
 \setstretch{1.15}
 
-% Página 1: Portada
+% ============================================================================
+% PORTADA ORIGINAL (BUAP)
+% ============================================================================
 \input{title-page}
 
-% Página 2: Objetivos
+% ============================================================================
+% TABLA DE CONTENIDO
+% ============================================================================
 \newpage
-\input{5-Objetivos}
+\tableofcontents
 
-% Página 3: Cronograma
+% ============================================================================
+% OBJETIVOS
+% ============================================================================
 \newpage
-\input{7-Cronograma}
+\input{0-Objetivos}
 
-% Página 4: Porcentajes
+% ============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% ============================================================================
 \newpage
-\input{7-Porcentajes}
 
-% Página 5: Introducción
+% Sección 4.1: Descripción General del Sistema
+\input{capitulo4/4_1_descripcion_general}
+
+% Sección 4.2: Dataset y Preprocesamiento
 \newpage
-\input{8-Introduccion}
+\input{capitulo4/4_2_dataset_preprocesamiento}
 
-% Página 6: Hipótesis
+% Sección 4.3: Modelo de Predicción de Landmarks
 \newpage
-\input{9-Hipotesis}
+%\input{capitulo4/4_3_modelo_landmarks}
 
-% Página 7: Justificación
+% Sección 4.4: Normalización Geométrica
 \newpage
-\input{10-Justificacion}
+%\input{capitulo4/4_4_normalizacion_geometrica}
 
-% Páginas 8-9: Marco Teórico
+% Sección 4.5: Clasificación de Enfermedades Pulmonares
 \newpage
-\input{11-MarcoTeorico}
+%\input{capitulo4/4_5_clasificacion}
 
-% Referencias bibliográficas
+% Sección 4.6: Protocolo de Evaluación Experimental
+\newpage
+%\input{capitulo4/4_6_protocolo_evaluacion}
+
+% ============================================================================
+% CAPÍTULOS PENDIENTES (según ESTRUCTURA_TESIS.md):
+% - Capítulo 1: Introducción
+% - Capítulo 2: Marco Teórico
+% - Capítulo 3: Estado del Arte
+% - Capítulo 5: Resultados y Discusión
+% - Capítulo 6: Conclusiones y Trabajo Futuro
+% ============================================================================
+
+% ============================================================================
+% BIBLIOGRAFÍA
+% ============================================================================
 \newpage
 \bibliography{references}
 

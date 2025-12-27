@@ -6,6 +6,10 @@
 **Estado previo:** v2.1.0 - APROBADO PARA DEFENSA
 **Prioridad:** ALTA - Fortalecer claims científicos
 
+**NOTA (2025-12-21):** `outputs/warped_replication_v2` y
+`outputs/classifier_replication_v2` fueron invalidados. Este prompt queda como
+referencia histórica (ver reportes/RESUMEN_DEPURACION_OUTPUTS.md).
+
 ---
 
 ## CONTEXTO CRÍTICO

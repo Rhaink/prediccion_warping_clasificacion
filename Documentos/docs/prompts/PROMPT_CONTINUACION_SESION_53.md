@@ -2,6 +2,10 @@
 
 ## Objetivo: Investigar discrepancia de fill rate y documentar trade-off
 
+**NOTA (2025-12-21):** `outputs/full_coverage_warped_dataset` y
+`outputs/warped_replication_v2` fueron invalidados. Los resultados y comandos
+asociados en este prompt quedan solo como registro histórico.
+
 ---
 
 ## CONTEXTO

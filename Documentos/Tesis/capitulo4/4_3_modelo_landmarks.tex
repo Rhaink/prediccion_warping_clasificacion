@@ -1,0 +1,436 @@
+% =============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% Sección 4.3: Modelo de Predicción de Landmarks
+% =============================================================================
+
+\section{Modelo de Predicción de Landmarks}
+\label{sec:modelo_landmarks}
+
+El modelo de predicción de landmarks constituye el primer componente del sistema propuesto y tiene como objetivo localizar los 15 puntos anatómicos que definen el contorno pulmonar en cada radiografía. Esta sección describe la arquitectura del modelo, la función de pérdida utilizada y la estrategia de entrenamiento implementada.
+
+\subsection{Arquitectura del Modelo}
+\label{subsec:arquitectura_modelo}
+
+El modelo propuesto se basa en una arquitectura de red neuronal convolucional con tres componentes principales: un backbone de extracción de características, un módulo de atención y una cabeza de regresión. La Figura \ref{fig:arquitectura_modelo} presenta el diagrama de la arquitectura completa.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: Insertar figura de arquitectura]
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
+    [Diagrama de arquitectura del modelo]\\
+    Entrada (224×224×3) $\rightarrow$ ResNet-18 Backbone $\rightarrow$ Coordinate Attention $\rightarrow$ Global Average Pooling $\rightarrow$ Cabeza de Regresión $\rightarrow$ Salida (30)
+    \vspace{4cm}}}
+    \caption{Arquitectura del modelo de predicción de landmarks. El backbone ResNet-18 extrae características de alto nivel, el módulo Coordinate Attention incorpora información posicional, y la cabeza de regresión predice las 30 coordenadas (15 landmarks $\times$ 2 coordenadas).}
+    \label{fig:arquitectura_modelo}
+\end{figure}
+
+\subsubsection{Backbone: ResNet-18}
+
+Como extractor de características se utiliza ResNet-18 \cite{he2016deep}, una red residual de 18 capas preentrenada en el conjunto de datos ImageNet \cite{deng2009imagenet}. La arquitectura ResNet introdujo las conexiones residuales (\textit{skip connections}) que permiten entrenar redes más profundas al mitigar el problema de desvanecimiento de gradiente.
+
+La elección de ResNet-18 sobre arquitecturas más profundas (ResNet-34, ResNet-50) se fundamenta en las siguientes consideraciones:
+
+\begin{enumerate}
+    \item \textbf{Tamaño del conjunto de datos:} Con 957 imágenes anotadas, un modelo más pequeño reduce el riesgo de sobreajuste.
+    \item \textbf{Eficiencia computacional:} ResNet-18 permite iteraciones de entrenamiento más rápidas durante la experimentación.
+    \item \textbf{Suficiente capacidad:} La tarea de localización de 15 landmarks no requiere la capacidad de representación de arquitecturas más profundas.
+    \item \textbf{Aprendizaje por transferencia efectivo:} Los pesos preentrenados en ImageNet proporcionan características genéricas útiles para imágenes médicas.
+\end{enumerate}
+
+El backbone procesa imágenes de entrada de dimensiones $224 \times 224 \times 3$ y produce un mapa de características de dimensiones $7 \times 7 \times 512$. La Tabla \ref{tab:backbone_arquitectura} detalla las capas del backbone utilizadas.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Configuración del backbone ResNet-18. Se utilizan todas las capas convolucionales, removiendo únicamente la capa fully connected original.}
+    \label{tab:backbone_arquitectura}
+    \begin{tabular}{llcc}
+        \toprule
+        \textbf{Capa} & \textbf{Descripción} & \textbf{Salida} & \textbf{Parámetros} \\
+        \midrule
+        conv1 & Conv $7 \times 7$, stride 2 & $112 \times 112 \times 64$ & 9,408 \\
+        bn1 + relu & BatchNorm + ReLU & $112 \times 112 \times 64$ & 128 \\
+        maxpool & MaxPool $3 \times 3$, stride 2 & $56 \times 56 \times 64$ & 0 \\
+        layer1 & 2 bloques residuales & $56 \times 56 \times 64$ & 147,968 \\
+        layer2 & 2 bloques residuales & $28 \times 28 \times 128$ & 525,568 \\
+        layer3 & 2 bloques residuales & $14 \times 14 \times 256$ & 2,099,712 \\
+        layer4 & 2 bloques residuales & $7 \times 7 \times 512$ & 8,393,728 \\
+        \midrule
+        \multicolumn{2}{l}{\textbf{Total backbone}} & --- & \textbf{11,176,512} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection{Módulo Coordinate Attention}
+
+Para mejorar la capacidad del modelo de localizar landmarks de manera precisa, se incorpora un módulo de Coordinate Attention \cite{hou2021coordinate} después del backbone. Este mecanismo de atención captura dependencias de largo alcance mientras preserva información posicional, lo cual es fundamental para tareas de localización.
+
+A diferencia de otros mecanismos de atención como SE-Net \cite{hu2018squeeze} que utilizan \textit{global average pooling} y pierden información espacial, Coordinate Attention descompone la atención del canal en dos mapas de atención unidimensionales que codifican la posición a lo largo de las direcciones horizontal y vertical.
+
+El módulo opera de la siguiente manera:
+
+\textbf{1. Agregación por coordenadas.} Se aplica pooling adaptativo a lo largo de cada dimensión espacial:
+
+\begin{equation}
+    z_c^h(h) = \frac{1}{W} \sum_{w=1}^{W} x_c(h, w)
+\end{equation}
+
+\begin{equation}
+    z_c^w(w) = \frac{1}{H} \sum_{h=1}^{H} x_c(h, w)
+\end{equation}
+
+\noindent donde $x_c(h, w)$ es el valor del canal $c$ en la posición $(h, w)$, y $z_c^h$, $z_c^w$ son los vectores de características agregados.
+
+\textbf{2. Transformación intermedia.} Los vectores se concatenan y procesan mediante una convolución $1 \times 1$:
+
+\begin{equation}
+    f = \delta(\text{BN}(\text{Conv}_{1\times1}([\mathbf{z}^h, \mathbf{z}^w])))
+\end{equation}
+
+\noindent donde $\delta$ denota la función de activación ReLU y BN es batch normalization. La reducción de dimensionalidad se controla mediante el factor $r = 32$:
+
+\begin{equation}
+    \text{mid\_channels} = \max\left(8, \frac{C}{r}\right)
+\end{equation}
+
+\textbf{3. Generación de mapas de atención.} Se separan las características y se generan los pesos de atención:
+
+\begin{equation}
+    \mathbf{a}^h = \sigma(\text{Conv}_{1\times1}^h(\mathbf{f}^h))
+\end{equation}
+
+\begin{equation}
+    \mathbf{a}^w = \sigma(\text{Conv}_{1\times1}^w(\mathbf{f}^w))
+\end{equation}
+
+\noindent donde $\sigma$ es la función sigmoide.
+
+\textbf{4. Aplicación de atención.} La salida del módulo es:
+
+\begin{equation}
+    y_c(h, w) = x_c(h, w) \cdot a_c^h(h) \cdot a_c^w(w)
+\end{equation}
+
+La Tabla \ref{tab:coord_attention_params} presenta los parámetros del módulo Coordinate Attention.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Parámetros del módulo Coordinate Attention para $C=512$ canales de entrada.}
+    \label{tab:coord_attention_params}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Componente} & \textbf{Configuración} & \textbf{Parámetros} \\
+        \midrule
+        pool\_h & AdaptiveAvgPool2d(None, 1) & 0 \\
+        pool\_w & AdaptiveAvgPool2d(1, None) & 0 \\
+        conv1 & Conv2d(512, 16, núcleo=1) & 8,192 \\
+        bn1 & BatchNorm2d(16) & 32 \\
+        conv\_h & Conv2d(16, 512, núcleo=1) & 8,192 \\
+        conv\_w & Conv2d(16, 512, núcleo=1) & 8,192 \\
+        \midrule
+        \multicolumn{2}{l}{\textbf{Total Coordinate Attention}} & \textbf{24,608} \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.5em}
+    \footnotesize\textit{Nota: Las convoluciones utilizan \texttt{bias=False} por estar seguidas de BatchNorm, evitando parámetros redundantes.}
+\end{table}
+
+\subsubsection{Cabeza de Regresión}
+
+La cabeza de regresión transforma las características extraídas en las 30 coordenadas de salida (15 landmarks $\times$ 2 coordenadas x, y). Se utiliza una arquitectura profunda con normalización por grupos (\textit{Group Normalization}) \cite{wu2018group}, que proporciona estabilidad durante el entrenamiento independientemente del tamaño del batch.
+
+La arquitectura de la cabeza consiste en tres capas lineales con normalización y regularización:
+
+\begin{enumerate}
+    \item \textbf{Global Average Pooling:} Reduce el mapa de características de $7 \times 7 \times 512$ a un vector de 512 dimensiones.
+    \item \textbf{Primera capa oculta:} Linear(512, 512) $\rightarrow$ GroupNorm(32, 512) $\rightarrow$ ReLU $\rightarrow$ Dropout(0.3).
+    \item \textbf{Segunda capa oculta:} Linear(512, 768) $\rightarrow$ GroupNorm(48, 768) $\rightarrow$ ReLU $\rightarrow$ Dropout(0.15).
+    \item \textbf{Capa de salida:} Linear(768, 30) $\rightarrow$ Sigmoid.
+\end{enumerate}
+
+Group Normalization divide los canales en grupos y normaliza dentro de cada grupo, lo que la hace robusta a variaciones en el tamaño del batch a diferencia de Batch Normalization. Con 32 grupos para 512 canales, cada grupo contiene 16 canales.
+
+La función de activación Sigmoid en la capa de salida restringe las predicciones al rango $[0, 1]$, correspondiente a las coordenadas normalizadas respecto al tamaño de la imagen. Para obtener coordenadas en píxeles, se multiplica por el tamaño de imagen ($224$ píxeles):
+
+\begin{equation}
+    \hat{p}_i = \sigma(\mathbf{W}_3 \cdot \text{ReLU}(\text{GN}(\mathbf{W}_2 \cdot \text{ReLU}(\text{GN}(\mathbf{W}_1 \cdot \mathbf{z}))))) \cdot 224
+\end{equation}
+
+\noindent donde $\mathbf{z}$ es el vector de características después de global average pooling y GN denota Group Normalization.
+
+La Tabla \ref{tab:head_arquitectura} resume la arquitectura de la cabeza de regresión.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Arquitectura de la cabeza de regresión con normalización por grupos.}
+    \label{tab:head_arquitectura}
+    \begin{tabular}{llcc}
+        \toprule
+        \textbf{Capa} & \textbf{Operación} & \textbf{Salida} & \textbf{Parámetros} \\
+        \midrule
+        avgpool & AdaptiveAvgPool2d(1,1) & 512 & 0 \\
+        flatten & Flatten & 512 & 0 \\
+        fc1 & Linear(512, 512) & 512 & 262,656 \\
+        gn1 & GroupNorm(32, 512) & 512 & 1,024 \\
+        relu1 & ReLU & 512 & 0 \\
+        dropout1 & Dropout(p=0.3) & 512 & 0 \\
+        fc2 & Linear(512, 768) & 768 & 394,752 \\
+        gn2 & GroupNorm(48, 768) & 768 & 1,536 \\
+        relu2 & ReLU & 768 & 0 \\
+        dropout2 & Dropout(p=0.15) & 768 & 0 \\
+        fc3 & Linear(768, 30) & 30 & 23,070 \\
+        sigmoid & Sigmoid & 30 & 0 \\
+        \midrule
+        \multicolumn{2}{l}{\textbf{Total cabeza}} & --- & \textbf{683,038} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El número total de parámetros del modelo completo es aproximadamente 11.9 millones, de los cuales 11.2 millones corresponden al backbone preentrenado.
+
+\subsection{Función de Pérdida}
+\label{subsec:funcion_perdida}
+
+Para el entrenamiento del modelo de regresión de landmarks se utiliza Wing Loss \cite{feng2018wing}, una función de pérdida diseñada específicamente para localización de puntos de referencia faciales que ha demostrado ser efectiva también para landmarks anatómicos.
+
+A diferencia de las pérdidas tradicionales L1 y L2, Wing Loss proporciona un comportamiento adaptativo según la magnitud del error:
+
+\begin{itemize}
+    \item Para errores pequeños ($|x| < \omega$): comportamiento logarítmico que proporciona gradientes más fuertes, promoviendo refinamiento fino de las predicciones.
+    \item Para errores grandes ($|x| \geq \omega$): comportamiento lineal similar a L1, proporcionando gradientes estables.
+\end{itemize}
+
+La formulación matemática de Wing Loss es:
+
+\begin{equation}
+    \text{wing}(x) =
+    \begin{cases}
+        \omega \ln\left(1 + \frac{|x|}{\epsilon}\right) & \text{si } |x| < \omega \\
+        |x| - C & \text{de otro modo}
+    \end{cases}
+    \label{eq:wing_loss}
+\end{equation}
+
+\noindent donde:
+\begin{itemize}
+    \item $\omega$ es el umbral que delimita los regímenes logarítmico y lineal,
+    \item $\epsilon$ controla la curvatura de la parte logarítmica,
+    \item $C = \omega - \omega \ln(1 + \omega/\epsilon)$ es una constante que garantiza continuidad en $|x| = \omega$.
+\end{itemize}
+
+Los parámetros utilizados, expresados en píxeles antes de la normalización, son $\omega = 10.0$ y $\epsilon = 2.0$. Dado que las coordenadas se trabajan normalizadas al rango $[0, 1]$, estos valores se escalan por el tamaño de imagen:
+
+\begin{align}
+    \omega_{\text{norm}} &= \frac{\omega}{224} = 0.0446 \\
+    \epsilon_{\text{norm}} &= \frac{\epsilon}{224} = 0.0089
+\end{align}
+
+La Figura \ref{fig:wing_loss} ilustra el comportamiento de Wing Loss comparado con L1 y L2.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: Insertar gráfica comparativa]
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}
+    [Gráfica comparativa de Wing Loss vs L1 vs L2]\\
+    Mostrando el cambio de régimen en $\omega = 10$ píxeles
+    \vspace{3cm}}}
+    \caption{Comparación de Wing Loss con pérdidas L1 y L2. Wing Loss proporciona gradientes más fuertes para errores pequeños (región logarítmica) mientras mantiene estabilidad para errores grandes (región lineal).}
+    \label{fig:wing_loss}
+\end{figure}
+
+La pérdida total se calcula como el promedio de Wing Loss sobre todas las coordenadas predichas:
+
+\begin{equation}
+    \mathcal{L}_{\text{total}} = \frac{1}{30} \sum_{i=1}^{30} \text{wing}(\hat{c}_i - c_i)
+    \label{eq:total_loss}
+\end{equation}
+
+\noindent donde $\hat{c}_i$ y $c_i$ son las coordenadas predichas y reales respectivamente.
+
+\subsection{Estrategia de Entrenamiento}
+\label{subsec:estrategia_entrenamiento}
+
+El entrenamiento del modelo se realiza en dos fases, una estrategia común en aprendizaje por transferencia que permite aprovechar los pesos preentrenados mientras se adapta el modelo a la tarea específica \cite{yosinski2014transferable}.
+
+\subsubsection{Fase 1: Entrenamiento de la Cabeza}
+
+En la primera fase, los parámetros del backbone ResNet-18 y el módulo Coordinate Attention se mantienen congelados, entrenando únicamente la cabeza de regresión. Esta estrategia tiene dos objetivos:
+
+\begin{enumerate}
+    \item \textbf{Preservar características genéricas:} Las capas convolucionales preentrenadas en ImageNet capturan características visuales útiles (bordes, texturas, formas) que son transferibles a imágenes médicas.
+    \item \textbf{Inicialización estable:} Entrenar primero la cabeza permite que las capas de salida se calibren antes de ajustar las características de entrada.
+\end{enumerate}
+
+La configuración de la Fase 1 se presenta en la Tabla \ref{tab:fase1_config}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Configuración de entrenamiento - Fase 1.}
+    \label{tab:fase1_config}
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor} \\
+        \midrule
+        Épocas máximas & 15 \\
+        Tasa de aprendizaje & $1 \times 10^{-3}$ \\
+        Optimizador & Adam ($\beta_1=0.9$, $\beta_2=0.999$) \\
+        Tamaño de lote & 16 \\
+        Parámetros entrenables & Solo cabeza (683,038) \\
+        Parámetros congelados & Backbone + CoordAttn (11,201,120) \\
+        Parada temprana & Paciencia = 5 épocas \\
+        Métrica de monitoreo & Error de validación (píxeles) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection{Fase 2: Ajuste fino Completo}
+
+Una vez que la cabeza ha convergido, se descongelan todos los parámetros y se realiza ajuste fino del modelo completo. Para evitar el olvido catastrófico de las características preentrenadas, se utiliza una estrategia de tasa de aprendizaje diferenciado:
+
+\begin{itemize}
+    \item \textbf{Backbone + Coordinate Attention:} Tasa de aprendizaje bajo ($2 \times 10^{-5}$) para ajustes finos.
+    \item \textbf{Cabeza de regresión:} Tasa de aprendizaje moderado ($2 \times 10^{-4}$) para continuar la adaptación.
+\end{itemize}
+
+La relación de 10:1 entre los tasa de aprendizajes permite que el backbone se ajuste lentamente mientras la cabeza responde más rápidamente a los gradientes.
+
+Además, se utiliza un scheduler de tipo \textit{Cosine Annealing} \cite{loshchilov2016sgdr} que reduce gradualmente el tasa de aprendizaje siguiendo una función coseno:
+
+\begin{equation}
+    \eta_t = \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\left(1 + \cos\left(\frac{t \cdot \pi}{T}\right)\right)
+\end{equation}
+
+\noindent donde $\eta_{\max}$ es el tasa de aprendizaje inicial, $\eta_{\min} = 1 \times 10^{-6}$ es el tasa de aprendizaje mínimo, $t$ es la época actual y $T$ es el número total de épocas.
+
+La Tabla \ref{tab:fase2_config} detalla la configuración de la Fase 2.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Configuración de entrenamiento - Fase 2.}
+    \label{tab:fase2_config}
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor} \\
+        \midrule
+        Épocas máximas & 100 \\
+        Tasa de aprendizaje (backbone + CA) & $2 \times 10^{-5}$ \\
+        Tasa de aprendizaje (cabeza) & $2 \times 10^{-4}$ \\
+        Optimizador & Adam ($\beta_1=0.9$, $\beta_2=0.999$) \\
+        Scheduler & Cosine Annealing ($T=100$, $\eta_{\min}=10^{-6}$) \\
+        Tamaño de lote & 8 \\
+        Parámetros entrenables & Todos (11,884,158) \\
+        Parada temprana & Paciencia = 15 épocas \\
+        Métrica de monitoreo & Error de validación (píxeles) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection{Aumento de Datos}
+
+Para aumentar la variabilidad del conjunto de entrenamiento y mejorar la generalización, se aplican las siguientes transformaciones durante el entrenamiento:
+
+\begin{enumerate}
+    \item \textbf{Flip horizontal} (probabilidad 0.5): Refleja la imagen horizontalmente, intercambiando simultáneamente los landmarks de pares simétricos (L3$\leftrightarrow$L4, L5$\leftrightarrow$L6, etc.).
+
+    \item \textbf{Rotación aleatoria} ($\pm$10 grados): Rota la imagen y transforma las coordenadas de los landmarks mediante la matriz de rotación correspondiente.
+\end{enumerate}
+
+Las transformaciones se aplican de manera consistente a la imagen y a las coordenadas de los landmarks para mantener la correspondencia espacial.
+
+\subsection{Resumen de Hiperparámetros}
+\label{subsec:resumen_hiperparametros}
+
+La Tabla \ref{tab:hiperparametros_completos} consolida todos los hiperparámetros utilizados en el modelo de predicción de landmarks.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Resumen completo de hiperparámetros del modelo de landmarks.}
+    \label{tab:hiperparametros_completos}
+    \begin{tabular}{llc}
+        \toprule
+        \textbf{Categoría} & \textbf{Parámetro} & \textbf{Valor} \\
+        \midrule
+        \multirow{5}{*}{Arquitectura}
+            & Backbone & ResNet-18 \\
+            & Coordinate Attention & Habilitado (reduction=32) \\
+            & Cabeza de regresión & 3 capas con GroupNorm \\
+            & Dimensiones ocultas & 512 $\rightarrow$ 768 \\
+            & Parámetros totales & $\sim$11.9M \\
+        \midrule
+        \multirow{3}{*}{Regularización}
+            & Dropout (capa 1) & 0.3 \\
+            & Dropout (capa 2) & 0.15 \\
+            & Aumento de datos & Flip horizontal + Rotación $\pm$10° \\
+        \midrule
+        \multirow{3}{*}{Wing Loss}
+            & $\omega$ & 10.0 px \\
+            & $\epsilon$ & 2.0 px \\
+            & Normalizado & Sí (escalado a [0,1]) \\
+        \midrule
+        \multirow{5}{*}{Fase 1}
+            & Épocas & 15 \\
+            & Tasa de aprendizaje & $1 \times 10^{-3}$ \\
+            & Tamaño de lote & 16 \\
+            & Backbone & Congelado \\
+            & Parada temprana & 5 épocas \\
+        \midrule
+        \multirow{6}{*}{Fase 2}
+            & Épocas & 100 \\
+            & LR backbone + CA & $2 \times 10^{-5}$ \\
+            & LR cabeza & $2 \times 10^{-4}$ \\
+            & Tamaño de lote & 8 \\
+            & Parada temprana & 15 épocas \\
+            & Scheduler & Cosine Annealing \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Ensemble de Modelos}
+\label{subsec:ensemble_modelos}
+
+Para reducir la varianza en la predicción de landmarks y mejorar la precisión, se implementa un ensemble de cuatro modelos entrenados con diferentes semillas aleatorias. Esta estrategia permite capturar diferentes soluciones locales del espacio de parámetros.
+
+\subsubsection{Configuración del Ensemble}
+
+Se entrenaron cuatro modelos con semillas aleatorias distintas ($123$, $456$, $321$, $789$) utilizando la configuración descrita en las secciones anteriores. La predicción final del ensemble se obtiene mediante promedio aritmético de las predicciones individuales:
+
+\begin{equation}
+    \hat{\mathbf{L}}_{\text{ensemble}} = \frac{1}{K} \sum_{k=1}^{K} \hat{\mathbf{L}}_k
+    \label{eq:ensemble_average}
+\end{equation}
+
+\noindent donde $K = 4$ es el número de modelos y $\hat{\mathbf{L}}_k$ representa las coordenadas predichas por el modelo $k$.
+
+\subsubsection{Resultados del Ensemble}
+
+La Tabla \ref{tab:ensemble_resultados} compara el desempeño del ensemble con los modelos individuales.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparación del error de predicción entre modelos individuales y ensemble.}
+    \label{tab:ensemble_resultados}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Configuración} & \textbf{Error medio (px)} & \textbf{Desv. est. (px)} \\
+        \midrule
+        Mejor modelo individual (seed 456) & 4.04 & 2.58 \\
+        Ensemble 4 modelos + TTA & 3.71 & 2.42 \\
+        \midrule
+        \textbf{Mejora relativa} & \textbf{8.2\%} & --- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El ensemble alcanza un error medio de $3.71$ píxeles, una mejora del 8.2\% respecto al mejor modelo individual ($4.04$ píxeles). Esta mejora se atribuye a la reducción de varianza mediante el promediado de predicciones diversas.
+
+Adicionalmente, se aplica \textit{Test-Time Augmentation} (TTA) durante la inferencia, promediando las predicciones de la imagen original y su versión reflejada horizontalmente. Esta técnica proporciona una reducción adicional del error al explotar la simetría inherente de las radiografías de tórax.
+
+% Referencias temporales para esta sección
+% \cite{he2016deep} - He et al., Deep Residual Learning (CVPR 2016)
+% \cite{deng2009imagenet} - Deng et al., ImageNet (CVPR 2009)
+% \cite{hou2021coordinate} - Hou et al., Coordinate Attention (CVPR 2021)
+% \cite{hu2018squeeze} - Hu et al., SE-Net (CVPR 2018)
+% \cite{wu2018group} - Wu & He, Group Normalization (ECCV 2018)
+% \cite{feng2018wing} - Feng et al., Wing Loss (CVPR 2018)
+% \cite{yosinski2014transferable} - Yosinski et al., Aprendizaje por Transferencia (NIPS 2014)
+% \cite{loshchilov2016sgdr} - Loshchilov & Hutter, SGDR/Cosine Annealing (ICLR 2017)
