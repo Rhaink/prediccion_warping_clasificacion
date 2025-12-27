@@ -39,7 +39,6 @@ Ubicacion: `visualization/`
 | Script | Proposito |
 |--------|-----------|
 | `generate_warped_dataset.py` | Dataset warpeado (47% fill) |
-| `generate_warped_dataset_full_coverage.py` | Dataset warpeado (99% fill) |
 | `generate_full_warped_dataset.py` | Dataset completo warpeado |
 | `generate_original_cropped_47.py` | Dataset control (47% fill) |
 | `filter_dataset_3_classes.py` | Filtrado a 3 clases |
@@ -74,6 +73,9 @@ Scripts archivados de sesiones anteriores (19 scripts):
 - `test_*.py` - Tests que deberian estar en `tests/`
 
 Estos se mantienen por referencia historica pero no se usan directamente.
+
+Nota: `archive/invalid_warping/generate_warped_dataset_full_coverage.py` fue movido
+por generar datasets con warping incorrecto (ver doc de depuracion en Documentos/docs/reportes/).
 
 ## Fuente de Verdad
 
