@@ -122,7 +122,7 @@ To validate the warping technique without Deep Learning ("Back to Basics"), we i
     *   **Efficiency:** We selected **k=50** components as the optimal number (Parsimony Principle), achieving peak performance with minimal complexity.
     *   **Compression:** Warping consistently increases **Explained Variance by +10%** (from ~71% to ~82%), mathematically proving that it reduces the geometric entropy of the dataset.
 
-👉 **[See Full Scientific Report](FISHER_EXPERIMENT_README.md)**
+👉 **[See Full Scientific Report](Documentos/docs/FISHER_EXPERIMENT_README.md)**
 
 ### Robustness Mechanism (Control Experiment - Session 39)
 
