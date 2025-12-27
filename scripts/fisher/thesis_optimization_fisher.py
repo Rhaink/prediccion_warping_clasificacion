@@ -240,7 +240,7 @@ def run_optimization(args, device):
         torch.cuda.empty_cache()
 
     # Guardar resultados
-    out_path = Path("results/grid_search_clahe.json")
+    out_path = Path("results/metrics/grid_search_clahe.json")
     with open(out_path, "w") as f:
         json.dump(results, f, indent=4)
         
