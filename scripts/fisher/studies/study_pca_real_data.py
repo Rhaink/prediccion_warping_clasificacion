@@ -64,8 +64,10 @@ def visualize_pca_real():
     axes[2].axis('off')
 
     plt.tight_layout()
-    plt.savefig('pca_real_comparison.png')
-    print("\n✅ IMAGEN GENERADA: pca_real_comparison.png")
+    output_path = Path("results/figures/pca_real_comparison.png")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_path)
+    print(f"\n✅ IMAGEN GENERADA: {output_path}")
     print("Ábrela para ver la diferencia radical.")
 
 if __name__ == "__main__":

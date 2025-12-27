@@ -11,7 +11,7 @@
 # usando SOLAMENTE NumPy.
 #
 # INSTRUCCIONES DE USO:
-# Ejecutar: python thesis_fisher_tutorial.py
+# Ejecutar: python scripts/fisher/thesis_fisher_tutorial.py
 # Leer la salida en consola como si fuera una historia.
 # -----------------------------------------------------------------------------
 

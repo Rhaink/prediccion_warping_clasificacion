@@ -146,6 +146,11 @@ def main():
     # Rutas
     dataset_dir = args.dataset_dir
     
+    figures_dir = Path("results/figures")
+    metrics_dir = Path("results/metrics")
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+
     # 1. Cargar Datos REALES (Train para aprender, Test para evaluar)
     print("\n--- FASE 1: CARGA DE DATOS ---")
     X_train, y_train = cargar_datos_simples(dataset_dir, "train")
@@ -189,8 +194,9 @@ def main():
     plt.title(f"Importancia Discriminante (Fisher) - {Path(dataset_dir).name}")
     plt.xlabel("Componente Principal (Ponderante)")
     plt.ylabel("Fisher Ratio")
-    plt.savefig(f"fisher_scores_{Path(dataset_dir).name}.png")
-    print(f"    Gráfico guardado en 'fisher_scores_{Path(dataset_dir).name}.png'")
+    fig_path = figures_dir / f"fisher_scores_{Path(dataset_dir).name}.png"
+    plt.savefig(fig_path)
+    print(f"    Gráfico guardado en '{fig_path}'")
     
     # --- AMPLIFICACIÓN (MÉTODO DEL ASESOR) ---
     print("\n--- FASE 5: AMPLIFICACIÓN (MÉTODO DEL ASESOR) ---")
@@ -219,9 +225,11 @@ def main():
     print(cm)
     
     # Guardar métricas básicas
-    with open(f"basic_metrics_{Path(dataset_dir).name}.txt", "w") as f:
+    metrics_path = metrics_dir / f"basic_metrics_{Path(dataset_dir).name}.txt"
+    with open(metrics_path, "w") as f:
         f.write(f"Accuracy: {acc:.4f}\n")
         f.write(f"Confusion Matrix:\n{cm}\n")
+    print(f"    Métricas guardadas en '{metrics_path}'")
 
 if __name__ == "__main__":
     main()

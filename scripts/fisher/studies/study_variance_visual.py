@@ -71,8 +71,10 @@ def visualize_ghosting_effect():
     axes[1].axis('off')
     
     plt.tight_layout()
-    plt.savefig('variance_ghosting_proof.png')
-    print("✅ Evidencia generada: variance_ghosting_proof.png")
+    output_path = Path("results/figures/variance_ghosting_proof.png")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_path)
+    print(f"✅ Evidencia generada: {output_path}")
 
 if __name__ == "__main__":
     visualize_ghosting_effect()

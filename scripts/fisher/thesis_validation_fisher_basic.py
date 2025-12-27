@@ -147,6 +147,11 @@ def main():
     # Rutas (Ajustables según tu entorno)
     dataset_dir = "outputs/warped_dataset"  # Usamos el dataset procesado
 
+    figures_dir = Path("results/figures")
+    metrics_dir = Path("results/metrics")
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+
     # 1. Cargar Datos REALES (Train para aprender, Test para evaluar)
     print("\n--- FASE 1: CARGA DE DATOS ---")
     X_train, y_train = cargar_datos_simples(dataset_dir, "train")
@@ -192,8 +197,9 @@ def main():
     plt.title(f"Importancia Discriminante (Fisher) - {Path(dataset_dir).name}")
     plt.xlabel("Componente Principal (Ponderante)")
     plt.ylabel("Fisher Ratio")
-    plt.savefig("fisher_scores_basic.png")
-    print("    Gráfico guardado en 'fisher_scores_basic.png'")
+    fig_path = figures_dir / "fisher_scores_basic.png"
+    plt.savefig(fig_path)
+    print(f"    Gráfico guardado en '{fig_path}'")
 
     # --- AMPLIFICACIÓN (MÉTODO DEL ASESOR) ---
     print("\n--- FASE 5: AMPLIFICACIÓN (MÉTODO DEL ASESOR) ---")
@@ -222,9 +228,11 @@ def main():
     print(cm)
 
     # Guardar métricas básicas
-    with open("basic_metrics.txt", "w") as f:
+    metrics_path = metrics_dir / "basic_metrics.txt"
+    with open(metrics_path, "w") as f:
         f.write(f"Accuracy: {acc:.4f}\n")
         f.write(f"Confusion Matrix:\n{cm}\n")
+    print(f"    Métricas guardadas en '{metrics_path}'")
 
 
 if __name__ == "__main__":
