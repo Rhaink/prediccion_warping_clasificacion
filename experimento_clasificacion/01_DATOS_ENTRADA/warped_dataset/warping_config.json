@@ -1,0 +1,18 @@
+{
+  "source": "Ground Truth landmarks",
+  "canonical_shape_file": "/home/donrobot/Projects/prediccion_coordenadas/outputs/shape_analysis/canonical_shape_gpa.json",
+  "triangles_file": "/home/donrobot/Projects/prediccion_coordenadas/outputs/shape_analysis/canonical_delaunay_triangles.json",
+  "warping_method": "piecewise_affine",
+  "full_coverage": false,
+  "num_triangles": 18,
+  "coverage_type": "lung_only",
+  "expected_fill_rate": "~47%",
+  "image_size": 224,
+  "session": 21,
+  "date": "2024-11-28",
+  "splits": {
+    "train": 717,
+    "val": 144,
+    "test": 96
+  }
+}
