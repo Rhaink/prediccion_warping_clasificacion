@@ -86,7 +86,7 @@ estar seguidas de BatchNorm, evitando parámetros redundantes.}
 ### CORRECCIÓN #5: Disclaimer Ético y Consideraciones
 **Archivo:** `capitulo4/4_6_protocolo_evaluacion.tex`
 **Líneas:** 512-526 (nueva subsección)
-**Problema:** Faltaba disclaimer de uso no clínico (requisito de prompt_tesis.md)
+**Problema:** Faltaba disclaimer de uso no clínico (requisito de Documentos/Tesis/prompts/prompt_tesis.md)
 
 **AGREGADO:** Nueva subsección "Consideraciones Éticas y Limitaciones" que incluye:
 - Disclaimer claro: prototipo de investigación, NO validado para uso clínico

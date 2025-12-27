@@ -2,7 +2,7 @@
 
 ## INSTRUCCIONES CRÍTICAS PARA CLAUDE
 
-**CONTEXTO:** En sesiones anteriores (01-06) se ignoraron instrucciones explícitas de `prompt_tesis.md`. El error más grave fue usar `\documentclass{article}` cuando se solicitó claramente una "plantilla popular para tesis de posgrado".
+**CONTEXTO:** En sesiones anteriores (01-06) se ignoraron instrucciones explícitas de `Documentos/Tesis/prompts/prompt_tesis.md`. El error más grave fue usar `\documentclass{article}` cuando se solicitó claramente una "plantilla popular para tesis de posgrado".
 
 **MODO DE TRABAJO:** Esta sesión es de AUDITORÍA Y CORRECCIÓN CONTROLADA.
 
@@ -13,7 +13,7 @@
    - Mostrado al usuario (el antes y el después)
    - APROBADO explícitamente por el usuario antes de ejecutarse
 
-2. **Revisar línea por línea** el archivo `prompt_tesis.md` y verificar cumplimiento.
+2. **Revisar línea por línea** el archivo `Documentos/Tesis/prompts/prompt_tesis.md` y verificar cumplimiento.
 
 3. **Documentar cada hallazgo** antes de proponer corrección.
 
@@ -39,7 +39,7 @@
 
 | Archivo | Descripción |
 |---------|-------------|
-| `prompt_tesis.md` | Instrucciones originales - AUDITAR CONTRA ESTO |
+| `Documentos/Tesis/prompts/prompt_tesis.md` | Instrucciones originales - AUDITAR CONTRA ESTO |
 | `Documentos/Tesis/main.tex` | Archivo principal LaTeX |
 | `Documentos/Tesis/references.bib` | Referencias bibliográficas (35 refs) |
 | `Documentos/Tesis/capitulo4/*.tex` | 6 secciones del Capítulo 4 |
@@ -48,11 +48,11 @@
 
 ---
 
-## TAREA: AUDITORÍA DE prompt_tesis.md
+## TAREA: AUDITORÍA DE Documentos/Tesis/prompts/prompt_tesis.md
 
 ### Proceso paso a paso:
 
-1. **Leer `prompt_tesis.md` completo**
+1. **Leer `Documentos/Tesis/prompts/prompt_tesis.md` completo**
 2. **Para cada requisito, verificar:**
    - ¿Está implementado correctamente?
    - Si NO: documentar el problema
@@ -107,7 +107,7 @@ Para cada problema encontrado, presentar así:
 ```
 ### HALLAZGO #N: [Título breve]
 
-**Requisito (prompt_tesis.md línea X):**
+**Requisito (Documentos/Tesis/prompts/prompt_tesis.md línea X):**
 > [Cita textual del requisito]
 
 **Estado actual:**
@@ -137,7 +137,7 @@ DESPUÉS:
 
 ```
 Por favor:
-1. Lee el archivo `prompt_tesis.md` en la raíz del proyecto
+1. Lee el archivo `Documentos/Tesis/prompts/prompt_tesis.md`
 2. Lee el estado actual de `main.tex` y los archivos del capítulo 4
 3. Comienza la auditoría línea por línea
 4. Presenta el PRIMER hallazgo en el formato especificado
@@ -156,4 +156,4 @@ Por favor:
 ---
 
 *Prompt generado: 16 Diciembre 2025 - Sesión 07*
-*Objetivo: Auditoría controlada de cumplimiento con prompt_tesis.md*
+*Objetivo: Auditoría controlada de cumplimiento con Documentos/Tesis/prompts/prompt_tesis.md*

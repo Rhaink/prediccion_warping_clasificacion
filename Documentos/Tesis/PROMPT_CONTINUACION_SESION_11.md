@@ -2,7 +2,7 @@
 
 ## INSTRUCCIONES PARA CLAUDE
 
-**IMPORTANTE**: Antes de comenzar, lee completamente el archivo `prompt_tesis.md` ubicado en `/home/donrobot/Projects/prediccion_warping_clasificacion/Documentos/Tesis/prompt_tesis.md`. Este archivo contiene las reglas fundamentales del proyecto de tesis.
+**IMPORTANTE**: Antes de comenzar, lee completamente el archivo `Documentos/Tesis/prompts/prompt_tesis.md` ubicado en `/home/donrobot/Projects/prediccion_warping_clasificacion/Documentos/Tesis/prompts/prompt_tesis.md`. Este archivo contiene las reglas fundamentales del proyecto de tesis.
 
 Este prompt introduce una **NUEVA FASE** del proyecto: transición de redacción textual a presentación visual y generación de imágenes científicas rigurosas.
 
@@ -48,7 +48,7 @@ Se reemplazaron ~100 términos en inglés por sus equivalentes en español:
 
 | Archivo | Contenido | Estado |
 |---------|-----------|--------|
-| `prompt_tesis.md` | Reglas fundamentales, rol de Claude, requerimientos de formato | ✅ VIGENTE |
+| `Documentos/Tesis/prompts/prompt_tesis.md` | Reglas fundamentales, rol de Claude, requerimientos de formato | ✅ VIGENTE |
 | `DECISIONES_FASE_1.md` | Decisiones de estructura y enfoque aprobadas | ✅ BLOQUEADO |
 | `ESTRUCTURA_TESIS.md` | Estructura de 6 capítulos aprobada | ✅ BLOQUEADO |
 | `GROUND_TRUTH.json` | Valores experimentales validados (métricas, resultados) | ✅ REFERENCIA |

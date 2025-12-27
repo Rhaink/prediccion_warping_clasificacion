@@ -257,4 +257,4 @@ Por favor:
 ---
 
 *Prompt creado: 17 Diciembre 2025 - Sesión 08*
-*Basado en: prompt_tesis.md + Informe de auditoría + Estándares IEEE/CONACYT*
+*Basado en: Documentos/Tesis/prompts/prompt_tesis.md + Informe de auditoría + Estándares IEEE/CONACYT*

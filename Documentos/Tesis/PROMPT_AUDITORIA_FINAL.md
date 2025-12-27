@@ -125,7 +125,7 @@ respecto al mejor modelo individual (4.04 píxeles).
 ---
 
 #### 5. DISCLAIMER ÉTICO FALTANTE 🟡
-**Requisito:** prompt_tesis.md exige consideraciones éticas
+**Requisito:** Documentos/Tesis/prompts/prompt_tesis.md exige consideraciones éticas
 **Error:** No hay disclaimer de "sistema no aprobado para uso clínico"
 
 **SOLUCIÓN:** Agregar en Capítulo 6:

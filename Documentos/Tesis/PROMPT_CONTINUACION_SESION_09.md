@@ -3,7 +3,7 @@
 ## RESUMEN DE SESIÓN 08 (17 Diciembre 2025)
 
 ### Objetivos de la sesión
-1. Auditoría de cumplimiento con `prompt_tesis.md`
+1. Auditoría de cumplimiento con `Documentos/Tesis/prompts/prompt_tesis.md`
 2. Corrección de redacción en el Capítulo 4 (Metodología)
 3. Creación de prompt especializado para auditoría de calidad académica
 
@@ -144,7 +144,7 @@ Figuras actualizadas/agregadas:
 - `src_v2/processing/warp.py` - Pipeline de normalización
 - `src_v2/cli.py` - Interfaz de línea de comandos
 
-### Estilo de redacción (de prompt_tesis.md):
+### Estilo de redacción (de Documentos/Tesis/prompts/prompt_tesis.md):
 - Voz pasiva refleja ("se implementó", "se desarrolló")
 - Sin pronombres personales excepto en agradecimientos
 - Enfoque algorítmico/computacional, no clínico

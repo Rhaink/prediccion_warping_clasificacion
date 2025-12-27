@@ -2,7 +2,7 @@
 
 ## INSTRUCCIONES PARA CLAUDE
 
-Lee el archivo `prompt_tesis.md` en la raíz del proyecto para entender tu rol como Asesor Senior de Tesis y el proceso de trabajo en fases.
+Lee el archivo `Documentos/Tesis/prompts/prompt_tesis.md` para entender tu rol como Asesor Senior de Tesis y el proceso de trabajo en fases.
 
 ---
 
