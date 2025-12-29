@@ -17,16 +17,27 @@ Hecho en esta sesion
   - Entrega de muestras warped al asesor.
   - Pedir aclaraciones cuando falte info.
   - Documentar avances y hacer commits por cambios.
+- Semana 1 documentada con entregables:
+  - Objetivos y criterios: `feature/plan-fisher-warping/NOTA_OBJETIVOS.md`.
+  - Mapeo 2-clases/3-clases: `feature/plan-fisher-warping/LABEL_MAPPING.md`.
+  - Protocolo de split/balanceo: `feature/plan-fisher-warping/SPLIT_PROTOCOL.md`.
+  - Reporte de dataset: `feature/plan-fisher-warping/results/logs/00_dataset_report.txt`.
+  - Conteos por clase/split: `feature/plan-fisher-warping/results/metrics/00_dataset_counts.csv`.
+  - Splits base: `feature/plan-fisher-warping/results/metrics/00_dataset_splits_manual.csv` y
+    `feature/plan-fisher-warping/results/metrics/00_dataset_splits_full_original.csv`.
+  - Balanceo full: `feature/plan-fisher-warping/results/logs/01_full_balance_summary.txt`.
+  - CSVs balanceados: `feature/plan-fisher-warping/results/metrics/01_full_balanced_3class_*.csv` y
+    `feature/plan-fisher-warping/results/metrics/02_full_balanced_2class_*.csv`.
 
 Pendiente inmediato (proxima sesion)
-- Iniciar Semana 1 usando `feature/plan-fisher-warping/WEEKLY_CHECKLIST.md`.
-- Confirmar ubicacion de datos y rutas reales con el usuario.
-- Crear estructura `results/` y reporte de dataset cuando se tenga la ruta.
+- Iniciar Semana 2 usando `feature/plan-fisher-warping/WEEKLY_CHECKLIST.md`.
 
 Dudas abiertas / info requerida
-- Ubicacion exacta de los datos (imagenes, labels, splits previos si existen).
-- Si hay landmarks o mascaras disponibles para el warping.
 - Preferencias de formato para reportes (CSV, PNG, PDF).
+
+Notas sobre landmarks/mascaras
+- Landmarks: disponibles en `data/coordenadas/coordenadas_maestro.csv` (contorno pulmonar manual), no relevantes para el plan actual.
+- Mascaras: existen en el dataset original, pero no se van a usar.
 
 Archivos clave
 - `feature/plan-fisher-warping/PLAN.md`
