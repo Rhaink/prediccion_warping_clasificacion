@@ -1,6 +1,6 @@
 # Progreso del Proyecto
 
-Ultima actualizacion: 2025-12-30
+Ultima actualizacion: 2025-12-30 (Fase 2 completada)
 
 ## Fase 0: Reorganizacion
 
@@ -32,10 +32,13 @@ Entregables generados:
 - `results/metrics/02_full_balanced_2class_original.csv`
 - `results/metrics/02_full_balanced_2class_warped.csv`
 
-## Fase 2: Visualizacion para Asesor
+## Fase 2: Visualizacion para Asesor (COMPLETADA)
 
-- [ ] Generar panel de imagenes warped (9 ejemplos: 3 COVID, 3 Normal, 3 Viral)
-  - Entregable: `results/figures/panel_warped_samples.png`
+- [x] Crear `src/visualize.py` con funciones de visualizacion profesional
+- [x] Generar 6 paneles dataset manual: Original vs Normalizada
+  - Entregables: `results/figures/panel_manual_01.png` a `panel_manual_06.png`
+- [x] Generar 6 paneles dataset completo: Original vs Normalizada
+  - Entregables: `results/figures/panel_full_01.png` a `panel_full_06.png`
 - [ ] Enviar muestras al asesor para revision
 
 ## Fase 3: Implementacion PCA
