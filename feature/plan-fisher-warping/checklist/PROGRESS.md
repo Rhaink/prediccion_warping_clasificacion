@@ -13,7 +13,7 @@ Ultima actualizacion: 2025-12-30
 - [x] Mover archivos a config/
 - [x] Crear docs/00_OBJETIVOS.md
 - [x] Eliminar archivos redundantes (PLAN.md, TASKS.md, WEEKLY_CHECKLIST.md, STATE.md, NOTA_OBJETIVOS.md)
-- [ ] Commit de reorganizacion
+- [x] Commit de reorganizacion (2285dedf)
 
 ## Fase 1: Preparacion de Datos (COMPLETADA)
 
