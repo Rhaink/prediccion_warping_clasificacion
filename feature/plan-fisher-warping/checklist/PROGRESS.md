@@ -1,6 +1,6 @@
 # Progreso del Proyecto
 
-Ultima actualizacion: 2025-12-31 (Fase 3 COMPLETADA)
+Ultima actualizacion: 2025-12-31 (Fase 4 COMPLETADA)
 
 ## Fase 0: Reorganizacion
 
@@ -110,15 +110,61 @@ results/figures/phase3_pca/
     └── eigenface_visualization_comparison.png
 ```
 
-## Fase 4: Caracteristicas y Estandarizacion
+## Fase 4: Caracteristicas y Estandarizacion (COMPLETADA)
 
-- [ ] Extraer ponderantes (pesos) para todas las imagenes
-  - Guardar en `results/metrics/ponderantes_train.csv` etc.
-- [ ] Implementar estandarizacion Z-score
-  - Calcular media/sigma con SOLO training
-  - Aplicar a train, val, test
-- [ ] Verificar media~0 y std~1 en training
-  - Entregable: `results/figures/distribucion_estandarizada.png`
+- [x] Crear `src/features.py`
+  - StandardScaler desde cero (sin sklearn)
+  - Funciones de verificacion y visualizacion
+  - Documentacion matematica completa
+- [x] Crear `src/generate_features.py` - Procesa los 4 datasets
+- [x] Extraer ponderantes (pesos) para todas las imagenes
+  - 50 componentes PCA por imagen
+  - Guardados en `results/metrics/phase4_features/{dataset}_{split}_features.csv`
+- [x] Implementar estandarizacion Z-score
+  - Media/sigma calculados SOLO con training
+  - Aplicado a train, val, test
+- [x] Verificar media~0 y std~1 en training
+  - Entregables: `results/figures/phase4_features/{dataset}/distribution.png`
+
+### Resultados de Verificacion:
+
+| Dataset | Train | Val | Test | Media≈0? | Std≈1? |
+|---------|-------|-----|------|----------|--------|
+| full_warped | 5,040 | 1,005 | 680 | ✓ | ✓ |
+| full_original | 5,040 | 1,005 | 680 | ✓ | ✓ |
+| manual_warped | 717 | 144 | 96 | ✓ | ✓ |
+| manual_original | 717 | 144 | 96 | ✓ | ✓ |
+
+### Entregables:
+
+```
+results/
+├── metrics/phase4_features/
+│   ├── full_warped_train_features.csv
+│   ├── full_warped_val_features.csv
+│   ├── full_warped_test_features.csv
+│   ├── full_original_train_features.csv
+│   ├── full_original_val_features.csv
+│   ├── full_original_test_features.csv
+│   ├── manual_warped_train_features.csv
+│   ├── manual_warped_val_features.csv
+│   ├── manual_warped_test_features.csv
+│   ├── manual_original_train_features.csv
+│   ├── manual_original_val_features.csv
+│   ├── manual_original_test_features.csv
+│   └── summary.json
+└── figures/phase4_features/
+    ├── full_warped/
+    │   ├── distribution.png
+    │   ├── scaler_params.png
+    │   └── verification_stats.json
+    ├── full_original/
+    │   └── (mismas 3 figuras)
+    ├── manual_warped/
+    │   └── (mismas 3 figuras)
+    └── manual_original/
+        └── (mismas 3 figuras)
+```
 
 ## Fase 5: Fisher
 
@@ -191,3 +237,31 @@ results/figures/phase3_pca/
 - Fase 3 marcada como COMPLETADA
 - Figuras clave para asesor: `eigenfaces_4datasets.png`, `variance_4datasets.png`
 - Evidencia clara del beneficio del warping en los 4 escenarios
+
+### 2025-12-31 (Sesion 3 - Fase 4)
+
+**Implementacion de Fase 4: Caracteristicas y Estandarizacion**
+
+1. Creado `src/features.py`:
+   - Clase StandardScaler desde cero (sin sklearn)
+   - Estandarizacion Z-score con documentacion matematica
+   - Funciones de verificacion y visualizacion
+
+2. Creado `src/generate_features.py`:
+   - Procesa los 4 datasets automaticamente
+   - Aplica PCA (50 componentes) + Z-score
+   - Genera CSVs y figuras de verificacion
+
+3. Resultados:
+   - 12 CSVs generados (4 datasets x 3 splits)
+   - Verificacion exitosa: media≈0 y std≈1 en todos los trainings
+   - Figuras de distribucion para cada dataset
+
+**Observaciones tecnicas:**
+- Media de training: <10^-8 (esencialmente 0)
+- Std de training: 1.000000 (exacto)
+- Val/Test pueden diferir de 0/1 (es normal y esperado)
+
+**Resultado:**
+- Fase 4 marcada como COMPLETADA
+- Listos para Fase 5 (Fisher Ratio)
