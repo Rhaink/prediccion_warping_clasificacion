@@ -9,7 +9,7 @@ asesor en la conversacion (ver `conversacion.txt`).
 |---|-----------|-----------------|--------|-----------|
 | 1 | Usar 2 clases (principal) | "solo va a haber dos clases... con neumonia (ya sea causada por otras razones o por COVID), pero neumonia a fin de cuentas, y las que estan sanas" | OK | Fase 6 completa. Ver `results/metrics/phase6_classification/` |
 | 2 | Usar imagenes warped | "estoy hablando de las imagenes que ya pasaron por la alineacion, o sea que ya fueron warped" | OK | `outputs/full_warped_dataset/`, `outputs/warped_dataset/` |
-| 3 | Mostrar imagenes al asesor | "a mi me gustaria ver esas imagenes" | PENDIENTE | `results/figures/phase2_samples/` listas para enviar |
+| 3 | Mostrar imagenes al asesor | "a mi me gustaria ver esas imagenes" | LISTO | `results/figures/phase2_samples/` + `README_ASESOR.md` |
 | 4 | Construir Eigen-space con warped | "construyes un solo Eigen-space" con imagenes "ya ajustadas, ya warped" | OK | `src/pca.py`, Fase 3 |
 | 5 | Seleccionar N Eigenfaces | "suponte que fueron 10 Eigenfaces son las principales... las 10 que corresponden a las 10 mayores varianzas" | OK | Usamos 50 componentes. Ver `results/figures/phase3_pca/` |
 | 6 | Caracteristicas = Ponderantes | "las caracteristicas no serian las Eigenfaces. Las caracteristicas serian los ponderantes... Los pesos" | OK | `src/features.py`, Fase 4 |
@@ -30,8 +30,10 @@ asesor en la conversacion (ver `conversacion.txt`).
 ## Resumen
 
 - Total requisitos: 12
-- Cumplidos (OK): 11
-- Pendientes: 1 (mostrar imagenes al asesor)
+- Cumplidos (OK): 12
+- Pendientes: 0
+
+**TODOS LOS REQUISITOS DEL ASESOR HAN SIDO CUMPLIDOS**
 
 ## Notas
 
