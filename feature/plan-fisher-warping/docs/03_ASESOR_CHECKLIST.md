@@ -16,9 +16,9 @@ asesor en la conversacion (ver `conversacion.txt`).
 | 7 | Estandarizar Z-score | "de esos 1,000 valores sacas la media. Y le sacas la desviacion estandar... a cada valor le restas la media y luego esa diferencia la divides entre la desviacion estandar" | DOCUMENTADO | `docs/01_MATEMATICAS.md` |
 | 8 | Fisher por caracteristica | "tomas los que nada mas son para la neumonia... Media 1... Para los que son sanos... Media numero 2... Y con esos sacas el Criterio de Fisher" | DOCUMENTADO | `docs/01_MATEMATICAS.md` |
 | 9 | Fisher como amplificador | "Con esa Razon de Fisher, puedes usarla como un ponderante... todos los datos de la caracteristica los podrias multiplicar por esa cosa" | DOCUMENTADO | `docs/01_MATEMATICAS.md` |
-| 10 | Clasificador simple (KNN) | "puede ser hasta uno bien simple. Puede ser un KNN" | PENDIENTE | |
+| 10 | Clasificador simple (KNN) | "puede ser hasta uno bien simple. Puede ser un KNN" | OK | `src/classifier.py` - KNN desde cero |
 | 11 | NO usar CNN | "la red neuronal convolucional en realidad ya esta preparada para que las imagenes no esten alineadas... no es tan fiable para demostrar" | OK | No se usa CNN |
-| 12 | Demostrar que warping importa | "Lo que hace la diferencia es que hayas alineado esas canijas imagenes... van a funcionar mejor incluso con un clasificador tan chafa o tan simple como un KNN" | PENDIENTE | |
+| 12 | Demostrar que warping importa | "Lo que hace la diferencia es que hayas alineado esas canijas imagenes... van a funcionar mejor incluso con un clasificador tan chafa o tan simple como un KNN" | OK | Full: +2.21%, Manual: +5.21% |
 
 ## Estados
 
@@ -30,9 +30,9 @@ asesor en la conversacion (ver `conversacion.txt`).
 ## Resumen
 
 - Total requisitos: 12
-- Cumplidos (OK): 1
+- Cumplidos (OK): 3
 - Documentados: 5
-- Pendientes: 6
+- Pendientes: 4
 
 ## Notas
 

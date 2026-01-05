@@ -1,6 +1,6 @@
 # Progreso del Proyecto
 
-Ultima actualizacion: 2025-12-31 (Fase 5 COMPLETADA)
+Ultima actualizacion: 2026-01-04 (Fase 6 COMPLETADA)
 
 ## Fase 0: Reorganizacion
 
@@ -228,15 +228,79 @@ results/
         └── summary_table.png
 ```
 
-## Fase 6: Clasificacion
+## Fase 6: Clasificacion KNN (COMPLETADA)
 
-- [ ] Crear `src/classifier.py` (KNN)
-- [ ] Entrenar y evaluar con imagenes WARPED
-  - Entregable: `results/metrics/clasificacion_warped.csv`
-- [ ] Comparar CON vs SIN warping (usar imagenes originales)
-  - Entregable: `results/metrics/comparacion_warping.csv`
-- [ ] Generar matriz de confusion
-  - Entregable: `results/figures/confusion_matrix.png`
+- [x] Crear `src/classifier.py` (KNN)
+  - Clase KNNClassifier desde cero (sin sklearn)
+  - Documentacion matematica completa en docstrings
+  - Funciones de evaluacion: accuracy, precision, recall, F1
+  - Funciones de visualizacion: matriz de confusion, comparaciones
+- [x] Crear `src/generate_classification.py` - Procesa los 4 datasets
+- [x] Entrenar y evaluar con imagenes WARPED
+- [x] Comparar CON vs SIN warping (usar imagenes originales)
+- [x] Generar matrices de confusion
+
+### Resultados Clave:
+
+| Dataset | K optimo | Val Acc | Test Acc | Macro F1 |
+|---------|----------|---------|----------|----------|
+| full_warped | 11 | 84.58% | **81.47%** | 0.804 |
+| full_original | 15 | 79.40% | 79.26% | 0.779 |
+| manual_warped | 5 | 76.39% | **71.88%** | 0.719 |
+| manual_original | 31 | 75.69% | 66.67% | 0.666 |
+
+### Comparacion Warped vs Original:
+
+| Dataset | Warped | Original | Mejora |
+|---------|--------|----------|--------|
+| Full | 81.47% | 79.26% | **+2.21%** |
+| Manual | 71.88% | 66.67% | **+5.21%** |
+
+**Hallazgo principal**: El warping mejora la clasificacion en ambos datasets:
+- En el dataset Full: +2.21% de accuracy
+- En el dataset Manual: +5.21% de accuracy (mejora mas significativa)
+
+### Metricas por Clase (Test Set):
+
+**Full Warped (mejor modelo):**
+- Enfermo: Precision=0.83, Recall=0.88, F1=0.85
+- Normal: Precision=0.79, Recall=0.72, F1=0.76
+
+**Observacion**: El modelo detecta mejor a los enfermos (recall alto),
+pero tiene mas falsos positivos en normales.
+
+### Entregables:
+
+```
+results/
+├── metrics/phase6_classification/
+│   ├── full_warped_results.csv
+│   ├── full_warped_predictions.csv
+│   ├── full_original_results.csv
+│   ├── full_original_predictions.csv
+│   ├── manual_warped_results.csv
+│   ├── manual_warped_predictions.csv
+│   ├── manual_original_results.csv
+│   ├── manual_original_predictions.csv
+│   ├── comparison_summary.csv        <- CLAVE para asesor
+│   └── summary.json
+└── figures/phase6_classification/
+    ├── full_warped/
+    │   ├── k_optimization.png
+    │   ├── confusion_matrix.png
+    │   └── confusion_matrix_normalized.png
+    ├── full_original/
+    │   └── (mismas 3 figuras)
+    ├── manual_warped/
+    │   └── (mismas 3 figuras)
+    ├── manual_original/
+    │   └── (mismas 3 figuras)
+    └── comparisons/
+        ├── metrics_4datasets.png           <- CLAVE para asesor
+        ├── warped_vs_original_full.png     <- CLAVE para asesor
+        ├── warped_vs_original_manual.png
+        └── confusion_matrices_4datasets.png <- CLAVE para asesor
+```
 
 ## Fase 7: Experimento 2 vs 3 Clases
 
@@ -356,3 +420,38 @@ results/
 **Resultado:**
 - Fase 5 marcada como COMPLETADA
 - Listos para Fase 6 (Clasificacion KNN)
+
+### 2026-01-04 (Sesion 5 - Fase 6)
+
+**Implementacion de Fase 6: Clasificacion KNN**
+
+1. Creado `src/classifier.py`:
+   - Clase KNNClassifier desde cero (sin sklearn)
+   - Distancia euclidiana vectorizada con NumPy
+   - Votacion mayoritaria con desempate por vecino mas cercano
+   - Documentacion matematica extensa en docstrings
+   - Funciones de evaluacion completas (accuracy, precision, recall, F1)
+   - Funciones de visualizacion (matrices de confusion, comparaciones)
+
+2. Creado `src/generate_classification.py`:
+   - Procesa los 4 datasets automaticamente
+   - Busca K optimo usando conjunto de validacion
+   - Evalua en conjunto de test
+   - Genera figuras comparativas
+
+3. Resultados:
+   - El warping mejora consistentemente la clasificacion
+   - Full dataset: 81.47% (warped) vs 79.26% (original) = +2.21%
+   - Manual dataset: 71.88% (warped) vs 66.67% (original) = +5.21%
+   - K optimo varia por dataset (5 a 31)
+
+**Hallazgos tecnicos:**
+- El warping produce mejoras mas significativas en el dataset manual (+5.21%)
+- Esto puede deberse a que el dataset manual es mas pequeno y el warping
+  ayuda a normalizar mejor las variaciones de pose
+- El modelo tiene mejor recall para enfermos (0.88) que para normales (0.72)
+- Esto es deseable en un contexto medico (mejor detectar enfermos)
+
+**Resultado:**
+- Fase 6 marcada como COMPLETADA
+- Listos para Fase 7 (Experimento 2 vs 3 Clases)
