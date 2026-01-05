@@ -230,10 +230,10 @@ def create_label_map(
 
     2. 2 clases (scenario="2class"):
        COVID y Viral_Pneumonia -> 0 (Enfermo)
-       Normal -> 1 (Sano)
+       Normal -> 1 (Normal/Sano)
 
        Esto agrupa las patologías pulmonares en una sola clase,
-       simplificando el problema a: ¿está enfermo o sano?
+       simplificando el problema a: ¿está enfermo o normal?
 
     Args:
         classes: Lista de nombres de clase originales
@@ -273,7 +273,7 @@ def get_class_names(scenario: str = "3class") -> List[str]:
     if scenario == "3class":
         return ["COVID", "Normal", "Viral_Pneumonia"]
     elif scenario == "2class":
-        return ["Enfermo", "Sano"]
+        return ["Enfermo", "Normal"]
     else:
         raise ValueError(f"Escenario no reconocido: {scenario}")
 

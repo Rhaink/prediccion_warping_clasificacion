@@ -1,6 +1,6 @@
 # Progreso del Proyecto
 
-Ultima actualizacion: 2025-12-31 (Fase 4 COMPLETADA)
+Ultima actualizacion: 2025-12-31 (Fase 5 COMPLETADA)
 
 ## Fase 0: Reorganizacion
 
@@ -166,15 +166,67 @@ results/
         └── (mismas 3 figuras)
 ```
 
-## Fase 5: Fisher
+## Fase 5: Fisher (COMPLETADA)
 
-- [ ] Crear `src/fisher.py`
-  - Implementar formula: J = (mu1-mu2)^2 / (sigma1^2 + sigma2^2)
-- [ ] Calcular Fisher ratio por caracteristica
-  - Entregable: `results/metrics/fisher_ratios.csv`
-- [ ] Visualizar Fisher ratios (top-K)
-  - Entregable: `results/figures/fisher_top_k.png`
-- [ ] Amplificar caracteristicas multiplicando por Fisher
+- [x] Crear `src/fisher.py`
+  - Clase FisherRatio implementada desde cero (sin sklearn)
+  - Documentacion matematica completa en docstrings
+  - Formula: J = (mu1-mu2)^2 / (sigma1^2 + sigma2^2)
+- [x] Crear `src/generate_fisher.py` - Procesa los 4 datasets
+- [x] Calcular Fisher ratio por caracteristica
+  - Entregables: `results/metrics/phase5_fisher/{dataset}_fisher_ratios.csv`
+- [x] Visualizar Fisher ratios (top-K)
+  - Entregables: `results/figures/phase5_fisher/{dataset}/fisher_ratios.png`
+  - Entregables: `results/figures/phase5_fisher/{dataset}/class_separation.png`
+- [x] Amplificar caracteristicas multiplicando por Fisher
+  - Entregables: `results/metrics/phase5_fisher/{dataset}_{split}_amplified.csv`
+
+### Resultados Clave:
+
+| Dataset | J max | J mean | Top 3 PCs |
+|---------|-------|--------|-----------|
+| full_warped | 0.262 | 0.018 | PC1, PC3, PC2 |
+| full_original | 0.357 | 0.020 | PC2, PC5, PC4 |
+| manual_warped | 0.300 | 0.019 | PC1, PC3, PC6 |
+| manual_original | 0.259 | 0.018 | PC2, PC3, PC5 |
+
+**Hallazgo principal**:
+- En datasets WARPED: **PC1** tiene el mejor Fisher ratio (mejor separacion)
+- En datasets ORIGINALES: **PC2** tiene el mejor Fisher ratio
+- Esto sugiere que el warping reorganiza la informacion discriminativa hacia PC1
+
+### Entregables:
+
+```
+results/
+├── metrics/phase5_fisher/
+│   ├── full_warped_fisher_ratios.csv
+│   ├── full_warped_train_amplified.csv
+│   ├── full_warped_val_amplified.csv
+│   ├── full_warped_test_amplified.csv
+│   ├── full_original_fisher_ratios.csv
+│   ├── full_original_{train,val,test}_amplified.csv
+│   ├── manual_warped_fisher_ratios.csv
+│   ├── manual_warped_{train,val,test}_amplified.csv
+│   ├── manual_original_fisher_ratios.csv
+│   ├── manual_original_{train,val,test}_amplified.csv
+│   └── summary.json
+└── figures/phase5_fisher/
+    ├── full_warped/
+    │   ├── fisher_ratios.png
+    │   ├── class_separation.png
+    │   └── amplification_effect.png
+    ├── full_original/
+    │   └── (mismas 3 figuras)
+    ├── manual_warped/
+    │   └── (mismas 3 figuras)
+    ├── manual_original/
+    │   └── (mismas 3 figuras)
+    └── comparisons/
+        ├── fisher_4datasets.png      <- CLAVE para asesor
+        ├── warped_vs_original.png    <- CLAVE para asesor
+        └── summary_table.png
+```
 
 ## Fase 6: Clasificacion
 
@@ -265,3 +317,42 @@ results/
 **Resultado:**
 - Fase 4 marcada como COMPLETADA
 - Listos para Fase 5 (Fisher Ratio)
+
+### 2025-12-31 (Sesion 4 - Fase 5)
+
+**Implementacion de Fase 5: Criterio de Fisher**
+
+1. Creado `src/fisher.py`:
+   - Clase FisherRatio desde cero (sin sklearn)
+   - Formula: J = (mu1-mu2)^2 / (sigma1^2 + sigma2^2)
+   - Documentacion matematica extensa en docstrings
+   - Funciones de visualizacion: histogramas por clase, barras de ratios
+   - Funcion de amplificacion: X_amp = X * J
+
+2. Creado `src/generate_fisher.py`:
+   - Procesa los 4 datasets automaticamente
+   - Carga caracteristicas de Fase 4
+   - Calcula Fisher usando SOLO training
+   - Amplifica train/val/test con los mismos ratios
+   - Genera 3 figuras por dataset + 3 comparativas
+
+3. Resultados:
+   - Fisher ratios calculados para las 50 caracteristicas
+   - 12 CSVs de caracteristicas amplificadas (4 datasets x 3 splits)
+   - Verificacion exitosa en todos los datasets
+
+**Hallazgo interesante:**
+- En datasets WARPED: PC1 es la mejor caracteristica (J~0.26-0.30)
+- En datasets ORIGINALES: PC2 es la mejor caracteristica (J~0.26-0.36)
+- El warping reorganiza la varianza discriminativa hacia PC1
+- Esto complementa el hallazgo de Fase 3: warping concentra varianza en PC1
+
+**Observaciones tecnicas:**
+- Fisher ratios son relativamente pequenos (max ~0.3)
+- Esto indica que la separacion de clases no es perfecta
+- Pero hay caracteristicas que separan mejor que otras
+- La amplificacion ponderable estas diferencias
+
+**Resultado:**
+- Fase 5 marcada como COMPLETADA
+- Listos para Fase 6 (Clasificacion KNN)
