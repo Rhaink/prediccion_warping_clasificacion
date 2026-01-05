@@ -348,6 +348,245 @@ class FisherRatio:
         )
 
 
+class FisherRatioMulticlass:
+    """
+    Calculo del Criterio de Fisher para 2 o mas clases (extension pairwise).
+
+    EXTENSION A MULTICLASE
+    ======================
+
+    Para 2 clases: Comportamiento identico a FisherRatio.
+
+    Para 3+ clases: Calcula Fisher para cada PAR de clases y promedia.
+
+    Ejemplo con 3 clases (COVID, Normal, Viral):
+        J_1 = Fisher(COVID vs Normal)
+        J_2 = Fisher(COVID vs Viral)
+        J_3 = Fisher(Normal vs Viral)
+
+        J_final = (J_1 + J_2 + J_3) / 3
+
+    Esto mide que tan bien separa cada caracteristica TODOS los pares de clases.
+
+    MATEMATICAS
+    -----------
+    Para cada par de clases (a, b):
+
+        J_ab = (mu_a - mu_b)^2 / (sigma_a^2 + sigma_b^2)
+
+    Fisher final (promedio de pares):
+
+        J = (1 / n_pares) * sum(J_ab)
+
+    Donde n_pares = C(n_clases, 2) = n_clases * (n_clases - 1) / 2
+
+    Ejemplo de uso:
+        >>> fisher = FisherRatioMulticlass()
+        >>> fisher.fit(X_train, y_train, class_names=['COVID', 'Normal', 'Viral'])
+        >>> ratios = fisher.fisher_ratios_
+        >>> X_amplified = fisher.amplify(X_train)
+    """
+
+    def __init__(self, epsilon: float = 1e-9):
+        """
+        Inicializa FisherRatioMulticlass.
+
+        Args:
+            epsilon: Valor pequeno para evitar division por cero
+        """
+        self.epsilon = epsilon
+        self.fisher_ratios_: Optional[np.ndarray] = None
+        self.pairwise_ratios_: Optional[Dict[Tuple[int, int], np.ndarray]] = None
+        self.class_means_: Optional[Dict[int, np.ndarray]] = None
+        self.class_stds_: Optional[Dict[int, np.ndarray]] = None
+        self.n_features_: int = 0
+        self.n_classes_: int = 0
+        self.n_samples_per_class_: Optional[Dict[int, int]] = None
+        self.class_names_: List[str] = []
+        self._fitted = False
+
+    def _compute_pairwise_fisher(
+        self,
+        X_a: np.ndarray,
+        X_b: np.ndarray
+    ) -> np.ndarray:
+        """
+        Calcula Fisher ratio para un par de clases.
+
+        Args:
+            X_a: Datos de clase a (n_a, K)
+            X_b: Datos de clase b (n_b, K)
+
+        Returns:
+            Vector de Fisher ratios (K,)
+        """
+        mu_a = np.mean(X_a, axis=0)
+        mu_b = np.mean(X_b, axis=0)
+        sigma_a = np.std(X_a, axis=0)
+        sigma_b = np.std(X_b, axis=0)
+
+        numerator = (mu_a - mu_b) ** 2
+        denominator = sigma_a ** 2 + sigma_b ** 2 + self.epsilon
+
+        return numerator / denominator
+
+    def fit(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        class_names: Optional[List[str]] = None,
+        verbose: bool = True
+    ) -> 'FisherRatioMulticlass':
+        """
+        Calcula el Fisher ratio para cada caracteristica (2+ clases).
+
+        ALGORITMO:
+        1. Identificar todas las clases unicas
+        2. Para cada par de clases (i, j) con i < j:
+           - Calcular J_ij usando la formula clasica
+        3. Promediar todos los J_ij para obtener J final
+
+        Args:
+            X: Matriz de caracteristicas (N, K) - valores estandarizados
+            y: Vector de etiquetas (N,) - puede contener 2 o mas clases
+            class_names: Nombres de las clases (opcional)
+            verbose: Si True, imprime informacion del proceso
+
+        Returns:
+            self (para encadenar metodos)
+        """
+        N, K = X.shape
+
+        unique_classes = np.unique(y)
+        n_classes = len(unique_classes)
+
+        if n_classes < 2:
+            raise ValueError(
+                f"Fisher ratio requiere al menos 2 clases, "
+                f"pero se encontro {n_classes}: {unique_classes}"
+            )
+
+        if class_names is None:
+            class_names = [f"Clase {c}" for c in unique_classes]
+
+        if verbose:
+            print("Calculando Fisher Ratios (Multiclase - Pairwise)...")
+            print(f"  Datos: {N} muestras x {K} caracteristicas")
+            print(f"  Clases: {n_classes} -> {class_names}")
+
+        # Separar datos por clase y calcular estadisticas
+        class_data = {}
+        class_means = {}
+        class_stds = {}
+        n_samples_per_class = {}
+
+        for cls in unique_classes:
+            mask = (y == cls)
+            class_data[cls] = X[mask]
+            class_means[cls] = np.mean(X[mask], axis=0)
+            class_stds[cls] = np.std(X[mask], axis=0)
+            n_samples_per_class[cls] = int(np.sum(mask))
+
+        if verbose:
+            for cls, name in zip(unique_classes, class_names):
+                print(f"    {name}: {n_samples_per_class[cls]} muestras")
+
+        # Calcular Fisher para cada par de clases
+        pairwise_ratios = {}
+        fisher_sum = np.zeros(K)
+        n_pairs = 0
+
+        if verbose:
+            print(f"\n  Calculando Fisher para cada par de clases:")
+
+        for i, cls_i in enumerate(unique_classes):
+            for j, cls_j in enumerate(unique_classes):
+                if i < j:  # Solo pares unicos (evitar duplicados)
+                    J_pair = self._compute_pairwise_fisher(
+                        class_data[cls_i],
+                        class_data[cls_j]
+                    )
+                    pairwise_ratios[(cls_i, cls_j)] = J_pair
+                    fisher_sum += J_pair
+                    n_pairs += 1
+
+                    if verbose:
+                        name_i = class_names[i]
+                        name_j = class_names[j]
+                        print(f"    {name_i} vs {name_j}: "
+                              f"J_mean={J_pair.mean():.4f}, J_max={J_pair.max():.4f}")
+
+        # Promediar
+        fisher_ratios = fisher_sum / n_pairs
+
+        # Guardar resultados
+        self.fisher_ratios_ = fisher_ratios
+        self.pairwise_ratios_ = pairwise_ratios
+        self.class_means_ = class_means
+        self.class_stds_ = class_stds
+        self.n_features_ = K
+        self.n_classes_ = n_classes
+        self.n_samples_per_class_ = n_samples_per_class
+        self.class_names_ = class_names
+        self._fitted = True
+
+        if verbose:
+            print(f"\n  Resultados Fisher Ratio (promedio de {n_pairs} pares):")
+            print(f"    Min:  {fisher_ratios.min():.4f}")
+            print(f"    Max:  {fisher_ratios.max():.4f}")
+            print(f"    Mean: {fisher_ratios.mean():.4f}")
+            print(f"    Std:  {fisher_ratios.std():.4f}")
+            print()
+
+            # Mostrar top 5
+            top_indices = np.argsort(fisher_ratios)[::-1][:5]
+            print("  Top 5 caracteristicas (mejor separacion):")
+            for rank, idx in enumerate(top_indices):
+                print(f"    {rank+1}. PC{idx+1}: J = {fisher_ratios[idx]:.4f}")
+
+        return self
+
+    def amplify(self, X: np.ndarray) -> np.ndarray:
+        """
+        Amplifica las caracteristicas multiplicando por Fisher ratios.
+
+        Args:
+            X: Matriz de caracteristicas (N, K) - estandarizadas
+
+        Returns:
+            Matriz amplificada (N, K)
+        """
+        if not self._fitted:
+            raise RuntimeError("FisherRatioMulticlass no ha sido ajustado. Llama a fit() primero.")
+
+        if X.shape[1] != self.n_features_:
+            raise ValueError(
+                f"X tiene {X.shape[1]} caracteristicas, pero Fisher fue "
+                f"ajustado con {self.n_features_} caracteristicas."
+            )
+
+        return X * self.fisher_ratios_
+
+    def get_result(self) -> FisherResult:
+        """
+        Obtiene el resultado como dataclass (compatible con FisherRatio).
+
+        Returns:
+            FisherResult con todos los parametros
+        """
+        if not self._fitted:
+            raise RuntimeError("FisherRatioMulticlass no ha sido ajustado.")
+
+        return FisherResult(
+            fisher_ratios=self.fisher_ratios_.copy(),
+            class_means=self.class_means_.copy(),
+            class_stds=self.class_stds_.copy(),
+            n_features=self.n_features_,
+            n_samples_per_class=self.n_samples_per_class_.copy(),
+            class_names=self.class_names_.copy()
+        )
+
+
 def plot_fisher_ratios(
     fisher_result: FisherResult,
     output_path: Optional[Path] = None,

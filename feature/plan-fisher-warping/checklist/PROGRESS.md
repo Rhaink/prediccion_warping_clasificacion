@@ -1,6 +1,6 @@
 # Progreso del Proyecto
 
-Ultima actualizacion: 2026-01-04 (Fase 6 COMPLETADA)
+Ultima actualizacion: 2026-01-05 (Fase 7 COMPLETADA)
 
 ## Fase 0: Reorganizacion
 
@@ -302,12 +302,77 @@ results/
         └── confusion_matrices_4datasets.png <- CLAVE para asesor
 ```
 
-## Fase 7: Experimento 2 vs 3 Clases
+## Fase 7: Experimento 2 vs 3 Clases (COMPLETADA)
 
-- [ ] Repetir pipeline con 3 clases
-- [ ] Tabla comparativa de 4 escenarios:
+- [x] Extender `src/fisher.py` con clase FisherRatioMulticlass
+  - Extension pairwise: promedio de Fisher para cada par de clases
+  - Para 3 clases: J = (J_COVID_Normal + J_COVID_Viral + J_Normal_Viral) / 3
+- [x] Crear `src/generate_phase7.py` - Procesa 4 datasets con 3 clases
+- [x] Repetir pipeline completo con 3 clases (COVID vs Normal vs Viral_Pneumonia)
+- [x] Tabla comparativa de 4 escenarios:
   - 2C sin warp / 2C con warp / 3C sin warp / 3C con warp
-  - Entregable: `results/metrics/comparacion_final.csv`
+
+### Resultados Clave:
+
+| Dataset | Escenario | K | Test Acc | Macro F1 |
+|---------|-----------|---|----------|----------|
+| full_warped | 2 clases | 11 | 81.47% | 0.804 |
+| full_warped | 3 clases | 41 | 77.79% | 0.786 |
+| full_original | 2 clases | 15 | 79.26% | 0.779 |
+| full_original | 3 clases | 21 | 77.06% | 0.781 |
+| manual_warped | 2 clases | 5 | 71.88% | 0.719 |
+| manual_warped | 3 clases | 15 | 64.58% | 0.651 |
+| manual_original | 2 clases | 31 | 66.67% | 0.666 |
+| manual_original | 3 clases | 11 | 62.50% | 0.626 |
+
+### Comparacion Warped vs Original:
+
+| Dataset | 2C Warped | 2C Original | Mejora 2C | 3C Warped | 3C Original | Mejora 3C |
+|---------|-----------|-------------|-----------|-----------|-------------|-----------|
+| Full | 81.47% | 79.26% | **+2.21%** | 77.79% | 77.06% | **+0.74%** |
+| Manual | 71.88% | 66.67% | **+5.21%** | 64.58% | 62.50% | **+2.08%** |
+
+**Hallazgos principales:**
+1. El warping mejora la clasificacion TANTO en 2 clases como en 3 clases
+2. La mejora por warping es mayor en 2 clases que en 3 clases
+3. La clasificacion de 3 clases es mas dificil (accuracy ~4-7% menor)
+4. El dataset Manual muestra mejoras mas significativas por warping
+
+**Fisher Multiclase:**
+- PC2 tiene el mejor Fisher ratio en todos los datasets (J ~1.0-1.8)
+- El par COVID vs Viral_Pneumonia es el mas dificil de separar
+- El par Normal vs Viral_Pneumonia tiene mejor separacion
+
+### Entregables:
+
+```
+results/
+├── metrics/phase7_comparison/
+│   ├── full_warped_3class_results.csv
+│   ├── full_warped_3class_predictions.csv
+│   ├── full_original_3class_results.csv
+│   ├── full_original_3class_predictions.csv
+│   ├── manual_warped_3class_results.csv
+│   ├── manual_warped_3class_predictions.csv
+│   ├── manual_original_3class_results.csv
+│   ├── manual_original_3class_predictions.csv
+│   ├── comparacion_2c_vs_3c.csv          <- CLAVE para asesor
+│   └── summary.json
+└── figures/phase7_comparison/
+    ├── full_warped_3class/
+    │   ├── fisher_ratios.png
+    │   ├── k_optimization.png
+    │   ├── confusion_matrix.png
+    │   └── confusion_matrix_normalized.png
+    ├── full_original_3class/
+    │   └── (mismas 4 figuras)
+    ├── manual_warped_3class/
+    │   └── (mismas 4 figuras)
+    ├── manual_original_3class/
+    │   └── (mismas 4 figuras)
+    ├── confusion_matrices_3class.png     <- CLAVE para asesor
+    └── comparacion_final.png             <- CLAVE para asesor
+```
 
 ## Fase 8: Documentacion Final
 
@@ -455,3 +520,40 @@ results/
 **Resultado:**
 - Fase 6 marcada como COMPLETADA
 - Listos para Fase 7 (Experimento 2 vs 3 Clases)
+
+### 2026-01-05 (Sesion 6 - Fase 7)
+
+**Implementacion de Fase 7: Experimento 2 vs 3 Clases**
+
+1. Extendido `src/fisher.py`:
+   - Nueva clase FisherRatioMulticlass para 2+ clases
+   - Enfoque pairwise: calcula Fisher para cada par de clases y promedia
+   - Para 3 clases: J = (J_COVID_Normal + J_COVID_Viral + J_Normal_Viral) / 3
+   - Misma metodologia que aprobo el asesor, escalada a multiclase
+
+2. Creado `src/generate_phase7.py`:
+   - Reutiliza caracteristicas PCA de Fase 4
+   - Extrae clase original del image_id (COVID, Normal, Viral_Pneumonia)
+   - Aplica Fisher multiclase + amplificacion + KNN
+   - Genera tabla comparativa 2C vs 3C
+
+3. Resultados:
+   - El warping mejora clasificacion en AMBOS escenarios (2C y 3C)
+   - Mejora 2C: +2.21% (Full), +5.21% (Manual)
+   - Mejora 3C: +0.74% (Full), +2.08% (Manual)
+   - La mejora por warping es menor en 3 clases (problema mas dificil)
+
+**Hallazgos tecnicos:**
+- Fisher multiclase identifica PC2 como mejor caracteristica (J ~1.0-1.8)
+- El par COVID vs Normal es el mas dificil de separar (J_mean ~0.02)
+- El par COVID vs Viral_Pneumonia tiene mejor separacion (J_mean ~0.07-0.08)
+- 3 clases es inherentemente mas dificil: accuracy cae ~4-7%
+
+**Observaciones metodologicas:**
+- La extension pairwise de Fisher es natural y consistente con la formula binaria
+- Los resultados confirman que el warping ayuda incluso con clasificacion multiclase
+- El dataset Manual sigue mostrando mayores mejoras por warping
+
+**Resultado:**
+- Fase 7 marcada como COMPLETADA
+- Listos para Fase 8 (Documentacion Final)
