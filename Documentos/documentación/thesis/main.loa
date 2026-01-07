@@ -1,5 +1,0 @@
-\contentsline {algorithm}{\numberline {1}{\ignorespaces Entrenamiento en Dos Fases}}{14}{algorithm.1}%
-\contentsline {algorithm}{\numberline {2}{\ignorespaces Flip Horizontal con Intercambio de Landmarks}}{19}{algorithm.2}%
-\contentsline {algorithm}{\numberline {3}{\ignorespaces Test-Time Augmentation para Landmarks}}{22}{algorithm.3}%
-\contentsline {algorithm}{\numberline {4}{\ignorespaces Pipeline de Preprocesamiento}}{42}{algorithm.4}%
-\contentsline {algorithm}{\numberline {5}{\ignorespaces Inferencia con TTA y Ensemble}}{47}{algorithm.5}%
