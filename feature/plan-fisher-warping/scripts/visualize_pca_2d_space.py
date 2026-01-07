@@ -2,22 +2,27 @@
 Script: visualize_pca_2d_space.py
 Propósito: Visualizar la separación de clases en el espacio PCA (PC1 vs PC2)
 Input:
-    - Imágenes originales (data/dataset/)
+    - Imágenes originales (data/dataset/COVID-19_Radiography_Dataset/)
     - Imágenes warped (outputs/full_warped_dataset/)
+    - CSVs de splits (train/val/test images.csv)
 Output:
     - results/figures/pca_explained/pca_2d_scatter_full_warped.png
     - results/figures/pca_explained/pca_2d_scatter_full_original.png
     - results/figures/pca_explained/pca_2d_scatter_comparison.png
 
 Descripción:
-    Calcula PCA sobre las imágenes del dataset y visualiza la proyección en PC1 vs PC2.
-    Compara la separación de clases entre imágenes originales y warped.
-    Agrega elipses de confianza (95%) para mostrar la distribución de cada clase.
+    Usa la MISMA metodología que thesis_validation_fisher.py:
+    - Entrena PCA en TRAIN completo (11,364 imágenes)
+    - Visualiza separación en TEST (1,518 imágenes)
+    - Compara original vs warped usando exactamente las mismas imágenes
+    - Usa CLAHE como en el resto del proyecto
+    - Binario: Normal=0, Enfermo (COVID+Viral)=1
 """
 
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import pandas as pd
 from pathlib import Path
 from sklearn.decomposition import PCA
 from matplotlib.patches import Ellipse
@@ -33,7 +38,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 FEATURE_DIR = PROJECT_ROOT / "feature" / "plan-fisher-warping"
 
 # Input paths
-ORIGINAL_DIR = PROJECT_ROOT / "data" / "dataset"
+ORIGINAL_DIR = PROJECT_ROOT / "data" / "dataset" / "COVID-19_Radiography_Dataset"
 WARPED_DIR = PROJECT_ROOT / "outputs" / "full_warped_dataset"
 
 # Output paths
@@ -43,86 +48,124 @@ OUTPUT_ORIGINAL = OUTPUT_DIR / "pca_2d_scatter_full_original.png"
 OUTPUT_COMPARISON = OUTPUT_DIR / "pca_2d_scatter_comparison.png"
 
 # Configuración
-IMAGE_SIZE = 224  # Tamaño para redimensionar
-N_COMPONENTS = 2  # Solo PC1 y PC2
-MAX_IMAGES_PER_CLASS = 300  # Limitar para performance
+IMAGE_SIZE = 224  # Tamaño estándar del proyecto
+N_COMPONENTS = 2  # Solo PC1 y PC2 para visualización
+USE_CLAHE = True  # Usar CLAHE como en thesis_validation_fisher.py
 
 
 # ============================================================================
 # FUNCIONES AUXILIARES
 # ============================================================================
 
-def load_dataset_images(base_dir: Path, is_warped: bool = False) -> tuple:
+def load_dataset_from_csv(warped_dir: Path, original_dir: Path, split: str, use_clahe: bool = True) -> tuple:
     """
-    Carga imágenes del dataset.
+    Carga dataset usando la MISMA metodología que thesis_validation_fisher.py:
+    - Lee el CSV del split correspondiente
+    - Carga las imágenes warped especificadas en el CSV
+    - Carga las mismas imágenes en versión original
+    - Aplica CLAHE si se especifica
 
     Args:
-        base_dir: Directorio base (data/dataset o outputs/full_warped_dataset)
-        is_warped: True si son imágenes warped
+        warped_dir: Directorio de imágenes warped (outputs/full_warped_dataset)
+        original_dir: Directorio de imágenes originales (data/dataset/COVID-19_Radiography_Dataset)
+        split: Split a cargar ('train', 'val', o 'test')
+        use_clahe: Si aplicar CLAHE (default: True, como en el proyecto)
 
     Returns:
-        (images, labels, image_names)
+        (images_original, images_warped, labels, image_names)
     """
-    images = []
+    # Leer CSV del split
+    csv_path = warped_dir / split / "images.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"No se encontró {csv_path}")
+
+    df = pd.read_csv(csv_path)
+    N = len(df)
+
+    print(f"\n[LOADER] Cargando {N} imágenes del split '{split}'...")
+
+    # Preparar CLAHE si se usa
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4)) if use_clahe else None
+
+    images_original = []
+    images_warped = []
     labels = []
     image_names = []
 
-    # Clases a cargar (usamos solo binario: enfermos vs normales para claridad)
-    if is_warped:
-        splits = ['train', 'val', 'test']
-        categories = ['COVID', 'Normal', 'Viral_Pneumonia']
+    loaded_count = 0
+    missing_count = 0
 
-        for split in splits:
-            for category in categories:
-                cat_dir = base_dir / split / category
-                if not cat_dir.exists():
-                    continue
+    for idx, row in df.iterrows():
+        name = row['image_name']
+        category = row['category']
+        warped_filename = row.get('warped_filename', f"{name}_warped.png")
 
-                # Leer solo las primeras MAX_IMAGES_PER_CLASS
-                image_files = sorted(cat_dir.glob("*_warped.png"))[:MAX_IMAGES_PER_CLASS]
+        # Cargar imagen WARPED
+        warped_path = warped_dir / split / category / warped_filename
+        if not warped_path.exists():
+            missing_count += 1
+            continue
 
-                for img_path in image_files:
-                    img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-                    if img is None:
-                        continue
+        img_warped = cv2.imread(str(warped_path), cv2.IMREAD_GRAYSCALE)
+        if img_warped is None:
+            missing_count += 1
+            continue
 
-                    # Las imágenes warped ya están en 224x224
-                    images.append(img.flatten())
+        # Aplicar CLAHE a warped si se especifica
+        if clahe is not None:
+            img_warped = clahe.apply(img_warped)
 
-                    # Label binario: 0=Normal, 1=Enfermo (COVID o Viral Pneumonia)
-                    label = 0 if category == "Normal" else 1
-                    labels.append(label)
-                    image_names.append(img_path.stem)
+        # Cargar imagen ORIGINAL
+        # Mapear "Viral_Pneumonia" -> "Viral Pneumonia" para carpeta
+        original_category = category.replace("_", " ")
+        original_path = original_dir / original_category / "images" / f"{name}.png"
 
-    else:
-        categories = ['COVID', 'Normal', 'Viral_Pneumonia']
+        if not original_path.exists():
+            missing_count += 1
+            continue
 
-        for category in categories:
-            cat_dir = base_dir / category
-            if not cat_dir.exists():
-                continue
+        img_original = cv2.imread(str(original_path), cv2.IMREAD_GRAYSCALE)
+        if img_original is None:
+            missing_count += 1
+            continue
 
-            # Leer solo las primeras MAX_IMAGES_PER_CLASS
-            image_files = sorted(cat_dir.glob("*.png"))[:MAX_IMAGES_PER_CLASS]
+        # Redimensionar original a 224x224 (warped ya está en ese tamaño)
+        img_original = cv2.resize(img_original, (IMAGE_SIZE, IMAGE_SIZE))
 
-            for img_path in image_files:
-                img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-                if img is None:
-                    continue
+        # Aplicar CLAHE a original si se especifica
+        if clahe is not None:
+            img_original = clahe.apply(img_original)
 
-                # Redimensionar a 224x224
-                img_resized = cv2.resize(img, (IMAGE_SIZE, IMAGE_SIZE))
-                images.append(img_resized.flatten())
+        # Agregar a las listas
+        images_original.append(img_original.flatten())
+        images_warped.append(img_warped.flatten())
 
-                # Label binario: 0=Normal, 1=Enfermo
-                label = 0 if category == "Normal" else 1
-                labels.append(label)
-                image_names.append(img_path.stem)
+        # Label binario: 0=Normal, 1=Enfermo (COVID o Viral Pneumonia)
+        label = 0 if category == "Normal" else 1
+        labels.append(label)
+        image_names.append(name)
 
-    images = np.array(images, dtype=np.float32)
+        loaded_count += 1
+
+        # Mostrar progreso cada 1000 imágenes
+        if loaded_count % 1000 == 0:
+            print(f"   Cargadas: {loaded_count}/{N}...")
+
+    # Convertir a arrays numpy
+    images_original = np.array(images_original, dtype=np.float32)
+    images_warped = np.array(images_warped, dtype=np.float32)
     labels = np.array(labels, dtype=np.int32)
 
-    return images, labels, image_names
+    print(f"   ✓ Cargadas: {loaded_count} imágenes")
+    print(f"   ✓ Faltantes: {missing_count}")
+    print(f"   ✓ Normal: {(labels == 0).sum()}, Enfermo: {(labels == 1).sum()}")
+    print(f"   ✓ CLAHE: {'Activado' if use_clahe else 'Desactivado'}")
+
+    # Verificación crítica
+    assert len(images_original) == len(images_warped), \
+        f"ERROR: Diferentes números de imágenes ({len(images_original)} vs {len(images_warped)})"
+
+    return images_original, images_warped, labels, image_names
 
 
 def compute_pca(images: np.ndarray, n_components: int = 2) -> tuple:
@@ -352,75 +395,115 @@ def create_comparison_plot(
 # ============================================================================
 
 def main():
-    """Función principal que ejecuta el pipeline de visualización."""
+    """
+    Función principal que ejecuta el pipeline de visualización.
+
+    Metodología (consistente con thesis_validation_fisher.py):
+    1. Cargar TRAIN completo (original y warped)
+    2. Entrenar PCA en TRAIN
+    3. Cargar TEST completo (original y warped)
+    4. Proyectar TEST con los PCA entrenados
+    5. Visualizar separación de clases en TEST
+    """
     print("=" * 80)
     print("VISUALIZACIÓN DEL ESPACIO PCA (PC1 vs PC2)")
     print("=" * 80)
+    print("\nMetodología (consistente con thesis_validation_fisher.py):")
+    print("  - Entrena PCA en TRAIN (11,364 imágenes)")
+    print("  - Visualiza separación en TEST (1,518 imágenes)")
+    print("  - CLAHE activado")
+    print("  - Binario: Normal=0, Enfermo (COVID+Viral)=1")
+    print("=" * 80)
 
-    # 1. Cargar imágenes originales
-    print(f"\n1. Cargando imágenes originales...")
-    images_orig, labels_orig, names_orig = load_dataset_images(ORIGINAL_DIR, is_warped=False)
-    print(f"   ✓ {len(images_orig)} imágenes cargadas")
-    print(f"   ✓ Normal: {(labels_orig == 0).sum()}, Enfermo: {(labels_orig == 1).sum()}")
+    # 1. Cargar TRAIN para entrenar PCA
+    print(f"\n[1/6] Cargando TRAIN para entrenar PCA...")
+    train_orig, train_warped, y_train, _ = load_dataset_from_csv(
+        WARPED_DIR,
+        ORIGINAL_DIR,
+        split="train",
+        use_clahe=USE_CLAHE
+    )
 
-    # 2. Cargar imágenes warped
-    print(f"\n2. Cargando imágenes warped...")
-    images_warped, labels_warped, names_warped = load_dataset_images(WARPED_DIR, is_warped=True)
-    print(f"   ✓ {len(images_warped)} imágenes cargadas")
-    print(f"   ✓ Normal: {(labels_warped == 0).sum()}, Enfermo: {(labels_warped == 1).sum()}")
+    # 2. Entrenar PCA en TRAIN
+    print(f"\n[2/6] Entrenando PCA en TRAIN (Original)...")
+    pca_orig, _ = compute_pca(train_orig, N_COMPONENTS)
 
-    # 3. Calcular PCA para imágenes originales
-    print(f"\n3. Calculando PCA para imágenes originales...")
-    pca_orig, proj_orig = compute_pca(images_orig, N_COMPONENTS)
+    print(f"\n[3/6] Entrenando PCA en TRAIN (Warped)...")
+    pca_warped, _ = compute_pca(train_warped, N_COMPONENTS)
 
-    # 4. Calcular PCA para imágenes warped
-    print(f"\n4. Calculando PCA para imágenes warped...")
-    pca_warped, proj_warped = compute_pca(images_warped, N_COMPONENTS)
+    # Liberar memoria
+    del train_orig, train_warped, y_train
 
-    # 5. Crear scatter plot para originales
-    print(f"\n5. Generando scatter plot para imágenes originales...")
+    # 3. Cargar TEST para visualización
+    print(f"\n[4/6] Cargando TEST para visualización...")
+    test_orig, test_warped, y_test, names_test = load_dataset_from_csv(
+        WARPED_DIR,
+        ORIGINAL_DIR,
+        split="test",
+        use_clahe=USE_CLAHE
+    )
+
+    # 4. Proyectar TEST con PCA entrenado
+    print(f"\n[5/6] Proyectando TEST con PCA entrenado...")
+    print("   Proyectando originales...")
+    proj_orig = pca_orig.transform(test_orig)
+    print("   Proyectando warped...")
+    proj_warped = pca_warped.transform(test_warped)
+
+    # 5. Crear visualizaciones
+    print(f"\n[6/6] Generando visualizaciones...")
+
+    print("   (a) Scatter plot - Originales...")
     create_scatter_plot(
         proj_orig,
-        labels_orig,
-        "Espacio PCA - Imágenes Originales",
+        y_test,
+        "Espacio PCA - Imágenes Originales (TEST Set)",
         OUTPUT_ORIGINAL,
         pca_orig
     )
 
-    # 6. Crear scatter plot para warped
-    print(f"\n6. Generando scatter plot para imágenes warped...")
+    print("   (b) Scatter plot - Warped...")
     create_scatter_plot(
         proj_warped,
-        labels_warped,
-        "Espacio PCA - Imágenes Warped (Normalizadas Geométricamente)",
+        y_test,
+        "Espacio PCA - Imágenes Warped (TEST Set)",
         OUTPUT_WARPED,
         pca_warped
     )
 
-    # 7. Crear comparación lado a lado
-    print(f"\n7. Generando comparación lado a lado...")
-    # Usar subset común para comparación justa
-    min_samples = min(len(labels_orig), len(labels_warped))
+    print("   (c) Comparación lado a lado...")
     create_comparison_plot(
-        proj_orig[:min_samples],
-        proj_warped[:min_samples],
-        labels_orig[:min_samples],
+        proj_orig,
+        proj_warped,
+        y_test,
         pca_orig,
         pca_warped,
         OUTPUT_COMPARISON
     )
 
+    # 6. Resumen final
     print("\n" + "=" * 80)
-    print("PROCESO COMPLETADO EXITOSAMENTE")
+    print("✅ PROCESO COMPLETADO EXITOSAMENTE")
     print("=" * 80)
-    print(f"\nOutputs generados:")
-    print(f"  1. {OUTPUT_ORIGINAL}")
-    print(f"  2. {OUTPUT_WARPED}")
-    print(f"  3. {OUTPUT_COMPARISON}")
-    print(f"\nLos gráficos muestran:")
-    print(f"  - Scatter plots de PC1 vs PC2")
-    print(f"  - Elipses de confianza (95%) para cada clase")
-    print(f"  - Comparación visual de separabilidad")
+    print(f"\n📊 ESTADÍSTICAS:")
+    print(f"   - Split visualizado: TEST")
+    print(f"   - Total imágenes: {len(test_orig)}")
+    print(f"   - Normal: {(y_test == 0).sum()}")
+    print(f"   - Enfermo (COVID + Viral Pneumonia): {(y_test == 1).sum()}")
+    print(f"\n✅ VALIDACIÓN METODOLÓGICA:")
+    print(f"   - PCA entrenado en TRAIN (11,364 imágenes)")
+    print(f"   - Visualización en TEST (1,518 imágenes)")
+    print(f"   - CLAHE activado (como en thesis_validation_fisher.py)")
+    print(f"   - Mismas imágenes comparadas (original vs warped)")
+    print(f"   - Labels binarios consistentes con el proyecto")
+    print(f"\n📁 Outputs generados:")
+    print(f"   1. {OUTPUT_ORIGINAL}")
+    print(f"   2. {OUTPUT_WARPED}")
+    print(f"   3. {OUTPUT_COMPARISON}")
+    print(f"\n📈 Los gráficos muestran:")
+    print(f"   - Scatter plots de PC1 vs PC2 en TEST")
+    print(f"   - Elipses de confianza (95%) para cada clase")
+    print(f"   - Comparación de separabilidad (original vs warped)")
 
 
 # ============================================================================
