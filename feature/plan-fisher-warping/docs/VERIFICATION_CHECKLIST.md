@@ -32,8 +32,8 @@
   ```
 
 - [ ] **Verificar tamaños esperados según SPLIT_PROTOCOL.md:**
-  - [ ] 2-class: 12,402 total (9,873 train, 1,284 val, 1,245 test)
-  - [ ] 3-class: 6,725 total (5,361 train, 684 val, 680 test)
+  - [ ] 2-class: 12,402 total (9,300 train, 1,857 val, 1,245 test)
+  - [ ] 3-class: 6,725 total (5,040 train, 1,005 val, 680 test)
 
 ### B. DESPUÉS de ejecutar generate_features.py
 

@@ -117,8 +117,8 @@ csv_path = CSV_PATHS[EXPERIMENT_TYPE]["warped"]
 
 ```
 Total: 12,402 imágenes
-├── Train: 9,873 (79.6%)
-├── Val:   1,284 (10.4%)
+├── Train: 9,300 (75.0%)
+├── Val:   1,857 (15.0%)
 └── Test:  1,245 (10.0%)
 
 Distribución de clases en test:
@@ -131,9 +131,9 @@ Distribución de clases en test:
 
 ```
 Total: 6,725 imágenes
-├── Train: 5,361 (79.7%)
-├── Val:   684 (10.2%)
-└── Test:  680 (10.1%)
+├── Train: 5,040 (75.0%)
+├── Val:   1,005 (14.9%)
+└── Test:    680 (10.1%)
 
 Distribución de clases en test:
 - COVID: 272 (40%)
