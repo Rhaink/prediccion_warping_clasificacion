@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 import sys
+import gc
 from typing import Dict, List, Tuple
 
 # Agregar directorio src al path
@@ -148,6 +149,10 @@ def process_dataset(
             dist = {CLASS_NAMES[u]: c for u, c in zip(unique, counts)}
             print(f"  {split_name} distribucion: {dist}")
 
+    # Liberar memoria de ids que no usaremos mas adelante
+    del ids_train, ids_val
+    gc.collect()
+
     # Ajustar K_VALUES al tamano del dataset
     max_k = min(X_train.shape[0], max(K_VALUES))
     k_values = [k for k in K_VALUES if k <= max_k]
@@ -174,6 +179,12 @@ def process_dataset(
         output_path=dataset_output_dir / "k_optimization.png"
     )
     plt.close(fig_k)
+    del fig_k
+    gc.collect()
+
+    # Liberar datos de validacion (ya no los necesitamos)
+    del X_val, y_val
+    gc.collect()
 
     # Entrenar con K optimo
     if verbose:
@@ -198,6 +209,7 @@ def process_dataset(
         title=f"Matriz de Confusion - {dataset_name}\nK={opt_result.best_k}"
     )
     plt.close(fig_cm)
+    del fig_cm
 
     # Guardar matriz de confusion normalizada
     fig_cm_norm = plot_confusion_matrix(
@@ -207,6 +219,7 @@ def process_dataset(
         title=f"Matriz de Confusion (%) - {dataset_name}\nK={opt_result.best_k}"
     )
     plt.close(fig_cm_norm)
+    del fig_cm_norm
 
     # Guardar resultados en CSV
     save_classification_results(
@@ -221,6 +234,10 @@ def process_dataset(
         ids_test,
         OUTPUT_METRICS_DIR / f"{dataset_name}_predictions.csv"
     )
+
+    # Liberar datos grandes antes de retornar
+    del X_train, y_train, X_test, y_test, ids_test, knn
+    gc.collect()
 
     return test_result, opt_result
 
@@ -452,27 +469,61 @@ def main():
     print(f"Directorio de entrada: {FISHER_METRICS_DIR}")
     print(f"Directorio de salida (metricas): {OUTPUT_METRICS_DIR}")
     print(f"Directorio de salida (figuras): {OUTPUT_FIGURES_DIR}")
+    print()
+    print("OPTIMIZACION DE MEMORIA: Procesando datasets uno por uno")
+    print("=" * 70)
 
     # Crear directorios de salida
     OUTPUT_METRICS_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Procesar cada dataset
+    # Procesar cada dataset UNO POR UNO con liberacion de memoria
     all_results: Dict[str, ClassificationResult] = {}
     all_opt_results: Dict[str, KOptimizationResult] = {}
 
-    for dataset_name in DATASETS:
+    for idx, dataset_name in enumerate(DATASETS, 1):
+        print()
+        print(f"\n>>> PROCESANDO DATASET {idx}/{len(DATASETS)}: {dataset_name}")
+        print(f">>> Memoria sera liberada al finalizar este dataset")
+        print()
+
         try:
+            # Procesar dataset
             result, opt_result = process_dataset(dataset_name)
+
+            # Guardar resultados minimos necesarios
+            # (evitamos guardar objetos grandes innecesarios)
             all_results[dataset_name] = result
             all_opt_results[dataset_name] = opt_result
+
+            # CRITICO: Liberar memoria explicitamente
+            print()
+            print(f"[MEMORIA] Liberando memoria tras procesar {dataset_name}...")
+
+            # Forzar recoleccion de basura
+            gc.collect()
+
+            print(f"[MEMORIA] Memoria liberada. Continuando...")
+
         except FileNotFoundError as e:
             print(f"AVISO: No se pudo procesar {dataset_name}: {e}")
             continue
+        except Exception as e:
+            print(f"ERROR al procesar {dataset_name}: {e}")
+            print("Continuando con siguiente dataset...")
+            continue
 
     # Generar figuras comparativas
+    print()
+    print("=" * 70)
+    print("GENERANDO FIGURAS COMPARATIVAS")
+    print("=" * 70)
+
     if len(all_results) > 1:
         generate_comparison_figures(all_results)
+
+    # Liberar memoria antes del resumen
+    gc.collect()
 
     # Generar resumen
     generate_summary(all_results, all_opt_results)

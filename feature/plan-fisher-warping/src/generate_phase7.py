@@ -2,23 +2,28 @@
 """
 Script para generar resultados de Fase 7: Comparacion 2 clases vs 3 clases.
 
-FASE 7 DEL PIPELINE FISHER-WARPING
-===================================
+FASE 7 DEL PIPELINE FISHER-WARPING (CORREGIDO)
+===============================================
 
-Este script:
-1. Reutiliza caracteristicas PCA estandarizadas de Fase 4
-2. Extrae clase original del image_id (COVID, Normal, Viral_Pneumonia)
-3. Calcula Fisher multiclase (pairwise) para 3 clases
-4. Amplifica caracteristicas con Fisher
-5. Entrena KNN con 3 clases
-6. Compara con resultados de 2 clases de Fase 6
-7. Genera tabla comparativa final
+PROBLEMA ANTERIOR:
+El experimento de 3 clases reutilizaba features de Fase 4 (generadas del CSV
+de 2 clases con 12,402 imagenes) y solo re-etiquetaba por nombre de image_id.
+Esto era metodologicamente incorrecto.
 
-NOTA SOBRE FISHER MULTICLASE:
-Para 3 clases usamos Fisher pairwise (promedio de pares):
-    J_final = (J_COVID_Normal + J_COVID_Viral + J_Normal_Viral) / 3
+SOLUCION:
+Este script ahora:
+1. Carga imagenes DIRECTAMENTE del CSV de 3 clases (01_full_balanced_3class_*.csv)
+2. Ejecuta pipeline COMPLETO: PCA -> Z-score -> Fisher multiclase -> KNN
+3. Agrega experimento 2C-Comparable usando las MISMAS imagenes del CSV de 3 clases
+   pero reagrupando: COVID + Viral_Pneumonia -> Enfermo
 
-Esto es una extension natural del criterio binario del asesor.
+DATASETS:
+- 3 clases: 01_full_balanced_3class_*.csv (6,725 imgs, test=680)
+- 2C-Comparable: Mismas 6,725 imagenes, reagrupadas a 2 clases
+
+Esto permite comparacion directa 2C vs 3C con las MISMAS imagenes.
+
+Los resultados de 2 clases originales (12,402 imgs) se cargan de Fase 6.
 
 Uso:
     python src/generate_phase7.py
@@ -30,13 +35,17 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
+from dataclasses import dataclass
 
 # Agregar directorio src al path
 src_dir = Path(__file__).parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
+from data_loader import load_dataset, Dataset
+from pca import PCA
+from features import StandardScaler
 from fisher import FisherRatioMulticlass, plot_fisher_ratios, save_fisher_results
 from classifier import (
     KNNClassifier,
@@ -57,167 +66,129 @@ from classifier import (
 
 # Directorios
 BASE_DIR = Path(__file__).parent.parent
-PHASE4_METRICS_DIR = BASE_DIR / "results" / "metrics" / "phase4_features"
+PROJECT_BASE = BASE_DIR.parent.parent  # Raiz del proyecto para cargar imagenes
+CSV_3CLASS_WARPED = BASE_DIR / "results" / "metrics" / "01_full_balanced_3class_warped.csv"
+CSV_3CLASS_ORIGINAL = BASE_DIR / "results" / "metrics" / "01_full_balanced_3class_original.csv"
 PHASE6_METRICS_DIR = BASE_DIR / "results" / "metrics" / "phase6_classification"
 OUTPUT_METRICS_DIR = BASE_DIR / "results" / "metrics" / "phase7_comparison"
 OUTPUT_FIGURES_DIR = BASE_DIR / "results" / "figures" / "phase7_comparison"
 
-# Datasets a procesar
-DATASETS = [
-    "full_warped",
-    "full_original",
-    "manual_warped",
-    "manual_original"
-]
+# Configuracion de PCA
+N_COMPONENTS = 50  # Igual que Fase 4
 
 # Nombres de clases
 CLASS_NAMES_3C = ["COVID", "Normal", "Viral_Pneumonia"]
 CLASS_NAMES_2C = ["Enfermo", "Normal"]
 
-# Mapeo de clase original a indice (3 clases)
-LABEL_MAP_3C = {"COVID": 0, "Normal": 1, "Viral_Pneumonia": 2}
-
 # Valores de K a probar
 K_VALUES = [1, 3, 5, 7, 9, 11, 15, 21, 31, 41, 51]
 
 
-def extract_original_class(image_id: str) -> str:
-    """
-    Extrae la clase original del image_id.
-
-    Los image_ids tienen formato: "ClassName-Number"
-    Ejemplos:
-        "COVID-1234" -> "COVID"
-        "Normal-567" -> "Normal"
-        "Viral_Pneumonia-890" -> "Viral_Pneumonia"
-        "Viral Pneumonia-890" -> "Viral_Pneumonia" (con espacio)
-    """
-    if image_id.startswith("Viral_Pneumonia") or image_id.startswith("Viral Pneumonia"):
-        return "Viral_Pneumonia"
-    elif image_id.startswith("COVID"):
-        return "COVID"
-    elif image_id.startswith("Normal"):
-        return "Normal"
-    else:
-        raise ValueError(f"No se pudo extraer clase de: {image_id}")
+@dataclass
+class ExperimentResult:
+    """Resultado de un experimento completo."""
+    name: str
+    n_classes: int
+    class_names: List[str]
+    dataset_size: int
+    test_size: int
+    classification_result: ClassificationResult
+    k_optimization: KOptimizationResult
+    fisher_info: Dict
 
 
-def load_features_3class(csv_path: Path) -> Tuple[np.ndarray, np.ndarray, List[str]]:
-    """
-    Carga caracteristicas de Fase 4 y reasigna etiquetas a 3 clases.
-
-    Args:
-        csv_path: Ruta al archivo CSV de features (Fase 4)
-
-    Returns:
-        Tuple de (features, labels_3class, image_ids)
-    """
-    df = pd.read_csv(csv_path)
-
-    # Extraer columnas de features (PC1, PC2, ... - SIN _amp)
-    feature_cols = [col for col in df.columns if col.startswith('PC') and not col.endswith('_amp')]
-    features = df[feature_cols].values.astype(np.float32)
-
-    # Extraer clase original del image_id
-    original_classes = [extract_original_class(img_id) for img_id in df['image_id']]
-
-    # Crear etiquetas numericas para 3 clases
-    labels = np.array([LABEL_MAP_3C[cls] for cls in original_classes], dtype=np.int32)
-
-    image_ids = df['image_id'].tolist()
-
-    return features, labels, image_ids
-
-
-def load_dataset_3class(dataset_name: str) -> Dict:
-    """
-    Carga train, val, test para un dataset con 3 clases.
-
-    Args:
-        dataset_name: Nombre del dataset (ej. "full_warped")
-
-    Returns:
-        Dict con X_train, y_train, ids_train, X_val, y_val, ids_val, X_test, y_test, ids_test
-    """
-    data = {}
-
-    for split in ["train", "val", "test"]:
-        csv_path = PHASE4_METRICS_DIR / f"{dataset_name}_{split}_features.csv"
-
-        if not csv_path.exists():
-            raise FileNotFoundError(f"No se encontro: {csv_path}")
-
-        X, y, ids = load_features_3class(csv_path)
-        data[f"X_{split}"] = X
-        data[f"y_{split}"] = y
-        data[f"ids_{split}"] = ids
-
-    return data
-
-
-def process_dataset_3class(
-    dataset_name: str,
+def run_full_pipeline(
+    csv_path: Path,
+    scenario: str,
+    experiment_name: str,
+    use_mask: bool = True,
     verbose: bool = True
-) -> Tuple[ClassificationResult, KOptimizationResult, Dict]:
+) -> ExperimentResult:
     """
-    Procesa un dataset con 3 clases: Fisher multiclase + KNN.
+    Ejecuta el pipeline completo: Cargar datos -> PCA -> Z-score -> Fisher -> KNN.
 
     Args:
-        dataset_name: Nombre del dataset
+        csv_path: Ruta al CSV con los splits
+        scenario: "3class" o "2class"
+        experiment_name: Nombre para identificar el experimento
+        use_mask: Si True, usa mascara para imagenes warped
         verbose: Si True, imprime progreso
 
     Returns:
-        Tuple de (ClassificationResult, KOptimizationResult, fisher_info)
+        ExperimentResult con todos los resultados
     """
     if verbose:
         print()
         print("=" * 70)
-        print(f"PROCESANDO 3 CLASES: {dataset_name.upper()}")
+        print(f"EXPERIMENTO: {experiment_name.upper()}")
+        print(f"Escenario: {scenario}")
         print("=" * 70)
 
-    # Cargar datos con 3 clases
-    data = load_dataset_3class(dataset_name)
+    # === PASO 1: Cargar datos ===
+    if verbose:
+        print("\n[1/5] Cargando datos...")
 
-    X_train = data["X_train"]
-    y_train = data["y_train"]
-    X_val = data["X_val"]
-    y_val = data["y_val"]
-    X_test = data["X_test"]
-    y_test = data["y_test"]
-    ids_test = data["ids_test"]
+    dataset = load_dataset(
+        csv_path=csv_path,
+        base_path=PROJECT_BASE,
+        scenario=scenario,
+        use_mask=use_mask,
+        verbose=verbose
+    )
+
+    class_names = dataset.class_names
+    n_classes = len(class_names)
 
     if verbose:
-        print(f"\nDatos cargados:")
-        print(f"  Train: {X_train.shape[0]} muestras x {X_train.shape[1]} caracteristicas")
-        print(f"  Val:   {X_val.shape[0]} muestras")
-        print(f"  Test:  {X_test.shape[0]} muestras")
+        print(f"\n  Total: {len(dataset.train.ids) + len(dataset.val.ids) + len(dataset.test.ids)} imagenes")
+        print(f"  Train: {len(dataset.train.ids)}, Val: {len(dataset.val.ids)}, Test: {len(dataset.test.ids)}")
 
-        for split_name, labels in [("Train", y_train), ("Val", y_val), ("Test", y_test)]:
-            unique, counts = np.unique(labels, return_counts=True)
-            dist = {CLASS_NAMES_3C[u]: c for u, c in zip(unique, counts)}
-            print(f"  {split_name} distribucion: {dist}")
-
-    # === FISHER MULTICLASE ===
+    # === PASO 2: PCA ===
     if verbose:
-        print()
+        print("\n[2/5] Aplicando PCA...")
 
-    fisher = FisherRatioMulticlass()
-    fisher.fit(X_train, y_train, class_names=CLASS_NAMES_3C, verbose=verbose)
+    pca = PCA(n_components=N_COMPONENTS)
+    X_train_pca = pca.fit_transform(dataset.train.X, verbose=verbose)
+    X_val_pca = pca.transform(dataset.val.X)
+    X_test_pca = pca.transform(dataset.test.X)
+
+    if verbose:
+        print(f"  Shape despues de PCA: {X_train_pca.shape}")
+
+    # === PASO 3: Z-score ===
+    if verbose:
+        print("\n[3/5] Aplicando estandarizacion Z-score...")
+
+    scaler = StandardScaler()
+    X_train_std = scaler.fit_transform(X_train_pca, verbose=verbose)
+    X_val_std = scaler.transform(X_val_pca)
+    X_test_std = scaler.transform(X_test_pca)
+
+    # === PASO 4: Fisher ===
+    if verbose:
+        print("\n[4/5] Calculando Fisher ratios...")
+
+    if n_classes == 2:
+        from fisher import FisherRatio
+        fisher = FisherRatio()
+    else:
+        fisher = FisherRatioMulticlass()
+
+    fisher.fit(X_train_std, dataset.train.y, class_names=class_names, verbose=verbose)
 
     # Amplificar caracteristicas
-    X_train_amp = fisher.amplify(X_train)
-    X_val_amp = fisher.amplify(X_val)
-    X_test_amp = fisher.amplify(X_test)
+    X_train_amp = fisher.amplify(X_train_std)
+    X_val_amp = fisher.amplify(X_val_std)
+    X_test_amp = fisher.amplify(X_test_std)
 
-    # Guardar Fisher ratios
     fisher_info = {
         "fisher_ratios": fisher.fisher_ratios_.tolist(),
-        "n_classes": fisher.n_classes_,
-        "class_names": CLASS_NAMES_3C
+        "n_classes": n_classes,
+        "class_names": class_names
     }
 
     # Crear directorio de salida
-    dataset_output_dir = OUTPUT_FIGURES_DIR / f"{dataset_name}_3class"
+    dataset_output_dir = OUTPUT_FIGURES_DIR / experiment_name
     dataset_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Guardar figura de Fisher ratios
@@ -228,24 +199,26 @@ def process_dataset_3class(
     )
     plt.close(fig_fisher)
 
-    # === KNN ===
+    # === PASO 5: KNN ===
+    if verbose:
+        print("\n[5/5] Entrenando y evaluando KNN...")
+
     # Ajustar K_VALUES al tamano del dataset
-    max_k = min(X_train.shape[0], max(K_VALUES))
+    max_k = min(X_train_amp.shape[0], max(K_VALUES))
     k_values = [k for k in K_VALUES if k <= max_k]
 
     if verbose:
-        print(f"\nBuscando K optimo...")
-        print(f"  Valores a probar: {k_values}")
+        print(f"  Valores de K a probar: {k_values}")
 
-    # Optimizar K usando caracteristicas amplificadas
+    # Optimizar K
     opt_result = find_best_k(
-        X_train_amp, y_train,
-        X_val_amp, y_val,
+        X_train_amp, dataset.train.y,
+        X_val_amp, dataset.val.y,
         k_values=k_values,
         verbose=verbose
     )
 
-    # Guardar grafico de optimizacion de K
+    # Guardar grafico de optimizacion
     fig_k = plot_k_optimization(
         opt_result,
         output_path=dataset_output_dir / "k_optimization.png"
@@ -254,17 +227,17 @@ def process_dataset_3class(
 
     # Entrenar con K optimo
     if verbose:
-        print(f"\nEntrenando KNN con K={opt_result.best_k}...")
+        print(f"\n  Entrenando KNN con K={opt_result.best_k}...")
 
     knn = KNNClassifier(k=opt_result.best_k)
-    knn.fit(X_train_amp, y_train, verbose=False)
+    knn.fit(X_train_amp, dataset.train.y, verbose=False)
 
     # Evaluar en test
     if verbose:
-        print(f"\nEvaluando en conjunto de TEST...")
+        print(f"\n  Evaluando en conjunto de TEST ({len(dataset.test.ids)} muestras)...")
 
     test_result = evaluate_classifier(
-        knn, X_test_amp, y_test, CLASS_NAMES_3C, verbose=verbose
+        knn, X_test_amp, dataset.test.y, class_names, verbose=verbose
     )
 
     # Guardar matriz de confusion
@@ -272,7 +245,7 @@ def process_dataset_3class(
         test_result,
         output_path=dataset_output_dir / "confusion_matrix.png",
         normalize=False,
-        title=f"Matriz de Confusion (3 clases) - {dataset_name}\nK={opt_result.best_k}"
+        title=f"Matriz de Confusion - {experiment_name}\nK={opt_result.best_k}"
     )
     plt.close(fig_cm)
 
@@ -280,24 +253,37 @@ def process_dataset_3class(
         test_result,
         output_path=dataset_output_dir / "confusion_matrix_normalized.png",
         normalize=True,
-        title=f"Matriz de Confusion (%) - {dataset_name}\nK={opt_result.best_k}"
+        title=f"Matriz de Confusion (%) - {experiment_name}\nK={opt_result.best_k}"
     )
     plt.close(fig_cm_norm)
 
     # Guardar resultados
+    OUTPUT_METRICS_DIR.mkdir(parents=True, exist_ok=True)
+
     save_classification_results(
         test_result,
-        f"{dataset_name}_3class",
-        OUTPUT_METRICS_DIR / f"{dataset_name}_3class_results.csv"
+        experiment_name,
+        OUTPUT_METRICS_DIR / f"{experiment_name}_results.csv"
     )
 
     save_predictions(
         test_result,
-        ids_test,
-        OUTPUT_METRICS_DIR / f"{dataset_name}_3class_predictions.csv"
+        dataset.test.ids,
+        OUTPUT_METRICS_DIR / f"{experiment_name}_predictions.csv"
     )
 
-    return test_result, opt_result, fisher_info
+    dataset_size = len(dataset.train.ids) + len(dataset.val.ids) + len(dataset.test.ids)
+
+    return ExperimentResult(
+        name=experiment_name,
+        n_classes=n_classes,
+        class_names=class_names,
+        dataset_size=dataset_size,
+        test_size=len(dataset.test.ids),
+        classification_result=test_result,
+        k_optimization=opt_result,
+        fisher_info=fisher_info
+    )
 
 
 def load_2class_results() -> Dict[str, Dict]:
@@ -316,146 +302,173 @@ def load_2class_results() -> Dict[str, Dict]:
 
 
 def generate_comparison_table(
-    results_3c: Dict[str, ClassificationResult],
-    results_2c: Dict[str, Dict]
+    results_3c: Dict[str, ExperimentResult],
+    results_2c_comparable: Dict[str, ExperimentResult],
+    results_2c_original: Dict[str, Dict]
 ) -> pd.DataFrame:
     """
-    Genera tabla comparativa 2C vs 3C.
+    Genera tabla comparativa completa.
     """
     rows = []
 
-    for dataset in DATASETS:
-        is_warped = "warped" in dataset
-        is_manual = "manual" in dataset
-
-        # Resultados 2 clases
-        if dataset in results_2c:
-            r2c = results_2c[dataset]
+    # Resultados de 2 clases originales (dataset de 12,402 imgs)
+    for dataset_name, r2c in results_2c_original.items():
+        if "full" in dataset_name:  # Solo full datasets
             rows.append({
-                "Dataset": dataset,
-                "Escenario": "2 clases",
+                "Dataset": "2C Original (12,402 imgs)",
+                "Variante": dataset_name,
                 "Clases": "Enfermo/Normal",
-                "K_optimo": r2c.get("best_k", "N/A"),
+                "Test_Size": 1245,
+                "K_optimo": r2c.get("best_k", "?"),
                 "Test_Accuracy": r2c.get("test_metrics", {}).get("accuracy", 0),
                 "Macro_F1": r2c.get("test_metrics", {}).get("macro_f1", 0),
-                "is_warped": is_warped,
-                "is_manual": is_manual
             })
 
-        # Resultados 3 clases
-        if dataset in results_3c:
-            r3c = results_3c[dataset]
-            rows.append({
-                "Dataset": dataset,
-                "Escenario": "3 clases",
-                "Clases": "COVID/Normal/Viral",
-                "K_optimo": r3c.k,
-                "Test_Accuracy": r3c.accuracy,
-                "Macro_F1": r3c.get_macro_f1(),
-                "is_warped": is_warped,
-                "is_manual": is_manual
-            })
+    # Resultados de 2 clases comparable (mismas imgs que 3C)
+    for name, result in results_2c_comparable.items():
+        rows.append({
+            "Dataset": "2C Comparable (6,725 imgs)",
+            "Variante": name,
+            "Clases": "Enfermo/Normal",
+            "Test_Size": result.test_size,
+            "K_optimo": result.k_optimization.best_k,
+            "Test_Accuracy": result.classification_result.accuracy,
+            "Macro_F1": result.classification_result.get_macro_f1(),
+        })
+
+    # Resultados de 3 clases
+    for name, result in results_3c.items():
+        rows.append({
+            "Dataset": "3C (6,725 imgs)",
+            "Variante": name,
+            "Clases": "COVID/Normal/Viral",
+            "Test_Size": result.test_size,
+            "K_optimo": result.k_optimization.best_k,
+            "Test_Accuracy": result.classification_result.accuracy,
+            "Macro_F1": result.classification_result.get_macro_f1(),
+        })
 
     return pd.DataFrame(rows)
 
 
-def generate_final_comparison_figure(
-    results_3c: Dict[str, ClassificationResult],
-    results_2c: Dict[str, Dict]
+def generate_comparison_figure(
+    results_3c: Dict[str, ExperimentResult],
+    results_2c_comparable: Dict[str, ExperimentResult],
+    results_2c_original: Dict[str, Dict]
 ) -> plt.Figure:
     """
-    Genera figura comparativa final.
+    Genera figura comparativa.
     """
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     fig.suptitle("Comparacion: 2 Clases vs 3 Clases | Warped vs Original",
                  fontsize=14, fontweight='bold')
 
-    scenarios = [
-        ("full", "Dataset Completo (Full)"),
-        ("manual", "Dataset Manual")
-    ]
+    # Recolectar datos para graficar
+    conditions = []
+    accuracies = []
+    colors = []
 
-    for row_idx, (prefix, title) in enumerate(scenarios):
-        warped_name = f"{prefix}_warped"
-        original_name = f"{prefix}_original"
+    # 2C Original (12,402 imgs)
+    if "full_original" in results_2c_original:
+        conditions.append("2C-12K\nOriginal")
+        accuracies.append(results_2c_original["full_original"].get("test_metrics", {}).get("accuracy", 0))
+        colors.append('#3498DB')
 
-        # Panel izquierdo: Accuracy
-        ax_acc = axes[row_idx, 0]
+    if "full_warped" in results_2c_original:
+        conditions.append("2C-12K\nWarped")
+        accuracies.append(results_2c_original["full_warped"].get("test_metrics", {}).get("accuracy", 0))
+        colors.append('#2ECC71')
 
-        conditions = ["2C\nOriginal", "2C\nWarped", "3C\nOriginal", "3C\nWarped"]
-        accuracies = []
+    # 2C Comparable (6,725 imgs)
+    for name, result in sorted(results_2c_comparable.items()):
+        if "original" in name:
+            conditions.append("2C-6K\nOriginal")
+            colors.append('#9B59B6')
+        else:
+            conditions.append("2C-6K\nWarped")
+            colors.append('#E67E22')
+        accuracies.append(result.classification_result.accuracy)
 
-        # 2C Original
-        acc = results_2c.get(original_name, {}).get("test_metrics", {}).get("accuracy", 0)
-        accuracies.append(acc)
+    # 3C (6,725 imgs)
+    for name, result in sorted(results_3c.items()):
+        if "original" in name:
+            conditions.append("3C-6K\nOriginal")
+            colors.append('#E74C3C')
+        else:
+            conditions.append("3C-6K\nWarped")
+            colors.append('#F39C12')
+        accuracies.append(result.classification_result.accuracy)
 
-        # 2C Warped
-        acc = results_2c.get(warped_name, {}).get("test_metrics", {}).get("accuracy", 0)
-        accuracies.append(acc)
+    # Panel izquierdo: Accuracy
+    ax_acc = axes[0]
+    bars = ax_acc.bar(range(len(conditions)), accuracies, color=colors, alpha=0.8, edgecolor='black')
 
-        # 3C Original
-        acc = results_3c[original_name].accuracy if original_name in results_3c else 0
-        accuracies.append(acc)
+    for bar, val in zip(bars, accuracies):
+        ax_acc.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.005,
+                   f'{val:.1%}', ha='center', va='bottom', fontsize=9, fontweight='bold')
 
-        # 3C Warped
-        acc = results_3c[warped_name].accuracy if warped_name in results_3c else 0
-        accuracies.append(acc)
+    ax_acc.set_xticks(range(len(conditions)))
+    ax_acc.set_xticklabels(conditions, fontsize=9)
+    ax_acc.set_ylabel('Accuracy', fontsize=11)
+    ax_acc.set_title('Accuracy por Experimento', fontsize=12)
+    ax_acc.set_ylim(0, 1.0)
+    ax_acc.grid(True, alpha=0.3, axis='y')
 
-        colors = ['#3498DB', '#2ECC71', '#E74C3C', '#F39C12']
-        bars = ax_acc.bar(conditions, accuracies, color=colors, alpha=0.8, edgecolor='black')
+    # Panel derecho: Mejora por warping
+    ax_improve = axes[1]
 
-        for bar, val in zip(bars, accuracies):
-            if val > 0:
-                ax_acc.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
-                           f'{val:.1%}', ha='center', va='bottom', fontsize=10, fontweight='bold')
+    improvements = []
+    labels = []
+    imp_colors = []
 
-        ax_acc.set_ylabel('Accuracy', fontsize=11)
-        ax_acc.set_title(f'{title} - Accuracy', fontsize=12)
-        ax_acc.set_ylim(0, 1.0)
-        ax_acc.grid(True, alpha=0.3, axis='y')
+    # 2C Original (12K)
+    if "full_original" in results_2c_original and "full_warped" in results_2c_original:
+        acc_o = results_2c_original["full_original"].get("test_metrics", {}).get("accuracy", 0)
+        acc_w = results_2c_original["full_warped"].get("test_metrics", {}).get("accuracy", 0)
+        improvements.append((acc_w - acc_o) * 100)
+        labels.append("2C (12K imgs)")
+        imp_colors.append('#2ECC71')
 
-        # Panel derecho: Macro F1
-        ax_f1 = axes[row_idx, 1]
+    # 2C Comparable (6K)
+    orig_2c = next((r for n, r in results_2c_comparable.items() if "original" in n), None)
+    warp_2c = next((r for n, r in results_2c_comparable.items() if "warped" in n), None)
+    if orig_2c and warp_2c:
+        acc_o = orig_2c.classification_result.accuracy
+        acc_w = warp_2c.classification_result.accuracy
+        improvements.append((acc_w - acc_o) * 100)
+        labels.append("2C (6K imgs)")
+        imp_colors.append('#E67E22')
 
-        f1_scores = []
+    # 3C (6K)
+    orig_3c = next((r for n, r in results_3c.items() if "original" in n), None)
+    warp_3c = next((r for n, r in results_3c.items() if "warped" in n), None)
+    if orig_3c and warp_3c:
+        acc_o = orig_3c.classification_result.accuracy
+        acc_w = warp_3c.classification_result.accuracy
+        improvements.append((acc_w - acc_o) * 100)
+        labels.append("3C (6K imgs)")
+        imp_colors.append('#F39C12')
 
-        # 2C Original
-        f1 = results_2c.get(original_name, {}).get("test_metrics", {}).get("macro_f1", 0)
-        f1_scores.append(f1)
+    bars = ax_improve.bar(labels, improvements, color=imp_colors, alpha=0.8, edgecolor='black')
 
-        # 2C Warped
-        f1 = results_2c.get(warped_name, {}).get("test_metrics", {}).get("macro_f1", 0)
-        f1_scores.append(f1)
+    for bar, val in zip(bars, improvements):
+        sign = "+" if val >= 0 else ""
+        ax_improve.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
+                       f'{sign}{val:.2f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
-        # 3C Original
-        f1 = results_3c[original_name].get_macro_f1() if original_name in results_3c else 0
-        f1_scores.append(f1)
-
-        # 3C Warped
-        f1 = results_3c[warped_name].get_macro_f1() if warped_name in results_3c else 0
-        f1_scores.append(f1)
-
-        bars = ax_f1.bar(conditions, f1_scores, color=colors, alpha=0.8, edgecolor='black')
-
-        for bar, val in zip(bars, f1_scores):
-            if val > 0:
-                ax_f1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
-                           f'{val:.3f}', ha='center', va='bottom', fontsize=10, fontweight='bold')
-
-        ax_f1.set_ylabel('Macro F1', fontsize=11)
-        ax_f1.set_title(f'{title} - Macro F1', fontsize=12)
-        ax_f1.set_ylim(0, 1.0)
-        ax_f1.grid(True, alpha=0.3, axis='y')
+    ax_improve.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+    ax_improve.set_ylabel('Mejora por Warping (puntos %)', fontsize=11)
+    ax_improve.set_title('Mejora: Warped vs Original', fontsize=12)
+    ax_improve.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
     return fig
 
 
 def generate_summary(
-    results_3c: Dict[str, ClassificationResult],
-    opt_results_3c: Dict[str, KOptimizationResult],
-    fisher_infos: Dict[str, Dict],
-    results_2c: Dict[str, Dict]
+    results_3c: Dict[str, ExperimentResult],
+    results_2c_comparable: Dict[str, ExperimentResult],
+    results_2c_original: Dict[str, Dict]
 ) -> None:
     """
     Genera resumen final.
@@ -466,12 +479,12 @@ def generate_summary(
     print("=" * 70)
 
     # Tabla comparativa
-    df_comparison = generate_comparison_table(results_3c, results_2c)
+    df_comparison = generate_comparison_table(results_3c, results_2c_comparable, results_2c_original)
     df_comparison.to_csv(OUTPUT_METRICS_DIR / "comparacion_2c_vs_3c.csv", index=False)
     print(f"Tabla guardada: {OUTPUT_METRICS_DIR / 'comparacion_2c_vs_3c.csv'}")
 
     # Figura comparativa
-    fig = generate_final_comparison_figure(results_3c, results_2c)
+    fig = generate_comparison_figure(results_3c, results_2c_comparable, results_2c_original)
     fig.savefig(OUTPUT_FIGURES_DIR / "comparacion_final.png",
                 dpi=300, bbox_inches='tight', facecolor='white')
     plt.close(fig)
@@ -480,49 +493,79 @@ def generate_summary(
     # JSON resumen
     summary_json = {
         "phase": 7,
-        "description": "Comparacion 2 clases vs 3 clases con Fisher multiclase (pairwise)",
-        "datasets_3class": {},
+        "description": "Comparacion 2 clases vs 3 clases (CORREGIDO)",
+        "methodology": {
+            "3class": "Pipeline completo desde CSV 01_full_balanced_3class_*.csv (6,725 imgs)",
+            "2class_comparable": "Mismas imagenes que 3class, reagrupadas (COVID+Viral -> Enfermo)",
+            "2class_original": "Resultados de Fase 6, CSV 02_full_balanced_2class_*.csv (12,402 imgs)"
+        },
+        "experiments_3class": {},
+        "experiments_2class_comparable": {},
         "comparison": []
     }
 
-    for dataset in DATASETS:
-        if dataset in results_3c:
-            r3c = results_3c[dataset]
-            opt = opt_results_3c[dataset]
+    for name, result in results_3c.items():
+        summary_json["experiments_3class"][name] = {
+            "dataset_size": result.dataset_size,
+            "test_size": result.test_size,
+            "best_k": result.k_optimization.best_k,
+            "val_accuracy": result.k_optimization.best_val_accuracy,
+            "test_accuracy": result.classification_result.accuracy,
+            "macro_f1": result.classification_result.get_macro_f1(),
+            "confusion_matrix": result.classification_result.confusion_matrix.tolist()
+        }
 
-            summary_json["datasets_3class"][dataset] = {
-                "best_k": opt.best_k,
-                "val_accuracy": opt.best_val_accuracy,
-                "test_accuracy": r3c.accuracy,
-                "macro_f1": r3c.get_macro_f1(),
-                "fisher_info": fisher_infos.get(dataset, {}),
-                "confusion_matrix": r3c.confusion_matrix.tolist()
-            }
+    for name, result in results_2c_comparable.items():
+        summary_json["experiments_2class_comparable"][name] = {
+            "dataset_size": result.dataset_size,
+            "test_size": result.test_size,
+            "best_k": result.k_optimization.best_k,
+            "val_accuracy": result.k_optimization.best_val_accuracy,
+            "test_accuracy": result.classification_result.accuracy,
+            "macro_f1": result.classification_result.get_macro_f1(),
+            "confusion_matrix": result.classification_result.confusion_matrix.tolist()
+        }
 
     # Comparacion warped vs original
-    for prefix in ["full", "manual"]:
-        warped = f"{prefix}_warped"
-        original = f"{prefix}_original"
+    comparison_data = {}
 
-        comparison = {"dataset_type": prefix}
+    # 2C Original (12K)
+    if "full_original" in results_2c_original and "full_warped" in results_2c_original:
+        acc_o = results_2c_original["full_original"].get("test_metrics", {}).get("accuracy", 0)
+        acc_w = results_2c_original["full_warped"].get("test_metrics", {}).get("accuracy", 0)
+        comparison_data["2class_12k"] = {
+            "original_acc": acc_o,
+            "warped_acc": acc_w,
+            "improvement": acc_w - acc_o,
+            "dataset_size": 12402,
+            "test_size": 1245
+        }
 
-        # 2 clases
-        if warped in results_2c and original in results_2c:
-            acc_w = results_2c[warped].get("test_metrics", {}).get("accuracy", 0)
-            acc_o = results_2c[original].get("test_metrics", {}).get("accuracy", 0)
-            comparison["2class_warped_acc"] = acc_w
-            comparison["2class_original_acc"] = acc_o
-            comparison["2class_improvement"] = acc_w - acc_o
+    # 2C Comparable (6K)
+    orig_2c = next((r for n, r in results_2c_comparable.items() if "original" in n), None)
+    warp_2c = next((r for n, r in results_2c_comparable.items() if "warped" in n), None)
+    if orig_2c and warp_2c:
+        comparison_data["2class_6k_comparable"] = {
+            "original_acc": orig_2c.classification_result.accuracy,
+            "warped_acc": warp_2c.classification_result.accuracy,
+            "improvement": warp_2c.classification_result.accuracy - orig_2c.classification_result.accuracy,
+            "dataset_size": 6725,
+            "test_size": 680
+        }
 
-        # 3 clases
-        if warped in results_3c and original in results_3c:
-            acc_w = results_3c[warped].accuracy
-            acc_o = results_3c[original].accuracy
-            comparison["3class_warped_acc"] = acc_w
-            comparison["3class_original_acc"] = acc_o
-            comparison["3class_improvement"] = acc_w - acc_o
+    # 3C (6K)
+    orig_3c = next((r for n, r in results_3c.items() if "original" in n), None)
+    warp_3c = next((r for n, r in results_3c.items() if "warped" in n), None)
+    if orig_3c and warp_3c:
+        comparison_data["3class_6k"] = {
+            "original_acc": orig_3c.classification_result.accuracy,
+            "warped_acc": warp_3c.classification_result.accuracy,
+            "improvement": warp_3c.classification_result.accuracy - orig_3c.classification_result.accuracy,
+            "dataset_size": 6725,
+            "test_size": 680
+        }
 
-        summary_json["comparison"].append(comparison)
+    summary_json["comparison"] = comparison_data
 
     with open(OUTPUT_METRICS_DIR / "summary.json", "w") as f:
         json.dump(summary_json, f, indent=2)
@@ -531,28 +574,40 @@ def generate_summary(
     # Imprimir tabla resumen
     print()
     print("-" * 80)
-    print("TABLA COMPARATIVA FINAL: 2 CLASES vs 3 CLASES")
+    print("TABLA COMPARATIVA FINAL")
     print("-" * 80)
     print()
-    print(f"{'Dataset':<18} {'Escenario':<12} {'K':>4} {'Test Acc':>12} {'Macro F1':>10}")
+    print(f"{'Experimento':<25} {'Dataset':<15} {'Test':>6} {'K':>4} {'Accuracy':>10} {'Macro F1':>10}")
     print("-" * 80)
 
-    for dataset in DATASETS:
-        # 2 clases
-        if dataset in results_2c:
-            r2c = results_2c[dataset]
+    # 2C Original (12K)
+    for dataset_name in ["full_original", "full_warped"]:
+        if dataset_name in results_2c_original:
+            r2c = results_2c_original[dataset_name]
             k = r2c.get("best_k", "?")
             acc = r2c.get("test_metrics", {}).get("accuracy", 0)
             f1 = r2c.get("test_metrics", {}).get("macro_f1", 0)
-            print(f"{dataset:<18} {'2 clases':<12} {k:>4} {acc:>11.2%} {f1:>10.4f}")
+            label = "2C (12K imgs)"
+            variant = "warped" if "warped" in dataset_name else "original"
+            print(f"{label:<25} {variant:<15} {1245:>6} {k:>4} {acc:>9.2%} {f1:>10.4f}")
 
-        # 3 clases
-        if dataset in results_3c:
-            r3c = results_3c[dataset]
-            opt = opt_results_3c[dataset]
-            print(f"{dataset:<18} {'3 clases':<12} {opt.best_k:>4} {r3c.accuracy:>11.2%} {r3c.get_macro_f1():>10.4f}")
+    print()
 
-        print()
+    # 2C Comparable (6K)
+    for name, result in sorted(results_2c_comparable.items()):
+        variant = "warped" if "warped" in name else "original"
+        label = "2C Comparable (6K imgs)"
+        print(f"{label:<25} {variant:<15} {result.test_size:>6} {result.k_optimization.best_k:>4} "
+              f"{result.classification_result.accuracy:>9.2%} {result.classification_result.get_macro_f1():>10.4f}")
+
+    print()
+
+    # 3C (6K)
+    for name, result in sorted(results_3c.items()):
+        variant = "warped" if "warped" in name else "original"
+        label = "3C (6K imgs)"
+        print(f"{label:<25} {variant:<15} {result.test_size:>6} {result.k_optimization.best_k:>4} "
+              f"{result.classification_result.accuracy:>9.2%} {result.classification_result.get_macro_f1():>10.4f}")
 
     print("-" * 80)
 
@@ -561,122 +616,102 @@ def generate_summary(
     print("MEJORA POR WARPING:")
     print()
 
-    for prefix in ["full", "manual"]:
-        warped = f"{prefix}_warped"
-        original = f"{prefix}_original"
+    for exp_name, data in comparison_data.items():
+        acc_o = data["original_acc"]
+        acc_w = data["warped_acc"]
+        diff = data["improvement"]
+        sign = "+" if diff > 0 else ""
+        print(f"  {exp_name}: {acc_o:.2%} -> {acc_w:.2%} ({sign}{diff:.2%})")
 
-        print(f"  {prefix.upper()}:")
-
-        # 2 clases
-        if warped in results_2c and original in results_2c:
-            acc_w = results_2c[warped].get("test_metrics", {}).get("accuracy", 0)
-            acc_o = results_2c[original].get("test_metrics", {}).get("accuracy", 0)
-            diff = acc_w - acc_o
-            sign = "+" if diff > 0 else ""
-            print(f"    2 clases: {acc_o:.2%} -> {acc_w:.2%} ({sign}{diff:.2%})")
-
-        # 3 clases
-        if warped in results_3c and original in results_3c:
-            acc_w = results_3c[warped].accuracy
-            acc_o = results_3c[original].accuracy
-            diff = acc_w - acc_o
-            sign = "+" if diff > 0 else ""
-            print(f"    3 clases: {acc_o:.2%} -> {acc_w:.2%} ({sign}{diff:.2%})")
-
-        print()
+    print()
 
 
 def main():
     """Funcion principal."""
     print("=" * 70)
-    print("FASE 7: COMPARACION 2 CLASES vs 3 CLASES")
+    print("FASE 7: COMPARACION 2 CLASES vs 3 CLASES (CORREGIDO)")
     print("=" * 70)
     print()
-    print("Pipeline: PCA -> Z-score -> Fisher Multiclase -> KNN")
+    print("Pipeline: Cargar imagenes -> PCA -> Z-score -> Fisher -> KNN")
     print()
-    print(f"Directorio entrada (Fase 4): {PHASE4_METRICS_DIR}")
-    print(f"Directorio entrada (Fase 6): {PHASE6_METRICS_DIR}")
-    print(f"Directorio salida (metricas): {OUTPUT_METRICS_DIR}")
-    print(f"Directorio salida (figuras): {OUTPUT_FIGURES_DIR}")
+    print("METODOLOGIA CORREGIDA:")
+    print("  - 3 clases: Carga directa desde 01_full_balanced_3class_*.csv (6,725 imgs)")
+    print("  - 2C Comparable: Mismas imagenes, reagrupadas a 2 clases")
+    print("  - 2C Original: Resultados de Fase 6 (12,402 imgs)")
+    print()
 
     # Crear directorios
     OUTPUT_METRICS_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Cargar resultados de 2 clases
-    results_2c = load_2class_results()
-    print(f"\nResultados 2 clases cargados: {list(results_2c.keys())}")
+    # Cargar resultados de 2 clases originales (Fase 6)
+    results_2c_original = load_2class_results()
+    print(f"Resultados 2C originales cargados: {list(results_2c_original.keys())}")
 
-    # Procesar cada dataset con 3 clases
-    results_3c: Dict[str, ClassificationResult] = {}
-    opt_results_3c: Dict[str, KOptimizationResult] = {}
-    fisher_infos: Dict[str, Dict] = {}
+    # === EXPERIMENTOS 3 CLASES ===
+    results_3c: Dict[str, ExperimentResult] = {}
 
-    for dataset_name in DATASETS:
-        try:
-            result, opt_result, fisher_info = process_dataset_3class(dataset_name)
-            results_3c[dataset_name] = result
-            opt_results_3c[dataset_name] = opt_result
-            fisher_infos[dataset_name] = fisher_info
-        except FileNotFoundError as e:
-            print(f"AVISO: No se pudo procesar {dataset_name}: {e}")
-            continue
+    # 3C Warped
+    if CSV_3CLASS_WARPED.exists():
+        result = run_full_pipeline(
+            csv_path=CSV_3CLASS_WARPED,
+            scenario="3class",
+            experiment_name="3class_warped",
+            use_mask=True,
+            verbose=True
+        )
+        results_3c["3class_warped"] = result
 
-    # Generar figuras de matrices de confusion (4 datasets)
-    if len(results_3c) == 4:
-        print()
-        print("=" * 70)
-        print("GENERANDO MATRICES DE CONFUSION COMPARATIVAS")
-        print("=" * 70)
+    # 3C Original
+    if CSV_3CLASS_ORIGINAL.exists():
+        result = run_full_pipeline(
+            csv_path=CSV_3CLASS_ORIGINAL,
+            scenario="3class",
+            experiment_name="3class_original",
+            use_mask=False,
+            verbose=True
+        )
+        results_3c["3class_original"] = result
 
-        fig, axes = plt.subplots(2, 2, figsize=(14, 12))
-        fig.suptitle("Matrices de Confusion (3 Clases) - Todos los Datasets",
-                     fontsize=14, fontweight='bold')
+    # === EXPERIMENTOS 2C COMPARABLE (mismas imagenes que 3C) ===
+    results_2c_comparable: Dict[str, ExperimentResult] = {}
 
-        dataset_order = ["full_warped", "full_original", "manual_warped", "manual_original"]
-        titles = ["Full Warped", "Full Original", "Manual Warped", "Manual Original"]
+    # 2C Comparable Warped
+    if CSV_3CLASS_WARPED.exists():
+        result = run_full_pipeline(
+            csv_path=CSV_3CLASS_WARPED,
+            scenario="2class",  # Reagrupa COVID+Viral -> Enfermo
+            experiment_name="2class_comparable_warped",
+            use_mask=True,
+            verbose=True
+        )
+        results_2c_comparable["2class_comparable_warped"] = result
 
-        for idx, (dataset, title) in enumerate(zip(dataset_order, titles)):
-            if dataset not in results_3c:
-                continue
-
-            row, col = idx // 2, idx % 2
-            ax = axes[row, col]
-
-            res = results_3c[dataset]
-            cm = res.confusion_matrix
-
-            im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-
-            thresh = cm.max() / 2.
-            for i in range(len(CLASS_NAMES_3C)):
-                for j in range(len(CLASS_NAMES_3C)):
-                    ax.text(j, i, f'{int(cm[i, j])}',
-                            ha="center", va="center",
-                            color="white" if cm[i, j] > thresh else "black",
-                            fontsize=11)
-
-            ax.set_xticks(range(len(CLASS_NAMES_3C)))
-            ax.set_yticks(range(len(CLASS_NAMES_3C)))
-            ax.set_xticklabels(['COVID', 'Normal', 'Viral'], fontsize=9)
-            ax.set_yticklabels(['COVID', 'Normal', 'Viral'], fontsize=9)
-            ax.set_xlabel('Predicha')
-            ax.set_ylabel('Real')
-            ax.set_title(f'{title}\nAcc={res.accuracy:.2%}, K={res.k}')
-
-        plt.tight_layout()
-        fig.savefig(OUTPUT_FIGURES_DIR / "confusion_matrices_3class.png",
-                    dpi=300, bbox_inches='tight', facecolor='white')
-        plt.close(fig)
-        print(f"Guardado: {OUTPUT_FIGURES_DIR / 'confusion_matrices_3class.png'}")
+    # 2C Comparable Original
+    if CSV_3CLASS_ORIGINAL.exists():
+        result = run_full_pipeline(
+            csv_path=CSV_3CLASS_ORIGINAL,
+            scenario="2class",  # Reagrupa COVID+Viral -> Enfermo
+            experiment_name="2class_comparable_original",
+            use_mask=False,
+            verbose=True
+        )
+        results_2c_comparable["2class_comparable_original"] = result
 
     # Generar resumen final
-    generate_summary(results_3c, opt_results_3c, fisher_infos, results_2c)
+    generate_summary(results_3c, results_2c_comparable, results_2c_original)
 
     print()
     print("=" * 70)
     print("FASE 7 COMPLETADA")
     print("=" * 70)
+    print()
+    print("VERIFICACION:")
+    for name, result in results_3c.items():
+        print(f"  {name}: Test size = {result.test_size} (esperado: 680)")
+    for name, result in results_2c_comparable.items():
+        print(f"  {name}: Test size = {result.test_size} (esperado: 680)")
+    print()
 
 
 if __name__ == "__main__":

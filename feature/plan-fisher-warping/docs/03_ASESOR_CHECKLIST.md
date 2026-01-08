@@ -97,3 +97,45 @@ de clases.
 | 2025-12-30 | Todos | Creacion inicial del documento |
 | 2026-01-05 | 1-12 | Actualizacion de estados (11 OK, 1 pendiente) |
 | 2026-01-05 | Fase 7 | Documentacion de extension Fisher multiclase |
+| 2026-01-07 | Todos | Post error crítico: agregadas salvaguardas de verificación |
+
+---
+
+## IMPORTANTE: Salvaguardas Post-Error Crítico (2026-01-07)
+
+### ¿Qué pasó?
+
+Los experimentos de 2 clases fueron ejecutados con el CSV incorrecto (`01_full_balanced_3class_*.csv` en lugar de `02_full_balanced_2class_*.csv`), resultando en:
+- Solo 680 de 1,245 imágenes test usadas (45%)
+- Ratio de clases invertido (60% Enfermo vs 40% Normal)
+- ~3 días de trabajo perdido
+
+Ver `docs/POST_MORTEM_ERROR_CRITICO.md` para análisis completo.
+
+### Salvaguardas Implementadas
+
+Para asegurar que TODOS los requisitos del asesor se cumplan correctamente y que este tipo de error nunca vuelva a pasar:
+
+1. **VERIFICATION_CHECKLIST.md** - Checklist obligatorio después de cada fase
+2. **SPLIT_PROTOCOL.md actualizado** - Reglas prescriptivas (no solo descriptivas)
+3. **Validaciones automáticas** - Asserts en el código para verificar tamaños
+4. **Logging explícito** - Prints de archivos cargados y tamaños
+5. **CORRECTION_PLAN.md** - Plan detallado para corregir experimentos
+
+### Verificación Pre-Reunión con Asesor
+
+Antes de presentar resultados al asesor, VERIFICAR:
+
+- [ ] **Dataset correcto usado:** 02_full_balanced_2class_*.csv para 2 clases
+- [ ] **Test size correcto:** 1,245 imágenes (no 680)
+- [ ] **Ratio de clases:** 40% Enfermo, 60% Normal (no invertido)
+- [ ] **Todos los requisitos cumplidos:** Revisar tabla de verificación arriba
+- [ ] **Coherencia de números:** Summary.json coincide con notebooks
+- [ ] **Figuras correctas:** Todas las rutas existen y tienen datos correctos
+
+### Referencias
+
+- `docs/POST_MORTEM_ERROR_CRITICO.md` - Análisis del error
+- `docs/VERIFICATION_CHECKLIST.md` - Checklist obligatorio
+- `docs/CORRECTION_PLAN.md` - Plan de corrección
+- `config/SPLIT_PROTOCOL.md` - Reglas de uso de CSVs

@@ -83,6 +83,27 @@ def process_dataset(
     print("\n[1/5] Cargando dataset...")
     dataset = load_dataset(csv_path, base_path, scenario=scenario, verbose=verbose)
 
+    # Logging explícito - AGREGADO 2026-01-07
+    print(f"\n{'='*60}")
+    print(f"[INFO] Dataset: {name}")
+    print(f"[INFO] CSV cargado: {csv_path}")
+    print(f"[INFO] Total imágenes: {len(dataset.train.y) + len(dataset.val.y) + len(dataset.test.y)}")
+    print(f"[INFO] Train: {len(dataset.train.y)}, Val: {len(dataset.val.y)}, Test: {len(dataset.test.y)}")
+
+    # Validación automática para datasets "full" - AGREGADO 2026-01-07
+    if "full" in name:
+        expected_test_size = 1245  # Para 2-class full dataset
+        actual_test_size = len(dataset.test.y)
+
+        assert actual_test_size == expected_test_size, \
+            f"ERROR CRÍTICO: CSV incorrecto. Esperaba {expected_test_size} test, " \
+            f"obtuve {actual_test_size}. Verifica que uses 02_full_balanced_2class_*.csv"
+
+        print(f"[INFO] ✓ Validación exitosa: Test size = {actual_test_size}")
+        print(f"[INFO] ✓ CSV correcto para experimento de 2 clases")
+
+    print(f"{'='*60}\n")
+
     # 2. Aplicar PCA (SOLO con training)
     print("\n[2/5] Aplicando PCA...")
     pca = PCA(n_components=n_components)
@@ -191,11 +212,13 @@ def main():
     datasets = [
         {
             "name": "full_warped",
-            "csv": metrics_dir / "01_full_balanced_3class_warped.csv"
+            # CSV para experimento de 2 clases - CORREGIDO 2026-01-07
+            "csv": metrics_dir / "02_full_balanced_2class_warped.csv"
         },
         {
             "name": "full_original",
-            "csv": metrics_dir / "01_full_balanced_3class_original.csv"
+            # CSV para experimento de 2 clases - CORREGIDO 2026-01-07
+            "csv": metrics_dir / "02_full_balanced_2class_original.csv"
         },
         {
             "name": "manual_warped",

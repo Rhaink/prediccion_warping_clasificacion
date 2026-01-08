@@ -243,3 +243,44 @@ Para demostrar que el warping mejora la clasificacion:
 3. **Comparar**:
    - Tabla: | Configuracion | Accuracy | F1 Macro |
    - Esperado: Warped > Original
+
+---
+
+## Mejores Prácticas y Verificación
+
+### IMPORTANTE: Lecciones del Error Crítico del 2026-01-07
+
+Este pipeline fue ejecutado con el CSV incorrecto durante las fases 4-6, resultando en 3 días de trabajo perdido. Ver `docs/POST_MORTEM_ERROR_CRITICO.md` para detalles completos.
+
+**Para prevenir errores similares, SIEMPRE:**
+
+1. **Verificar qué CSV se usa:**
+   - Para experimentos de 2 clases: `02_full_balanced_2class_*.csv`
+   - Para experimentos de 3 clases: `01_full_balanced_3class_*.csv`
+   - Ver reglas completas en `config/SPLIT_PROTOCOL.md`
+
+2. **Validar tamaños de dataset:**
+   ```python
+   # Para 2-class full dataset:
+   expected_test_size = 1245
+   assert len(test_data) == expected_test_size, \
+       f"CSV incorrecto: esperaba {expected_test_size}, obtuve {len(test_data)}"
+   ```
+
+3. **Usar el checklist obligatorio:**
+   - Completar `docs/VERIFICATION_CHECKLIST.md` después de cada fase
+   - Verificar coherencia input→output antes de continuar
+
+4. **Logging explícito:**
+   ```python
+   print(f"[INFO] CSV cargado: {csv_path}")
+   print(f"[INFO] Test size: {len(test_data)}")
+   print(f"[INFO] Distribución: {Counter(test_labels)}")
+   ```
+
+### Documentos Relacionados
+
+- **POST_MORTEM_ERROR_CRITICO.md** - Análisis del error crítico del 2026-01-07
+- **VERIFICATION_CHECKLIST.md** - Checklist obligatorio por fase
+- **CORRECTION_PLAN.md** - Plan de corrección del error
+- **SPLIT_PROTOCOL.md** - Reglas prescriptivas de uso de CSVs
