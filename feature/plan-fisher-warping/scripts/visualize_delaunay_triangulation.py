@@ -52,6 +52,9 @@ EXAMPLE_CATEGORY = "COVID"
 
 # Configuración visual
 IMAGE_SIZE = 224
+TRIANGLE_THICKNESS = 2
+LANDMARK_RADIUS = 3
+LANDMARK_BORDER_THICKNESS = 1
 
 
 # ============================================================================
@@ -156,28 +159,30 @@ def draw_delaunay_triangulation(
     triangle_color = (0, 255, 255)    # Amarillo (alto contraste)
     landmark_color = (0, 0, 255)      # Rojo (estándar para landmarks)
 
+    landmarks_rounded = np.round(landmarks).astype(np.int32)
+
     # Dibujar aristas de todos los triángulos
     for tri_indices in triangles:
-        pts = landmarks[tri_indices].astype(np.int32)
+        pts = landmarks_rounded[tri_indices]
 
-        # Dibujar el triángulo (solo bordes, grosor 2 para visibilidad)
+        # Dibujar el triángulo (solo bordes)
         cv2.polylines(
             image_rgb,
             [pts],
             isClosed=True,
             color=triangle_color,
-            thickness=2,
+            thickness=TRIANGLE_THICKNESS,
             lineType=cv2.LINE_AA
         )
 
     # Dibujar landmarks anatómicos
-    for i in range(len(landmarks)):
-        x, y = landmarks[i]
+    for i in range(len(landmarks_rounded)):
+        x, y = landmarks_rounded[i]
         # Círculo rojo más grande para landmarks
         cv2.circle(
             image_rgb,
             (int(x), int(y)),
-            radius=5,
+            radius=LANDMARK_RADIUS,
             color=landmark_color,
             thickness=-1
         )
@@ -185,9 +190,9 @@ def draw_delaunay_triangulation(
         cv2.circle(
             image_rgb,
             (int(x), int(y)),
-            radius=5,
+            radius=LANDMARK_RADIUS,
             color=(255, 255, 255),  # Borde blanco
-            thickness=1
+            thickness=LANDMARK_BORDER_THICKNESS
         )
 
     return image_rgb
@@ -238,8 +243,8 @@ def create_visualization(
     from matplotlib.lines import Line2D
     legend_elements = [
         Line2D([0], [0], marker='o', color='w', markerfacecolor='red',
-               markersize=8, label='Landmarks anatómicos (15)'),
-        Line2D([0], [0], color='yellow', linewidth=2,
+               markersize=6, label='Landmarks anatómicos (15)'),
+        Line2D([0], [0], color='yellow', linewidth=TRIANGLE_THICKNESS,
                label=f'Triángulos Delaunay ({n_triangles})')
     ]
     axes[1].legend(

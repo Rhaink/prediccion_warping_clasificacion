@@ -51,6 +51,9 @@ EXAMPLE_SPLIT = "val"  # La imagen está en el split de validación
 
 # Configuración visual
 IMAGE_SIZE = 224
+TRIANGLE_THICKNESS = 2
+LANDMARK_RADIUS = 3
+LANDMARK_BORDER_THICKNESS = 1
 
 
 # ============================================================================
@@ -132,15 +135,19 @@ def draw_landmarks_on_image(image: np.ndarray, landmarks: np.ndarray) -> np.ndar
     # Color estándar para landmarks (BGR)
     landmark_color = (0, 0, 255)  # Rojo
 
+    landmarks_rounded = np.round(landmarks).astype(np.int32)
+
     # Dibujar cada landmark
-    for x, y in landmarks:
-        x_int, y_int = int(round(x)), int(round(y))
+    for x, y in landmarks_rounded:
+        x_int, y_int = int(x), int(y)
 
         # Círculo rojo
-        cv2.circle(image_rgb, (x_int, y_int), radius=4, color=landmark_color, thickness=-1)
+        cv2.circle(image_rgb, (x_int, y_int), radius=LANDMARK_RADIUS,
+                   color=landmark_color, thickness=-1)
 
         # Borde blanco para contraste
-        cv2.circle(image_rgb, (x_int, y_int), radius=4, color=(255, 255, 255), thickness=1)
+        cv2.circle(image_rgb, (x_int, y_int), radius=LANDMARK_RADIUS,
+                   color=(255, 255, 255), thickness=LANDMARK_BORDER_THICKNESS)
 
     return image_rgb
 
@@ -171,17 +178,22 @@ def draw_triangulation_on_image(
     triangle_color = (0, 255, 255)  # Amarillo
     landmark_color = (0, 0, 255)    # Rojo
 
+    landmarks_rounded = np.round(landmarks).astype(np.int32)
+
     # Dibujar aristas de triángulos
     for tri_indices in triangles:
-        pts = landmarks[tri_indices].astype(np.int32)
+        pts = landmarks_rounded[tri_indices]
         cv2.polylines(image_rgb, [pts], isClosed=True,
-                     color=triangle_color, thickness=2, lineType=cv2.LINE_AA)
+                     color=triangle_color, thickness=TRIANGLE_THICKNESS,
+                     lineType=cv2.LINE_AA)
 
     # Dibujar landmarks
-    for x, y in landmarks:
-        x_int, y_int = int(round(x)), int(round(y))
-        cv2.circle(image_rgb, (x_int, y_int), radius=4, color=landmark_color, thickness=-1)
-        cv2.circle(image_rgb, (x_int, y_int), radius=4, color=(255, 255, 255), thickness=1)
+    for x, y in landmarks_rounded:
+        x_int, y_int = int(x), int(y)
+        cv2.circle(image_rgb, (x_int, y_int), radius=LANDMARK_RADIUS,
+                   color=landmark_color, thickness=-1)
+        cv2.circle(image_rgb, (x_int, y_int), radius=LANDMARK_RADIUS,
+                   color=(255, 255, 255), thickness=LANDMARK_BORDER_THICKNESS)
 
     return image_rgb
 

@@ -1,0 +1,364 @@
+\documentclass[12pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+
+\tikzset{
+  block/.style={draw, rounded corners, align=center, text width=9cm, minimum height=0.9cm, fill=gray!10},
+  line/.style={-Latex, thick},
+}
+
+\setcounter{secnumdepth}{-1}
+
+\begin{document}
+
+\section{Metodología Completa: Preprocesamiento + Eigenfaces + Fisher + KNN}
+
+Este documento contiene la metodología completa incluyendo la etapa de preprocesamiento (predicción + warping) que es crucial para entender el proyecto.
+
+\subsection{ETAPA 0: PREPROCESAMIENTO (PREDICCIÓN + WARPING)}
+
+\subsubsection{Ejemplos de Imagenes del Dataset}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/phase2_samples/panel_full_01.png}
+  \caption{Ejemplos del dataset mostrando imágenes originales (arriba) y warped (abajo).}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/phase2_samples/panel_full_02.png}
+  \caption{Más ejemplos del dataset mostrando la transformación warping.}
+\end{figure}
+
+\subsection{Paso 1. Predicción de Landmarks}
+
+\textbf{Objetivo:} localizar 15 landmarks por radiografía para el warping.
+
+\textbf{Qué se hace:}
+\begin{itemize}
+  \item Se normaliza la imagen (CLAHE + resize 224x224).
+  \item El modelo predice 15 puntos (30 coords) en [0,1].
+\end{itemize}
+
+\textbf{Datos y configuración:}
+\begin{itemize}
+  \item 957 radiografías con 15 landmarks (dividido en 75\% train/15\% val/10\% test).
+  \item ResNet-18 preentrenada + cabeza de regresión.
+  \item Loss: Wing Loss en coordenadas normalizadas.
+  \item Salida usada para warping: landmarks en 224x224.
+\end{itemize}
+
+\subsubsection{Métrica clave (224x224)}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Configuración & Error medio & Mediana & Std \\
+    \midrule
+    Ensemble (4) + TTA (Test-Time Augmentation) & \textbf{3.71 px} & 3.17 px & 2.42 px \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{Diagrama de bloques}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[node distance=0.5cm, every node/.style={font=\small}]
+    \node[block] (a) {Radiografía (299x299)};
+    \node[block, below=of a] (b) {CLAHE + resize 224x224};
+    \node[block, below=of b] (c) {ResNet-18 + head (30 coords)};
+    \node[block, below=of c] (d) {TTA (flip + unflip)};
+    \node[block, below=of d] (e) {Ensemble (promedio modelos)};
+    \node[block, below=of e] (f) {Landmarks (15x2) en 224x224};
+    \draw[line] (a) -- (b);
+    \draw[line] (b) -- (c);
+    \draw[line] (c) -- (d);
+    \draw[line] (d) -- (e);
+    \draw[line] (e) -- (f);
+  \end{tikzpicture}
+\end{figure}
+
+\subsubsection{Evidencia visual}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/warping_explained/landmarks_overlay_example.png}
+  \caption{Ejemplo de landmarks predichos sobre una radiografía real.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../../../outputs/thesis_figures/prediction_examples.png}
+  \caption{Comparación GT vs predicción (muestra de test).}
+\end{figure}
+
+\subsection{Paso 2. Forma Canónica (GPA)}
+
+\textbf{Objetivo:} construir una forma de referencia única para alinear todas las radiografías.
+
+\textbf{Qué se hace:}
+\begin{itemize}
+  \item Se usan todas las formas (957 radiografías, 15 landmarks) del dataset.
+  \item GPA (General Procrustes Analysis) elimina traslación, escala y rotación para alinear las formas.
+  \item Se calcula la forma canónica y se escala a 224x224.
+\end{itemize}
+
+\textbf{Resultado esperado:}
+\begin{itemize}
+  \item Forma canónica en 224x224 con 15 landmarks.
+\end{itemize}
+
+\subsubsection{Diagrama de bloques}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[node distance=0.5cm, every node/.style={font=\small}]
+    \node[block] (a) {Landmarks (N muestras, 15x2)};
+    \node[block, below=of a] (b) {Centrado + escala};
+    \node[block, below=of b] (c) {GPA iterativo (alineación)};
+    \node[block, below=of c] (d) {Forma canónica (normalizada)};
+    \node[block, below=of d] (e) {Escalar a 224x224 (padding)};
+    \node[block, below=of e] (f) {Forma canónica final};
+    \draw[line] (a) -- (b);
+    \draw[line] (b) -- (c);
+    \draw[line] (c) -- (d);
+    \draw[line] (d) -- (e);
+    \draw[line] (e) -- (f);
+  \end{tikzpicture}
+\end{figure}
+
+\subsubsection{Evidencia visual}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../../../outputs/shape_analysis/figures/methodology/04_efecto_gpa_antes_despues.png}
+  \caption{Comparación antes/después; tras centrar y escalar, el cambio principal es la orientación.}
+\end{figure}
+
+\subsection{Paso 3. Warping Geométrico (Delaunay + Piecewise Affine)}
+
+\textbf{Objetivo:} alinear cada radiografía a la forma canónica para normalizar la pose.
+
+\textbf{Qué se hace:}
+\begin{itemize}
+  \item Se toman los landmarks predichos (Paso 1) y la forma canónica (Paso 2).
+  \item Se usa la triangulación de Delaunay calculada sobre la forma canónica.
+  \item Se aplica una transformación afín por triángulo y se reconstruye la imagen warpeada (224x224).
+\end{itemize}
+
+\textbf{Resultado esperado:}
+\begin{itemize}
+  \item Imágenes warped.
+\end{itemize}
+
+\subsubsection{Diagrama de bloques}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[node distance=0.5cm, every node/.style={font=\small}]
+    \node[block] (a) {Landmarks por radiografía + forma canónica};
+    \node[block, below=of a] (b) {Delaunay fijo};
+    \node[block, below=of b] (c) {Afín por triángulo (piecewise)};
+    \node[block, below=of c] (d) {Warping triángulo a triángulo};
+    \node[block, below=of d] (e) {Imagen warped 224x224};
+    \draw[line] (a) -- (b);
+    \draw[line] (b) -- (c);
+    \draw[line] (c) -- (d);
+    \draw[line] (d) -- (e);
+  \end{tikzpicture}
+\end{figure}
+
+\subsubsection{Evidencia visual}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/warping_explained/warping_step_by_step.png}
+  \caption{Proceso completo desde la radiografía original hasta la imagen warpeada.}
+\end{figure}
+
+\subsection{Paso 4. PCA / Eigenfaces (Reducción de Dimensionalidad)}
+
+\textbf{Objetivo:} compactar cada radiografía en un conjunto pequeño de componentes principales.
+
+\textbf{Qué se hace:}
+\begin{itemize}
+  \item Se vectorizan las imágenes warped 224x224 (50,176 píxeles).
+  \item Se centra la información y se calcula PCA.
+  \item Se obtienen eigenfaces y varianza explicada.
+  \item Se proyecta a K componentes (K=50 \(\approx\) 95\% varianza).
+\end{itemize}
+
+\textbf{Resultado esperado:}
+\begin{itemize}
+  \item Representación compacta para cada imagen.
+  \item Eigenfaces que capturan la variabilidad dominante.
+\end{itemize}
+
+\subsubsection{Diagrama de bloques}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[node distance=0.5cm, every node/.style={font=\small}]
+    \node[block] (a) {Imágenes warped 224x224};
+    \node[block, below=of a] (b) {Flatten (50,176)};
+    \node[block, below=of b] (c) {Centrar (restar media)};
+    \node[block, below=of c] (d) {PCA (covarianza pequeña)};
+    \node[block, below=of d] (e) {Eigenfaces + varianza explicada};
+    \node[block, below=of e] (f) {Proyección a K componentes (K=50)};
+    \draw[line] (a) -- (b);
+    \draw[line] (b) -- (c);
+    \draw[line] (c) -- (d);
+    \draw[line] (d) -- (e);
+    \draw[line] (e) -- (f);
+  \end{tikzpicture}
+\end{figure}
+
+\subsubsection{Evidencia visual}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/phase3_pca/full_warped/fig_01_mean_face.png}
+  \caption{Radiografía promedio (mean face) del dataset warped.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/phase3_pca/comparisons/fig_04_comparison_eigenfaces.png}
+  \caption{Comparación de eigenfaces entre warped y original.}
+\end{figure}
+
+\subsection{Paso 5. Estandarización Z-Score (Características PCA)}
+
+\textbf{Objetivo:} poner todas las componentes en la misma escala antes de Fisher y KNN.
+
+\textbf{Qué se hace:}
+\begin{itemize}
+  \item Se calculan media y desviación por componente usando solo datos de entrenamiento.
+  \item Se estandarizan train/val/test con esos mismos parámetros.
+  \item Cada componente queda con media \(\sim\) 0 y std \(\sim\) 1.
+\end{itemize}
+
+\textbf{Resultado esperado:}
+\begin{itemize}
+  \item Características comparables.
+\end{itemize}
+
+\subsubsection{Diagrama de bloques}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[node distance=0.5cm, every node/.style={font=\small}]
+    \node[block] (a) {Pesos PCA (K=50)};
+    \node[block, below=of a] (b) {Calcular media/sigma (train)};
+    \node[block, below=of b] (c) {Z-Score};
+    \node[block, below=of c] (d) {Características estandarizadas};
+    \draw[line] (a) -- (b);
+    \draw[line] (b) -- (c);
+    \draw[line] (c) -- (d);
+  \end{tikzpicture}
+\end{figure}
+
+\subsubsection{Evidencia visual}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/phase4_features/full_warped/distribution.png}
+  \caption{Distribución de las primeras características tras Z-Score (media \(\sim\) 0, std \(\sim\) 1).}
+\end{figure}
+
+\subsection{Paso 6. Criterio de Fisher (Selección Discriminativa)}
+
+\textbf{Objetivo:} medir qué componentes PCA separan mejor las clases.
+
+\textbf{Qué se hace:}
+\begin{itemize}
+  \item Se calcula la razón de Fisher por componente usando solo entrenamiento.
+  \item Se ordenan las componentes por poder discriminativo.
+  \item Se amplifican las características multiplicando por la razón de Fisher.
+\end{itemize}
+
+\textbf{Resultado esperado:}
+\begin{itemize}
+  \item Características amplificadas para clasificación.
+\end{itemize}
+
+\subsubsection{Diagrama de bloques}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[node distance=0.5cm, every node/.style={font=\small}]
+    \node[block] (a) {Características estandarizadas};
+    \node[block, below=of a] (b) {Razón de Fisher por componente};
+    \node[block, below=of b] (c) {Ranking de componentes principales};
+    \node[block, below=of c] (d) {Amplificación (x J)};
+    \node[block, below=of d] (e) {Características amplificadas};
+    \draw[line] (a) -- (b);
+    \draw[line] (b) -- (c);
+    \draw[line] (c) -- (d);
+    \draw[line] (d) -- (e);
+  \end{tikzpicture}
+\end{figure}
+
+\subsubsection{Evidencia visual}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../results/figures/phase5_fisher/comparisons/fisher_2c_12k_50pcs.png}
+  \caption{Razón de Fisher por componente (Warped vs Original, 2C-12K).}
+\end{figure}
+
+\subsection{Paso 7. Clasificación KNN}
+
+\textbf{Objetivo:} clasificar las radiografías usando las características amplificadas por Fisher.
+
+\textbf{Qué se hace:}
+\begin{itemize}
+  \item Se usan las características amplificadas (Paso 6).
+  \item Se selecciona K óptimo con validación.
+  \item Se evalúa en test con accuracy y métricas por clase.
+\end{itemize}
+
+\textbf{Resultado esperado:}
+\begin{itemize}
+  \item Desempeño final.
+\end{itemize}
+
+\subsubsection{Diagrama de bloques}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[node distance=0.5cm, every node/.style={font=\small}]
+    \node[block] (a) {Características amplificadas (Fisher)};
+    \node[block, below=of a] (b) {Elegir K (validación)};
+    \node[block, below=of b] (c) {KNN};
+    \node[block, below=of c] (d) {Predicción de clase};
+    \draw[line] (a) -- (b);
+    \draw[line] (b) -- (c);
+    \draw[line] (c) -- (d);
+  \end{tikzpicture}
+\end{figure}
+
+\subsubsection{Evidencia visual}
+
+\begin{figure}[H]
+  \centering
+\includegraphics[width=0.9\linewidth]{../results/figures/phase7_comparison/confusion_matrices_2c12k_3c6k.png}
+  \caption{Matrices de confusión para 2C-12K y 3C-6K (Warped vs Original).}
+\end{figure}
+
+\end{document}
