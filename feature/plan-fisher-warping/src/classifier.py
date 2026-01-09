@@ -706,15 +706,15 @@ def plot_k_optimization(
     # Marcar el mejor K
     best_idx = opt_result.k_values.index(opt_result.best_k)
     ax.plot(opt_result.best_k, opt_result.best_val_accuracy,
-            'r*', markersize=20, label=f'Mejor K={opt_result.best_k}')
+            'ro', markersize=8, label=f'Mejor K={opt_result.best_k}')
 
     # Linea horizontal en el mejor accuracy
     ax.axhline(y=opt_result.best_val_accuracy, color='red',
                linestyle='--', alpha=0.5)
 
-    ax.set_xlabel('K (numero de vecinos)', fontsize=12)
-    ax.set_ylabel('Accuracy en Validacion', fontsize=12)
-    ax.set_title('Seleccion de K Optimo', fontsize=14, fontweight='bold')
+    ax.set_xlabel('K (n\u00famero de vecinos)', fontsize=12)
+    ax.set_ylabel('Accuracy en Validaci\u00f3n', fontsize=12)
+    ax.set_title('Selecci\u00f3n de K \u00f3ptimo', fontsize=14, fontweight='bold')
     ax.legend(loc='best')
     ax.grid(True, alpha=0.3)
 
@@ -727,7 +727,7 @@ def plot_k_optimization(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(output_path, dpi=300, bbox_inches='tight',
                     facecolor='white', edgecolor='none')
-        print(f"Optimizacion de K guardada en: {output_path}")
+        print(f"Optimizaci\u00f3n de K guardada en: {output_path}")
 
     return fig
 

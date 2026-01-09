@@ -465,6 +465,100 @@ def generate_comparison_figure(
     return fig
 
 
+def generate_comparison_figure_simple(
+    results_3c: Dict[str, ExperimentResult],
+    results_2c_original: Dict[str, Dict]
+) -> plt.Figure:
+    """
+    Genera figura comparativa simplificada (sin 2C Comparable).
+    Solo incluye: 2C (12K imgs) y 3C (6K imgs).
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig.suptitle("Comparacion: 2 Clases vs 3 Clases | Warped vs Original",
+                 fontsize=14, fontweight='bold')
+
+    # Recolectar datos para graficar
+    conditions = []
+    accuracies = []
+    colors = []
+
+    # 2C Original (12,402 imgs)
+    if "full_original" in results_2c_original:
+        conditions.append("2C-12K\nOriginal")
+        accuracies.append(results_2c_original["full_original"].get("test_metrics", {}).get("accuracy", 0))
+        colors.append('#3498DB')
+
+    if "full_warped" in results_2c_original:
+        conditions.append("2C-12K\nWarped")
+        accuracies.append(results_2c_original["full_warped"].get("test_metrics", {}).get("accuracy", 0))
+        colors.append('#2ECC71')
+
+    # 3C (6,725 imgs)
+    for name, result in sorted(results_3c.items()):
+        if "original" in name:
+            conditions.append("3C-6K\nOriginal")
+            colors.append('#E74C3C')
+        else:
+            conditions.append("3C-6K\nWarped")
+            colors.append('#F39C12')
+        accuracies.append(result.classification_result.accuracy)
+
+    # Panel izquierdo: Accuracy
+    ax_acc = axes[0]
+    bars = ax_acc.bar(range(len(conditions)), accuracies, color=colors, alpha=0.8, edgecolor='black')
+
+    for bar, val in zip(bars, accuracies):
+        ax_acc.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.005,
+                   f'{val:.1%}', ha='center', va='bottom', fontsize=9, fontweight='bold')
+
+    ax_acc.set_xticks(range(len(conditions)))
+    ax_acc.set_xticklabels(conditions, fontsize=9)
+    ax_acc.set_ylabel('Accuracy', fontsize=11)
+    ax_acc.set_title('Accuracy por Experimento', fontsize=12)
+    ax_acc.set_ylim(0, 1.0)
+    ax_acc.grid(True, alpha=0.3, axis='y')
+
+    # Panel derecho: Mejora por warping
+    ax_improve = axes[1]
+
+    improvements = []
+    labels = []
+    imp_colors = []
+
+    # 2C Original (12K)
+    if "full_original" in results_2c_original and "full_warped" in results_2c_original:
+        acc_o = results_2c_original["full_original"].get("test_metrics", {}).get("accuracy", 0)
+        acc_w = results_2c_original["full_warped"].get("test_metrics", {}).get("accuracy", 0)
+        improvements.append((acc_w - acc_o) * 100)
+        labels.append("2C (12K imgs)")
+        imp_colors.append('#2ECC71')
+
+    # 3C (6K)
+    orig_3c = next((r for n, r in results_3c.items() if "original" in n), None)
+    warp_3c = next((r for n, r in results_3c.items() if "warped" in n), None)
+    if orig_3c and warp_3c:
+        acc_o = orig_3c.classification_result.accuracy
+        acc_w = warp_3c.classification_result.accuracy
+        improvements.append((acc_w - acc_o) * 100)
+        labels.append("3C (6K imgs)")
+        imp_colors.append('#F39C12')
+
+    bars = ax_improve.bar(labels, improvements, color=imp_colors, alpha=0.8, edgecolor='black')
+
+    for bar, val in zip(bars, improvements):
+        sign = "+" if val >= 0 else ""
+        ax_improve.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
+                       f'{sign}{val:.2f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
+
+    ax_improve.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+    ax_improve.set_ylabel('Mejora por Warping (puntos %)', fontsize=11)
+    ax_improve.set_title('Mejora: Warped vs Original', fontsize=12)
+    ax_improve.grid(True, alpha=0.3, axis='y')
+
+    plt.tight_layout()
+    return fig
+
+
 def generate_summary(
     results_3c: Dict[str, ExperimentResult],
     results_2c_comparable: Dict[str, ExperimentResult],
@@ -483,12 +577,19 @@ def generate_summary(
     df_comparison.to_csv(OUTPUT_METRICS_DIR / "comparacion_2c_vs_3c.csv", index=False)
     print(f"Tabla guardada: {OUTPUT_METRICS_DIR / 'comparacion_2c_vs_3c.csv'}")
 
-    # Figura comparativa
+    # Figura comparativa completa
     fig = generate_comparison_figure(results_3c, results_2c_comparable, results_2c_original)
     fig.savefig(OUTPUT_FIGURES_DIR / "comparacion_final.png",
                 dpi=300, bbox_inches='tight', facecolor='white')
     plt.close(fig)
     print(f"Figura guardada: {OUTPUT_FIGURES_DIR / 'comparacion_final.png'}")
+
+    # Figura comparativa simplificada (sin 2C Comparable)
+    fig_simple = generate_comparison_figure_simple(results_3c, results_2c_original)
+    fig_simple.savefig(OUTPUT_FIGURES_DIR / "comparacion_simple.png",
+                       dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close(fig_simple)
+    print(f"Figura simplificada guardada: {OUTPUT_FIGURES_DIR / 'comparacion_simple.png'}")
 
     # JSON resumen
     summary_json = {
