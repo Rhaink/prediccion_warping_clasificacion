@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Documentation structure under `docs/` with reproduction and session notes.
+- Seed sweep automation scripts for ensemble search.
+- MIT license file.
+
+### Changed
+- Landmark ensemble best improves to 3.67 px with seed111 combo (see `GROUND_TRUTH.json`).
+
 ### Fixed
 - Landmark evaluation scales per-sample image sizes correctly and serializes nested metrics safely.
 - Optimize-margin handles empty val/test splits (quick mode) without numpy runtime warnings.

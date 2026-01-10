@@ -146,6 +146,11 @@ python scripts/sweep_ensemble_combos.py --tta --clahe \
 - Opcion 2 (rerun vs original):
   - Mejor resultado no cambia (3.67 px)
   - Sweep en `outputs/ensemble_combo_sweep_option2.txt`
+- Seeds 333/444 (TTA):
+  - seed333 mean 8.70 px, seed444 mean 9.02 px
+  - Best se mantiene 3.67 px
+  - Sweeps en `outputs/ensemble_combo_sweep_333_444.txt` y
+    `outputs/ensemble_combo_sweep_option2_333_444.txt`
 
 ## Errores comunes y solucion rapida
 - `outputs/: Is a directory` -> el redirect estaba cortado; usa una sola linea.
