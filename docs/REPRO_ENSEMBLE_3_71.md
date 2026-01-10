@@ -102,6 +102,12 @@ tail -f outputs/option1_new_seeds.log
 El resultado del sweep queda en:
 - `outputs/ensemble_combo_sweep_111_222.txt`
 
+Para correr seeds arbitrarios (opcion 1 + opcion 2 en un solo flujo):
+```bash
+nohup bash scripts/run_seed_sweep.sh 333 444 > outputs/option1_333_444.log 2>&1 &
+tail -f outputs/option1_333_444.log
+```
+
 ## Opcion 2 (barrido con modelos rerun)
 Evalua combinaciones que incluyen modelos originales y rerun (sin reentrenar):
 ```bash

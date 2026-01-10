@@ -24,6 +24,14 @@ scripts/
 | `create_thesis_figures.py` | Figuras para tesis | - |
 | `generate_thesis_figure.py` | Figura trade-off fill rate | - |
 
+## Scripts de Automatizacion
+
+| Script | Proposito |
+|--------|-----------|
+| `run_repro_split_ensemble.sh` | Reproducir ensemble con seeds base |
+| `run_option1_new_seeds.sh` | Entrenar seeds 111/222 y hacer sweep |
+| `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
+
 ## Scripts de Visualizacion
 
 Ubicacion: `visualization/`
