@@ -31,6 +31,7 @@ scripts/
 | `run_repro_split_ensemble.sh` | Reproducir ensemble con seeds base |
 | `run_option1_new_seeds.sh` | Entrenar seeds 111/222 y hacer sweep |
 | `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
+| `run_best_ensemble.sh` | Evaluar el mejor ensemble actual |
 
 ## Scripts de Visualizacion
 

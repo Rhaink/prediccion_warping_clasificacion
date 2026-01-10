@@ -108,6 +108,11 @@ nohup bash scripts/run_seed_sweep.sh 333 444 > outputs/option1_333_444.log 2>&1 
 tail -f outputs/option1_333_444.log
 ```
 
+Para evaluar el mejor ensemble actual:
+```bash
+bash scripts/run_best_ensemble.sh
+```
+
 ## Opcion 2 (barrido con modelos rerun)
 Evalua combinaciones que incluyen modelos originales y rerun (sin reentrenar):
 ```bash
