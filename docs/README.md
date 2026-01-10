@@ -5,6 +5,7 @@ keep experimental context close to the code.
 
 ## Structure
 - docs/REPRO_ENSEMBLE_3_71.md: step-by-step reproduction for landmark ensemble.
+- docs/EXPERIMENTS.md: index of validated experiments and artifacts.
 - docs/sesiones/: validated experiment notes (example: session 53 fill rate).
 - docs/reportes/: verification and audit notes.
 - docs/FISHER_EXPERIMENT_README.md: geometric validation summary.
