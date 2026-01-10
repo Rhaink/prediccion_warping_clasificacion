@@ -28,15 +28,16 @@ This project implements a two-stage approach for COVID-19 classification:
 
 | Metric | Value |
 |--------|-------|
-| Landmark Error (Ensemble 4 models + TTA) | **3.71 px** |
-| Landmark Error Std | 2.42 px |
-| Median Error | 3.17 px |
+| Landmark Error (Ensemble 4 models + TTA) | **3.67 px** |
+| Landmark Error Std | 2.45 px |
+| Median Error | 3.18 px |
+| Baseline Ensemble (Session 10/13) | 3.71 px |
 | Best Individual Model (TTA) | 4.04 px |
 
 **Per-Category Landmark Performance (Test Split):**
-- Normal: 3.42 px
-- COVID-19: 3.77 px
-- Viral Pneumonia: 4.40 px
+- Normal: 3.36 px
+- COVID-19: 3.80 px
+- Viral Pneumonia: 4.22 px
 
 ### COVID-19 Classification
 
@@ -122,7 +123,7 @@ To validate the warping technique without Deep Learning ("Back to Basics"), we i
     *   **Efficiency:** We selected **k=50** components as the optimal number (Parsimony Principle), achieving peak performance with minimal complexity.
     *   **Compression:** Warping consistently increases **Explained Variance by +10%** (from ~71% to ~82%), mathematically proving that it reduces the geometric entropy of the dataset.
 
-👉 **[See Full Scientific Report](Documentos/docs/FISHER_EXPERIMENT_README.md)**
+👉 **[See Full Scientific Report](docs/FISHER_EXPERIMENT_README.md)**
 
 ### Robustness Mechanism (Control Experiment - Session 39)
 
@@ -147,7 +148,8 @@ The control experiment with Original Cropped 47% revealed the causal mechanism:
 ### Training Strategy
 - **Phase 1**: Frozen backbone, train head only (15 epochs)
 - **Phase 2**: Fine-tuning all layers with differential LR (100 epochs)
-- **Ensemble**: 4 models (seeds 123, 456, 321, 789) with Test-Time Augmentation
+- **Ensemble (baseline)**: 4 models (seeds 123, 456, 321, 789) with Test-Time Augmentation
+- **Ensemble (best)**: seeds 123, 456, 321, 111 (see `GROUND_TRUTH.json`)
 
 ## Project Structure
 
@@ -162,11 +164,15 @@ prediccion_warping_clasificacion/
 │   └── visualization/         # Figure generation for thesis
 ├── tests/                     # Unit tests
 ├── configs/                   # Configuration files
-├── documentación/             # LaTeX documentation (Spanish)
+├── docs/                      # Project documentation
 ├── data/                      # Datasets (not included, see below)
 ├── checkpoints/               # Trained models (not included)
 └── outputs/                   # Experiment outputs (not included)
 ```
+
+## Reproducibility
+
+- Landmark ensemble reproduction: `docs/REPRO_ENSEMBLE_3_71.md`
 
 ## Installation
 

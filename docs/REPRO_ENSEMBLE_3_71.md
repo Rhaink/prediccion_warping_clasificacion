@@ -132,6 +132,9 @@ python scripts/sweep_ensemble_combos.py --tta --clahe \
     `checkpoints/session10/ensemble/seed456/final_model.pt`
     `checkpoints/session13/seed321/final_model.pt`
     `checkpoints/repro_split111/session14/seed111/final_model.pt`
+  - Metricas (TTA+CLAHE, test split):
+    - mean=3.67 px, median=3.18 px, std=2.45 px
+    - Normal=3.36 px, COVID=3.80 px, Viral_Pneumonia=4.22 px
   - Sweep en `outputs/ensemble_combo_sweep_111_222.txt`
   - Log en `outputs/option1_new_seeds.log`
 - Opcion 2 (rerun vs original):

@@ -75,7 +75,7 @@ Scripts archivados de sesiones anteriores (19 scripts):
 Estos se mantienen por referencia historica pero no se usan directamente.
 
 Nota: `archive/invalid_warping/generate_warped_dataset_full_coverage.py` fue movido
-por generar datasets con warping incorrecto (ver doc de depuracion en Documentos/docs/reportes/).
+por generar datasets con warping incorrecto (ver docs/reportes/REPORTE_VERIFICACION_DESCUBRIMIENTOS_GEOMETRICOS.md).
 
 ## Fuente de Verdad
 
@@ -86,6 +86,7 @@ Cualquier script de visualizacion debe usar valores de este archivo.
 
 | Metrica | Valor |
 |---------|-------|
+| Error ensemble best (seed111 combo) | **3.67 px** |
 | Error ensemble 4 + TTA | **3.71 px** |
 | Error best individual (seed 456) | **4.04 px** |
 | Accuracy warped_96 (RECOMENDADO) | **99.10%** |
