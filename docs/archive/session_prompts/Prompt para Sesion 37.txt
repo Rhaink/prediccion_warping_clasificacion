@@ -1,0 +1,172 @@
+## Contexto del Proyecto
+Sistema CLI para clasificacion de COVID-19 en rayos X usando normalizacion
+geometrica (warping).
+
+ESTADO ACTUALIZADO POST-SESION 36:
+- Bugs de warping CORREGIDOS (imports en cli.py)
+- 524 tests pasando (4 nuevos tests de validacion)
+- Introspeccion critica con 6 agentes completada
+- Hipotesis cientifica PARCIALMENTE VALIDADA (requiere reformulacion)
+- Proyecto ~85% completo
+
+## Hallazgos Criticos Sesion 36 (MUY IMPORTANTE)
+
+### H1: HIPOTESIS "ELIMINA MARCAS" NO DEMOSTRADA
+La afirmacion "warping elimina marcas hospitalarias" es SUPOSICION sin evidencia:
+- NO existe analisis visual comparando marcas antes/despues
+- NO hay cuantificacion de marcas eliminadas vs distorsionadas
+- El warping RECORTA (47% fill rate), no necesariamente ELIMINA
+
+ACCION REQUERIDA: Crear analisis visual de marcas hospitalarias
+
+### H2: PFS INVALIDO PARA IMAGENES WARPED
+El Pulmonary Focus Score (35% en ambos modelos) es INVALIDO porque:
+- Las mascaras pulmonares NO se transforman junto con las imagenes
+- Hay desalineacion geometrica entre imagen warped y mascara original
+- La diferencia (p=0.856) NO es significativa
+
+ACCION REQUERIDA: Implementar warp_mask() y recalcular PFS
+
+### H3: FONDO NEGRO ES SEÑAL DISCRIMINATIVA
+El ~53% de pixeles negros en imagenes warped es un PROBLEMA:
+- El modelo USA el fondo negro como patron discriminativo
+- Pixel negro normalizado = -2.12 desviaciones (muy anomalo para ImageNet)
+- Esto introduce sesgo artificial en la clasificacion
+
+SOLUCION: Generar dataset con full_coverage=True (~96% fill rate)
+
+### H4: CROSS-EVALUATION INVALIDA (Confirmado)
+El claim "generaliza 11x mejor" es INVALIDO debido a:
+- Imagenes warped: 47% informacion
+- Imagenes originales: 100% informacion
+- El gap mide PERDIDA DE INFORMACION, no generalizacion
+
+### H5: LO QUE SI ESTA VALIDADO
+- Robustez JPEG 30x: VALIDO (tests reproducibles)
+- Robustez Blur 3x: VALIDO (tests reproducibles)
+- Datos experimentales: REALES (verificados matematicamente)
+- Codigo CLI: FUNCIONA (524 tests pasan)
+
+## Bugs Corregidos en Sesion 36
+
+1. cli.py linea 1021: import corregido a src_v2.processing.warp
+2. cli.py linea 1673: mismo fix para classify --warp
+3. 4 tests nuevos en TestWarpingImports
+4. Commit: 11fb902
+
+## Objetivo Sesion 37
+
+### Prioridad 1: Generar Dataset Full Coverage
+Script ya creado: scripts/generate_warped_dataset_full_coverage.py
+```bash
+python scripts/generate_warped_dataset_full_coverage.py
+```
+Esto generara dataset con ~96% fill rate (vs ~47% actual)
+
+### Prioridad 2: Implementar warp_mask()
+Crear funcion en src_v2/processing/warp.py para transformar mascaras:
+- Usar misma triangulacion que piecewise_affine_warp
+- Interpolacion NEAREST para mascaras binarias
+- Permitir PFS valido en imagenes warped
+
+### Prioridad 3: Analisis Visual de Marcas Hospitalarias
+Crear script que muestre lado-a-lado:
+- Imagen original con marcas visibles
+- Imagen warped
+- Destacar que marcas desaparecen vs se distorsionan
+
+### Prioridad 4: Experimento de Control
+Crear dataset "original croppeado" con mismo fill rate que warped (~47%):
+- Esto permitira determinar si la mejora es por:
+  A) Eliminacion de marcas (hipotesis actual)
+  B) Reduccion de informacion (hipotesis alternativa)
+
+## Archivos Clave
+- src_v2/cli.py - CLI principal (bugs corregidos)
+- src_v2/processing/warp.py - Warping (agregar warp_mask aqui)
+- scripts/generate_warped_dataset_full_coverage.py - Script para ~96% fill
+- docs/sesiones/SESION_36_INTROSPECCION_CRITICA.md - Analisis completo
+- docs/RESULTADOS_EXPERIMENTALES_v2.md - Claims reformulados
+
+## Comandos Utiles
+```bash
+# Verificar CLI funciona
+.venv/bin/python -m src_v2 --help
+.venv/bin/python -m src_v2 warp --help
+
+# Generar dataset full coverage (PRIORITARIO)
+.venv/bin/python scripts/generate_warped_dataset_full_coverage.py
+
+# Correr tests
+.venv/bin/python -m pytest tests/ -v --tb=short
+
+# Ver commits recientes
+git log --oneline -5
+
+# Git status
+git status
+```
+
+## Commits Recientes
+- a8732a4 docs: agregar introspeccion critica sesion 36
+- a67e54c docs: agregar resultados reformulados y script full_coverage
+- 11fb902 fix: corregir imports de warping en CLI
+- 4e3d604 refactor: eliminar codigo Hydra muerto
+
+## Reformulacion de Claims Requerida
+
+### INCORRECTO (narrativa actual):
+"La normalizacion geometrica elimina marcas hospitalarias y generaliza 11x mejor"
+
+### CORRECTO (narrativa reformulada):
+"La normalizacion geometrica mediante landmarks anatomicos proporciona:
+- 30x mejor robustez a compresion JPEG
+- 3x mejor robustez a blur gaussiano
+- Trade-off: -0.8% accuracy interno
+
+El mecanismo es reduccion de informacion y regularizacion de features.
+La hipotesis de 'eliminacion de marcas hospitalarias' requiere validacion
+visual adicional."
+
+## Preguntas que Debes Hacerme
+1. Quieres que genere el dataset full_coverage primero?
+2. Prefieres implementar warp_mask() o el analisis visual de marcas?
+3. Tienes recursos computacionales para reentrenar clasificadores?
+4. Hay algun aspecto especifico que quieras priorizar dado el deadline?
+
+## Estado de Tareas Pendientes
+
+### Alta Prioridad (Antes de Tesis)
+- [ ] Generar dataset full_coverage (~96% fill rate)
+- [ ] Implementar warp_mask() para PFS valido
+- [ ] Analisis visual de marcas hospitalarias
+- [ ] Experimento de control (original croppeado)
+- [ ] Reformular narrativa en documentacion de tesis
+
+### Media Prioridad
+- [ ] Calcular media/std especifica del dataset (vs ImageNet)
+- [ ] Probar Dropout(0.4-0.5) para regularizacion
+- [ ] Tests end-to-end warp -> classify
+
+### Baja Prioridad
+- [ ] Completar comandos CLI faltantes (15%)
+- [ ] Documentacion adicional
+
+## Notas Importantes
+- Branch actual: feature/restructure-production
+- Los datos experimentales SON reales (verificado con 6 agentes)
+- La robustez (JPEG/blur) SI esta validada
+- La hipotesis de "marcas hospitalarias" necesita evidencia visual
+- PFS actual es INVALIDO para warped (mascaras no transformadas)
+- El fondo negro es un PROBLEMA metodologico
+
+## Resumen de Validez de Claims
+
+| Claim | Estado | Accion |
+|-------|--------|--------|
+| Robustez JPEG 30x | VALIDO | Mantener |
+| Robustez Blur 3x | VALIDO | Mantener |
+| Generaliza 11x mejor | INVALIDO | Eliminar/reformular |
+| Elimina marcas hospitalarias | NO DEMOSTRADO | Requiere analisis visual |
+| Fuerza atencion en pulmones | NO DEMOSTRADO | Requiere warp_mask |
+| Datos experimentales reales | VALIDO | Verificado |

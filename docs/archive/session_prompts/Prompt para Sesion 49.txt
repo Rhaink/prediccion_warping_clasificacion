@@ -1,0 +1,176 @@
+# Prompt para Sesion 49: Correccion Final de Inconsistencias
+
+## Contexto
+
+La Sesion 48 completo 17/19 tareas del prompt original. Sin embargo, la introspeccion
+post-correccion revelo **8 problemas adicionales** que deben corregirse antes de
+considerar el proyecto listo para produccion.
+
+## Fuente de Verdad
+
+GROUND_TRUTH.json contiene todos los valores validados experimentalmente.
+Cualquier valor en scripts debe coincidir exactamente con este archivo.
+
+Valores clave de referencia:
+- Error ensemble 4 modelos + TTA: 3.71 px
+- Mejor modelo individual + TTA: 4.04 px
+- Ensemble 2 modelos (Session 12): 3.79 px
+- per_category_landmarks: COVID=3.77, Normal=3.42, Viral=4.40
+- per_landmark_errors: L1=3.20, L2=4.34, ..., L15=4.48
+- Accuracy original_100: 98.84%
+- Factor robustez JPEG Q50: 30.45x
+
+---
+
+## PRIORIDAD 1 - CRITICOS (Datos incorrectos en visualizaciones)
+
+### 1.1 generate_bloque6_resultados.py linea 652
+- **Archivo:** scripts/visualization/generate_bloque6_resultados.py
+- **Problema:** Texto dice "3.83 pixeles" pero deberia decir "3.77"
+- **Accion:** Buscar "3.83" en el archivo y corregir a "3.77"
+- **Verificacion:** grep -n "3.83" en el archivo debe retornar 0 resultados
+
+### 1.2 generate_bloque6_resultados.py LANDMARK_ERRORS (lineas 88-92)
+- **Archivo:** scripts/visualization/generate_bloque6_resultados.py
+- **Problema:** LANDMARK_ERRORS no coincide con GROUND_TRUTH.json
+- **Discrepancias encontradas:**
+  - L2: 4.53 vs 4.34 (debe ser 4.34)
+  - L12: 5.69 vs 5.50 (debe ser 5.50)
+  - L13: 5.40 vs 5.21 (debe ser 5.21)
+  - L14: 4.82 vs 4.63 (debe ser 4.63)
+  - L15: 4.67 vs 4.48 (debe ser 4.48)
+  - (y posiblemente otros)
+- **Accion:** Reemplazar todos los valores con los de GROUND_TRUTH.json["per_landmark_errors"]["values"]
+- **Verificacion:** Comparar cada valor contra GROUND_TRUTH.json
+
+### 1.3 generate_results_figures.py lineas 187-188
+- **Archivo:** scripts/visualization/generate_results_figures.py
+- **Problema:** final_errors = [3.53, 3.83, 4.42] (valores de Sesion 12)
+- **Deberia ser:** [3.42, 3.77, 4.40] (valores de Sesion 13 en GROUND_TRUTH)
+- **Nota:** El orden es [Normal, COVID, Viral] - verificar que coincida
+- **Accion:** Corregir a los valores de GROUND_TRUTH["per_category_landmarks"]["ensemble_4_tta"]
+- **Verificacion:** Valores deben coincidir exactamente
+
+### 1.4 generate_bloque5_ensemble_tta.py linea 269
+- **Archivo:** scripts/visualization/generate_bloque5_ensemble_tta.py
+- **Problema:** errors = [4.02, 3.85, 3.71]
+- **Deberia ser:** [4.04, 3.79, 3.71]
+  - 4.04 = mejor individual TTA (GROUND_TRUTH["landmarks"]["best_individual_tta"]["mean_error_px"])
+  - 3.79 = ensemble 2 modelos (GROUND_TRUTH["historical_baselines"]["session_12_ensemble_2"])
+  - 3.71 = ensemble 4 modelos TTA (GROUND_TRUTH["landmarks"]["ensemble_4_models_tta"]["mean_error_px"])
+- **Accion:** Corregir los dos primeros valores
+- **Verificacion:** Valores deben coincidir con GROUND_TRUTH
+
+---
+
+## PRIORIDAD 2 - ALTOS (Tests con riesgo de falsos positivos)
+
+### 2.1 test_evaluation_metrics.py - Tolerancia excesiva
+- **Archivo:** tests/test_evaluation_metrics.py
+- **Problema:** Tolerancia 0.5 para validar error cero es excesiva
+- **Riesgo:** Podria enmascarar bugs de precision numerica
+- **Analisis requerido:**
+  - Verificar si 0.5 es razonable para el contexto (pixeles)
+  - Si el test valida error cero, tolerancia deberia ser ~1e-6
+  - Si valida error pequeno, documentar por que 0.5 es aceptable
+- **Accion:** Evaluar y ajustar si es necesario, documentar decision
+
+### 2.2 test_robustness_comparative.py - Umbral vs claim
+- **Archivo:** tests/test_robustness_comparative.py
+- **Problema:** assert ratio >= 20 cuando el claim documentado es 30.45x
+- **Riesgo:** Permite degradacion de ~33% sin detectarla
+- **Opciones:**
+  - a) Subir umbral a 25x (mas conservador)
+  - b) Subir umbral a 28x (cercano al claim)
+  - c) Mantener 20x y documentar por que
+- **Accion:** Evaluar y decidir umbral apropiado
+
+### 2.3 test_robustness_comparative.py - GROUND_TRUTH no usado
+- **Archivo:** tests/test_robustness_comparative.py
+- **Problema:** load_ground_truth() se llama pero valores estan hardcodeados
+- **Riesgo:** Si GROUND_TRUTH cambia, el test no lo detecta
+- **Accion:** Refactorizar para usar gt["robustness"]["improvement_factors"]["jpeg_q50_vs_original"]
+- **Ejemplo:**
+  ```python
+  gt = load_ground_truth()
+  expected_factor = gt["robustness"]["improvement_factors"]["jpeg_q50_vs_original"]
+  # Usar expected_factor en vez de hardcodear 30.45
+  ```
+
+### 2.4 test_cli_integration.py - Permisividad
+- **Archivo:** tests/test_cli_integration.py
+- **Problema:** exit_code in [0, 1] acepta cualquier error como exito
+- **Riesgo:** Oculta bugs en exception handling
+- **Analisis requerido:**
+  - Identificar que casos legitimos retornan exit_code=1
+  - Si exit_code=1 indica error, el test deberia capturarlo
+- **Accion:** Evaluar si el test es demasiado permisivo
+
+---
+
+## PRIORIDAD 3 - VALIDACIONES FINALES
+
+### 3.1 Busqueda exhaustiva de valores incorrectos
+- **Accion:** Buscar en todo el proyecto ocurrencias de valores incorrectos:
+  ```bash
+  grep -rn "3.83" scripts/  # Deberia ser 3.77 (COVID)
+  grep -rn "3.53" scripts/  # Deberia ser 3.42 (Normal)
+  grep -rn "4.42" scripts/  # Deberia ser 4.40 (Viral)
+  grep -rn "4.02" scripts/  # Deberia ser 4.04 (best individual)
+  grep -rn "3.85" scripts/  # Deberia ser 3.79 (ensemble 2)
+  ```
+- **Verificacion:** Cada ocurrencia debe evaluarse en contexto
+
+### 3.2 Ejecutar tests completos
+- **Accion:** pytest tests/ -v
+- **Verificacion:** Todos los tests deben pasar
+- **Nota:** Si algun test falla tras las correcciones, puede indicar que
+  el test estaba validando valores incorrectos
+
+---
+
+## PRIORIDAD 4 - DOCUMENTACION
+
+### 4.1 Actualizar SESION_48 con correcciones adicionales
+- Si se hacen correcciones, agregarlas a la documentacion
+
+### 4.2 Crear SESION_49 documentando
+- Problemas corregidos
+- Decisiones tomadas sobre tolerancias de tests
+- Estado final del proyecto
+
+---
+
+## Verificacion Final de Exito
+
+El proyecto esta listo para produccion cuando:
+
+1. [ ] grep -rn "3.83" scripts/visualization/ retorna 0 resultados
+2. [ ] grep -rn "3.53" scripts/visualization/ retorna 0 resultados (excepto en contexto historico)
+3. [ ] LANDMARK_ERRORS en bloque6 coincide 100% con GROUND_TRUTH
+4. [ ] final_errors en results_figures coincide con GROUND_TRUTH
+5. [ ] errors en bloque5 coincide con GROUND_TRUTH
+6. [ ] Todos los tests pasan: pytest tests/ -v
+7. [ ] Decisiones sobre tolerancias de tests estan documentadas
+
+---
+
+## Archivos a Modificar (estimado)
+
+1. scripts/visualization/generate_bloque6_resultados.py
+2. scripts/visualization/generate_results_figures.py
+3. scripts/visualization/generate_bloque5_ensemble_tta.py
+4. tests/test_evaluation_metrics.py (posiblemente)
+5. tests/test_robustness_comparative.py (posiblemente)
+6. tests/test_cli_integration.py (posiblemente)
+7. docs/sesiones/SESION_49_*.md (crear)
+
+---
+
+## Notas para el Agente
+
+- Usa GROUND_TRUTH.json como fuente unica de verdad
+- NO inventes valores; si hay duda, verifica en documentacion de sesiones
+- Documenta cualquier decision sobre tolerancias
+- Si un valor parece incorrecto en GROUND_TRUTH, verificar contra docs/sesiones/SESION_13_ENSEMBLE_4_MODELOS.md
+- La introspeccion post-correccion es obligatoria para detectar nuevos problemas

@@ -1,0 +1,328 @@
+# PROMPT PARA SESION 45 - CORRECCION DE PROBLEMAS DE INTROSPECCION PROFUNDA
+
+**Fecha de creacion:** 2025-12-11
+**Sesion anterior:** Sesion 44 (correcciones iniciales + introspeccion profunda)
+**Rama:** feature/restructure-production
+
+---
+
+## CONTEXTO
+
+En la Sesion 44 se realizo una introspeccion profunda del proyecto usando 5 agentes paralelos:
+1. **Agente 1**: Analisis codigo src_v2/ - 21 problemas encontrados
+2. **Agente 2**: Analisis scripts/ - 47 problemas encontrados
+3. **Agente 3**: Analisis documentacion - 22 problemas encontrados
+4. **Agente 4**: Analisis cobertura tests - GAPS CRITICOS detectados
+5. **Agente 5**: Analisis configuracion - EXCELENTE (sin problemas)
+
+**Estado actual:**
+- 553 tests pasando
+- 20 comandos CLI funcionales
+- Tag v2.0.0 creado (production-ready)
+- GROUND_TRUTH.json creado como fuente de verdad
+
+---
+
+## PROBLEMAS A CORREGIR (ORDENADOS POR PRIORIDAD)
+
+### PRIORIDAD 1: CRITICOS (Hacer primero)
+
+#### 1.1 Scripts con path incorrecto a proyecto obsoleto (12 archivos)
+
+**Problema:** 12 scripts de visualizacion usan path hardcodeado incorrecto:
+```python
+BASE_DIR = Path('/home/donrobot/Projects/prediccion_coordenadas')  # INCORRECTO
+```
+Deberia ser: `PROJECT_ROOT = Path(__file__).parent.parent.parent`
+
+**Archivos afectados:**
+1. `scripts/visualization/generate_bloque1_profesional.py` (linea 72)
+2. `scripts/visualization/generate_bloque1_assets.py` (linea 72)
+3. `scripts/visualization/generate_bloque2_metodologia_datos.py` (linea 72)
+4. `scripts/visualization/generate_bloque3_preprocesamiento.py` (linea 72)
+5. `scripts/visualization/generate_bloque4_arquitectura.py` (linea 72)
+6. `scripts/visualization/generate_bloque5_ensemble_tta.py` (linea 72)
+7. `scripts/visualization/generate_bloque6_resultados.py` (linea 72)
+8. `scripts/visualization/generate_bloque7_evidencia_visual.py` (linea 63)
+9. `scripts/visualization/generate_bloque8_conclusiones.py` (linea 72)
+10. `scripts/visualization/generate_bloque1_v2_profesional.py` (linea 72)
+11. `scripts/visualization/generate_bloque2_v2_mejorado.py` (linea 72)
+12. `scripts/visualization/generate_bloque1_figures.py` (linea 72)
+
+**Solucion:** Cambiar a:
+```python
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+```
+
+---
+
+#### 1.2 Division por cero en compute_fill_rate() (warp.py)
+
+**Archivo:** `src_v2/processing/warp.py`
+**Linea:** 317
+
+**Problema:**
+```python
+fill_rate = 1 - (black_pixels / warped_image.size)  # Sin proteccion
+```
+
+**Solucion:**
+```python
+if warped_image.size == 0:
+    return 0.0
+fill_rate = 1 - (black_pixels / warped_image.size)
+```
+
+---
+
+#### 1.3 CLAHE tile size inconsistente (transforms.py vs constants.py)
+
+**Problema:**
+- `src_v2/data/transforms.py` linea 36: `tile_grid_size: Tuple[int, int] = (8, 8)`
+- `src_v2/constants.py`: `DEFAULT_CLAHE_TILE_SIZE = 4`
+
+**Archivos afectados:**
+- `src_v2/data/transforms.py` linea 36
+- `src_v2/processing/warp.py` linea 63, 103
+
+**Solucion:** Usar constantes de constants.py:
+```python
+from src_v2.constants import DEFAULT_CLAHE_TILE_SIZE
+tile_grid_size: Tuple[int, int] = (DEFAULT_CLAHE_TILE_SIZE, DEFAULT_CLAHE_TILE_SIZE)
+```
+
+---
+
+#### 1.4 Valores incorrectos en verify_individual_models.py
+
+**Archivo:** `scripts/verify_individual_models.py`
+**Lineas:** 142-145
+
+**Problema:** Valores esperados desactualizados:
+```python
+('seed=123 (ensemble)', '...seed123/final_model.pt', 7.16),  # INCORRECTO
+('seed=456 (ensemble)', '...seed456/final_model.pt', 7.20),  # INCORRECTO
+```
+
+**Valores correctos segun GROUND_TRUTH.json:**
+- seed=123: 4.05 px (test con TTA)
+- seed=456: 4.04 px (test con TTA)
+
+**Solucion:** Actualizar con valores de GROUND_TRUTH.json
+
+---
+
+#### 1.5 cli.py linea 272 con valor obsoleto
+
+**Archivo:** `src_v2/cli.py`
+**Linea:** ~272
+
+**Problema:** Dice "mejor modelo (4.50 px ensemble)" - deberia ser 3.71 px
+
+**Solucion:** Corregir comentario/docstring a 3.71 px
+
+---
+
+### PRIORIDAD 2: ALTOS (Tests y Codigo)
+
+#### 2.1 CREAR TESTS PARA MODULOS CRITICOS SIN COBERTURA
+
+**CRITICO - 0% cobertura actual:**
+
+**A. tests/test_trainer.py (NUEVO)**
+Para `src_v2/training/trainer.py`:
+- Test `LandmarkTrainer.__init__()`
+- Test `LandmarkTrainer.train_phase1()`
+- Test `LandmarkTrainer.train_phase2()`
+- Test `LandmarkTrainer.validate()`
+- Test `LandmarkTrainer.fit()`
+
+**B. tests/test_callbacks.py (NUEVO)**
+Para `src_v2/training/callbacks.py`:
+- Test `EarlyStopping.__call__()`
+- Test `EarlyStopping.reset()`
+- Test `ModelCheckpoint.__call__()`
+- Test `LRSchedulerCallback.__call__()`
+
+**C. tests/test_evaluation_metrics.py (NUEVO)**
+Para `src_v2/evaluation/metrics.py`:
+- Test `compute_pixel_error()`
+- Test `compute_error_per_landmark()`
+- Test `evaluate_model()`
+- Test `evaluate_model_with_tta()`
+- Test `compute_error_per_category()`
+- Test `generate_evaluation_report()`
+- Test `compute_success_rate()`
+
+---
+
+#### 2.2 Exception handling silenciado (cambiar debug a warning)
+
+**Archivo:** `src_v2/cli.py`
+**Linea:** 1109-1111
+
+**Problema:**
+```python
+except Exception as e:
+    logger.debug("Error procesando %s: %s", img_path, e)  # logger.debug = invisible en modo normal
+    failed += 1
+```
+
+**Solucion:**
+```python
+except Exception as e:
+    logger.warning("Error procesando %s: %s", img_path, e)  # Visible por defecto
+    failed += 1
+```
+
+---
+
+#### 2.3 Valores hardcodeados en GroupNorm (resnet_landmark.py)
+
+**Archivo:** `src_v2/models/resnet_landmark.py`
+**Lineas:** 138, 142
+
+**Problema:**
+```python
+nn.GroupNorm(num_groups=32, num_channels=512)
+nn.GroupNorm(num_groups=16, num_channels=hidden_dim)  # Falla si hidden_dim no divisible por 16
+```
+
+**Solucion:** Calcular dinamicamente o validar:
+```python
+num_groups = min(16, hidden_dim // 16) if hidden_dim >= 16 else 1
+nn.GroupNorm(num_groups=num_groups, num_channels=hidden_dim)
+```
+
+---
+
+### PRIORIDAD 3: MEDIO (Refactorizacion)
+
+#### 3.1 Codigo duplicado - Consolidar funciones repetidas
+
+**Funciones duplicadas en 5+ archivos:**
+
+**A. `predict_with_tta()` - Mover a src_v2/evaluation/metrics.py**
+Archivos que la duplican:
+- scripts/verify_individual_models.py (linea 42)
+- scripts/predict.py (linea 158)
+- scripts/evaluate_ensemble.py (linea 54)
+- scripts/validation_session26.py
+- scripts/validation_session26_v2.py
+
+**B. `load_model()` - Mover a src_v2/models/resnet_landmark.py**
+Archivos que la duplican:
+- scripts/verify_individual_models.py (linea 25)
+- scripts/predict.py (linea 109)
+- scripts/evaluate_ensemble.py (linea 37)
+- scripts/test_forward_pass.py
+
+**C. `SYMMETRIC_PAIRS` - Usar de src_v2/constants.py**
+Esta definido en 10+ archivos. Ya existe en constants.py - usar imports.
+
+---
+
+#### 3.2 Valores hardcodeados en losses.py
+
+**Archivo:** `src_v2/models/losses.py`
+**Lineas:** 195, 212, 214-215
+
+**Problema:** Magic numbers sin constantes:
+```python
+dt_centrales = torch.tanh(params[:, :3]) * 0.1  # 0.1 hardcodeado
+t_offset = torch.tanh(bilateral_params[:, p_start]) * 0.2  # 0.2 hardcodeado
+d_left = torch.sigmoid(bilateral_params[:, p_start + 1]) * 0.7  # 0.7 hardcodeado
+```
+
+**Solucion:** Crear constantes en constants.py:
+```python
+HIERARCHICAL_DT_SCALE = 0.1
+HIERARCHICAL_T_SCALE = 0.2
+HIERARCHICAL_D_MAX = 0.7
+```
+
+---
+
+### PRIORIDAD 4: BAJO (Documentacion y limpieza)
+
+#### 4.1 Documentar scripts obsoletos vs CLI
+
+Crear archivo `scripts/README.md` indicando:
+- Cuales scripts son "for development/analysis"
+- Cuales estan reemplazados por comandos CLI
+- Cuales son historicos (sesiones 25-34)
+
+#### 4.2 Test trivial assert True
+
+**Archivo:** `tests/test_constants.py`
+**Lineas:** 292-298
+
+**Problema:**
+```python
+def test_imports_work(self):
+    from src_v2.constants import (...)
+    assert True  # TRIVIAL - no valida nada
+```
+
+**Solucion:** Cambiar a validacion real:
+```python
+def test_imports_work(self):
+    from src_v2.constants import NUM_LANDMARKS, SYMMETRIC_PAIRS, CATEGORIES
+    assert NUM_LANDMARKS == 15
+    assert len(SYMMETRIC_PAIRS) == 5
+    assert len(CATEGORIES) == 3
+```
+
+---
+
+## RESUMEN DE TAREAS
+
+### Sesion 45 - Tareas Minimas (CRITICAS):
+1. [ ] Corregir 12 paths en scripts/visualization/
+2. [ ] Proteger division por cero en warp.py
+3. [ ] Sincronizar CLAHE tile size con constants.py
+4. [ ] Actualizar valores en verify_individual_models.py
+5. [ ] Corregir cli.py linea 272 (4.50 -> 3.71)
+
+### Sesion 45 - Tareas Importantes:
+6. [ ] Crear test_trainer.py
+7. [ ] Crear test_callbacks.py
+8. [ ] Crear test_evaluation_metrics.py
+9. [ ] Cambiar logger.debug a logger.warning en cli.py
+10. [ ] Proteger GroupNorm en resnet_landmark.py
+
+### Post-Sesion 45 (Mantenimiento):
+11. [ ] Consolidar codigo duplicado (predict_with_tta, load_model)
+12. [ ] Crear constantes para losses.py
+13. [ ] Documentar scripts obsoletos
+14. [ ] Corregir test trivial assert True
+
+---
+
+## ARCHIVOS DE REFERENCIA
+
+- **GROUND_TRUTH.json**: Fuente de verdad para valores experimentales
+- **docs/REFERENCIA_SESIONES_FUTURAS.md**: Documento maestro del proyecto
+- **docs/sesiones/SESION_44_*.md**: Documentacion de correcciones anteriores
+
+---
+
+## VERIFICACION FINAL
+
+Despues de las correcciones:
+```bash
+# Ejecutar tests
+python -m pytest tests/ -v
+
+# Verificar que scripts de visualizacion funcionan
+python scripts/visualization/generate_bloque1_profesional.py --help
+
+# Verificar CLI
+covid-landmarks --help
+```
+
+**Meta:** 553+ tests pasando, todos los scripts ejecutables, valores consistentes con GROUND_TRUTH.json.
+
+---
+
+**FIN DEL PROMPT SESION 45**

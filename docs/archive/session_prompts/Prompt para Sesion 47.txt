@@ -1,0 +1,244 @@
+# PROMPT PARA SESION 47 - CORRECCION DE HALLAZGOS INTROSPECCION
+
+**Fecha de creacion:** 2025-12-11
+**Sesion anterior:** Sesion 46 (limpieza final + introspeccion)
+**Rama:** feature/restructure-production
+
+---
+
+## CONTEXTO
+
+En la Sesion 46 se realizo:
+1. Correccion de 11 tareas de limpieza
+2. Introspeccion profunda con 5 agentes paralelos
+3. Identificacion de 15+ problemas adicionales
+
+**Hallazgos criticos de introspeccion:**
+- Error grave en distribucion del dataset (50% incorrecto)
+- 7 magic numbers sin constantes
+- 5 bloques de codigo duplicado
+- GROUND_TRUTH.json incompleto
+- Tests con valores hardcodeados sin documentar
+
+---
+
+## PROBLEMAS A CORREGIR (ORDENADOS POR PRIORIDAD)
+
+### PRIORIDAD 1: CRITICOS (Hacer primero)
+
+#### 1.1 Error en distribucion del dataset
+
+**Archivo:** `scripts/visualization/generate_bloque1_figures.py`
+**Linea:** 666
+
+**Actual (INCORRECTO):**
+```python
+cantidades = [460, 317, 180]  # Total = 957
+```
+
+**Correcto:**
+```python
+cantidades = [306, 468, 183]  # COVID, Normal, Viral - Total = 957
+```
+
+**Impacto:** Las graficas de distribucion muestran datos inventados.
+
+---
+
+#### 1.2 Completar GROUND_TRUTH.json
+
+**Agregar los siguientes valores faltantes:**
+
+```json
+"historical_baselines": {
+    "session_4_baseline": 9.08,
+    "session_10_seed42_no_tta": 6.75,
+    "session_12_ensemble_2": 3.79,
+    "session_12_ensemble_3": 4.50
+},
+"per_category_landmarks": {
+    "ensemble_4_tta": {
+        "COVID": 3.83,
+        "Normal": 3.53,
+        "Viral_Pneumonia": 4.42
+    }
+}
+```
+
+---
+
+### PRIORIDAD 2: ALTOS (Importantes)
+
+#### 2.1 Extraer magic numbers a constantes
+
+**Archivo:** `src_v2/constants.py`
+
+**Agregar:**
+```python
+# =============================================================================
+# BILATERAL LANDMARKS - Posiciones T
+# =============================================================================
+BILATERAL_T_POSITIONS: List[float] = [0.25, 0.50, 0.75, 0.00, 1.00]
+
+# =============================================================================
+# WARP - Parametros
+# =============================================================================
+DEFAULT_WARP_MARGIN: int = 2
+DEFAULT_MAX_SIZE: int = 224
+
+# =============================================================================
+# HIERARCHICAL MODEL - Arquitectura
+# =============================================================================
+HIERARCHICAL_HIDDEN_DIM: int = 512
+HIERARCHICAL_NUM_GROUPS: int = 32
+```
+
+**Actualizar archivos:**
+- `src_v2/models/hierarchical.py` - usar BILATERAL_T_POSITIONS, HIERARCHICAL_*
+- `src_v2/processing/warp.py` - usar DEFAULT_WARP_MARGIN, DEFAULT_MAX_SIZE
+- `src_v2/data/dataset.py` - usar DEFAULT_CLAHE_CLIP_LIMIT, DEFAULT_CLAHE_TILE_SIZE
+
+---
+
+#### 2.2 Eliminar codigo duplicado - Vector perpendicular
+
+**Crear en `src_v2/utils/geometry.py`:**
+```python
+def compute_perpendicular_vector(axis_vec: torch.Tensor) -> torch.Tensor:
+    """Calcula vector perpendicular (rotacion 90 grados)."""
+    axis_len = torch.norm(axis_vec, dim=1, keepdim=True) + 1e-8
+    axis_unit = axis_vec / axis_len
+    return torch.stack([-axis_unit[:, 1], axis_unit[:, 0]], dim=1)
+```
+
+**Actualizar:**
+- `src_v2/models/losses.py:268-272`
+- `src_v2/models/hierarchical.py:191-195`
+
+---
+
+#### 2.3 Eliminar import no usado
+
+**Archivo:** `src_v2/models/classifier.py`
+**Linea:** 18
+
+**Eliminar:**
+```python
+from collections import Counter  # NO SE USA
+```
+
+---
+
+### PRIORIDAD 3: MEDIO (Mejoras de tests)
+
+#### 3.1 Documentar valores en test_robustness_comparative.py
+
+**Archivo:** `tests/test_robustness_comparative.py`
+**Lineas:** 79, 173-203, 231-233
+
+**Agregar comentarios explicativos:**
+```python
+# Valores de referencia de GROUND_TRUTH.json
+# Robustness factor: warped_47 vs original_100 = 30.45x (JPEG Q50)
+# Valores: original_100=16.14%, warped_47=0.53%
+# Rango aceptable: 20-40x para permitir variacion experimental
+```
+
+---
+
+#### 3.2 Mejorar test_cli_integration.py
+
+**Archivo:** `tests/test_cli_integration.py`
+**Lineas:** 57-59, 84-86
+
+**Cambiar:**
+```python
+# ANTES: assert result.exit_code in [0, 1]
+# DESPUES: assert result.exit_code == 0, f"Training failed: {result.output}"
+```
+
+**O agregar skip explicito:**
+```python
+@pytest.mark.skip(reason="Requires real dataset for valid training")
+```
+
+---
+
+### PRIORIDAD 4: BAJO (Post-sesion)
+
+#### 4.1 Documentar OPTIMAL_MARGIN_SCALE
+
+**Archivo:** `src_v2/constants.py`
+**Linea:** 203
+
+**Clarificar:**
+```python
+# Margen optimo encontrado experimentalmente (Session 25)
+# NOTA: 1.05 es el optimo encontrado en optimize-margin
+# 1.25 se usa como default conservador para compatibilidad
+OPTIMAL_MARGIN_SCALE: float = 1.05  # Optimo
+DEFAULT_MARGIN_SCALE: float = 1.25  # Conservador/legacy
+```
+
+---
+
+## RESUMEN DE TAREAS
+
+### Sesion 47 - Tareas Criticas:
+1. [ ] Corregir distribucion dataset en generate_bloque1_figures.py
+2. [ ] Completar GROUND_TRUTH.json con valores historicos
+
+### Sesion 47 - Tareas Altas:
+3. [ ] Extraer magic numbers a constantes (7 valores)
+4. [ ] Crear geometry.py y eliminar codigo duplicado
+5. [ ] Eliminar import Counter no usado
+
+### Sesion 47 - Tareas Medias:
+6. [ ] Documentar valores en test_robustness_comparative.py
+7. [ ] Mejorar test_cli_integration.py
+
+### Post-Sesion 47:
+8. [ ] Documentar OPTIMAL_MARGIN_SCALE
+9. [ ] Revisar mocks excesivos en test_trainer.py
+
+---
+
+## VERIFICACION FINAL
+
+Despues de las correcciones:
+```bash
+# Ejecutar tests
+.venv/bin/python -m pytest tests/ -v
+
+# Verificar que magic numbers fueron extraidos
+grep -r "bilateral_t_base = \[" src_v2/
+
+# Verificar GROUND_TRUTH.json
+cat GROUND_TRUTH.json | python -m json.tool
+
+# Verificar distribucion del dataset corregida
+grep -n "306, 468, 183" scripts/visualization/generate_bloque1_figures.py
+```
+
+**Meta:** 600+ tests pasando, sin magic numbers criticos, GROUND_TRUTH.json completo.
+
+---
+
+## ARCHIVOS DE REFERENCIA
+
+- **GROUND_TRUTH.json**: Fuente de verdad (a completar)
+- **docs/sesiones/SESION_46_LIMPIEZA_PRODUCCION.md**: Hallazgos de introspeccion
+- **docs/REFERENCIA_SESIONES_FUTURAS.md**: Documento maestro
+
+---
+
+## NOTAS IMPORTANTES
+
+1. **NO crear nuevos archivos .md** a menos que sea estrictamente necesario
+2. **Verificar cada cambio** contra GROUND_TRUTH.json
+3. **Ejecutar tests** despues de cada modificacion importante
+4. Los valores [306, 468, 183] son la distribucion REAL del dataset
+
+---
+
+**FIN DEL PROMPT SESION 47**
