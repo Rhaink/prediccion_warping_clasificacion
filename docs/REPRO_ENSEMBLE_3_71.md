@@ -51,6 +51,8 @@
 - `scripts/run_repro_split_ensemble.sh` (automatiza entrenamiento + ensemble)
 - `scripts/run_option1_new_seeds.sh` (entrena seeds nuevos + sweep)
 - `scripts/sweep_ensemble_combos.py` (barrido de combinaciones)
+- `configs/landmarks_train_base.json` (plantilla de entrenamiento)
+- `configs/ensemble_best.json` (config del ensemble best)
 - Logs: `outputs/*/evaluation_report_*.txt`, `outputs/*/training_history.json`
 
 ## Proceso paso a paso (reproducir el 3.71 con modelos existentes)
@@ -80,6 +82,16 @@ python scripts/train.py --seed 123 --split-seed 123 \
   --clahe --clahe-clip 2.0 --clahe-tile 4 \
   --loss wing --tta
 ```
+Con config (opcion 3):
+```bash
+python scripts/train.py --config configs/landmarks_train_base.json \
+  --seed 123 --split-seed 123 \
+  --save-dir checkpoints/repro_split123/session10/ensemble/seed123 \
+  --output-dir outputs/repro_split123/session10/ensemble/seed123
+```
+Notas:
+- Las claves del config usan underscores (ej: phase1_epochs, phase2_head_lr).
+- CLI siempre puede sobreescribir valores del config.
 Notas:
 - `--tta` solo afecta la evaluacion final, no el entrenamiento.
 - Si comparas con el 3.71, usa `evaluate-ensemble` (escala 224).
@@ -111,6 +123,17 @@ tail -f outputs/option1_333_444.log
 Para evaluar el mejor ensemble actual:
 ```bash
 bash scripts/run_best_ensemble.sh
+```
+
+Si quieres usar config con los sweeps:
+```bash
+TRAIN_CONFIG=configs/landmarks_train_base.json \
+  nohup bash scripts/run_seed_sweep.sh 333 444 > outputs/option1_333_444.log 2>&1 &
+```
+
+Evaluar ensemble desde config:
+```bash
+python scripts/evaluate_ensemble_from_config.py --config configs/ensemble_best.json
 ```
 
 ## Opcion 2 (barrido con modelos rerun)

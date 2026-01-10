@@ -9,16 +9,23 @@ run_seed() {
   local save_dir="$2"
   local output_dir="$3"
 
-  python scripts/train.py --seed "$seed" --split-seed "$seed" \
-    --save-dir "$save_dir" \
-    --output-dir "$output_dir" \
-    --batch-size 16 \
-    --phase1-epochs 15 --phase2-epochs 100 \
-    --phase1-lr 1e-3 --phase2-backbone-lr 2e-5 --phase2-head-lr 2e-4 \
-    --phase1-patience 5 --phase2-patience 15 \
-    --coord-attention --deep-head --hidden-dim 768 --dropout 0.3 \
-    --clahe --clahe-clip 2.0 --clahe-tile 4 \
-    --loss wing --tta
+  if [[ -n "${TRAIN_CONFIG:-}" ]]; then
+    python scripts/train.py --config "$TRAIN_CONFIG" \
+      --seed "$seed" --split-seed "$seed" \
+      --save-dir "$save_dir" \
+      --output-dir "$output_dir"
+  else
+    python scripts/train.py --seed "$seed" --split-seed "$seed" \
+      --save-dir "$save_dir" \
+      --output-dir "$output_dir" \
+      --batch-size 16 \
+      --phase1-epochs 15 --phase2-epochs 100 \
+      --phase1-lr 1e-3 --phase2-backbone-lr 2e-5 --phase2-head-lr 2e-4 \
+      --phase1-patience 5 --phase2-patience 15 \
+      --coord-attention --deep-head --hidden-dim 768 --dropout 0.3 \
+      --clahe --clahe-clip 2.0 --clahe-tile 4 \
+      --loss wing --tta
+  fi
 }
 
 run_seed 321 checkpoints/repro_split321/session13/seed321 outputs/repro_split321/session13/seed321

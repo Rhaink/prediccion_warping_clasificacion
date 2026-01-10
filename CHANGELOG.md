@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation structure under `docs/` with reproduction and session notes.
 - Seed sweep automation scripts for ensemble search.
 - MIT license file.
+- Config templates for landmark training and ensemble evaluation.
+- `scripts/train.py --config` support and config-based ensemble evaluation helper.
 
 ### Changed
 - Landmark ensemble best improves to 3.67 px with seed111 combo (see `GROUND_TRUTH.json`).

@@ -37,16 +37,23 @@ for seed in "$@"; do
   save_dir="checkpoints/repro_split${seed}/${SESSION}/seed${seed}"
   output_dir="outputs/repro_split${seed}/${SESSION}/seed${seed}"
 
-  python scripts/train.py --seed "$seed" --split-seed "$seed" \
-    --save-dir "$save_dir" \
-    --output-dir "$output_dir" \
-    --batch-size 16 \
-    --phase1-epochs 15 --phase2-epochs 100 \
-    --phase1-lr 1e-3 --phase2-backbone-lr 2e-5 --phase2-head-lr 2e-4 \
-    --phase1-patience 5 --phase2-patience 15 \
-    --coord-attention --deep-head --hidden-dim 768 --dropout 0.3 \
-    --clahe --clahe-clip 2.0 --clahe-tile 4 \
-    --loss wing --tta
+  if [[ -n "${TRAIN_CONFIG:-}" ]]; then
+    python scripts/train.py --config "$TRAIN_CONFIG" \
+      --seed "$seed" --split-seed "$seed" \
+      --save-dir "$save_dir" \
+      --output-dir "$output_dir"
+  else
+    python scripts/train.py --seed "$seed" --split-seed "$seed" \
+      --save-dir "$save_dir" \
+      --output-dir "$output_dir" \
+      --batch-size 16 \
+      --phase1-epochs 15 --phase2-epochs 100 \
+      --phase1-lr 1e-3 --phase2-backbone-lr 2e-5 --phase2-head-lr 2e-4 \
+      --phase1-patience 5 --phase2-patience 15 \
+      --coord-attention --deep-head --hidden-dim 768 --dropout 0.3 \
+      --clahe --clahe-clip 2.0 --clahe-tile 4 \
+      --loss wing --tta
+  fi
 
   TRAINED_MODELS+=("$save_dir/final_model.pt")
 done

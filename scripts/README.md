@@ -20,6 +20,7 @@ scripts/
 | `evaluate_ensemble.py` | Evaluacion del ensemble | `python -m src_v2 evaluate-ensemble` |
 | `train.py` | Entrenamiento de modelos | `python -m src_v2 train` |
 | `train_classifier.py` | Entrenamiento clasificador | `python -m src_v2 train-classifier` |
+| `evaluate_ensemble_from_config.py` | Evaluar ensemble desde config | - |
 | `verify_individual_models.py` | Verificacion de modelos | - |
 | `create_thesis_figures.py` | Figuras para tesis | - |
 | `generate_thesis_figure.py` | Figura trade-off fill rate | - |
@@ -32,6 +33,20 @@ scripts/
 | `run_option1_new_seeds.sh` | Entrenar seeds 111/222 y hacer sweep |
 | `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
 | `run_best_ensemble.sh` | Evaluar el mejor ensemble actual |
+
+## Configs (opcion 3)
+
+Usa JSONs en `configs/` para estandarizar hiperparametros y evitar copias manuales:
+
+```bash
+python scripts/train.py --config configs/landmarks_train_base.json \
+  --seed 123 --split-seed 123 --save-dir checkpoints/... --output-dir outputs/...
+```
+
+Para sweeps con config:
+```bash
+TRAIN_CONFIG=configs/landmarks_train_base.json bash scripts/run_seed_sweep.sh 333 444
+```
 
 ## Scripts de Visualizacion
 

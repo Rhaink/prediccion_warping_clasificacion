@@ -173,6 +173,8 @@ prediccion_warping_clasificacion/
 ## Reproducibility
 
 - Landmark ensemble reproduction: `docs/REPRO_ENSEMBLE_3_71.md`
+- Training templates: `configs/landmarks_train_base.json`
+- Ensemble config: `configs/ensemble_best.json`
 
 ## Installation
 

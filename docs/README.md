@@ -10,3 +10,4 @@ keep experimental context close to the code.
 - docs/reportes/: verification and audit notes.
 - docs/FISHER_EXPERIMENT_README.md: geometric validation summary.
 - docs/REFERENCIA_SESIONES_FUTURAS.md: template for new sessions.
+- configs/: JSON templates for training and ensemble evaluation.
