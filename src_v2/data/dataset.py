@@ -10,6 +10,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import pandas as pd
 import numpy as np
+import random
 from PIL import Image
 from pathlib import Path
 from typing import Tuple, Optional, Callable, List, Dict
@@ -160,6 +161,8 @@ def create_dataloaders(
     clahe_tile_size: int = 4,
     use_category_weights: bool = False,
     category_weights: Optional[Dict[str, float]] = None,
+    seed: Optional[int] = None,
+    deterministic: bool = False,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Crea DataLoaders para train, val y test.
@@ -180,6 +183,8 @@ def create_dataloaders(
         clahe_tile_size: Tamano de tiles para CLAHE (4 es el estandar del proyecto)
         use_category_weights: Usar WeightedRandomSampler para sobremuestrear COVID
         category_weights: Pesos por categoria (si None, usa DEFAULT_CATEGORY_WEIGHTS)
+        seed: Semilla para orden/augmentations en DataLoader (opcional)
+        deterministic: Habilitar seeding determinista en workers y shuffle
 
     Returns:
         (train_loader, val_loader, test_loader)
@@ -256,17 +261,38 @@ def create_dataloaders(
         metas = [item[2] for item in batch]
         return images, landmarks, metas
 
+    worker_init_fn = None
+    generator = None
+    if deterministic and seed is not None:
+        generator = torch.Generator()
+        generator.manual_seed(seed)
+
+        def seed_worker(worker_id: int) -> None:
+            worker_seed = torch.initial_seed() % 2**32
+            np.random.seed(worker_seed)
+            random.seed(worker_seed)
+
+        worker_init_fn = seed_worker
+
     # Crear sampler si se usan pesos por categoria
     train_sampler = None
     train_shuffle = True
 
     if use_category_weights:
         sample_weights = compute_sample_weights(train_df, category_weights)
-        train_sampler = WeightedRandomSampler(
-            weights=sample_weights,
-            num_samples=len(train_df),
-            replacement=True  # Permitir muestreo con reemplazo
-        )
+        if generator is not None:
+            train_sampler = WeightedRandomSampler(
+                weights=sample_weights,
+                num_samples=len(train_df),
+                replacement=True,  # Permitir muestreo con reemplazo
+                generator=generator
+            )
+        else:
+            train_sampler = WeightedRandomSampler(
+                weights=sample_weights,
+                num_samples=len(train_df),
+                replacement=True  # Permitir muestreo con reemplazo
+            )
         train_shuffle = False  # No usar shuffle con sampler
         weights_dict = category_weights if category_weights else DEFAULT_CATEGORY_WEIGHTS
         weight_info = ", ".join(
@@ -275,33 +301,37 @@ def create_dataloaders(
         )
         logger.info("Using WeightedRandomSampler: %s", weight_info)
 
+    loader_kwargs = {
+        "num_workers": num_workers,
+        "pin_memory": True,
+        "collate_fn": collate_fn,
+    }
+    if worker_init_fn is not None:
+        loader_kwargs["worker_init_fn"] = worker_init_fn
+    if generator is not None:
+        loader_kwargs["generator"] = generator
+
     # DataLoaders
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=train_shuffle,
         sampler=train_sampler,
-        num_workers=num_workers,
-        pin_memory=True,
-        collate_fn=collate_fn
+        **loader_kwargs
     )
 
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
-        pin_memory=True,
-        collate_fn=collate_fn
+        **loader_kwargs
     )
 
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
-        pin_memory=True,
-        collate_fn=collate_fn
+        **loader_kwargs
     )
 
     return train_loader, val_loader, test_loader

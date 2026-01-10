@@ -9,6 +9,8 @@ Uso:
     python scripts/train.py --phase2-only       # Solo phase 2 (requiere checkpoint)
 """
 
+import os
+import random
 import sys
 from pathlib import Path
 
@@ -19,6 +21,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import argparse
 import torch
 import json
+import numpy as np
 from datetime import datetime
 
 from src_v2.data.dataset import create_dataloaders
@@ -129,8 +132,38 @@ def parse_args():
                        help='Number of dataloader workers')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed')
+    parser.add_argument('--split-seed', type=int, default=42,
+                       help='Random seed for train/val/test split')
+    parser.add_argument('--deterministic', action='store_true',
+                       help='Enable deterministic training (slower, more reproducible)')
 
     return parser.parse_args()
+
+
+def set_global_seed(seed: int, deterministic: bool = False) -> str:
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+    mode = "off"
+    if deterministic:
+        mode = "strict"
+        try:
+            torch.use_deterministic_algorithms(True, warn_only=True)
+            mode = "warn_only"
+        except Exception:
+            try:
+                torch.use_deterministic_algorithms(True)
+                mode = "strict"
+            except Exception:
+                mode = "off"
+        if hasattr(torch.backends, "cudnn"):
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+    return mode
 
 
 def setup_device():
@@ -189,9 +222,14 @@ def main():
     args = parse_args()
 
     # Set random seed
-    torch.manual_seed(args.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(args.seed)
+    det_mode = set_global_seed(args.seed, deterministic=args.deterministic)
+    if args.deterministic:
+        if det_mode == "warn_only":
+            print("Deterministic mode enabled (warn-only; some ops may be nondeterministic).")
+        elif det_mode == "strict":
+            print("Deterministic mode enabled (strict; may be slower).")
+        else:
+            print("Deterministic mode requested, but could not be enabled.")
 
     # Setup directories
     save_dir = Path(args.save_dir)
@@ -226,15 +264,13 @@ def main():
             'Viral_Pneumonia': args.viral_weight,
         }
 
-    # IMPORTANTE: Siempre usar random_state=42 para el split de datos
-    # El seed del modelo (args.seed) solo afecta inicialización del modelo
-    # Esto garantiza que train/val/test siempre contengan las mismas imágenes
+    # IMPORTANTE: split seed controla train/val/test; el seed del modelo afecta inicialización
     train_loader, val_loader, test_loader = create_dataloaders(
         csv_path=str(PROJECT_ROOT / args.csv_path),
         data_root=str(PROJECT_ROOT / args.data_root),
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        random_state=42,  # Fijo para reproducibilidad del split
+        random_state=args.split_seed,
         flip_prob=args.flip_prob,
         rotation_degrees=args.rotation,
         use_clahe=args.clahe,
@@ -242,6 +278,8 @@ def main():
         clahe_tile_size=args.clahe_tile,
         use_category_weights=args.category_weights,
         category_weights=category_weights,
+        seed=args.seed if args.deterministic else None,
+        deterministic=args.deterministic,
     )
 
     # Create model
