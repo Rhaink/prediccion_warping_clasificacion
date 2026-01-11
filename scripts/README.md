@@ -17,7 +17,6 @@ scripts/
 | Script | Proposito | CLI Equivalente |
 |--------|-----------|-----------------|
 | `predict.py` | Prediccion de landmarks | `python -m src_v2 predict` |
-| `evaluate_ensemble.py` | Evaluacion del ensemble | `python -m src_v2 evaluate-ensemble` |
 | `train.py` | Entrenamiento de modelos | `python -m src_v2 train` |
 | `train_classifier.py` | Entrenamiento clasificador | `python -m src_v2 train-classifier` |
 | `train_classifier_original.py` | Clasificador en imagenes originales | - |
@@ -31,10 +30,11 @@ scripts/
 
 | Script | Proposito |
 |--------|-----------|
-| `run_repro_split_ensemble.sh` | Reproducir ensemble con seeds base |
-| `run_option1_new_seeds.sh` | Entrenar seeds 111/222 y hacer sweep |
 | `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
 | `run_best_ensemble.sh` | Evaluar el mejor ensemble actual |
+
+Nota: `run_repro_split_ensemble.sh` y `run_option1_new_seeds.sh` fueron movidos a
+`scripts/archive/` (reemplazados por `run_seed_sweep.sh`).
 
 ## Configs (opcion 3)
 

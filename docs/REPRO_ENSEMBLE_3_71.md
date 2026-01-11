@@ -21,7 +21,7 @@
    - Se ajusto a `torch.use_deterministic_algorithms(True, warn_only=True)` para no abortar.
 4) Terminal/Termux:
    - Multilineas con `nohup` y `EOF` se rompian por saltos de linea.
-   - Solucion: usar un script en repo (`scripts/run_repro_split_ensemble.sh`) y
+   - Solucion: usar un script en repo (`scripts/run_seed_sweep.sh`) y
      llamarlo en una sola linea.
 
 ## Cambios aplicados en el codigo
@@ -29,10 +29,7 @@
   `create_dataloaders`, y `set_global_seed` usa determinismo con warn_only.
 - `src_v2/data/dataset.py`: `create_dataloaders` acepta `seed` y `deterministic`,
   inicializa seed en workers y `torch.Generator`.
-- `scripts/run_repro_split_ensemble.sh`: helper para entrenar seeds 321 y 789 y
-  evaluar ensemble con 4 modelos.
-- `scripts/run_option1_new_seeds.sh`: entrena seeds nuevos (111/222) y ejecuta
-  un sweep de combinaciones.
+- `scripts/run_seed_sweep.sh`: entrena seeds arbitrarios y ejecuta sweeps (opcion 1 + 2).
 - `scripts/sweep_ensemble_combos.py`: evalua todas las combinaciones de tamaño K
   y reporta la mejor.
 
@@ -54,8 +51,8 @@
 ## Archivos opcionales / soporte
 - `scripts/verify_individual_models.py` (eval individual en escala 224)
 - `scripts/verify_no_tta.py` (comparar sin TTA)
-- `scripts/run_repro_split_ensemble.sh` (automatiza entrenamiento + ensemble)
-- `scripts/run_option1_new_seeds.sh` (entrena seeds nuevos + sweep)
+- `scripts/run_seed_sweep.sh` (automatiza entrenamiento + sweeps)
+- `scripts/run_best_ensemble.sh` (evalua el mejor ensemble actual)
 - `scripts/sweep_ensemble_combos.py` (barrido de combinaciones)
 - `configs/landmarks_train_base.json` (plantilla de entrenamiento)
 - `configs/ensemble_best.json` (config del ensemble best)
@@ -118,26 +115,10 @@ Notas:
 
 ## Automatizar (evitar errores de pegado)
 ```bash
-nohup bash scripts/run_repro_split_ensemble.sh > outputs/repro_split_all_run2.log 2>&1 &
-tail -f outputs/repro_split_all_run2.log
-```
-Con esto se entrenan seeds 321 y 789 (seed123 y seed456 ya existen en repro_split),
-y luego se evalua el ensemble con TTA+CLAHE.
-
-Para entrenar seeds nuevos y buscar mejor combinacion:
-```bash
-nohup bash scripts/run_option1_new_seeds.sh > outputs/option1_new_seeds.log 2>&1 &
-tail -f outputs/option1_new_seeds.log
-```
-
-El resultado del sweep queda en:
-- `outputs/ensemble_combo_sweep_111_222.txt`
-
-Para correr seeds arbitrarios (opcion 1 + opcion 2 en un solo flujo):
-```bash
 nohup bash scripts/run_seed_sweep.sh 333 444 > outputs/option1_333_444.log 2>&1 &
 tail -f outputs/option1_333_444.log
 ```
+Esto entrena los seeds indicados y luego ejecuta los sweeps de combinaciones.
 
 Para reproducir el best 3.61 (seed555/seed666):
 ```bash

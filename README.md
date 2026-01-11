@@ -416,8 +416,8 @@ python scripts/train.py
 # Train classifier on warped images
 python scripts/train_classifier.py
 
-# Evaluate ensemble
-python scripts/evaluate_ensemble.py
+# Evaluate ensemble (config-driven)
+python scripts/evaluate_ensemble_from_config.py --config configs/ensemble_best.json
 ```
 
 ### Inference (Python API)
