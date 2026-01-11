@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Config templates and `--config` support for classifier and hierarchical training.
 
 ### Changed
-- Landmark ensemble best improves to 3.67 px with seed111 combo (see `GROUND_TRUTH.json`).
+- Landmark ensemble best improves to 3.61 px with seed666 combo (see `GROUND_TRUTH.json`).
 
 ### Fixed
 - Landmark evaluation scales per-sample image sizes correctly and serializes nested metrics safely.

@@ -2,7 +2,7 @@
   "_metadata": {
     "description": "Valores validados experimentalmente para verificacion de scripts",
     "version": "2.1.0",
-    "last_updated": "2025-12-14",
+    "last_updated": "2026-01-11",
     "reference": "docs/REFERENCIA_SESIONES_FUTURAS.md",
     "validated_sessions": [
       39,
@@ -44,6 +44,18 @@
         "checkpoints/repro_split111/session14/seed111/final_model.pt"
       ],
       "note": "Best combo from sweep (seed111); evaluate-ensemble with TTA+CLAHE, test split."
+    },
+    "ensemble_4_models_tta_best_20260111": {
+      "mean_error_px": 3.61,
+      "std_px": 2.48,
+      "median_px": 3.07,
+      "models": [
+        "checkpoints/session10/ensemble/seed123/final_model.pt",
+        "checkpoints/session13/seed321/final_model.pt",
+        "checkpoints/repro_split111/session14/seed111/final_model.pt",
+        "checkpoints/repro_split666/session16/seed666/final_model.pt"
+      ],
+      "note": "Best combo from sweep (seed666); evaluate-ensemble with TTA+CLAHE, test split."
     }
   },
   "classification": {
@@ -311,7 +323,13 @@
       "COVID": 3.8,
       "Viral_Pneumonia": 4.22
     },
-    "source_best_20260110": "evaluate-ensemble 2026-01-10 (TTA+CLAHE)"
+    "ensemble_4_tta_best_20260111": {
+      "Normal": 3.22,
+      "COVID": 3.93,
+      "Viral_Pneumonia": 4.11
+    },
+    "source_best_20260110": "evaluate-ensemble 2026-01-10 (TTA+CLAHE)",
+    "source_best_20260111": "evaluate-ensemble 2026-01-11 (TTA+CLAHE)"
   },
   "per_landmark_errors": {
     "description": "Error por landmark con ensemble 4 modelos + TTA",
@@ -371,6 +389,34 @@
       "L13",
       "L14"
     ],
-    "source_best_20260110": "evaluate-ensemble 2026-01-10 (TTA+CLAHE)"
+    "source_best_20260110": "evaluate-ensemble 2026-01-10 (TTA+CLAHE)",
+    "values_best_20260111": {
+      "L1": 3.22,
+      "L2": 3.96,
+      "L3": 3.18,
+      "L4": 3.65,
+      "L5": 2.88,
+      "L6": 2.94,
+      "L7": 3.29,
+      "L8": 3.5,
+      "L9": 2.76,
+      "L10": 2.44,
+      "L11": 2.94,
+      "L12": 5.43,
+      "L13": 5.35,
+      "L14": 4.39,
+      "L15": 4.29
+    },
+    "best_landmarks_best_20260111": [
+      "L10",
+      "L9",
+      "L5"
+    ],
+    "worst_landmarks_best_20260111": [
+      "L12",
+      "L13",
+      "L14"
+    ],
+    "source_best_20260111": "evaluate-ensemble 2026-01-11 (TTA+CLAHE)"
   }
 }

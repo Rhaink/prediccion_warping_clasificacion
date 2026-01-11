@@ -1,7 +1,8 @@
-# Reproduccion de ensemble 3.71 px (landmarks)
+# Reproduccion de ensemble 3.71 px (landmarks) y best 3.61 px
 
 ## Objetivos iniciales
-- Replicar el mejor resultado reportado (3.71 px) con ensemble de 4 modelos + TTA.
+- Replicar el baseline reportado (3.71 px) con ensemble de 4 modelos + TTA.
+- Superar el baseline con nuevos seeds y confirmar estabilidad del proceso.
 - Obtener modelos con resultados iguales o mejores y poder reentrenar el ensemble.
 - Dejar un proceso reproducible y evitar confusiones de escala, split y evaluacion.
 
@@ -44,6 +45,11 @@
   - `checkpoints/session10/ensemble/seed456/final_model.pt`
   - `checkpoints/session13/seed321/final_model.pt`
   - `checkpoints/session13/seed789/final_model.pt`
+- Mejor actual (3.61):
+  - `checkpoints/session10/ensemble/seed123/final_model.pt`
+  - `checkpoints/session13/seed321/final_model.pt`
+  - `checkpoints/repro_split111/session14/seed111/final_model.pt`
+  - `checkpoints/repro_split666/session16/seed666/final_model.pt`
 
 ## Archivos opcionales / soporte
 - `scripts/verify_individual_models.py` (eval individual en escala 224)
@@ -67,6 +73,19 @@
      `--tta --clahe`
 3) Guardar el resultado en un log si quieres:
    - `python -m src_v2 evaluate-ensemble ... --tta --clahe | tee outputs/ensemble_371.log`
+
+## Proceso paso a paso (reproducir el mejor actual 3.61)
+1) Activar entorno:
+   - `source .venv/bin/activate`
+2) Evaluar ensemble best (3.61 esperado):
+   - `python -m src_v2 evaluate-ensemble \`
+     `checkpoints/session10/ensemble/seed123/final_model.pt \`
+     `checkpoints/session13/seed321/final_model.pt \`
+     `checkpoints/repro_split111/session14/seed111/final_model.pt \`
+     `checkpoints/repro_split666/session16/seed666/final_model.pt \`
+     `--tta --clahe`
+3) Guardar el resultado en un log si quieres:
+   - `python -m src_v2 evaluate-ensemble ... --tta --clahe | tee outputs/ensemble_361.log`
 
 ## Proceso paso a paso (reentrenar un modelo y evaluar)
 Ejemplo con un seed:
@@ -94,7 +113,7 @@ Notas:
 - CLI siempre puede sobreescribir valores del config.
 Notas:
 - `--tta` solo afecta la evaluacion final, no el entrenamiento.
-- Si comparas con el 3.71, usa `evaluate-ensemble` (escala 224).
+- Si comparas con 3.71/3.61, usa `evaluate-ensemble` (escala 224).
 - La evaluacion final de `scripts/train.py` esta en escala 299.
 
 ## Automatizar (evitar errores de pegado)
@@ -118,6 +137,12 @@ Para correr seeds arbitrarios (opcion 1 + opcion 2 en un solo flujo):
 ```bash
 nohup bash scripts/run_seed_sweep.sh 333 444 > outputs/option1_333_444.log 2>&1 &
 tail -f outputs/option1_333_444.log
+```
+
+Para reproducir el best 3.61 (seed555/seed666):
+```bash
+nohup bash scripts/run_seed_sweep.sh 555 666 > outputs/option1_555_666.log 2>&1 &
+tail -f outputs/option1_555_666.log
 ```
 
 Para evaluar el mejor ensemble actual:
@@ -161,22 +186,27 @@ python scripts/sweep_ensemble_combos.py --tta --clahe \
   - seed789 (TTA): 8.39 px en
     `outputs/repro_split789/session13/seed789/evaluation_report_20260110_022953.txt`
 - Nuevo mejor resultado (supera 3.71):
-  - BEST 3.67 px con el combo:
+  - BEST 3.61 px con el combo:
     `checkpoints/session10/ensemble/seed123/final_model.pt`
-    `checkpoints/session10/ensemble/seed456/final_model.pt`
     `checkpoints/session13/seed321/final_model.pt`
     `checkpoints/repro_split111/session14/seed111/final_model.pt`
+    `checkpoints/repro_split666/session16/seed666/final_model.pt`
   - Metricas (TTA+CLAHE, test split):
-    - mean=3.67 px, median=3.18 px, std=2.45 px
-    - Normal=3.36 px, COVID=3.80 px, Viral_Pneumonia=4.22 px
-  - Sweep en `outputs/ensemble_combo_sweep_111_222.txt`
-  - Log en `outputs/option1_new_seeds.log`
+    - mean=3.61 px, median=3.07 px, std=2.48 px
+    - Normal=3.22 px, COVID=3.93 px, Viral_Pneumonia=4.11 px
+  - Sweeps en `outputs/ensemble_combo_sweep_555_666.txt` y
+    `outputs/ensemble_combo_sweep_option2_555_666.txt`
+  - Log en `outputs/option1_555_666.log`
 - Opcion 2 (rerun vs original):
-  - Mejor resultado no cambia (3.67 px)
-  - Sweep en `outputs/ensemble_combo_sweep_option2.txt`
+  - Mejor resultado no cambia (3.61 px)
+  - Sweep en `outputs/ensemble_combo_sweep_option2_555_666.txt`
+- Seeds 111/222 (TTA):
+  - Best de ese sweep: 3.67 px
+  - Sweeps en `outputs/ensemble_combo_sweep_111_222.txt` y
+    `outputs/ensemble_combo_sweep_option2.txt`
 - Seeds 333/444 (TTA):
   - seed333 mean 8.70 px, seed444 mean 9.02 px
-  - Best se mantiene 3.67 px
+  - Best de ese sweep: 3.67 px
   - Sweeps en `outputs/ensemble_combo_sweep_333_444.txt` y
     `outputs/ensemble_combo_sweep_option2_333_444.txt`
 

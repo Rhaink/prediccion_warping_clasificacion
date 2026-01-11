@@ -1,10 +1,10 @@
 {
-  "name": "ensemble_best_20260110",
+  "name": "ensemble_best_20260111",
   "models": [
     "checkpoints/session10/ensemble/seed123/final_model.pt",
-    "checkpoints/session10/ensemble/seed456/final_model.pt",
     "checkpoints/session13/seed321/final_model.pt",
-    "checkpoints/repro_split111/session14/seed111/final_model.pt"
+    "checkpoints/repro_split111/session14/seed111/final_model.pt",
+    "checkpoints/repro_split666/session16/seed666/final_model.pt"
   ],
   "tta": true,
   "clahe": true

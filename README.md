@@ -28,16 +28,16 @@ This project implements a two-stage approach for COVID-19 classification:
 
 | Metric | Value |
 |--------|-------|
-| Landmark Error (Ensemble 4 models + TTA) | **3.67 px** |
-| Landmark Error Std | 2.45 px |
-| Median Error | 3.18 px |
+| Landmark Error (Ensemble 4 models + TTA) | **3.61 px** |
+| Landmark Error Std | 2.48 px |
+| Median Error | 3.07 px |
 | Baseline Ensemble (Session 10/13) | 3.71 px |
 | Best Individual Model (TTA) | 4.04 px |
 
 **Per-Category Landmark Performance (Test Split):**
-- Normal: 3.36 px
-- COVID-19: 3.80 px
-- Viral Pneumonia: 4.22 px
+- Normal: 3.22 px
+- COVID-19: 3.93 px
+- Viral Pneumonia: 4.11 px
 
 ### COVID-19 Classification
 
@@ -268,12 +268,12 @@ python -m src_v2 warp data/dataset/ outputs/warped/ \
   --checkpoint checkpoints_v2/final_model.pt \
   --clahe
 
-# Evaluate ensemble of 4 models (reproduces 3.71 px)
+# Evaluate ensemble of 4 models (reproduces 3.61 px)
 python -m src_v2 evaluate-ensemble \
   checkpoints/session10/ensemble/seed123/final_model.pt \
-  checkpoints/session10/ensemble/seed456/final_model.pt \
   checkpoints/session13/seed321/final_model.pt \
-  checkpoints/session13/seed789/final_model.pt \
+  checkpoints/repro_split111/session14/seed111/final_model.pt \
+  checkpoints/repro_split666/session16/seed666/final_model.pt \
   --tta --clahe
 
 # Show version

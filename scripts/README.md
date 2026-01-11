@@ -123,11 +123,11 @@ por generar datasets con warping incorrecto (ver docs/reportes/REPORTE_VERIFICAC
 Los valores experimentales validados estan en `GROUND_TRUTH.json` (v2.1.0).
 Cualquier script de visualizacion debe usar valores de este archivo.
 
-### Valores Clave (Sesion 53)
+### Valores Clave (Sesion 53 + sweeps)
 
 | Metrica | Valor |
 |---------|-------|
-| Error ensemble best (seed111 combo) | **3.67 px** |
+| Error ensemble best (seed666 combo) | **3.61 px** |
 | Error ensemble 4 + TTA | **3.71 px** |
 | Error best individual (seed 456) | **4.04 px** |
 | Accuracy warped_96 (RECOMENDADO) | **99.10%** |
