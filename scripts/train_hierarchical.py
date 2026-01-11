@@ -8,6 +8,7 @@ import json
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -85,6 +86,8 @@ def validate(model, loader, criterion, device):
 
 def main():
     parser = argparse.ArgumentParser(description="Train Hierarchical Landmark Model")
+    parser.add_argument("--config", type=str, default=None,
+                        help="Path to JSON config file with default values")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--hidden-dim", type=int, default=512)
     parser.add_argument("--dropout", type=float, default=0.3)
@@ -94,6 +97,21 @@ def main():
     parser.add_argument("--axis-weight", type=float, default=0.5)
     parser.add_argument("--save-dir", type=str, default="checkpoints/hierarchical")
     parser.add_argument("--clahe", action="store_true", default=True)
+    args, _ = parser.parse_known_args()
+    if args.config:
+        config_path = Path(args.config)
+        if not config_path.is_file():
+            parser.error(f"Config file not found: {config_path}")
+        with open(config_path, "r") as f:
+            config_data = json.load(f)
+        if not isinstance(config_data, dict):
+            parser.error("Config file must be a JSON object with flat key/value pairs.")
+        valid_keys = {action.dest for action in parser._actions}
+        unknown_keys = sorted(set(config_data) - valid_keys)
+        if unknown_keys:
+            parser.error(f"Unknown config keys: {', '.join(unknown_keys)}")
+        parser.set_defaults(**config_data)
+
     args = parser.parse_args()
 
     # Setup

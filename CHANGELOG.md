@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT license file.
 - Config templates for landmark training and ensemble evaluation.
 - `scripts/train.py --config` support and config-based ensemble evaluation helper.
+- Config templates and `--config` support for classifier and hierarchical training.
 
 ### Changed
 - Landmark ensemble best improves to 3.67 px with seed111 combo (see `GROUND_TRUTH.json`).

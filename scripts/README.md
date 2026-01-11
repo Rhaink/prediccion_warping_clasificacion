@@ -20,6 +20,8 @@ scripts/
 | `evaluate_ensemble.py` | Evaluacion del ensemble | `python -m src_v2 evaluate-ensemble` |
 | `train.py` | Entrenamiento de modelos | `python -m src_v2 train` |
 | `train_classifier.py` | Entrenamiento clasificador | `python -m src_v2 train-classifier` |
+| `train_classifier_original.py` | Clasificador en imagenes originales | - |
+| `train_hierarchical.py` | Entrenar modelo jerarquico | - |
 | `evaluate_ensemble_from_config.py` | Evaluar ensemble desde config | - |
 | `verify_individual_models.py` | Verificacion de modelos | - |
 | `create_thesis_figures.py` | Figuras para tesis | - |
@@ -46,6 +48,21 @@ python scripts/train.py --config configs/landmarks_train_base.json \
 Para sweeps con config:
 ```bash
 TRAIN_CONFIG=configs/landmarks_train_base.json bash scripts/run_seed_sweep.sh 333 444
+```
+
+Clasificador warpeado:
+```bash
+python scripts/train_classifier.py --config configs/classifier_warped_base.json
+```
+
+Clasificador original:
+```bash
+python scripts/train_classifier_original.py --config configs/classifier_original_base.json
+```
+
+Modelo jerarquico:
+```bash
+python scripts/train_hierarchical.py --config configs/hierarchical_train_base.json
 ```
 
 ## Scripts de Visualizacion

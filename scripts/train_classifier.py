@@ -237,6 +237,8 @@ def plot_training_history(history, save_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Entrenar clasificador CNN')
+    parser.add_argument('--config', type=str, default=None,
+                        help='Path to JSON config file with default values')
     parser.add_argument('--data-dir', type=str,
                         default='outputs/warped_dataset',
                         help='Directorio del dataset')
@@ -258,6 +260,21 @@ def main():
                         help='Directorio de salida')
     parser.add_argument('--seed', type=int, default=42,
                         help='Semilla aleatoria')
+
+    args, _ = parser.parse_known_args()
+    if args.config:
+        config_path = Path(args.config)
+        if not config_path.is_file():
+            parser.error(f"Config file not found: {config_path}")
+        with open(config_path, 'r') as f:
+            config_data = json.load(f)
+        if not isinstance(config_data, dict):
+            parser.error("Config file must be a JSON object with flat key/value pairs.")
+        valid_keys = {action.dest for action in parser._actions}
+        unknown_keys = sorted(set(config_data) - valid_keys)
+        if unknown_keys:
+            parser.error(f"Unknown config keys: {', '.join(unknown_keys)}")
+        parser.set_defaults(**config_data)
 
     args = parser.parse_args()
 
