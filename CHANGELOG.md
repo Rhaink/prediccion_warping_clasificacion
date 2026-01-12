@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Train saves both `final_model.pt` and `last.pt` so evaluate can run immediately after training.
 - Evaluate split now falls back to non-stratified for tiny datasets.
 - `predict` accepts `--output-json` alias in addition to `--json`.
+- `extract_predictions.py` accepts `name` from config files (ex: `ensemble_best.json`).
 
 ## [2.0.0] - 2025-12-11
 

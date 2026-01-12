@@ -663,6 +663,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Extraer predicciones del ensemble y generar triangulacion de Delaunay')
     parser.add_argument('--config', type=str, default=None,
                         help='JSON con lista de modelos y defaults (opcional)')
+    parser.add_argument('--name', type=str, default=None,
+                        help='Nombre opcional de la corrida (solo metadata)')
     parser.add_argument('--models', nargs='+', default=None,
                         help='Lista de checkpoints del ensemble (override config)')
     parser.add_argument('--data-root', type=str, default='data/',
@@ -796,6 +798,8 @@ def main():
             'image_size': 224,
             'timestamp': datetime.now().isoformat(),
         }
+        if args.name:
+            metadata['name'] = args.name
         if args.config:
             metadata['config'] = args.config
 
