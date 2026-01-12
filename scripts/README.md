@@ -22,7 +22,6 @@ scripts/
 | `train_classifier_original.py` | Clasificador en imagenes originales | - |
 | `train_hierarchical.py` | Entrenar modelo jerarquico | - |
 | `evaluate_ensemble_from_config.py` | Evaluar ensemble desde config | - |
-| `verify_individual_models.py` | Verificacion de modelos | - |
 | `create_thesis_figures.py` | Figuras para tesis | - |
 | `generate_thesis_figure.py` | Figura trade-off fill rate | - |
 
@@ -102,24 +101,27 @@ Ubicacion: `visualization/`
 | `gradcam_*.py` | Analisis Grad-CAM |
 | `calculate_pfs_warped.py` | Calculo PFS en warped |
 
-## Scripts de Verificacion
+## Scripts de Verificacion (Archivados)
 
 | Script | Proposito |
 |--------|-----------|
-| `verify_data_leakage.py` | Verificar data leakage |
-| `verify_canonical_delaunay.py` | Verificar triangulacion |
-| `verify_gpa_correctness.py` | Verificar GPA |
-| `verify_no_tta.py` | Verificar sin TTA |
+| `archive/verify_data_leakage.py` | Verificar data leakage |
+| `archive/verify_canonical_delaunay.py` | Verificar triangulacion |
+| `archive/verify_gpa_correctness.py` | Verificar GPA |
+| `archive/verify_no_tta.py` | Verificar sin TTA |
+| `archive/verify_val_vs_test.py` | Comparar split val vs test |
+| `archive/verify_individual_models.py` | Verificacion de modelos |
 
 ## Directorio archive/
 
-Scripts archivados de sesiones anteriores (19 scripts):
+Scripts archivados de sesiones anteriores y verificaciones puntuales:
 
 - `debug_*.py` - Scripts de debugging temporales
 - `session30_*.py`, `session31_*.py` - Scripts de sesiones especificas
 - `validation_session*.py` - Validaciones de sesiones antiguas
 - `experiment_*.py` - Experimentos puntuales
 - `test_*.py` - Tests que deberian estar en `tests/`
+- `verify_*.py` - Verificaciones puntuales de control de calidad
 
 Estos se mantienen por referencia historica pero no se usan directamente.
 
