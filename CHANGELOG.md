@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `generate-dataset` acepta `--predictions`, `--ensemble-config` y `--config` para warping reproducible.
 - `configs/warping_best.json` y `quickstart_warping.sh` quedan en modo solo pulmones (sin full coverage).
 - Scripts legacy de generacion de datasets fueron movidos a `scripts/archive/legacy_warping/`.
+- Scripts de analisis warping movidos a `scripts/archive/warping_analysis/` con README descriptivo.
 
 ### Fixed
 - Landmark evaluation scales per-sample image sizes correctly and serializes nested metrics safely.

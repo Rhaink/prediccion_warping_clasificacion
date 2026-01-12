@@ -91,9 +91,7 @@ Ubicacion: `visualization/`
 
 ## Scripts de Generacion de Datasets
 
-| Script | Proposito |
-|--------|-----------|
-| `filter_dataset_3_classes.py` | Filtrado a 3 clases |
+El flujo recomendado usa `python -m src_v2 generate-dataset` con config.
 
 Scripts legacy movidos a `scripts/archive/legacy_warping/`:
 - `generate_warped_dataset.py` (warping GT ~47% fill)
@@ -104,12 +102,8 @@ Scripts legacy movidos a `scripts/archive/legacy_warping/`:
 
 | Script | Proposito |
 |--------|-----------|
-| `compare_classifiers.py` | Comparar clasificadores |
 | `evaluate_external_baseline.py` | Evaluacion en FedCOVIDx |
-| `evaluate_external_warped.py` | Evaluacion externa warpeada |
 | `extract_predictions.py` | Predicciones del ensemble + triangulacion (test split) |
-| `gradcam_*.py` | Analisis Grad-CAM |
-| `calculate_pfs_warped.py` | Calculo PFS en warped |
 
 ## Scripts de Verificacion
 
@@ -134,6 +128,23 @@ Estos se mantienen por referencia historica pero no se usan directamente.
 
 Nota: `archive/invalid_warping/generate_warped_dataset_full_coverage.py` fue movido
 por generar datasets con warping incorrecto (ver docs/reportes/REPORTE_VERIFICACION_DESCUBRIMIENTOS_GEOMETRICOS.md).
+
+## Warping analysis archivado
+
+Scripts de analisis y experimentos movidos a `scripts/archive/warping_analysis/`:
+- `compare_classifiers.py`
+- `evaluate_external_warped.py`
+- `filter_dataset_3_classes.py`
+- `gradcam_comparison.py`
+- `gradcam_multi_architecture.py`
+- `gradcam_pfs_analysis.py`
+- `calculate_pfs_warped.py`
+- `margin_optimization_experiment.py`
+- `piecewise_affine_warp.py`
+- `train_baseline_original_15k.py`
+- `warp_dataset3.py`
+
+Ver `scripts/archive/warping_analysis/README.md` para descripciones completas.
 
 ## Fuente de Verdad
 
