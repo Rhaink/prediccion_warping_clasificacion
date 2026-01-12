@@ -53,8 +53,8 @@ Para un flujo completo desde cero hasta predicciones, ver
   - `checkpoints/repro_split666/session16/seed666/final_model.pt`
 
 ## Archivos opcionales / soporte
-- `scripts/archive/verify_individual_models.py` (eval individual en escala 224)
-- `scripts/archive/verify_no_tta.py` (comparar sin TTA)
+- `scripts/verify_individual_models.py` (eval individual en escala 224)
+- `scripts/verify_no_tta.py` (comparar sin TTA)
 - `scripts/run_seed_sweep.sh` (automatiza entrenamiento + sweeps)
 - `scripts/run_best_ensemble.sh` (evalua el mejor ensemble actual)
 - `scripts/extract_predictions.py` (predicciones y triangulacion en test split)
