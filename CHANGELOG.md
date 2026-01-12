@@ -14,9 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Config templates for landmark training and ensemble evaluation.
 - `scripts/train.py --config` support and config-based ensemble evaluation helper.
 - Config templates and `--config` support for classifier and hierarchical training.
+- Landmark quickstart script and documentation (train -> ensemble -> predictions).
+- `scripts/extract_predictions.py` config/models support for reproducible outputs.
 
 ### Changed
 - Landmark ensemble best improves to 3.61 px with seed666 combo (see `GROUND_TRUTH.json`).
+- Archived redundant ensemble scripts in `scripts/archive/` to keep a minimal repro set.
 
 ### Fixed
 - Landmark evaluation scales per-sample image sizes correctly and serializes nested metrics safely.

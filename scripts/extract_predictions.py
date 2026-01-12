@@ -16,6 +16,8 @@ Uso:
     python scripts/extract_predictions.py
     python scripts/extract_predictions.py --output-dir outputs/predictions_custom
     python scripts/extract_predictions.py --visualize-only
+    python scripts/extract_predictions.py --config configs/ensemble_best.json
+    python scripts/extract_predictions.py --models m1.pt m2.pt m3.pt m4.pt
 """
 
 import sys
@@ -46,15 +48,12 @@ from src_v2.data.utils import get_image_path
 # ==============================================================================
 
 # Checkpoints del ensemble (4 modelos)
-ENSEMBLE_CHECKPOINTS = [
+DEFAULT_ENSEMBLE_CHECKPOINTS = [
     'checkpoints/session10/ensemble/seed123/final_model.pt',
     'checkpoints/session10/ensemble/seed456/final_model.pt',
     'checkpoints/session13/seed321/final_model.pt',
     'checkpoints/session13/seed789/final_model.pt',
 ]
-
-# Seeds correspondientes
-ENSEMBLE_SEEDS = [123, 456, 321, 789]
 
 # Pares simetricos (indices 0-based)
 SYMMETRIC_PAIRS = [(2, 3), (4, 5), (6, 7), (11, 12), (13, 14)]
@@ -94,15 +93,22 @@ def load_model(checkpoint_path: Path, device: torch.device) -> torch.nn.Module:
     return model
 
 
-def load_ensemble(device: torch.device) -> list:
+def resolve_repo_path(path_value: str) -> Path:
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+    return PROJECT_ROOT / path
+
+
+def load_ensemble(checkpoints: list[str], device: torch.device) -> list:
     """Carga todos los modelos del ensemble."""
     models = []
     print("\n=== Cargando modelos del ensemble ===")
-    for i, checkpoint_path in enumerate(ENSEMBLE_CHECKPOINTS):
-        full_path = PROJECT_ROOT / checkpoint_path
+    for i, checkpoint_path in enumerate(checkpoints):
+        full_path = resolve_repo_path(checkpoint_path)
         if not full_path.exists():
             raise FileNotFoundError(f"No se encontro checkpoint: {full_path}")
-        print(f"  [{i+1}/4] Cargando seed={ENSEMBLE_SEEDS[i]}: {checkpoint_path}")
+        print(f"  [{i+1}/{len(checkpoints)}] Cargando: {checkpoint_path}")
         model = load_model(full_path, device)
         models.append(model)
     print(f"  Ensemble cargado: {len(models)} modelos")
@@ -140,6 +146,13 @@ def predict_with_tta(model: torch.nn.Module, image: torch.Tensor, device: torch.
 
 
 @torch.no_grad()
+def predict_ensemble(models: list, images: torch.Tensor) -> torch.Tensor:
+    """Prediccion del ensemble sin TTA."""
+    preds = [model(images) for model in models]
+    return torch.stack(preds).mean(dim=0)
+
+
+@torch.no_grad()
 def predict_ensemble_tta(models: list, images: torch.Tensor, device: torch.device) -> torch.Tensor:
     """Prediccion del ensemble con TTA."""
     preds = []
@@ -160,7 +173,8 @@ def extract_all_predictions(
     models: list,
     test_loader,
     device: torch.device,
-    image_size: int = 224
+    image_size: int = 224,
+    use_tta: bool = True,
 ) -> dict:
     """
     Extrae predicciones del ensemble para todas las imagenes del test set.
@@ -186,8 +200,11 @@ def extract_all_predictions(
         targets = batch[1].to(device)
         metadata = batch[2]
 
-        # Prediccion del ensemble con TTA
-        preds = predict_ensemble_tta(models, images, device)
+        # Prediccion del ensemble
+        if use_tta:
+            preds = predict_ensemble_tta(models, images, device)
+        else:
+            preds = predict_ensemble(models, images)
 
         # Convertir a shape (B, 15, 2)
         preds = preds.view(-1, 15, 2)
@@ -262,19 +279,10 @@ def save_predictions_csv(data: dict, output_path: Path):
     print(f"  CSV guardado: {output_path}")
 
 
-def save_predictions_json(data: dict, output_path: Path):
+def save_predictions_json(data: dict, output_path: Path, metadata: dict):
     """Guarda predicciones en formato JSON detallado."""
     output = {
-        'metadata': {
-            'model': 'ensemble_4_models_tta',
-            'models': [f'seed{s}' for s in ENSEMBLE_SEEDS],
-            'error_mean': float(data['errors'].mean()),
-            'error_std': float(data['errors'].std()),
-            'error_median': float(np.median(data['errors'])),
-            'num_samples': len(data['image_names']),
-            'image_size': 224,
-            'timestamp': datetime.now().isoformat(),
-        },
+        'metadata': metadata,
         'landmark_names': LANDMARK_NAMES,
         'predictions': []
     }
@@ -653,12 +661,56 @@ def generate_area_heatmap(
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Extraer predicciones del ensemble y generar triangulacion de Delaunay')
+    parser.add_argument('--config', type=str, default=None,
+                        help='JSON con lista de modelos y defaults (opcional)')
+    parser.add_argument('--models', nargs='+', default=None,
+                        help='Lista de checkpoints del ensemble (override config)')
+    parser.add_argument('--data-root', type=str, default='data/',
+                        help='Directorio raiz de datos')
+    parser.add_argument('--csv-path', type=str,
+                        default='data/coordenadas/coordenadas_maestro.csv',
+                        help='CSV de coordenadas')
+    parser.add_argument('--batch-size', type=int, default=16,
+                        help='Tamano de batch')
+    parser.add_argument('--num-workers', type=int, default=4,
+                        help='Workers para DataLoader')
+    parser.add_argument('--split-seed', type=int, default=42,
+                        help='Semilla para split train/val/test')
+    parser.add_argument('--clahe', dest='clahe', action='store_true',
+                        help='Usar CLAHE')
+    parser.add_argument('--no-clahe', dest='clahe', action='store_false',
+                        help='Desactivar CLAHE')
+    parser.add_argument('--clahe-clip', type=float, default=2.0,
+                        help='CLAHE clip limit')
+    parser.add_argument('--clahe-tile', type=int, default=4,
+                        help='CLAHE tile size')
+    parser.add_argument('--tta', dest='tta', action='store_true',
+                        help='Usar Test-Time Augmentation')
+    parser.add_argument('--no-tta', dest='tta', action='store_false',
+                        help='Desactivar TTA')
     parser.add_argument('--output-dir', type=str, default='outputs/predictions',
                         help='Directorio de salida')
     parser.add_argument('--visualize-only', action='store_true',
                         help='Solo generar visualizaciones (requiere predicciones existentes)')
     parser.add_argument('--no-viz', action='store_true',
                         help='No generar visualizaciones')
+    parser.set_defaults(clahe=None, tta=None)
+
+    args, _ = parser.parse_known_args()
+    if args.config:
+        config_path = Path(args.config)
+        if not config_path.is_file():
+            parser.error(f"Config file not found: {config_path}")
+        with config_path.open('r') as handle:
+            config_data = json.load(handle)
+        if not isinstance(config_data, dict):
+            parser.error("Config file must be a JSON object with flat key/value pairs.")
+        valid_keys = {action.dest for action in parser._actions}
+        unknown_keys = sorted(set(config_data) - valid_keys)
+        if unknown_keys:
+            parser.error(f"Unknown config keys: {', '.join(unknown_keys)}")
+        parser.set_defaults(**config_data)
+
     return parser.parse_args()
 
 
@@ -669,7 +721,7 @@ def main():
     print(f"Usando dispositivo: {device}")
 
     # Crear directorio de salida
-    output_dir = PROJECT_ROOT / args.output_dir
+    output_dir = resolve_repo_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     viz_dir = output_dir / 'viz'
     viz_dir.mkdir(exist_ok=True)
@@ -692,24 +744,33 @@ def main():
             'categories': npz_data['categories'].tolist(),
         }
     else:
+        use_tta = args.tta if args.tta is not None else True
+        use_clahe = args.clahe if args.clahe is not None else True
+        models_list = args.models or DEFAULT_ENSEMBLE_CHECKPOINTS
+
         # Cargar modelos
-        models = load_ensemble(device)
+        models = load_ensemble(models_list, device)
 
         # Cargar datos de test
         print("\n=== Cargando datos de test ===")
         _, _, test_loader = create_dataloaders(
-            csv_path=str(PROJECT_ROOT / 'data/coordenadas/coordenadas_maestro.csv'),
-            data_root=str(PROJECT_ROOT / 'data/'),
-            batch_size=16,
-            num_workers=4,
-            random_state=42,
-            use_clahe=True,
-            clahe_clip_limit=2.0,
-            clahe_tile_size=4,
+            csv_path=str(resolve_repo_path(args.csv_path)),
+            data_root=str(resolve_repo_path(args.data_root)),
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            random_state=args.split_seed,
+            use_clahe=use_clahe,
+            clahe_clip_limit=args.clahe_clip,
+            clahe_tile_size=args.clahe_tile,
         )
 
         # Extraer predicciones
-        data = extract_all_predictions(models, test_loader, device)
+        data = extract_all_predictions(
+            models,
+            test_loader,
+            device,
+            use_tta=use_tta,
+        )
 
         # Mostrar estadisticas
         print(f"\n=== Estadisticas de Predicciones ===")
@@ -720,8 +781,26 @@ def main():
 
         # Guardar predicciones
         print("\n=== Guardando predicciones ===")
+        metadata = {
+            'model': 'ensemble',
+            'models': models_list,
+            'tta': use_tta,
+            'clahe': use_clahe,
+            'clahe_clip': args.clahe_clip,
+            'clahe_tile': args.clahe_tile,
+            'split_seed': args.split_seed,
+            'error_mean': float(data['errors'].mean()),
+            'error_std': float(data['errors'].std()),
+            'error_median': float(np.median(data['errors'])),
+            'num_samples': len(data['image_names']),
+            'image_size': 224,
+            'timestamp': datetime.now().isoformat(),
+        }
+        if args.config:
+            metadata['config'] = args.config
+
         save_predictions_csv(data, output_dir / 'test_predictions.csv')
-        save_predictions_json(data, output_dir / 'test_predictions.json')
+        save_predictions_json(data, output_dir / 'test_predictions.json', metadata)
         save_predictions_npz(data, output_dir / 'test_predictions.npz')
 
     # Triangulacion de Delaunay

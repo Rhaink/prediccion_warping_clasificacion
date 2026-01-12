@@ -32,6 +32,7 @@ scripts/
 |--------|-----------|
 | `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
 | `run_best_ensemble.sh` | Evaluar el mejor ensemble actual |
+| `quickstart_landmarks.sh` | Entrenar + evaluar + extraer predicciones (hasta pre-warping) |
 
 Nota: `run_repro_split_ensemble.sh` y `run_option1_new_seeds.sh` fueron movidos a
 `scripts/archive/` (reemplazados por `run_seed_sweep.sh`).
@@ -48,6 +49,12 @@ python scripts/train.py --config configs/landmarks_train_base.json \
 Para sweeps con config:
 ```bash
 TRAIN_CONFIG=configs/landmarks_train_base.json bash scripts/run_seed_sweep.sh 333 444
+```
+
+Predicciones del ensemble desde config:
+```bash
+python scripts/extract_predictions.py --config configs/ensemble_best.json \
+  --output-dir outputs/predictions_best
 ```
 
 Clasificador warpeado:
@@ -91,6 +98,7 @@ Ubicacion: `visualization/`
 | `compare_classifiers.py` | Comparar clasificadores |
 | `evaluate_external_baseline.py` | Evaluacion en FedCOVIDx |
 | `evaluate_external_warped.py` | Evaluacion externa warpeada |
+| `extract_predictions.py` | Predicciones del ensemble + triangulacion (test split) |
 | `gradcam_*.py` | Analisis Grad-CAM |
 | `calculate_pfs_warped.py` | Calculo PFS en warped |
 

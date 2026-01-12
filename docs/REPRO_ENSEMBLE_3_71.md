@@ -6,6 +6,9 @@
 - Obtener modelos con resultados iguales o mejores y poder reentrenar el ensemble.
 - Dejar un proceso reproducible y evitar confusiones de escala, split y evaluacion.
 
+Para un flujo completo desde cero hasta predicciones, ver
+`docs/QUICKSTART_LANDMARKS.md`.
+
 ## Hallazgos clave (causas de la desviacion)
 1) Escala de error:
    - `scripts/train.py` evalua en la escala real del dataset (299x299).
@@ -30,6 +33,7 @@
 - `src_v2/data/dataset.py`: `create_dataloaders` acepta `seed` y `deterministic`,
   inicializa seed en workers y `torch.Generator`.
 - `scripts/run_seed_sweep.sh`: entrena seeds arbitrarios y ejecuta sweeps (opcion 1 + 2).
+- `scripts/quickstart_landmarks.sh`: pipeline completo desde cero hasta predicciones.
 - `scripts/sweep_ensemble_combos.py`: evalua todas las combinaciones de tamaño K
   y reporta la mejor.
 
@@ -53,6 +57,7 @@
 - `scripts/verify_no_tta.py` (comparar sin TTA)
 - `scripts/run_seed_sweep.sh` (automatiza entrenamiento + sweeps)
 - `scripts/run_best_ensemble.sh` (evalua el mejor ensemble actual)
+- `scripts/extract_predictions.py` (predicciones y triangulacion en test split)
 - `scripts/sweep_ensemble_combos.py` (barrido de combinaciones)
 - `configs/landmarks_train_base.json` (plantilla de entrenamiento)
 - `configs/ensemble_best.json` (config del ensemble best)
@@ -119,6 +124,12 @@ nohup bash scripts/run_seed_sweep.sh 333 444 > outputs/option1_333_444.log 2>&1 
 tail -f outputs/option1_333_444.log
 ```
 Esto entrena los seeds indicados y luego ejecuta los sweeps de combinaciones.
+
+Quickstart desde cero hasta predicciones:
+```bash
+nohup bash scripts/quickstart_landmarks.sh > outputs/quickstart_landmarks.log 2>&1 &
+tail -f outputs/quickstart_landmarks.log
+```
 
 Para reproducir el best 3.61 (seed555/seed666):
 ```bash
@@ -197,3 +208,8 @@ python scripts/sweep_ensemble_combos.py --tta --clahe \
 - Prompt `>` en Termux -> la shell espera cierre; evita heredoc y multilineas.
 - Error determinismo `adaptive_avg_pool2d` -> usar `--deterministic` con warn_only
   (ya aplicado en el codigo).
+
+## Scripts movidos a archive
+- `scripts/archive/run_repro_split_ensemble.sh` (reemplazado por run_seed_sweep)
+- `scripts/archive/run_option1_new_seeds.sh` (reemplazado por run_seed_sweep)
+- `scripts/archive/evaluate_ensemble.py` (reemplazado por CLI + config)

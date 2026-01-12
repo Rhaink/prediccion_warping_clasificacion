@@ -276,6 +276,10 @@ python -m src_v2 evaluate-ensemble \
   checkpoints/repro_split666/session16/seed666/final_model.pt \
   --tta --clahe
 
+# Quickstart: train + ensemble + predictions (pre-warping)
+nohup bash scripts/quickstart_landmarks.sh > outputs/quickstart_landmarks.log 2>&1 &
+tail -f outputs/quickstart_landmarks.log
+
 # Show version
 python -m src_v2 version
 
