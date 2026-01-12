@@ -1088,7 +1088,7 @@ def warp(
     import torch
     from tqdm import tqdm
 
-    from src_v2.constants import IMAGENET_MEAN, IMAGENET_STD
+    from src_v2.constants import IMAGENET_MEAN, IMAGENET_STD, SYMMETRIC_PAIRS
     from src_v2.models import create_model
 
     logger.info("=" * 60)
@@ -3590,19 +3590,34 @@ def compute_canonical(
 
 @app.command("generate-dataset")
 def generate_dataset(
-    input_dir: str = typer.Argument(
-        ...,
+    input_dir: Optional[str] = typer.Argument(
+        None,
         help="Directorio del dataset original (estructura COVID/Normal/Viral_Pneumonia/images/)"
     ),
-    output_dir: str = typer.Argument(
-        ...,
+    output_dir: Optional[str] = typer.Argument(
+        None,
         help="Directorio de salida para dataset warped"
     ),
-    checkpoint: str = typer.Option(
-        ...,
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="Path a un JSON con parametros de warping"
+    ),
+    checkpoint: Optional[str] = typer.Option(
+        None,
         "--checkpoint",
         "-c",
-        help="Path al checkpoint del modelo de landmarks"
+        help="Path al checkpoint del modelo de landmarks (requerido si no hay --predictions/--ensemble-config)"
+    ),
+    predictions: Optional[str] = typer.Option(
+        None,
+        "--predictions",
+        help="Archivo JSON/NPZ con landmarks predichos (usa cache, evita inferencia)"
+    ),
+    ensemble_config: Optional[str] = typer.Option(
+        None,
+        "--ensemble-config",
+        help="Config JSON con lista de checkpoints para ensemble de landmarks"
     ),
     canonical_shape: str = typer.Option(
         "outputs/shape_analysis/canonical_shape_gpa.json",
@@ -3636,6 +3651,11 @@ def generate_dataset(
         "--device",
         help="Dispositivo: auto, cuda, cpu, mps"
     ),
+    use_tta: bool = typer.Option(
+        False,
+        "--tta/--no-tta",
+        help="Usar Test-Time Augmentation para prediccion de landmarks"
+    ),
     use_clahe: bool = typer.Option(
         True,
         "--clahe/--no-clahe",
@@ -3667,7 +3687,7 @@ def generate_dataset(
 
     Este comando:
     1. Carga imagenes del dataset original
-    2. Predice landmarks con modelo
+    2. Predice landmarks con modelo/ensemble o usa cache precomputado
     3. Aplica warping con margen configurable
     4. Crea splits train/val/test estratificados
     5. Guarda metadata (landmarks.json, images.csv, dataset_summary.json)
@@ -3685,6 +3705,7 @@ def generate_dataset(
 
     Ejemplo:
         python -m src_v2 generate-dataset data/COVID-19_Radiography_Dataset outputs/warped --checkpoint checkpoints/model.pt --margin 1.05
+        python -m src_v2 generate-dataset --config configs/warping_best.json
     """
     import json
     import time
@@ -3695,7 +3716,7 @@ def generate_dataset(
     import torch
     from tqdm import tqdm
 
-    from src_v2.constants import IMAGENET_MEAN, IMAGENET_STD
+    from src_v2.constants import IMAGENET_MEAN, IMAGENET_STD, SYMMETRIC_PAIRS
     from src_v2.models import create_model
     from src_v2.processing.warp import (
         piecewise_affine_warp,
@@ -3704,18 +3725,162 @@ def generate_dataset(
         compute_fill_rate,
     )
 
+    def normalize_pred_path(path_value: str, root: Path) -> str:
+        path = Path(path_value)
+        if path.is_absolute():
+            try:
+                return path.relative_to(root).as_posix()
+            except ValueError:
+                return path.as_posix()
+        return path.as_posix()
+
+    def load_predictions_cache(pred_path: Path, root: Path):
+        metadata = {}
+        by_path = {}
+        by_name_category = {}
+
+        def normalize_category(value: Optional[str]) -> Optional[str]:
+            if isinstance(value, str):
+                return value.replace(" ", "_")
+            return value
+
+        if pred_path.suffix.lower() == ".json":
+            with open(pred_path, "r") as f:
+                payload = json.load(f)
+            metadata = payload.get("metadata", {})
+            entries = payload.get("predictions", payload.get("items", []))
+            for entry in entries:
+                image_path = entry.get("image_path") or entry.get("image") or ""
+                image_name = entry.get("image_name") or Path(image_path).stem
+                category = normalize_category(entry.get("category") or entry.get("class"))
+                landmarks = np.array(entry.get("landmarks", []), dtype=np.float32)
+                if landmarks.shape == (NUM_LANDMARKS * 2,):
+                    landmarks = landmarks.reshape(NUM_LANDMARKS, 2)
+                if landmarks.shape != (NUM_LANDMARKS, 2):
+                    continue
+                if image_path:
+                    rel_path = normalize_pred_path(image_path, root)
+                    by_path[rel_path] = landmarks
+                if image_name and category:
+                    by_name_category[(image_name, category)] = landmarks
+        elif pred_path.suffix.lower() == ".npz":
+            data = np.load(pred_path, allow_pickle=True)
+            if "metadata_json" in data:
+                try:
+                    metadata = json.loads(str(data["metadata_json"].item()))
+                except json.JSONDecodeError:
+                    metadata = {}
+            elif "metadata" in data:
+                try:
+                    metadata = data["metadata"].item()
+                except ValueError:
+                    metadata = {}
+
+            if "landmarks" not in data:
+                raise ValueError("NPZ no contiene clave 'landmarks'")
+            landmarks = data["landmarks"]
+            if landmarks.shape[-1] == NUM_LANDMARKS * 2:
+                landmarks = landmarks.reshape(-1, NUM_LANDMARKS, 2)
+            if landmarks.shape[1:] != (NUM_LANDMARKS, 2):
+                raise ValueError("Landmarks en NPZ con shape invalido")
+
+            image_paths = data["image_paths"] if "image_paths" in data else None
+            image_names = data["image_names"] if "image_names" in data else None
+            categories = data["categories"] if "categories" in data else None
+
+            if image_paths is None and image_names is None:
+                raise ValueError("NPZ debe incluir image_paths o image_names")
+
+            total = landmarks.shape[0]
+            for idx in range(total):
+                image_path = str(image_paths[idx]) if image_paths is not None else ""
+                image_name = str(image_names[idx]) if image_names is not None else Path(image_path).stem
+                category = normalize_category(str(categories[idx])) if categories is not None else None
+                lm = landmarks[idx].astype(np.float32)
+                if image_path:
+                    rel_path = normalize_pred_path(image_path, root)
+                    by_path[rel_path] = lm
+                if image_name and category:
+                    by_name_category[(image_name, category)] = lm
+        else:
+            raise ValueError("Formato de predicciones no soportado (usa .json o .npz)")
+
+        return by_path, by_name_category, metadata
+
     logger.info("=" * 60)
     logger.info("COVID-19 Landmark Detection - Generate Warped Dataset")
     logger.info("=" * 60)
 
-    # Verificar paths
+    config_data = {}
+    if config:
+        config_path = Path(config)
+        if not config_path.exists():
+            logger.error("Config no existe: %s", config)
+            raise typer.Exit(code=1)
+        with open(config_path, "r") as f:
+            config_data = json.load(f)
+
+        argv = sys.argv[1:]
+
+        def option_present(*names: str) -> bool:
+            for name in names:
+                if name in argv:
+                    return True
+                prefix = f"{name}="
+                if any(arg.startswith(prefix) for arg in argv):
+                    return True
+            return False
+
+        def override_param(
+            param_name: str,
+            current_value,
+            config_key: Optional[str] = None,
+            option_names: Optional[tuple[str, ...]] = None,
+        ):
+            key = config_key or param_name
+            if key not in config_data:
+                return current_value
+            if option_names and option_present(*option_names):
+                return current_value
+            if option_names is None and current_value is not None:
+                return current_value
+            return config_data[key]
+
+        input_dir = override_param("input_dir", input_dir, "input_dir")
+        output_dir = override_param("output_dir", output_dir, "output_dir")
+        checkpoint = override_param("checkpoint", checkpoint, "checkpoint", ("--checkpoint", "-c"))
+        predictions = override_param("predictions", predictions, "predictions", ("--predictions",))
+        ensemble_config = override_param("ensemble_config", ensemble_config, "ensemble_config", ("--ensemble-config",))
+        canonical_shape = override_param("canonical_shape", canonical_shape, "canonical", ("--canonical",))
+        triangles = override_param("triangles", triangles, "triangles", ("--triangles",))
+        margin = override_param("margin", margin, "margin", ("--margin", "-m"))
+        splits = override_param("splits", splits, "splits", ("--splits",))
+        seed = override_param("seed", seed, "seed", ("--seed", "-s"))
+        device = override_param("device", device, "device", ("--device",))
+        classes = override_param("classes", classes, "classes", ("--classes",))
+        use_full_coverage = override_param(
+            "use_full_coverage",
+            use_full_coverage,
+            "use_full_coverage",
+            ("--use-full-coverage", "--no-full-coverage"),
+        )
+        use_tta = override_param("use_tta", use_tta, "tta", ("--tta", "--no-tta"))
+        use_clahe = override_param("use_clahe", use_clahe, "clahe", ("--clahe", "--no-clahe"))
+        clahe_clip = override_param("clahe_clip", clahe_clip, "clahe_clip", ("--clahe-clip",))
+        clahe_tile = override_param("clahe_tile", clahe_tile, "clahe_tile", ("--clahe-tile",))
+
+    if isinstance(splits, (list, tuple)):
+        splits = ",".join(str(x) for x in splits)
+    if isinstance(classes, (list, tuple)):
+        classes = ",".join(str(x) for x in classes)
+
+    if input_dir is None or output_dir is None:
+        logger.error("input_dir y output_dir son requeridos (usa argumentos o --config)")
+        raise typer.Exit(code=1)
+
     input_path = Path(input_dir)
     if not input_path.exists():
         logger.error("Directorio de entrada no existe: %s", input_dir)
-        raise typer.Exit(code=1)
-
-    if not Path(checkpoint).exists():
-        logger.error("Checkpoint no existe: %s", checkpoint)
         raise typer.Exit(code=1)
 
     if not Path(canonical_shape).exists():
@@ -3744,6 +3909,69 @@ def generate_dataset(
     class_mapping = {c: c.replace(" ", "_") for c in class_list}
     logger.info("Clases a procesar: %s", class_list)
 
+    predictions_path = Path(predictions) if predictions else None
+    predictions_by_path = {}
+    predictions_by_name_category = {}
+    predictions_meta = {}
+    missing_predictions = []
+    missing_predictions_total = 0
+    ensemble_meta = None
+    checkpoint_paths = []
+
+    if predictions_path:
+        if not predictions_path.exists():
+            logger.error("Predicciones no existen: %s", predictions_path)
+            raise typer.Exit(code=1)
+        try:
+            predictions_by_path, predictions_by_name_category, predictions_meta = load_predictions_cache(
+                predictions_path, input_path
+            )
+        except ValueError as exc:
+            logger.error("Error cargando predicciones: %s", exc)
+            raise typer.Exit(code=1)
+        predictions_count = max(len(predictions_by_path), len(predictions_by_name_category))
+        logger.info("Predicciones cargadas: %d", predictions_count)
+        cached_input = predictions_meta.get("input_dir") if isinstance(predictions_meta, dict) else None
+        if cached_input:
+            try:
+                if Path(cached_input).resolve() != input_path.resolve():
+                    logger.warning("Predicciones generadas con input_dir=%s (actual=%s)",
+                                   cached_input, input_path)
+            except Exception:
+                logger.warning("No se pudo validar input_dir en metadata de predicciones")
+        if checkpoint or ensemble_config:
+            logger.info("Ignorando --checkpoint/--ensemble-config porque se usa --predictions")
+    else:
+        if ensemble_config:
+            ensemble_path = Path(ensemble_config)
+            if not ensemble_path.exists():
+                logger.error("Ensemble config no existe: %s", ensemble_path)
+                raise typer.Exit(code=1)
+            with open(ensemble_path, "r") as f:
+                ensemble_meta = json.load(f)
+            checkpoint_paths = ensemble_meta.get("models", [])
+            if not isinstance(checkpoint_paths, list) or not checkpoint_paths:
+                logger.error("Ensemble config debe incluir una lista 'models'")
+                raise typer.Exit(code=1)
+            if ctx.get_parameter_source("use_tta") == ParameterSource.DEFAULT and "tta" in ensemble_meta:
+                use_tta = bool(ensemble_meta["tta"])
+            if ctx.get_parameter_source("use_clahe") == ParameterSource.DEFAULT and "clahe" in ensemble_meta:
+                use_clahe = bool(ensemble_meta["clahe"])
+            if ctx.get_parameter_source("clahe_clip") == ParameterSource.DEFAULT and "clahe_clip" in ensemble_meta:
+                clahe_clip = float(ensemble_meta["clahe_clip"])
+            if ctx.get_parameter_source("clahe_tile") == ParameterSource.DEFAULT and "clahe_tile" in ensemble_meta:
+                clahe_tile = int(ensemble_meta["clahe_tile"])
+        elif checkpoint:
+            checkpoint_paths = [checkpoint]
+        else:
+            logger.error("Se requiere --checkpoint o --ensemble-config si no se usa --predictions")
+            raise typer.Exit(code=1)
+
+        for ckpt in checkpoint_paths:
+            if not Path(ckpt).exists():
+                logger.error("Checkpoint no existe: %s", ckpt)
+                raise typer.Exit(code=1)
+
     # Cargar forma canonica y triangulos
     logger.info("Cargando forma canonica: %s", canonical_shape)
     with open(canonical_shape, 'r') as f:
@@ -3762,32 +3990,38 @@ def generate_dataset(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Dispositivo
-    torch_device = get_device(device)
-    logger.info("Usando dispositivo: %s", torch_device)
+    torch_device = None
+    landmark_models = []
+    if not predictions_path:
+        torch_device = get_device(device)
+        logger.info("Usando dispositivo: %s", torch_device)
 
-    # Cargar modelo
-    logger.info("Cargando modelo desde: %s", checkpoint)
-    checkpoint_data = torch.load(checkpoint, map_location=torch_device, weights_only=False)
+        logger.info("Cargando %d modelo(s) de landmarks", len(checkpoint_paths))
+        for ckpt in checkpoint_paths:
+            logger.info("  - %s", ckpt)
+            checkpoint_data = torch.load(ckpt, map_location=torch_device, weights_only=False)
 
-    if "model_state_dict" in checkpoint_data:
-        state_dict = checkpoint_data["model_state_dict"]
-    else:
-        state_dict = checkpoint_data
+            if "model_state_dict" in checkpoint_data:
+                state_dict = checkpoint_data["model_state_dict"]
+            else:
+                state_dict = checkpoint_data
 
-    arch_params = detect_architecture_from_checkpoint(state_dict)
-    logger.info("Arquitectura: coord_attention=%s, deep_head=%s, hidden_dim=%d",
-                arch_params["use_coord_attention"], arch_params["deep_head"], arch_params["hidden_dim"])
+            arch_params = detect_architecture_from_checkpoint(state_dict)
+            logger.info("Arquitectura: coord_attention=%s, deep_head=%s, hidden_dim=%d",
+                        arch_params["use_coord_attention"], arch_params["deep_head"], arch_params["hidden_dim"])
 
-    model = create_model(
-        pretrained=False,
-        use_coord_attention=arch_params["use_coord_attention"],
-        deep_head=arch_params["deep_head"],
-        hidden_dim=arch_params["hidden_dim"],
-    )
-    model.load_state_dict(state_dict)
-    model = model.to(torch_device)
-    model.eval()
+            model = create_model(
+                pretrained=False,
+                use_coord_attention=arch_params["use_coord_attention"],
+                deep_head=arch_params["deep_head"],
+                hidden_dim=arch_params["hidden_dim"],
+            )
+            model.load_state_dict(state_dict)
+            model = model.to(torch_device)
+            model.eval()
+            landmark_models.append(model)
+
+        logger.info("TTA: %s", "habilitado" if use_tta else "deshabilitado")
 
     # Recolectar imagenes
     logger.info("Recolectando imagenes del dataset...")
@@ -3846,9 +4080,41 @@ def generate_dataset(
             by_class_count[c] += 1
         logger.info("  %s: %d imagenes %s", split_name, len(split_images), dict(by_class_count))
 
+    mean = np.array(IMAGENET_MEAN)
+    std = np.array(IMAGENET_STD)
+    clahe_obj = None
+    if not predictions_path and use_clahe:
+        clahe_obj = cv2.createCLAHE(clipLimit=clahe_clip, tileGridSize=(clahe_tile, clahe_tile))
+
+    def predict_landmarks_ensemble(img_tensor: "torch.Tensor") -> "torch.Tensor":
+        preds = []
+        for lm_model in landmark_models:
+            if use_tta:
+                with torch.no_grad():
+                    pred1 = lm_model(img_tensor)
+                    images_flip = torch.flip(img_tensor, dims=[3])
+                    pred2 = lm_model(images_flip)
+                    pred2 = pred2.view(-1, NUM_LANDMARKS, 2)
+                    pred2[:, :, 0] = 1 - pred2[:, :, 0]
+                    for left, right in SYMMETRIC_PAIRS:
+                        pred2[:, [left, right]] = pred2[:, [right, left]]
+                    pred2 = pred2.view(-1, NUM_LANDMARKS * 2)
+                    pred = (pred1 + pred2) / 2
+            else:
+                with torch.no_grad():
+                    pred = lm_model(img_tensor)
+            preds.append(pred)
+
+        preds_stack = torch.stack(preds)
+        return preds_stack.mean(dim=0)
+
     # Procesar imagenes
     logger.info("Procesando imagenes (margin=%.2f)...", margin)
-    logger.info("Preprocessing: CLAHE=%s (clip=%.1f, tile=%d)", use_clahe, clahe_clip, clahe_tile)
+    if predictions_path:
+        logger.info("Usando cache de landmarks: %s", predictions_path)
+    else:
+        logger.info("Preprocessing: CLAHE=%s (clip=%.1f, tile=%d)", use_clahe, clahe_clip, clahe_tile)
+        logger.info("TTA: %s", "habilitado" if use_tta else "deshabilitado")
 
     all_stats = {}
     all_landmarks = {}
@@ -3883,31 +4149,38 @@ def generate_dataset(
                 if image.shape[0] != DEFAULT_IMAGE_SIZE or image.shape[1] != DEFAULT_IMAGE_SIZE:
                     image = cv2.resize(image, (DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE))
 
-                # Preparar para prediccion
-                img_array = image.copy()
+                if predictions_path:
+                    rel_path = image_path.relative_to(input_path).as_posix()
+                    landmarks = predictions_by_path.get(rel_path)
+                    if landmarks is None:
+                        landmarks = predictions_by_name_category.get((image_path.stem, class_name))
+                    if landmarks is None:
+                        stats['failed'] += 1
+                        missing_predictions_total += 1
+                        if len(missing_predictions) < 20:
+                            missing_predictions.append(rel_path)
+                        continue
+                else:
+                    # Preparar para prediccion
+                    img_array = image.copy()
 
-                if use_clahe:
-                    clahe_obj = cv2.createCLAHE(clipLimit=clahe_clip, tileGridSize=(clahe_tile, clahe_tile))
-                    img_array = clahe_obj.apply(img_array)
+                    if clahe_obj is not None:
+                        img_array = clahe_obj.apply(img_array)
 
-                # Convertir a RGB y normalizar
-                img_rgb = cv2.cvtColor(img_array, cv2.COLOR_GRAY2RGB)
-                img_float = img_rgb.astype(np.float32) / 255.0
+                    # Convertir a RGB y normalizar
+                    img_rgb = cv2.cvtColor(img_array, cv2.COLOR_GRAY2RGB)
+                    img_float = img_rgb.astype(np.float32) / 255.0
+                    img_normalized = (img_float - mean) / std
 
-                mean = np.array(IMAGENET_MEAN)
-                std = np.array(IMAGENET_STD)
-                img_normalized = (img_float - mean) / std
+                    # Convertir a tensor
+                    img_tensor = torch.from_numpy(img_normalized).permute(2, 0, 1).unsqueeze(0).float()
+                    img_tensor = img_tensor.to(torch_device)
 
-                # Convertir a tensor
-                img_tensor = torch.from_numpy(img_normalized).permute(2, 0, 1).unsqueeze(0).float()
-                img_tensor = img_tensor.to(torch_device)
+                    # Predecir landmarks
+                    predictions = predict_landmarks_ensemble(img_tensor)
 
-                # Predecir landmarks
-                with torch.no_grad():
-                    predictions = model(img_tensor)
-
-                landmarks = predictions.squeeze().cpu().numpy()
-                landmarks = landmarks.reshape(NUM_LANDMARKS, 2) * DEFAULT_IMAGE_SIZE
+                    landmarks = predictions.squeeze().cpu().numpy()
+                    landmarks = landmarks.reshape(NUM_LANDMARKS, 2) * DEFAULT_IMAGE_SIZE
 
                 # Aplicar margin_scale
                 scaled_landmarks = scale_landmarks_from_centroid(landmarks, margin)
@@ -3967,14 +4240,41 @@ def generate_dataset(
     logger.info("Guardando metadatos...")
 
     # Resumen general
+    predictions_meta_dict = predictions_meta if isinstance(predictions_meta, dict) else {}
+    predictions_meta_serializable = None
+    if predictions_meta_dict:
+        try:
+            json.dumps(predictions_meta_dict)
+            predictions_meta_serializable = predictions_meta_dict
+        except TypeError:
+            predictions_meta_serializable = {"raw": str(predictions_meta_dict)}
+
+    landmarks_info = {
+        "source": "predictions" if predictions_path else "inference",
+        "predictions_path": str(predictions_path) if predictions_path else None,
+        "ensemble_config": ensemble_config if (ensemble_config and not predictions_path) else None,
+        "checkpoint": checkpoint if (checkpoint and not predictions_path) else None,
+        "tta": predictions_meta_dict.get("tta") if predictions_meta_dict else use_tta,
+        "clahe": predictions_meta_dict.get("clahe") if predictions_meta_dict else use_clahe,
+        "clahe_clip": predictions_meta_dict.get("clahe_clip") if predictions_meta_dict else clahe_clip,
+        "clahe_tile": predictions_meta_dict.get("clahe_tile") if predictions_meta_dict else clahe_tile,
+    }
+    if predictions_path:
+        landmarks_info["predictions_metadata"] = predictions_meta_serializable
+        landmarks_info["missing_predictions"] = missing_predictions_total
+        if missing_predictions:
+            landmarks_info["missing_examples"] = missing_predictions
+
     summary = {
         'margin_scale': margin,
         'source_dataset': str(input_path),
         'classes': list(class_mapping.values()),
         'splits': {},
         'processing_time_minutes': elapsed / 60,
-        'model_checkpoint': checkpoint,
         'seed': seed,
+        'use_full_coverage': use_full_coverage,
+        'config': config,
+        'landmarks': landmarks_info,
     }
 
     for split_name, stats in all_stats.items():
@@ -4026,6 +4326,9 @@ def generate_dataset(
     # Resumen final
     total_processed = sum(s['processed'] for s in all_stats.values())
     total_failed = sum(s['failed'] for s in all_stats.values())
+
+    if predictions_path and missing_predictions_total > 0:
+        logger.warning("Predicciones faltantes: %d", missing_predictions_total)
 
     logger.info("-" * 40)
     logger.info("RESUMEN FINAL")

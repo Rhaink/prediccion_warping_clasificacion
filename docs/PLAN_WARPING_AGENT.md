@@ -6,8 +6,8 @@ de clasificación. Este plan termina **después** de generar el dataset warpeado
 antes de entrenar clasificadores.
 
 ## Contexto (solo lo necesario)
-- **warped_96**: warping con full-coverage + grayscale + CLAHE.
-  Fill rate ~96%. Es el recomendado por balance de accuracy y robustez.
+- **warped_lung**: warping solo pulmones (sin full-coverage) + grayscale + CLAHE.
+  Fill rate ~47%. Visualmente igual a `outputs/full_warped_dataset`.
 
 ## Qué existe hoy (verificación rápida)
 - `outputs/warped_dataset/`:
@@ -31,13 +31,13 @@ Para este plan, **siempre usar TTA** y el ensemble best (3.61).
 
 ### Paso 0: Confirmar data y best ensemble
 1) Dataset original debe existir en:
-   - `data/COVID-19_Radiography_Dataset/`
+   - `data/dataset/COVID-19_Radiography_Dataset/`
    - Clases esperadas: `COVID`, `Normal`, `Viral Pneumonia`
 2) Ensemble best actual en config:
    - `configs/ensemble_best.json` (best 3.61 px)
 
 ### Paso 1: Predecir landmarks una sola vez (cache)
-Motivo: el dataset `data/COVID-19_Radiography_Dataset` no tiene GT. Si se
+Motivo: el dataset `data/dataset/COVID-19_Radiography_Dataset` no tiene GT. Si se
 reprocesa cada vez, se repite el costo de inferencia. Solucion: predecir
 landmarks **una sola vez** con el ensemble best + TTA y guardar resultados.
 
@@ -65,8 +65,8 @@ Si `--predictions` esta presente:
 
 ### Paso 3: Crear config para warping best (requiere soporte de config)
 Crear `configs/warping_best.json` con:
-- `input_dir`: `data/COVID-19_Radiography_Dataset`
-- `output_dir`: `outputs/warped_96_best/sessionXX`
+- `input_dir`: `data/dataset/COVID-19_Radiography_Dataset`
+- `output_dir`: `outputs/warped_lung_best/sessionXX`
 - `predictions`: `outputs/landmark_predictions/sessionXX/predictions.npz`
 - `canonical`: `outputs/shape_analysis/canonical_shape_gpa.json`
 - `triangles`: `outputs/shape_analysis/canonical_delaunay_triangles.json`
@@ -76,7 +76,7 @@ Crear `configs/warping_best.json` con:
 - `clahe`: true
 - `clahe_clip`: 2.0
 - `clahe_tile`: 4
-- `use_full_coverage`: true
+- `use_full_coverage`: false
 - `tta`: true
 
 Nota: `generate-dataset` **no soporta configs** hoy; el agente debe agregar
@@ -92,7 +92,7 @@ Crear `scripts/quickstart_warping.sh`:
 2) Predecir landmarks para todo el dataset (cache):
    ```bash
    python scripts/predict_landmarks_dataset.py \
-     --input-dir data/COVID-19_Radiography_Dataset \
+     --input-dir data/dataset/COVID-19_Radiography_Dataset \
      --output outputs/landmark_predictions/sessionXX/predictions.npz \
      --ensemble-config configs/ensemble_best.json \
      --tta --clahe --clahe-clip 2.0 --clahe-tile 4
@@ -100,22 +100,22 @@ Crear `scripts/quickstart_warping.sh`:
 3) Ejecutar generate-dataset con `configs/warping_best.json` (una vez agregado soporte de config):
    ```bash
    python -m src_v2 generate-dataset \
-     data/COVID-19_Radiography_Dataset \
-     outputs/warped_96_best/sessionXX \
+     data/dataset/COVID-19_Radiography_Dataset \
+     outputs/warped_lung_best/sessionXX \
      --canonical outputs/shape_analysis/canonical_shape_gpa.json \
      --triangles outputs/shape_analysis/canonical_delaunay_triangles.json \
      --margin 1.05 \
      --splits 0.75,0.125,0.125 \
      --seed 42 \
      --clahe --clahe-clip 2.0 --clahe-tile 4 \
-     --use-full-coverage \
+     --no-full-coverage \
      --predictions outputs/landmark_predictions/sessionXX/predictions.npz
    ```
 
 ### Paso 5: Verificación posterior (obligatoria)
-1) Revisar `outputs/warped_96_best/sessionXX/dataset_summary.json`
+1) Revisar `outputs/warped_lung_best/sessionXX/dataset_summary.json`
 2) Validar:
-   - `fill_rate_mean` ~0.96
+   - `fill_rate_mean` ~0.47
    - conteos por split y clase
 3) Guardar logs:
    - `outputs/warping_quickstart.log`
@@ -128,5 +128,5 @@ Crear `scripts/quickstart_warping.sh`:
    - `CHANGELOG.md`
 
 ## Resultado esperado
-Un dataset warpeado reproducible (warped_96) generado con el **ensemble best 3.61**,
+Un dataset warpeado reproducible (solo pulmones) generado con el **ensemble best 3.61**,
 con metadata clara y comandos únicos para repetirlo en futuras sesiones.

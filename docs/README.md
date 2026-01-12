@@ -6,6 +6,7 @@ keep experimental context close to the code.
 ## Structure
 - docs/REPRO_ENSEMBLE_3_71.md: step-by-step reproduction for landmark ensemble.
 - docs/QUICKSTART_LANDMARKS.md: quickstart from scratch to prediction outputs.
+- docs/QUICKSTART_WARPING.md: quickstart para warping reproducible (warped_96).
 - docs/PLAN_WARPING_AGENT.md: detailed plan to build the warping dataset stage.
 - docs/EXPERIMENTS.md: index of validated experiments and artifacts.
 - docs/CONFIGS.md: config templates and usage examples.

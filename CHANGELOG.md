@@ -16,10 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Config templates and `--config` support for classifier and hierarchical training.
 - Landmark quickstart script and documentation (train -> ensemble -> predictions).
 - `scripts/extract_predictions.py` config/models support for reproducible outputs.
+- `scripts/predict_landmarks_dataset.py` para cachear landmarks de todo el dataset (JSON/NPZ).
+- `scripts/quickstart_warping.sh` y `docs/QUICKSTART_WARPING.md` para warping reproducible.
+- Config de warping recomendado: `configs/warping_best.json`.
 
 ### Changed
 - Landmark ensemble best improves to 3.61 px with seed666 combo (see `GROUND_TRUTH.json`).
 - Archived redundant ensemble scripts in `scripts/archive/` to keep a minimal repro set.
+- `generate-dataset` acepta `--predictions`, `--ensemble-config` y `--config` para warping reproducible.
+- `configs/warping_best.json` y `quickstart_warping.sh` quedan en modo solo pulmones (sin full coverage).
+- Scripts legacy de generacion de datasets fueron movidos a `scripts/archive/legacy_warping/`.
 
 ### Fixed
 - Landmark evaluation scales per-sample image sizes correctly and serializes nested metrics safely.

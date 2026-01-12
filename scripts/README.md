@@ -17,6 +17,7 @@ scripts/
 | Script | Proposito | CLI Equivalente |
 |--------|-----------|-----------------|
 | `predict.py` | Prediccion de landmarks | `python -m src_v2 predict` |
+| `predict_landmarks_dataset.py` | Cache de landmarks para dataset completo | - |
 | `train.py` | Entrenamiento de modelos | `python -m src_v2 train` |
 | `train_classifier.py` | Entrenamiento clasificador | `python -m src_v2 train-classifier` |
 | `train_classifier_original.py` | Clasificador en imagenes originales | - |
@@ -33,6 +34,7 @@ scripts/
 | `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
 | `run_best_ensemble.sh` | Evaluar el mejor ensemble actual |
 | `quickstart_landmarks.sh` | Entrenar + evaluar + extraer predicciones (hasta pre-warping) |
+| `quickstart_warping.sh` | Warping reproducible con cache de landmarks (solo pulmones) |
 
 Nota: `run_repro_split_ensemble.sh` y `run_option1_new_seeds.sh` fueron movidos a
 `scripts/archive/` (reemplazados por `run_seed_sweep.sh`).
@@ -72,6 +74,11 @@ Modelo jerarquico:
 python scripts/train_hierarchical.py --config configs/hierarchical_train_base.json
 ```
 
+Warping reproducible (solo pulmones):
+```bash
+python -m src_v2 generate-dataset --config configs/warping_best.json
+```
+
 ## Scripts de Visualizacion
 
 Ubicacion: `visualization/`
@@ -86,10 +93,12 @@ Ubicacion: `visualization/`
 
 | Script | Proposito |
 |--------|-----------|
-| `generate_warped_dataset.py` | Dataset warpeado (47% fill) |
-| `generate_full_warped_dataset.py` | Dataset completo warpeado |
-| `generate_original_cropped_47.py` | Dataset control (47% fill) |
 | `filter_dataset_3_classes.py` | Filtrado a 3 clases |
+
+Scripts legacy movidos a `scripts/archive/legacy_warping/`:
+- `generate_warped_dataset.py` (warping GT ~47% fill)
+- `generate_full_warped_dataset.py` (warping legacy sin TTA)
+- `generate_original_cropped_47.py` (dataset control 47% fill)
 
 ## Scripts de Evaluacion
 

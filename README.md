@@ -173,6 +173,8 @@ prediccion_warping_clasificacion/
 ## Reproducibility
 
 - Landmark ensemble reproduction: `docs/REPRO_ENSEMBLE_3_71.md`
+- Landmark quickstart: `docs/QUICKSTART_LANDMARKS.md`
+- Warping quickstart (warped_96): `docs/QUICKSTART_WARPING.md`
 - Training templates: `configs/landmarks_train_base.json`
 - Ensemble config: `configs/ensemble_best.json`
 - Config templates overview: `docs/CONFIGS.md`
@@ -280,6 +282,10 @@ python -m src_v2 evaluate-ensemble \
 nohup bash scripts/quickstart_landmarks.sh > outputs/quickstart_landmarks.log 2>&1 &
 tail -f outputs/quickstart_landmarks.log
 
+# Quickstart: warping reproducible (solo pulmones)
+nohup bash scripts/quickstart_warping.sh > outputs/warping_quickstart.log 2>&1 &
+tail -f outputs/warping_quickstart.log
+
 # Show version
 python -m src_v2 version
 
@@ -314,11 +320,14 @@ python -m src_v2 compute-canonical data/coordenadas/coordenadas_maestro.csv \
 # Generate warped dataset with train/val/test splits
 # --use-full-coverage (default) adds boundary points for ~99% fill rate
 python -m src_v2 generate-dataset \
-  data/COVID-19_Radiography_Dataset \
+  data/dataset/COVID-19_Radiography_Dataset \
   outputs/warped_dataset \
   --checkpoint checkpoints_v2/final_model.pt \
   --margin 1.05 --splits 0.75,0.125,0.125 --seed 42 \
   --use-full-coverage
+
+# Generate warped dataset from cached predictions (solo pulmones)
+python -m src_v2 generate-dataset --config configs/warping_best.json
 
 # --- Analysis & Validation Commands ---
 
@@ -326,7 +335,7 @@ python -m src_v2 generate-dataset \
 python -m src_v2 cross-evaluate \
   outputs/classifier_original/best.pt \
   outputs/classifier_warped/best.pt \
-  --data-a data/COVID-19_Radiography_Dataset \
+  --data-a data/dataset/COVID-19_Radiography_Dataset \
   --data-b outputs/full_warped_dataset \
   --output-dir outputs/cross_evaluation
 
@@ -372,7 +381,7 @@ python -m src_v2 analyze-errors \
 python -m src_v2 pfs-analysis \
   --checkpoint outputs/classifier/best.pt \
   --data-dir outputs/warped_dataset/test \
-  --mask-dir data/COVID-19_Radiography_Dataset \
+  --mask-dir data/dataset/COVID-19_Radiography_Dataset \
   --output-dir outputs/pfs_analysis
 
 # Generate approximate lung masks (when segmentation masks unavailable)
@@ -385,7 +394,7 @@ python -m src_v2 generate-lung-masks \
 
 # Find optimal warping margin via grid search
 python -m src_v2 optimize-margin \
-  --data-dir data/COVID-19_Radiography_Dataset \
+  --data-dir data/dataset/COVID-19_Radiography_Dataset \
   --landmarks-csv data/landmarks.csv \
   --margins 1.00,1.05,1.10,1.15,1.20,1.25,1.30 \
   --epochs 10 --output-dir outputs/margin_optimization
