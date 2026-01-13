@@ -16,10 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Config templates and `--config` support for classifier and hierarchical training.
 - Landmark quickstart script and documentation (train -> ensemble -> predictions).
 - `scripts/extract_predictions.py` config/models support for reproducible outputs.
+- `train-classifier` CLI `--config` support (with `model` alias for `backbone`).
+- ResNet18 classifier reproduction notes for warped_lung_best.
 
 ### Changed
 - Landmark ensemble best improves to 3.61 px with seed666 combo (see `GROUND_TRUTH.json`).
 - Archived redundant ensemble scripts in `scripts/archive/` to keep a minimal repro set.
+- `scripts/train_classifier.py` now wraps the CLI to avoid duplicated logic.
+- Classifier docs/configs point to `outputs/warped_lung_best/session_warping`.
 
 ### Fixed
 - Landmark evaluation scales per-sample image sizes correctly and serializes nested metrics safely.
@@ -30,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Evaluate split now falls back to non-stratified for tiny datasets.
 - `predict` accepts `--output-json` alias in addition to `--json`.
 - `extract_predictions.py` accepts `name` from config files (ex: `ensemble_best.json`).
+- Original classifier loader now maps `Viral_Pneumonia` to `Viral Pneumonia` directory names.
 
 ## [2.0.0] - 2025-12-11
 

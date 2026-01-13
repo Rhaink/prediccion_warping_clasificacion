@@ -18,7 +18,7 @@ scripts/
 |--------|-----------|-----------------|
 | `predict.py` | Prediccion de landmarks | `python -m src_v2 predict` |
 | `train.py` | Entrenamiento de modelos | `python -m src_v2 train` |
-| `train_classifier.py` | Entrenamiento clasificador | `python -m src_v2 train-classifier` |
+| `train_classifier.py` | Wrapper del CLI (clasificador) | `python -m src_v2 train-classifier` |
 | `train_classifier_original.py` | Clasificador en imagenes originales | - |
 | `train_hierarchical.py` | Entrenar modelo jerarquico | - |
 | `evaluate_ensemble_from_config.py` | Evaluar ensemble desde config | - |
@@ -57,7 +57,12 @@ python scripts/extract_predictions.py --config configs/ensemble_best.json \
   --output-dir outputs/predictions_best
 ```
 
-Clasificador warpeado:
+Clasificador warpeado (CLI canonico):
+```bash
+python -m src_v2 train-classifier --config configs/classifier_warped_base.json
+```
+
+Wrapper equivalente:
 ```bash
 python scripts/train_classifier.py --config configs/classifier_warped_base.json
 ```

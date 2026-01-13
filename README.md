@@ -298,12 +298,13 @@ python -m src_v2 classify data/test/ --classifier clf.pt \
   --output results.json
 
 # Train classifier on warped dataset
-python -m src_v2 train-classifier outputs/warped_dataset \
+python -m src_v2 train-classifier outputs/warped_lung_best/session_warping \
   --backbone resnet18 --epochs 50 --batch-size 32
+python -m src_v2 train-classifier --config configs/classifier_warped_base.json
 
 # Evaluate classifier
 python -m src_v2 evaluate-classifier outputs/classifier/best_classifier.pt \
-  --data-dir outputs/warped_dataset --split test
+  --data-dir outputs/warped_lung_best/session_warping --split test
 
 # --- Processing Commands ---
 
@@ -314,8 +315,8 @@ python -m src_v2 compute-canonical data/coordenadas/coordenadas_maestro.csv \
 # Generate warped dataset with train/val/test splits
 # --use-full-coverage (default) adds boundary points for ~99% fill rate
 python -m src_v2 generate-dataset \
-  data/COVID-19_Radiography_Dataset \
-  outputs/warped_dataset \
+  data/dataset/COVID-19_Radiography_Dataset \
+  outputs/warped_lung_best/session_warping \
   --checkpoint checkpoints_v2/final_model.pt \
   --margin 1.05 --splits 0.75,0.125,0.125 --seed 42 \
   --use-full-coverage
@@ -326,7 +327,7 @@ python -m src_v2 generate-dataset \
 python -m src_v2 cross-evaluate \
   outputs/classifier_original/best.pt \
   outputs/classifier_warped/best.pt \
-  --data-a data/COVID-19_Radiography_Dataset \
+  --data-a data/dataset/COVID-19_Radiography_Dataset \
   --data-b outputs/full_warped_dataset \
   --output-dir outputs/cross_evaluation
 
@@ -339,11 +340,11 @@ python -m src_v2 evaluate-external \
 # Test robustness to perturbations (JPEG compression, blur, noise)
 python -m src_v2 test-robustness \
   outputs/classifier/best.pt \
-  --data-dir outputs/warped_dataset \
+  --data-dir outputs/warped_lung_best/session_warping \
   --output robustness_results.json
 
 # Compare multiple CNN architectures
-python -m src_v2 compare-architectures outputs/warped_dataset \
+python -m src_v2 compare-architectures outputs/warped_lung_best/session_warping \
   --architectures resnet18,efficientnet_b0,densenet121 \
   --epochs 30 --output-dir outputs/arch_comparison
 
@@ -355,13 +356,13 @@ python -m src_v2 gradcam --checkpoint outputs/classifier/best.pt \
 
 # Generate Grad-CAM visualizations (batch mode)
 python -m src_v2 gradcam --checkpoint outputs/classifier/best.pt \
-  --data-dir outputs/warped_dataset/test \
+  --data-dir outputs/warped_lung_best/session_warping/test \
   --output-dir outputs/gradcam_analysis --num-samples 20
 
 # Analyze classification errors with optional Grad-CAM
 python -m src_v2 analyze-errors \
   --checkpoint outputs/classifier/best.pt \
-  --data-dir outputs/warped_dataset/test \
+  --data-dir outputs/warped_lung_best/session_warping/test \
   --output-dir outputs/error_analysis \
   --visualize --gradcam
 
@@ -371,13 +372,13 @@ python -m src_v2 analyze-errors \
 # geometric normalization (reduced fill rate), not from forced lung attention.
 python -m src_v2 pfs-analysis \
   --checkpoint outputs/classifier/best.pt \
-  --data-dir outputs/warped_dataset/test \
-  --mask-dir data/COVID-19_Radiography_Dataset \
+  --data-dir outputs/warped_lung_best/session_warping/test \
+  --mask-dir data/dataset/COVID-19_Radiography_Dataset \
   --output-dir outputs/pfs_analysis
 
 # Generate approximate lung masks (when segmentation masks unavailable)
 python -m src_v2 generate-lung-masks \
-  --data-dir outputs/warped_dataset \
+  --data-dir outputs/warped_lung_best/session_warping \
   --output-dir outputs/lung_masks \
   --method rectangular --margin 0.15
 
@@ -385,7 +386,7 @@ python -m src_v2 generate-lung-masks \
 
 # Find optimal warping margin via grid search
 python -m src_v2 optimize-margin \
-  --data-dir data/COVID-19_Radiography_Dataset \
+  --data-dir data/dataset/COVID-19_Radiography_Dataset \
   --landmarks-csv data/landmarks.csv \
   --margins 1.00,1.05,1.10,1.15,1.20,1.25,1.30 \
   --epochs 10 --output-dir outputs/margin_optimization
@@ -409,6 +410,7 @@ python -m src_v2 optimize-margin \
 | `--landmark-model` | - | Single landmark model for warping |
 | `--landmark-ensemble` | - | Multiple landmark models for ensemble |
 | `--backbone` | resnet18 | Classifier backbone: resnet18, efficientnet_b0 |
+| `--config` | - | JSON config with defaults (train-classifier) |
 | `--use-full-coverage` | True | Add boundary points for ~99% fill rate |
 
 ### Legacy Scripts
@@ -417,7 +419,7 @@ python -m src_v2 optimize-margin \
 # Train landmark prediction model (legacy)
 python scripts/train.py
 
-# Train classifier on warped images
+# Train classifier on warped images (wrapper)
 python scripts/train_classifier.py
 
 # Evaluate ensemble (config-driven)

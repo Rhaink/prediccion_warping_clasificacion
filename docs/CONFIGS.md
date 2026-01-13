@@ -19,8 +19,9 @@ CLI flags always override config values.
 
 ## Classifier (Warped)
 - File: configs/classifier_warped_base.json
-- Script: scripts/train_classifier.py
+- Script: scripts/train_classifier.py (wrapper del CLI)
 - Example:
+  - python -m src_v2 train-classifier --config configs/classifier_warped_base.json
   - python scripts/train_classifier.py --config configs/classifier_warped_base.json
 
 ## Classifier (Original)

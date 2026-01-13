@@ -5,6 +5,7 @@ keep experimental context close to the code.
 
 ## Structure
 - docs/REPRO_ENSEMBLE_3_71.md: step-by-step reproduction for landmark ensemble.
+- docs/REPRO_CLASSIFIER_RESNET18.md: reproduction steps for CNN classifier.
 - docs/QUICKSTART_LANDMARKS.md: quickstart from scratch to prediction outputs.
 - docs/PLAN_WARPING_AGENT.md: detailed plan to build the warping dataset stage.
 - docs/EXPERIMENTS.md: index of validated experiments and artifacts.
