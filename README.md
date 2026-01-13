@@ -403,7 +403,8 @@ python -m src_v2 optimize-margin \
 | `--coord-attention` | True | Use Coordinate Attention |
 | `--deep-head` | True | Use deep regression head |
 | `--hidden-dim` | 768 | Hidden layer dimension |
-| `--tta` | True | Test-Time Augmentation |
+| `--tta` | True | Test-Time Augmentation (landmarks) |
+| `--classifier-tta` | False | Test-Time Augmentation para clasificador |
 | `--split` | test | Data split: train, val, test, all |
 | `--classifier` | - | Classifier checkpoint (for classify) |
 | `--warp/--no-warp` | False | Apply geometric normalization |

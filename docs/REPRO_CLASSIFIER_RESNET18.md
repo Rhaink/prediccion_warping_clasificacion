@@ -66,6 +66,17 @@ Salidas esperadas:
   - `outputs/classifier_warped_lung_best/session_2026-01-12/best_classifier.pt`
   - `outputs/classifier_warped_lung_best/session_2026-01-12/results.json`
 
+## Evaluacion con TTA (opcional)
+```bash
+python -m src_v2 evaluate-classifier \
+  outputs/classifier_warped_lung_best/session_2026-01-12/best_classifier.pt \
+  --data-dir outputs/warped_lung_best/session_warping --split test --tta
+```
+
+## Futuras pruebas (no implementadas)
+- Label smoothing: suaviza targets (ej. 0.9/0.1) para reducir overfitting y mejorar calibracion.
+- Focal loss: enfoca el aprendizaje en ejemplos dificiles; puede mejorar recall de clases minoritarias.
+
 ## Baseline existente (referencia)
 - `outputs/classifier_full/results.json`
 - `outputs/classifier_original_3classes/results.json`
