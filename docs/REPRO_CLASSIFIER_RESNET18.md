@@ -102,6 +102,12 @@ Resultado best actual (sweep):
   - `outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/best_classifier.pt`
   - `outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/results.json`
 
+Validacion de estabilidad (3 seeds, lr2e-4, class_weights=on):
+- Seeds: 42, 123, 321
+- Test accuracy: 97.59% +/- 0.35
+- F1 macro: 96.51% +/- 0.46
+- F1 weighted: 97.59% +/- 0.34
+
 ## Futuras pruebas (no implementadas)
 - Label smoothing: suaviza targets (ej. 0.9/0.1) para reducir overfitting y mejorar calibracion.
 - Focal loss: enfoca el aprendizaje en ejemplos dificiles; puede mejorar recall de clases minoritarias.

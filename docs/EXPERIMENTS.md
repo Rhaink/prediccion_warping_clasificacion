@@ -52,6 +52,7 @@ Short index of validated experiments and the authoritative artifacts
 - F1 weighted: 98.04%
 - Checkpoint: outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/best_classifier.pt
 - Results: outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/results.json
+- Estabilidad (3 seeds, lr2e-4, class_weights=on): accuracy 97.59% +/- 0.35, F1 macro 96.51% +/- 0.46, F1 weighted 97.59% +/- 0.34
 - Source: docs/REPRO_CLASSIFIER_RESNET18.md
 
 ## Notes
