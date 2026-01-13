@@ -43,6 +43,16 @@ Short index of validated experiments and the authoritative artifacts
   - outputs/ensemble_combo_sweep_option2_555_666.txt
   - outputs/option1_555_666.log
 
+## Classifier (ResNet18)
+
+### Best actual (2026-01-12)
+- Dataset: outputs/warped_lung_best/session_warping (fill_rate ~0.47)
+- Accuracy (test): 97.94%
+- F1 macro: 96.75%
+- Checkpoint: outputs/classifier_warped_lung_best/session_2026-01-12/best_classifier.pt
+- Results: outputs/classifier_warped_lung_best/session_2026-01-12/results.json
+- Source: docs/REPRO_CLASSIFIER_RESNET18.md
+
 ## Notes
 - Use docs/REPRO_ENSEMBLE_3_71.md for step-by-step runs.
 - Update this file when a new best result is validated.
