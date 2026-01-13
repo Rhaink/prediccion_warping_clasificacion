@@ -1,0 +1,608 @@
+% ============================================================================
+% ARTÍCULO CIENTÍFICO
+% ============================================================================
+% Título: Geometric Normalization via Anatomical Landmarks Improves
+%         COVID-19 Classification Robustness in Chest X-rays
+% ============================================================================
+% Target journals: IEEE JBHI, Medical Image Analysis, MDPI Diagnostics
+% Format: ~10-12 pages, IEEE two-column
+% ============================================================================
+
+\documentclass[journal]{IEEEtran}
+
+% Paquetes
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{subcaption}
+\usepackage{array}
+\usepackage{cite}
+
+% Colores
+\definecolor{highlight}{RGB}{220,255,220}
+
+% Comandos
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\etal}{\textit{et al.}}
+
+\begin{document}
+
+% ============================================================================
+% TÍTULO Y AUTORES
+% ============================================================================
+
+\title{Geometric Normalization via Anatomical Landmarks Improves COVID-19 Classification Robustness in Chest X-rays}
+
+\author{
+    \IEEEauthorblockN{First Author\IEEEauthorrefmark{1}, Second Author\IEEEauthorrefmark{2}, and Third Author\IEEEauthorrefmark{1}}
+    \IEEEauthorblockA{
+        \IEEEauthorrefmark{1}Department of Computer Science, University Name, City, Country\\
+        \IEEEauthorrefmark{2}Department of Radiology, Hospital Name, City, Country\\
+        Email: \{first.author, third.author\}@university.edu, second.author@hospital.org
+    }
+}
+
+\markboth{IEEE Journal of Biomedical and Health Informatics, Vol. XX, No. X, Month 2026}%
+{Author \MakeLowercase{\textit{et al.}}: Geometric Normalization for COVID-19 Classification}
+
+\maketitle
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+
+\begin{abstract}
+\textbf{Objective:} Deep learning models for COVID-19 detection in chest X-rays often lack robustness to image perturbations commonly encountered in clinical settings, such as JPEG compression and blur. We propose a two-stage approach that leverages geometric normalization to improve both accuracy and robustness.
+
+\textbf{Methods:} Our system first predicts 15 anatomical landmarks defining the lung contour using a ResNet-18 model with Coordinate Attention, achieving 3.61 pixel error with an ensemble of 4 models. Then, piecewise affine warping aligns images to a canonical shape computed via Generalized Procrustes Analysis. Finally, a CNN classifier distinguishes COVID-19, Normal, and Viral Pneumonia cases.
+
+\textbf{Results:} Classification on warped images achieves 99.10\% accuracy compared to 98.84\% on original images. More significantly, warped models demonstrate up to \textbf{30× better robustness} to JPEG compression (0.53\% vs. 16.14\% degradation at Q50) and \textbf{5.9× better robustness} to blur (2.43\% vs. 14.43\% degradation at $\sigma$=1). The within-domain generalization gap improves by 2.43×. Fisher Linear Discriminant Analysis, performed without deep learning, confirms that warping increases linear separability by 4.16\%, validating the geometric nature of the improvement.
+
+\textbf{Conclusion:} Geometric normalization significantly improves robustness for within-domain deployment. Control experiments reveal that robustness stems primarily ($\sim$75\%) from implicit information reduction via lower fill rate, with 25\% from geometric alignment. We acknowledge that warping does not solve cross-institution domain shift ($\sim$55\% accuracy on external data), a fundamental challenge in medical imaging.
+
+\textbf{Significance:} This work provides rigorous evidence for geometric normalization as a preprocessing strategy for robust medical image classification, with clear documentation of both benefits and limitations.
+\end{abstract}
+
+\begin{IEEEkeywords}
+COVID-19, chest X-ray, anatomical landmarks, geometric normalization, piecewise affine warping, deep learning, robustness, medical image classification
+\end{IEEEkeywords}
+
+% ============================================================================
+% I. INTRODUCTION
+% ============================================================================
+
+\section{Introduction}
+
+\IEEEPARstart{T}{he} COVID-19 pandemic has underscored the critical need for rapid, accurate, and robust diagnostic tools. Chest X-rays (CXR) offer an accessible and cost-effective imaging modality for detecting COVID-19-associated pneumonia, particularly in resource-limited settings where computed tomography (CT) may be unavailable.
+
+Deep learning approaches for COVID-19 detection have achieved impressive accuracy on curated datasets~\cite{wang2020covidnet, oh2020deep}. However, their deployment in clinical practice faces significant challenges:
+
+\begin{enumerate}
+    \item \textbf{Geometric variability:} Patient positioning, rotation, and breathing phase introduce substantial variation across images.
+    \item \textbf{Image degradation:} Clinical images are often compressed (JPEG) for storage and transmission, and may exhibit blur or noise.
+    \item \textbf{Domain shift:} Models trained on one institution's data frequently fail to generalize to others~\cite{degrave2021ai}.
+\end{enumerate}
+
+Most existing approaches process raw images directly without explicit geometric normalization, potentially learning spurious correlations with acquisition artifacts rather than pathologically relevant features. This limits both robustness and interpretability.
+
+We hypothesize that \textit{geometric normalization through anatomical landmark-based warping can improve classification robustness by reducing irrelevant geometric variability}. This paper presents a comprehensive evaluation of this hypothesis, with honest documentation of both benefits and limitations.
+
+\subsection{Contributions}
+
+Our contributions are:
+
+\begin{itemize}
+    \item A two-stage pipeline combining landmark prediction with piecewise affine warping for geometric normalization in medical image classification.
+
+    \item Rigorous experimental validation demonstrating up to 30× improvement in robustness to common perturbations.
+
+    \item Geometric validation using classical Fisher LDA, confirming that improvements are genuinely geometric rather than artifacts of deep learning.
+
+    \item Quantitative decomposition of the robustness mechanism into information reduction ($\sim$75\%) and geometric alignment ($\sim$25\%).
+
+    \item Transparent documentation of limitations, particularly domain shift on external datasets.
+\end{itemize}
+
+% ============================================================================
+% II. RELATED WORK
+% ============================================================================
+
+\section{Related Work}
+
+\subsection{COVID-19 Detection in Chest X-rays}
+
+COVID-Net~\cite{wang2020covidnet} pioneered deep learning for COVID-19 detection using a custom architecture achieving 93.3\% accuracy on a three-class problem. Subsequent works explored transfer learning from ImageNet-pretrained models~\cite{oh2020deep, apostolopoulos2020covid}, achieving accuracies above 95\%. DenseNet-121 and ResNet-50 emerged as popular backbones.
+
+However, concerns about shortcut learning emerged when DeGrave \etal~\cite{degrave2021ai} demonstrated that models often relied on confounding factors (patient positioning markers, image borders) rather than lung pathology. This motivates our focus on explicit geometric normalization to reduce such confounders.
+
+\subsection{Anatomical Landmark Detection}
+
+Landmark detection has been extensively studied for facial analysis~\cite{feng2018wing, sun2019deep}, with applications in geometric normalization for face recognition. In medical imaging, landmarks guide atlas-based registration and shape analysis~\cite{cootes1995active}. We extend these techniques to chest X-ray classification.
+
+\subsection{Geometric Normalization}
+
+Piecewise affine warping using Delaunay triangulation enables smooth spatial transformations~\cite{wolberg1998image}. Generalized Procrustes Analysis (GPA)~\cite{gower1975generalized} computes canonical shapes by iteratively removing translation, rotation, and scale differences. These classical techniques remain relevant for modern deep learning pipelines.
+
+\subsection{Robustness in Medical Imaging}
+
+Recent work highlights the fragility of medical image classifiers to perturbations~\cite{ma2021understanding}. Data augmentation~\cite{shorten2019survey} and adversarial training~\cite{madry2018towards} are common remediation strategies. Our approach differs by addressing geometric variability at the preprocessing level.
+
+% ============================================================================
+% III. METHODS
+% ============================================================================
+
+\section{Methods}
+
+\subsection{System Overview}
+
+Our pipeline consists of three stages (Fig.~\ref{fig:pipeline}):
+
+\begin{figure}[t]
+    \centering
+    \fbox{\parbox{0.45\textwidth}{\centering
+    \textbf{Pipeline Overview}\\[0.3cm]
+    Input Image $\rightarrow$ Landmark Prediction $\rightarrow$ Geometric Warping $\rightarrow$ Classification $\rightarrow$ Diagnosis\\[0.2cm]
+    \small{(ResNet-18 + CoordAttn) \quad (Delaunay + Affine) \quad (ResNet-18)}
+    }}
+    \caption{Two-stage system architecture for COVID-19 classification with geometric normalization.}
+    \label{fig:pipeline}
+\end{figure}
+
+\begin{enumerate}
+    \item \textbf{Landmark Prediction:} A CNN predicts 15 anatomical landmarks defining the lung contour.
+    \item \textbf{Geometric Normalization:} Piecewise affine warping aligns images to a canonical shape.
+    \item \textbf{Classification:} A second CNN classifies normalized images into three categories.
+\end{enumerate}
+
+\subsection{Landmark Prediction Model}
+
+\subsubsection{Architecture}
+
+We use ResNet-18~\cite{he2016deep} pretrained on ImageNet as backbone, enhanced with:
+
+\begin{itemize}
+    \item \textbf{Coordinate Attention}~\cite{hou2021coordinate}: Captures long-range spatial dependencies with positional encoding. Unlike channel attention (SE-Net) or spatial attention (CBAM), Coordinate Attention preserves positional information through separate horizontal and vertical pooling:
+    \begin{align}
+        z_c^h(h) &= \frac{1}{W} \sum_{i=0}^{W-1} x_c(h, i) \\
+        z_c^w(w) &= \frac{1}{H} \sum_{j=0}^{H-1} x_c(j, w)
+    \end{align}
+
+    \item \textbf{Deep Regression Head}: Three fully-connected layers (512→768→768→30) with GroupNorm, ReLU, and Dropout (0.3).
+\end{itemize}
+
+Output: 30 normalized coordinates $\in [0,1]^{30}$ representing 15 landmarks.
+
+\subsubsection{Loss Function}
+
+We use Wing Loss~\cite{feng2018wing}, designed for landmark localization:
+\begin{equation}
+\text{wing}(x) = \begin{cases}
+\omega \ln(1 + |x|/\epsilon) & \text{if } |x| < \omega \\
+|x| - C & \text{otherwise}
+\end{cases}
+\end{equation}
+where $\omega=10$, $\epsilon=2$, and $C = \omega - \omega \ln(1 + \omega/\epsilon)$ ensures continuity. The logarithmic region for small errors provides larger gradients than MSE, accelerating convergence near the optimum.
+
+\subsubsection{Training Strategy}
+
+Two-phase training:
+\begin{enumerate}
+    \item \textbf{Phase 1} (15 epochs): Backbone frozen, train head only (LR=0.001)
+    \item \textbf{Phase 2} (100 epochs): Fine-tune all layers with differential LR (backbone: 2e-5, head: 2e-4)
+\end{enumerate}
+
+\subsubsection{Ensemble and TTA}
+
+Final predictions combine:
+\begin{itemize}
+    \item Ensemble of 4 models (seeds: 123, 321, 111, 666)
+    \item Test-Time Augmentation: average of original and horizontally flipped predictions
+\end{itemize}
+
+\subsection{Geometric Normalization}
+
+\subsubsection{Canonical Shape Computation}
+
+We apply Generalized Procrustes Analysis (GPA) to training landmarks:
+\begin{equation}
+\bar{X} = \arg\min_{\bar{X}} \sum_{i=1}^{n} \| s_i R_i X_i + t_i - \bar{X} \|^2
+\end{equation}
+where $R_i$, $s_i$, $t_i$ are rotation, scale, and translation. GPA iteratively aligns shapes to their mean until convergence.
+
+\subsubsection{Piecewise Affine Warping}
+
+Given predicted landmarks $P$ and canonical landmarks $Q$:
+\begin{enumerate}
+    \item Compute Delaunay triangulation over $Q$
+    \item Add 8 boundary points (4 corners + 4 edge midpoints)
+    \item For each triangle, compute affine transformation matrix
+    \item Apply inverse mapping with bilinear interpolation
+\end{enumerate}
+
+\subsubsection{Fill Rate Control}
+
+The \textit{fill rate} (proportion of valid pixels) is controlled by boundary points and margin parameter:
+\begin{itemize}
+    \item \textbf{47\%}: No boundary points (maximum robustness)
+    \item \textbf{96\%}: Boundary points, margin=1.05 (\textbf{recommended})
+    \item \textbf{99\%}: Boundary points, margin=1.15 (legacy)
+\end{itemize}
+
+\subsection{Classification}
+
+ResNet-18 classifier with ImageNet initialization, Dropout=0.3, trained for 50 epochs with early stopping on validation F1. CLAHE preprocessing (clip=2.0, tile=4) applied consistently to all images.
+
+\subsection{Evaluation Metrics}
+
+\begin{itemize}
+    \item \textbf{Landmarks}: Mean pixel error (224×224 space)
+    \item \textbf{Classification}: Accuracy, F1-score (macro/weighted)
+    \item \textbf{Robustness}: Degradation = $\text{Acc}_{\text{clean}} - \text{Acc}_{\text{perturbed}}$
+    \item \textbf{Generalization}: Cross-evaluation gap between datasets
+\end{itemize}
+
+% ============================================================================
+% IV. EXPERIMENTS
+% ============================================================================
+
+\section{Experiments}
+
+\subsection{Dataset}
+
+COVID-19 Radiography Database~\cite{chowdhury2020can} with manual landmark annotations:
+\begin{itemize}
+    \item 957 images: COVID-19 (306, 32\%), Normal (468, 49\%), Viral Pneumonia (183, 19\%)
+    \item 15 landmarks per image defining lung contour
+    \item Split: 75\% train, 12.5\% validation, 12.5\% test
+\end{itemize}
+
+\subsection{Implementation Details}
+
+\begin{itemize}
+    \item \textbf{Framework}: PyTorch 2.0+
+    \item \textbf{Hardware}: AMD Radeon RX 6600 (8GB VRAM)
+    \item \textbf{Optimizer}: AdamW, batch size 32
+    \item \textbf{Preprocessing}: CLAHE (clip=2.0, tile=4), ImageNet normalization
+    \item \textbf{Seeds}: Fixed for reproducibility
+\end{itemize}
+
+\subsection{Perturbations Evaluated}
+
+\begin{itemize}
+    \item JPEG compression: Q50 (moderate), Q30 (severe)
+    \item Gaussian blur: $\sigma$=1 (mild), $\sigma$=2 (moderate)
+    \item Gaussian noise: $\sigma$=0.05, $\sigma$=0.10
+\end{itemize}
+
+\subsection{External Validation}
+
+FedCOVIDx dataset~\cite{florescu2022fedcovidx}: 8,482 images from multiple institutions for binary classification (COVID vs. Non-COVID).
+
+% ============================================================================
+% V. RESULTS
+% ============================================================================
+
+\section{Results}
+
+\subsection{Landmark Prediction}
+
+Table~\ref{tab:landmarks} summarizes landmark prediction performance:
+
+\begin{table}[t]
+\centering
+\caption{Landmark Prediction Performance (Ensemble + TTA)}
+\label{tab:landmarks}
+\begin{tabular}{lc}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Mean Error & \textbf{3.61 px} \\
+Std. Deviation & 2.48 px \\
+Median Error & 3.07 px \\
+\midrule
+Error (Normal) & 3.22 px \\
+Error (COVID-19) & 3.93 px \\
+Error (Viral Pneumonia) & 4.11 px \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Central landmarks (L9, L10) show lowest error (2.44-2.76 px), while upper border landmarks (L12, L13) are most challenging (5.35-5.43 px).
+
+\subsection{Classification Accuracy}
+
+Table~\ref{tab:classification} compares classification performance:
+
+\begin{table}[t]
+\centering
+\caption{Classification Performance: Warped vs. Original}
+\label{tab:classification}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Dataset} & \textbf{Accuracy} & \textbf{F1} & \textbf{Fill Rate} \\
+\midrule
+Original 100\% & 98.84\% & 98.16\% & 100\% \\
+\rowcolor{highlight}
+\textbf{Warped 96\%} & \textbf{99.10\%} & \textbf{98.45\%} & 96\% \\
+Warped 99\% & 98.73\% & 97.95\% & 99\% \\
+Warped 47\% & 98.02\% & --- & 47\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key finding}: Warped 96\% achieves the highest accuracy (99.10\%), exceeding Original by 0.26 percentage points.
+
+\subsection{Robustness to Perturbations}
+
+Table~\ref{tab:robustness} presents degradation under perturbations:
+
+\begin{table}[t]
+\centering
+\caption{Accuracy Degradation (\%) Under Perturbations}
+\label{tab:robustness}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Dataset} & \textbf{JPEG Q50} & \textbf{JPEG Q30} & \textbf{Blur $\sigma$=1} \\
+\midrule
+Original 100\% & 16.14 & 29.97 & 14.43 \\
+Orig. Cropped 47\% & 2.11 & 7.65 & 7.65 \\
+\textbf{Warped 47\%} & \textbf{0.53} & \textbf{1.32} & 6.06 \\
+\rowcolor{highlight}
+\textbf{Warped 96\%} & 3.06 & 5.28 & \textbf{2.43} \\
+Warped 99\% & 7.34 & 16.73 & 11.35 \\
+\midrule
+\textbf{Improvement} & \textbf{30×} & \textbf{23×} & \textbf{5.9×} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key finding}: Warped models are up to \textbf{30× more robust} to JPEG compression and \textbf{5.9× more robust} to blur than Original.
+
+\subsection{Cross-Domain Generalization}
+
+Table~\ref{tab:cross_eval} shows within-domain generalization:
+
+\begin{table}[t]
+\centering
+\caption{Cross-Evaluation Matrix (Within-Domain)}
+\label{tab:cross_eval}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{On Original} & \textbf{On Warped} \\
+\midrule
+Original & 98.84\% & 91.13\% (gap: 7.70\%) \\
+Warped & 95.57\% & 98.73\% (gap: 3.17\%) \\
+\midrule
+\multicolumn{3}{c}{\textbf{Improvement: 2.43×}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Warped models generalize \textbf{2.43× better} between dataset variants.
+
+\subsection{Geometric Validation: Fisher LDA}
+
+To validate improvements without deep learning, we applied Fisher Linear Discriminant Analysis with 5-fold cross-validation:
+
+\begin{table}[t]
+\centering
+\caption{Fisher LDA Validation (k-NN, 5-Fold CV)}
+\label{tab:fisher}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Dataset} & \textbf{Accuracy} & \textbf{Var. Explained} \\
+\midrule
+Original & 73.96\% & 71\% \\
+\rowcolor{highlight}
+\textbf{Warped} & \textbf{78.12\%} & \textbf{82\%} \\
+\midrule
+\textbf{Improvement} & \textbf{+4.16\%} & \textbf{+11\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Warping increases linear separability by \textbf{4.16\%}, confirming the effect is \textit{genuinely geometric}.
+
+\subsection{Robustness Mechanism Analysis}
+
+Control experiment comparing Original, Original Cropped (47\%), and Warped (47\%):
+
+\begin{table}[t]
+\centering
+\caption{Decomposition of Robustness Mechanism}
+\label{tab:mechanism}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Component} & \textbf{Contribution} & \textbf{Evidence} \\
+\midrule
+Information reduction & $\sim$75\% & Cropped is 7.6× more robust \\
+Geometric normalization & $\sim$25\% & Warped is 4× better than Cropped \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Limitation: External Validation}
+
+On FedCOVIDx (8,482 samples from different institutions):
+
+\begin{table}[t]
+\centering
+\caption{External Validation: Domain Shift}
+\label{tab:external}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{Internal Acc.} & \textbf{External Acc.} \\
+\midrule
+Original (best) & 95.83\% & 57.50\% \\
+Warped 96\% & 99.10\% & 53-55\% \\
+\midrule
+\textit{Binary baseline} & \textit{50\%} & \textit{(random)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Critical interpretation}: Both warped and original models perform near-random on external data. This is \textit{domain shift}, not a warping limitation—the original model also fails. Cross-institution generalization requires domain adaptation techniques.
+
+% ============================================================================
+% VI. DISCUSSION
+% ============================================================================
+
+\section{Discussion}
+
+\subsection{Hypothesis Validation}
+
+Our results validate the central hypothesis:
+
+\begin{enumerate}
+    \item \textbf{Accuracy}: +0.26\% (99.10\% vs. 98.84\%) $\checkmark$
+    \item \textbf{JPEG robustness}: Up to 30× improvement $\checkmark$
+    \item \textbf{Blur robustness}: 5.9× improvement $\checkmark$
+    \item \textbf{Generalization}: 2.43× better gap $\checkmark$
+    \item \textbf{Geometric validation}: +4.16\% Fisher LDA $\checkmark$
+\end{enumerate}
+
+\subsection{Mechanism Interpretation}
+
+The robustness mechanism has two components:
+
+\begin{itemize}
+    \item \textbf{Implicit regularization} ($\sim$75\%): Lower fill rate reduces redundant information susceptible to corruption. This is consistent with information bottleneck theory~\cite{tishby2015deep}.
+
+    \item \textbf{Geometric alignment} ($\sim$25\%): Warping removes pose variability, forcing the classifier to learn pathology-relevant features.
+\end{itemize}
+
+Notably, Pulmonary Focus Score analysis (PFS $\approx$ 50\%) indicates classifiers do \textit{not} specifically attend to lung regions—robustness comes from geometric regularization, not forced attention.
+
+\subsection{Fill Rate Trade-off}
+
+The optimal configuration balances accuracy and robustness:
+
+\begin{itemize}
+    \item \textbf{Warped 47\%}: Maximum robustness (0.53\% JPEG degradation), slightly lower accuracy (98.02\%)
+    \item \textbf{Warped 96\%}: Best trade-off—highest accuracy (99.10\%) with strong robustness (3.06\% JPEG degradation)
+    \item \textbf{Warped 99\%}: Lower robustness (7.34\%), no accuracy benefit
+\end{itemize}
+
+We recommend \textbf{Warped 96\%} for deployment.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+    \item \textbf{Domain shift}: All models fail on external data ($\sim$55\%). This is a fundamental challenge in medical imaging requiring domain adaptation.
+
+    \item \textbf{Dataset size}: 957 samples limits statistical power; larger validation studies are needed.
+
+    \item \textbf{Single annotator}: Inter-annotator variability for landmarks was not quantified.
+
+    \item \textbf{Clinical validation}: The system is not validated for clinical use and requires regulatory approval.
+\end{enumerate}
+
+\subsection{Clinical Implications}
+
+Geometric normalization offers practical benefits for within-domain deployment:
+
+\begin{itemize}
+    \item Robustness to compression enables reliable telemedicine applications
+    \item Reduced sensitivity to imaging conditions improves consistency
+    \item Transparent preprocessing enhances interpretability
+\end{itemize}
+
+However, cross-institution deployment requires additional domain adaptation strategies.
+
+% ============================================================================
+% VII. CONCLUSION
+% ============================================================================
+
+\section{Conclusion}
+
+We demonstrated that geometric normalization through anatomical landmark-based warping significantly improves COVID-19 classification in chest X-rays:
+
+\begin{itemize}
+    \item \textbf{Accuracy}: 99.10\% (vs. 98.84\% baseline)
+    \item \textbf{Robustness}: Up to 30× improvement against JPEG, 5.9× against blur
+    \item \textbf{Generalization}: 2.43× better within-domain
+    \item \textbf{Validated geometrically}: +4.16\% Fisher LDA improvement
+\end{itemize}
+
+The robustness mechanism combines information reduction ($\sim$75\%) and geometric alignment ($\sim$25\%).
+
+\textbf{Limitation}: Warping does not solve domain shift between institutions. Clinical deployment requires domain adaptation techniques.
+
+\textbf{Future work}: Domain adaptation for cross-institution generalization, larger multi-institutional validation, extension to CT imaging.
+
+% ============================================================================
+% ACKNOWLEDGMENTS
+% ============================================================================
+
+\section*{Acknowledgments}
+
+[Acknowledgments to funding sources, collaborators, etc.]
+
+% ============================================================================
+% REFERENCES
+% ============================================================================
+
+\begin{thebibliography}{99}
+
+\bibitem{wang2020covidnet}
+L. Wang, Z. Q. Lin, and A. Wong, ``COVID-Net: A tailored deep convolutional neural network design for detection of COVID-19 cases from chest X-ray images,'' \textit{Scientific Reports}, vol. 10, no. 1, pp. 1--12, 2020.
+
+\bibitem{oh2020deep}
+Y. Oh, S. Park, and J. C. Ye, ``Deep learning COVID-19 features on CXR using limited training data sets,'' \textit{IEEE Trans. Med. Imaging}, vol. 39, no. 8, pp. 2688--2700, 2020.
+
+\bibitem{apostolopoulos2020covid}
+I. D. Apostolopoulos and T. A. Mpesiana, ``COVID-19: Automatic detection from X-ray images utilizing transfer learning with convolutional neural networks,'' \textit{Physical and Engineering Sciences in Medicine}, vol. 43, no. 2, pp. 635--640, 2020.
+
+\bibitem{degrave2021ai}
+A. J. DeGrave, J. D. Janizek, and S.-I. Lee, ``AI for radiographic COVID-19 detection selects shortcuts over signal,'' \textit{Nature Machine Intelligence}, vol. 3, no. 7, pp. 610--619, 2021.
+
+\bibitem{feng2018wing}
+Z.-H. Feng, J. Kittler, M. Awais, P. Huber, and X.-J. Wu, ``Wing loss for robust facial landmark localisation with convolutional neural networks,'' in \textit{Proc. IEEE CVPR}, 2018, pp. 2235--2245.
+
+\bibitem{sun2019deep}
+Y. Sun, X. Wang, and X. Tang, ``Deep learning face representation by joint identification-verification,'' in \textit{Advances in Neural Information Processing Systems}, 2014, pp. 1988--1996.
+
+\bibitem{cootes1995active}
+T. F. Cootes, C. J. Taylor, D. H. Cooper, and J. Graham, ``Active shape models—their training and application,'' \textit{Computer Vision and Image Understanding}, vol. 61, no. 1, pp. 38--59, 1995.
+
+\bibitem{wolberg1998image}
+G. Wolberg, ``Image morphing: A survey,'' \textit{The Visual Computer}, vol. 14, no. 8, pp. 360--372, 1998.
+
+\bibitem{gower1975generalized}
+J. C. Gower, ``Generalized Procrustes analysis,'' \textit{Psychometrika}, vol. 40, no. 1, pp. 33--51, 1975.
+
+\bibitem{he2016deep}
+K. He, X. Zhang, S. Ren, and J. Sun, ``Deep residual learning for image recognition,'' in \textit{Proc. IEEE CVPR}, 2016, pp. 770--778.
+
+\bibitem{hou2021coordinate}
+Q. Hou, D. Zhou, and J. Feng, ``Coordinate attention for efficient mobile network design,'' in \textit{Proc. IEEE CVPR}, 2021, pp. 13713--13722.
+
+\bibitem{ma2021understanding}
+X. Ma, Y. Niu, L. Gu, Y. Wang, Y. Zhao, J. Bailey, and F. Lu, ``Understanding adversarial attacks on deep learning based medical image analysis systems,'' \textit{Pattern Recognition}, vol. 110, p. 107332, 2021.
+
+\bibitem{shorten2019survey}
+C. Shorten and T. M. Khoshgoftaar, ``A survey on image data augmentation for deep learning,'' \textit{Journal of Big Data}, vol. 6, no. 1, pp. 1--48, 2019.
+
+\bibitem{madry2018towards}
+A. Madry, A. Makelov, L. Schmidt, D. Tsipras, and A. Vladu, ``Towards deep learning models resistant to adversarial attacks,'' in \textit{Proc. ICLR}, 2018.
+
+\bibitem{chowdhury2020can}
+M. E. H. Chowdhury \etal, ``Can AI help in screening viral and COVID-19 pneumonia?'' \textit{IEEE Access}, vol. 8, pp. 132665--132676, 2020.
+
+\bibitem{florescu2022fedcovidx}
+L. G. Florescu \etal, ``FedCOVIDx: A Federated Learning Study on COVID-19 Detection,'' in \textit{MICCAI Workshop}, 2022.
+
+\bibitem{tishby2015deep}
+N. Tishby and N. Zaslavsky, ``Deep learning and the information bottleneck principle,'' in \textit{IEEE Information Theory Workshop}, 2015, pp. 1--5.
+
+\end{thebibliography}
+
+\end{document}

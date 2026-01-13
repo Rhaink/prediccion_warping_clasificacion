@@ -1,0 +1,1238 @@
+% ============================================================================
+% TESIS DOCTORAL / MAESTRÍA
+% ============================================================================
+% Título: Detección de COVID-19 mediante Landmarks Anatómicos
+%         y Normalización Geométrica en Radiografías de Tórax
+% ============================================================================
+% Versión: 2.0 (Borrador Expandido)
+% Fecha: Enero 2026
+% ============================================================================
+
+\documentclass[12pt,a4paper,oneside]{book}
+
+% ============================================================================
+% PAQUETES
+% ============================================================================
+
+% Codificación y lenguaje
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% Geometría de página
+\usepackage[left=3cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
+
+% Matemáticas
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{bm} % vectores en negrita
+
+% Gráficos y figuras
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+
+% Tablas
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+
+% Algoritmos
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\floatname{algorithm}{Algoritmo}
+\renewcommand{\algorithmicrequire}{\textbf{Entrada:}}
+\renewcommand{\algorithmicensure}{\textbf{Salida:}}
+
+% Código fuente
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    language=Python,
+    commentstyle=\color{gray},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red}
+}
+
+% Referencias y enlaces
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{cleveref}
+
+% Bibliografía
+\usepackage[backend=biber,style=apa,sorting=nyt]{biblatex}
+% \addbibresource{referencias.bib}
+
+% Espaciado
+\usepackage{setspace}
+\onehalfspacing
+
+% Encabezados
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Teoremas y definiciones
+\newtheorem{definition}{Definición}[chapter]
+\newtheorem{theorem}{Teorema}[chapter]
+\newtheorem{lemma}{Lema}[chapter]
+\newtheorem{proposition}{Proposición}[chapter]
+\newtheorem{corollary}{Corolario}[chapter]
+
+% Colores personalizados
+\definecolor{lightgreen}{RGB}{200,255,200}
+\definecolor{lightred}{RGB}{255,200,200}
+\definecolor{lightyellow}{RGB}{255,255,200}
+\definecolor{lightblue}{RGB}{200,220,255}
+
+% Comandos personalizados
+\newcommand{\warped}{\textit{warped}}
+\newcommand{\original}{\textit{original}}
+\newcommand{\fillrate}{\textit{fill rate}}
+
+% ============================================================================
+\begin{document}
+
+% ============================================================================
+% PORTADA
+% ============================================================================
+\begin{titlepage}
+    \centering
+    \vspace*{0.5cm}
+
+    % Logo de la universidad (descomentar y ajustar)
+    % \includegraphics[width=0.3\textwidth]{logo_universidad.pdf}\\[1cm]
+
+    {\Large \textbf{UNIVERSIDAD [NOMBRE DE LA UNIVERSIDAD]}}\\[0.3cm]
+    {\large Facultad de [Nombre de la Facultad]}\\[0.3cm]
+    {\large Escuela de [Nombre de la Escuela/Departamento]}\\[0.3cm]
+    {\large Programa de [Doctorado/Maestría] en [Nombre del Programa]}\\[1.5cm]
+
+    \rule{\textwidth}{1.5pt}\\[0.4cm]
+    {\LARGE \textbf{Detección de COVID-19 mediante Landmarks Anatómicos y Normalización Geométrica en Radiografías de Tórax}}\\[0.4cm]
+    \rule{\textwidth}{1.5pt}\\[1.5cm]
+
+    {\large \textbf{TESIS}}\\[0.2cm]
+    {\normalsize Presentada como requisito parcial para obtener el grado de}\\[0.2cm]
+    {\large \textbf{[Doctor/Maestro] en [Nombre del Programa]}}\\[1.5cm]
+
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushleft}
+            {\large \textbf{Presenta:}}\\[0.2cm]
+            {\large [Nombre Completo del Autor]}\\[0.1cm]
+            {\small Matrícula: [Número]}
+        \end{flushleft}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushright}
+            {\large \textbf{Director de Tesis:}}\\[0.2cm]
+            {\large [Nombre del Director]}\\[0.1cm]
+            {\small [Grado y afiliación]}
+        \end{flushright}
+    \end{minipage}
+
+    \vfill
+
+    {\large [Ciudad], [País]}\\[0.2cm]
+    {\large Enero 2026}
+\end{titlepage}
+
+% ============================================================================
+% PÁGINAS PRELIMINARES
+% ============================================================================
+\frontmatter
+
+% Página en blanco
+\newpage\thispagestyle{empty}\mbox{}\newpage
+
+% Acta de aprobación (placeholder)
+\chapter*{Acta de Aprobación}
+\addcontentsline{toc}{chapter}{Acta de Aprobación}
+\thispagestyle{empty}
+
+Los miembros del Comité de Tesis certifican que la tesis titulada ``Detección de COVID-19 mediante Landmarks Anatómicos y Normalización Geométrica en Radiografías de Tórax'' presentada por [Nombre del Autor] ha sido aprobada como requisito parcial para obtener el grado de [Doctor/Maestro] en [Programa].
+
+\vspace{2cm}
+
+\begin{center}
+\begin{tabular}{p{7cm}p{7cm}}
+\rule{6cm}{0.4pt} & \rule{6cm}{0.4pt} \\
+[Nombre del Director] & [Nombre del Sinodal 1] \\
+Director de Tesis & Sinodal \\[2cm]
+\rule{6cm}{0.4pt} & \rule{6cm}{0.4pt} \\
+[Nombre del Sinodal 2] & [Nombre del Sinodal 3] \\
+Sinodal & Sinodal \\
+\end{tabular}
+\end{center}
+
+\vspace{2cm}
+\begin{center}
+Fecha: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+\end{center}
+
+% Dedicatoria
+\chapter*{Dedicatoria}
+\addcontentsline{toc}{chapter}{Dedicatoria}
+\thispagestyle{empty}
+\vspace*{5cm}
+\begin{flushright}
+\textit{A [personas a quienes se dedica].}\\[0.5cm]
+\textit{[Mensaje personal opcional]}
+\end{flushright}
+
+% Agradecimientos
+\chapter*{Agradecimientos}
+\addcontentsline{toc}{chapter}{Agradecimientos}
+
+[Espacio para agradecimientos personales, institucionales, y de financiamiento]
+
+Agradezco a mi director de tesis, [Nombre], por su guía y apoyo durante el desarrollo de esta investigación.
+
+A los miembros del comité de tesis por sus valiosos comentarios y sugerencias.
+
+A [Institución/Programa de financiamiento] por el apoyo económico recibido.
+
+A mi familia y amigos por su apoyo incondicional.
+
+% ============================================================================
+% RESUMEN
+% ============================================================================
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+
+\textbf{Título:} Detección de COVID-19 mediante Landmarks Anatómicos y Normalización Geométrica en Radiografías de Tórax
+
+\textbf{Autor:} [Nombre del Autor]
+
+\textbf{Director:} [Nombre del Director]
+
+\vspace{0.5cm}
+
+La pandemia de COVID-19 ha puesto de manifiesto la necesidad de herramientas de diagnóstico automatizado que sean precisas, robustas y confiables. Las radiografías de tórax representan una modalidad de imagen accesible y económica para la detección de neumonía asociada a COVID-19. Sin embargo, los sistemas de clasificación basados en deep learning enfrentan desafíos significativos relacionados con la variabilidad geométrica de las imágenes y su sensibilidad a perturbaciones comunes en entornos clínicos.
+
+Esta tesis presenta un sistema de aprendizaje profundo de dos etapas para la detección de COVID-19 en radiografías de tórax, basado en un enfoque novedoso de normalización geométrica. La hipótesis central sostiene que el alineamiento de imágenes a una forma canónica mediante transformaciones afines por partes (\textit{piecewise affine warping}), guiadas por landmarks anatómicos predichos automáticamente, mejora la clasificación en términos de accuracy, robustez a perturbaciones y generalización.
+
+El sistema propuesto consta de dos componentes principales:
+
+\begin{enumerate}
+    \item \textbf{Modelo de predicción de landmarks:} Una red neuronal basada en ResNet-18 con módulos de Coordinate Attention, entrenada para predecir 15 puntos de referencia anatómicos que definen el contorno pulmonar. El ensemble de 4 modelos con Test-Time Augmentation alcanza un error de \textbf{3.61 píxeles}.
+
+    \item \textbf{Sistema de normalización geométrica:} Un pipeline de warping que utiliza triangulación de Delaunay y transformaciones afines locales para alinear las imágenes a una forma canónica calculada mediante Análisis Procrustes Generalizado (GPA).
+\end{enumerate}
+
+Los resultados experimentales demuestran la validez de la hipótesis:
+
+\begin{itemize}
+    \item Los modelos entrenados con imágenes warpeadas alcanzan una accuracy del \textbf{99.10\%}, superando el 98.84\% obtenido con imágenes originales.
+
+    \item La robustez a compresión JPEG mejora hasta \textbf{30 veces} (0.53\% vs 16.14\% de degradación bajo JPEG Q50).
+
+    \item La robustez a blur mejora \textbf{5.9 veces} (2.43\% vs 14.43\% de degradación).
+
+    \item El gap de generalización within-domain se reduce de 7.70\% a 3.17\%, representando una mejora de \textbf{2.43 veces}.
+
+    \item El análisis Fisher LDA, realizado sin deep learning, confirma que el warping aumenta la separabilidad lineal en \textbf{+4.16\%}, validando que el efecto es genuinamente geométrico.
+\end{itemize}
+
+Se identifica que el mecanismo de robustez proviene principalmente ($\sim$75\%) de la reducción implícita de información debido al menor \textit{fill rate}, con un 25\% adicional atribuible a la normalización geométrica per se.
+
+Como limitación importante, se reconoce que el warping no resuelve el problema de domain shift entre instituciones médicas diferentes. La evaluación en el dataset externo FedCOVIDx (8,482 muestras de hospitales distintos) muestra una accuracy de aproximadamente 55\%, cercana al azar. Sin embargo, este comportamiento afecta igualmente a los modelos entrenados con imágenes originales, demostrando que es un problema fundamental de las imágenes médicas y no una limitación del método propuesto.
+
+\vspace{0.5cm}
+\textbf{Palabras clave:} COVID-19, radiografías de tórax, landmarks anatómicos, normalización geométrica, warping, deep learning, robustez, redes neuronales convolucionales, clasificación de imágenes médicas.
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+\textbf{Title:} COVID-19 Detection via Anatomical Landmarks and Geometric Normalization in Chest X-rays
+
+\textbf{Author:} [Author Name]
+
+\textbf{Advisor:} [Advisor Name]
+
+\vspace{0.5cm}
+
+The COVID-19 pandemic has highlighted the need for automated diagnostic tools that are accurate, robust, and reliable. Chest X-rays represent an accessible and cost-effective imaging modality for detecting COVID-19-associated pneumonia. However, deep learning-based classification systems face significant challenges related to geometric variability in images and their sensitivity to common perturbations in clinical settings.
+
+This thesis presents a two-stage deep learning system for COVID-19 detection in chest X-rays, based on a novel geometric normalization approach. The central hypothesis states that aligning images to a canonical shape through piecewise affine warping, guided by automatically predicted anatomical landmarks, improves classification in terms of accuracy, robustness to perturbations, and generalization.
+
+The proposed system consists of two main components:
+
+\begin{enumerate}
+    \item \textbf{Landmark prediction model:} A neural network based on ResNet-18 with Coordinate Attention modules, trained to predict 15 anatomical reference points defining the lung contour. The ensemble of 4 models with Test-Time Augmentation achieves an error of \textbf{3.61 pixels}.
+
+    \item \textbf{Geometric normalization system:} A warping pipeline using Delaunay triangulation and local affine transformations to align images to a canonical shape computed via Generalized Procrustes Analysis (GPA).
+\end{enumerate}
+
+Experimental results demonstrate the validity of the hypothesis:
+
+\begin{itemize}
+    \item Models trained with warped images achieve \textbf{99.10\%} accuracy, surpassing the 98.84\% obtained with original images.
+
+    \item Robustness to JPEG compression improves up to \textbf{30 times} (0.53\% vs 16.14\% degradation under JPEG Q50).
+
+    \item Robustness to blur improves \textbf{5.9 times} (2.43\% vs 14.43\% degradation).
+
+    \item The within-domain generalization gap reduces from 7.70\% to 3.17\%, representing a \textbf{2.43x} improvement.
+
+    \item Fisher LDA analysis, performed without deep learning, confirms that warping increases linear separability by \textbf{+4.16\%}, validating that the effect is genuinely geometric.
+\end{itemize}
+
+The robustness mechanism is identified as primarily ($\sim$75\%) coming from implicit information reduction due to lower fill rate, with an additional 25\% attributable to geometric normalization per se.
+
+As an important limitation, it is acknowledged that warping does not solve the domain shift problem between different medical institutions. Evaluation on the external FedCOVIDx dataset (8,482 samples from different hospitals) shows accuracy of approximately 55\%, near random chance. However, this behavior equally affects models trained with original images, demonstrating that it is a fundamental problem in medical imaging rather than a limitation of the proposed method.
+
+\vspace{0.5cm}
+\textbf{Keywords:} COVID-19, chest X-rays, anatomical landmarks, geometric normalization, warping, deep learning, robustness, convolutional neural networks, medical image classification.
+
+% ============================================================================
+% ÍNDICES
+% ============================================================================
+\tableofcontents
+
+\listoffigures
+\addcontentsline{toc}{chapter}{Lista de Figuras}
+
+\listoftables
+\addcontentsline{toc}{chapter}{Lista de Tablas}
+
+% Lista de algoritmos
+\listofalgorithms
+\addcontentsline{toc}{chapter}{Lista de Algoritmos}
+
+% ============================================================================
+% LISTA DE SÍMBOLOS Y ABREVIATURAS
+% ============================================================================
+\chapter*{Lista de Símbolos y Abreviaturas}
+\addcontentsline{toc}{chapter}{Lista de Símbolos y Abreviaturas}
+
+\section*{Abreviaturas}
+
+\begin{tabular}{ll}
+    \textbf{AUC} & Area Under the Curve (Área Bajo la Curva) \\
+    \textbf{CLAHE} & Contrast Limited Adaptive Histogram Equalization \\
+    \textbf{CNN} & Convolutional Neural Network (Red Neuronal Convolucional) \\
+    \textbf{COVID-19} & Coronavirus Disease 2019 \\
+    \textbf{FC} & Fully Connected (Completamente Conectada) \\
+    \textbf{GPA} & Generalized Procrustes Analysis (Análisis Procrustes Generalizado) \\
+    \textbf{GPU} & Graphics Processing Unit \\
+    \textbf{JPEG} & Joint Photographic Experts Group \\
+    \textbf{LDA} & Linear Discriminant Analysis (Análisis Discriminante Lineal) \\
+    \textbf{LR} & Learning Rate (Tasa de Aprendizaje) \\
+    \textbf{PCA} & Principal Component Analysis (Análisis de Componentes Principales) \\
+    \textbf{PFS} & Pulmonary Focus Score \\
+    \textbf{ReLU} & Rectified Linear Unit \\
+    \textbf{ROC} & Receiver Operating Characteristic \\
+    \textbf{SARS-CoV-2} & Severe Acute Respiratory Syndrome Coronavirus 2 \\
+    \textbf{TTA} & Test-Time Augmentation \\
+\end{tabular}
+
+\section*{Símbolos Matemáticos}
+
+\begin{tabular}{ll}
+    $\mathbf{x}$ & Vector de características \\
+    $\mathbf{X}$ & Matriz de datos \\
+    $\mathbf{p}$ & Coordenadas de un landmark \\
+    $\bar{X}$ & Forma canónica (media Procrustes) \\
+    $R$ & Matriz de rotación \\
+    $s$ & Factor de escala \\
+    $\mathbf{t}$ & Vector de traslación \\
+    $\omega$ & Parámetro de Wing Loss \\
+    $\epsilon$ & Parámetro de Wing Loss \\
+    $\sigma$ & Desviación estándar / parámetro de blur \\
+    $\| \cdot \|$ & Norma euclidiana \\
+\end{tabular}
+
+% ============================================================================
+% CONTENIDO PRINCIPAL
+% ============================================================================
+\mainmatter
+
+% ============================================================================
+\chapter{Introducción}
+\label{chap:introduccion}
+% ============================================================================
+
+\section{Contexto y Motivación}
+
+La pandemia de COVID-19, causada por el virus SARS-CoV-2, ha representado uno de los mayores desafíos de salud pública del siglo XXI. Desde su aparición en Wuhan, China, a finales de 2019, la enfermedad se propagó rápidamente a nivel mundial, provocando millones de muertes y colapsando sistemas de salud en numerosos países. En este contexto, la detección temprana y precisa de la enfermedad se convirtió en una prioridad fundamental para el control epidemiológico y el tratamiento oportuno de los pacientes.
+
+Entre las modalidades de diagnóstico por imagen, las radiografías de tórax destacan por su accesibilidad, bajo costo y disponibilidad generalizada en centros médicos de todos los niveles. A diferencia de la tomografía computarizada (TC), que ofrece mayor resolución pero requiere equipamiento especializado y costoso, las radiografías pueden obtenerse rápidamente y con menor exposición a radiación para el paciente.
+
+Sin embargo, la interpretación de radiografías de tórax para la detección de COVID-19 presenta desafíos significativos:
+
+\begin{enumerate}
+    \item \textbf{Variabilidad geométrica:} Las radiografías exhiben diferencias sustanciales en la posición del paciente, rotación del tórax, nivel de inspiración, y distancia al detector. Estas variaciones introducen ruido geométrico que puede afectar la clasificación.
+
+    \item \textbf{Calidad de imagen:} En entornos clínicos reales, las imágenes frecuentemente están sujetas a compresión JPEG para almacenamiento y transmisión, pueden presentar artefactos de movimiento, ruido electrónico, o borrosidad por diversos factores técnicos.
+
+    \item \textbf{Subjetividad diagnóstica:} La interpretación manual de radiografías está sujeta a variabilidad inter-observador, fatiga del radiólogo, y presión por alta carga de trabajo durante picos pandémicos.
+
+    \item \textbf{Similitud entre patologías:} Los hallazgos radiológicos del COVID-19 (opacidades en vidrio esmerilado, consolidaciones bilaterales) pueden ser similares a otras neumonías virales o bacterianas, dificultando el diagnóstico diferencial.
+\end{enumerate}
+
+Los sistemas de inteligencia artificial basados en deep learning han demostrado capacidad para asistir en el diagnóstico médico, alcanzando en algunos casos rendimiento comparable al de especialistas humanos. Sin embargo, la mayoría de los enfoques existentes procesan las imágenes directamente sin considerar la normalización geométrica previa, lo que puede limitar tanto su rendimiento como su robustez ante las variaciones mencionadas.
+
+Esta tesis propone que la \textbf{normalización geométrica mediante landmarks anatómicos} puede abordar estos desafíos, mejorando la clasificación al reducir la variabilidad irrelevante y aumentando la robustez del sistema ante perturbaciones comunes en entornos clínicos.
+
+\section{Planteamiento del Problema}
+
+El problema central que aborda esta investigación puede formularse de la siguiente manera:
+
+\begin{quote}
+\textit{¿Cómo mejorar la clasificación de COVID-19 en radiografías de tórax mediante normalización geométrica basada en landmarks anatómicos, y cuáles son los efectos de esta normalización en términos de accuracy, robustez a perturbaciones, y capacidad de generalización?}
+\end{quote}
+
+Este problema se descompone en los siguientes subproblemas:
+
+\begin{enumerate}
+    \item \textbf{Predicción de landmarks:} ¿Es posible predecir con precisión suficiente los landmarks anatómicos que definen el contorno pulmonar en radiografías de tórax?
+
+    \item \textbf{Normalización geométrica:} ¿Cómo implementar un sistema de warping que alinee las imágenes a una forma canónica de manera robusta?
+
+    \item \textbf{Impacto en clasificación:} ¿La normalización geométrica mejora la accuracy de clasificación comparada con el uso de imágenes sin normalizar?
+
+    \item \textbf{Robustez:} ¿Los modelos entrenados con imágenes normalizadas son más robustos ante perturbaciones como compresión JPEG, blur, y ruido?
+
+    \item \textbf{Generalización:} ¿La normalización mejora la capacidad de generalización del modelo a variantes del dataset?
+
+    \item \textbf{Mecanismo:} ¿Cuál es el mecanismo que explica las mejoras observadas?
+\end{enumerate}
+
+\section{Hipótesis de Investigación}
+
+La hipótesis central de esta tesis es:
+
+\begin{quote}
+\textbf{Hipótesis:} \textit{El alineamiento geométrico (warping) de imágenes de rayos X de tórax a una forma canónica, basado en landmarks anatómicos predichos automáticamente mediante deep learning, mejora la clasificación de COVID-19 en términos de accuracy, robustez a perturbaciones, y generalización within-domain, en comparación con modelos entrenados con imágenes sin normalizar.}
+\end{quote}
+
+Formalmente, definimos:
+
+\begin{itemize}
+    \item \textbf{H$_0$ (Hipótesis Nula):} No existe diferencia significativa en el rendimiento de clasificación entre modelos entrenados con imágenes warpeadas y modelos entrenados con imágenes originales.
+
+    \item \textbf{H$_1$ (Hipótesis Alternativa):} Los modelos entrenados con imágenes warpeadas presentan mejor rendimiento en al menos una de las métricas: accuracy, robustez a perturbaciones, o generalización.
+\end{itemize}
+
+\section{Objetivos}
+
+\subsection{Objetivo General}
+
+Desarrollar y validar experimentalmente un sistema de clasificación de COVID-19 en radiografías de tórax basado en normalización geométrica mediante landmarks anatómicos, demostrando mejoras cuantificables en accuracy, robustez y generalización respecto a enfoques sin normalización.
+
+\subsection{Objetivos Específicos}
+
+\begin{enumerate}
+    \item \textbf{Desarrollar un modelo de predicción de landmarks} basado en ResNet-18 con Coordinate Attention, capaz de predecir 15 landmarks anatómicos con error inferior a 5 píxeles.
+
+    \item \textbf{Implementar un sistema de normalización geométrica} basado en transformaciones afines por partes (piecewise affine warping), utilizando la forma canónica calculada mediante Análisis Procrustes Generalizado.
+
+    \item \textbf{Comparar experimentalmente} el rendimiento de clasificadores entrenados con imágenes warpeadas versus originales, bajo condiciones idénticas de arquitectura, preprocesamiento, e hiperparámetros.
+
+    \item \textbf{Evaluar la robustez} de ambos enfoques frente a perturbaciones comunes: compresión JPEG, blur gaussiano, y ruido.
+
+    \item \textbf{Analizar la generalización} mediante evaluación cruzada entre variantes del dataset.
+
+    \item \textbf{Validar geométricamente} el efecto del warping mediante análisis Fisher LDA, sin utilizar deep learning.
+
+    \item \textbf{Identificar el mecanismo} de robustez mediante experimentos de control.
+
+    \item \textbf{Documentar las limitaciones}, particularmente respecto al domain shift entre instituciones médicas.
+\end{enumerate}
+
+\section{Contribuciones}
+
+Las principales contribuciones de esta tesis son:
+
+\begin{enumerate}
+    \item \textbf{Enfoque de dos etapas para clasificación médica:} Se propone un pipeline novedoso que combina predicción de landmarks anatómicos con normalización geométrica antes de la clasificación. Este enfoque es generalizable a otras aplicaciones de imágenes médicas donde la variabilidad geométrica es un factor relevante.
+
+    \item \textbf{Demostración rigurosa de mejora en robustez:} Se proporciona evidencia experimental extensa de que el warping mejora la robustez a perturbaciones comunes (JPEG, blur) hasta 30 veces, con implicaciones importantes para el despliegue clínico.
+
+    \item \textbf{Validación mediante métodos clásicos:} Se confirma que el efecto del warping es genuinamente geométrico mediante análisis Fisher LDA, proporcionando validación independiente del deep learning.
+
+    \item \textbf{Análisis cuantitativo del mecanismo de robustez:} Se descompone el mecanismo en reducción de información ($\sim$75\%) y normalización geométrica ($\sim$25\%), ofreciendo comprensión teórica del fenómeno.
+
+    \item \textbf{Documentación honesta de limitaciones:} Se analiza rigurosamente el domain shift como limitación fundamental, demostrando que afecta tanto a modelos warped como originales y no es atribuible al método propuesto.
+\end{enumerate}
+
+\section{Justificación}
+
+La relevancia de esta investigación se sustenta en varios aspectos:
+
+\subsection{Relevancia Científica}
+
+\begin{itemize}
+    \item Contribuye al entendimiento de cómo la normalización geométrica afecta el aprendizaje de características en redes neuronales convolucionales.
+    \item Proporciona un marco metodológico para evaluar robustez en sistemas de clasificación de imágenes médicas.
+    \item Ofrece validación mediante métodos clásicos (Fisher LDA) que complementa los resultados de deep learning.
+\end{itemize}
+
+\subsection{Relevancia Práctica}
+
+\begin{itemize}
+    \item Los sistemas de diagnóstico asistido por computadora pueden beneficiarse de mayor robustez ante variaciones de calidad de imagen.
+    \item La metodología propuesta es aplicable a otras modalidades de imagen médica y otras patologías.
+    \item La identificación de limitaciones (domain shift) informa sobre los requisitos para despliegue clínico.
+\end{itemize}
+
+\subsection{Relevancia Social}
+
+\begin{itemize}
+    \item Herramientas de diagnóstico más robustas pueden mejorar la atención en centros con recursos limitados.
+    \item El análisis transparente de limitaciones contribuye a un uso responsable de IA en medicina.
+\end{itemize}
+
+\section{Alcances y Limitaciones}
+
+\subsection{Alcances}
+
+\begin{itemize}
+    \item Esta tesis abarca el desarrollo completo de un sistema de dos etapas para clasificación de COVID-19.
+    \item Se evalúa exhaustivamente accuracy, robustez, y generalización.
+    \item Se proporciona validación mediante métodos tanto de deep learning como clásicos.
+    \item Se documenta el código fuente para reproducibilidad.
+\end{itemize}
+
+\subsection{Limitaciones}
+
+\begin{itemize}
+    \item El dataset utilizado contiene 957 muestras, lo cual es pequeño para conclusiones definitivas.
+    \item Las anotaciones de landmarks fueron realizadas por un solo anotador; la variabilidad inter-anotador no se cuantifica.
+    \item El sistema no ha sido validado para uso clínico y requeriría aprobación regulatoria.
+    \item El domain shift entre instituciones permanece como limitación fundamental.
+\end{itemize}
+
+\section{Estructura de la Tesis}
+
+Esta tesis está organizada de la siguiente manera:
+
+\begin{itemize}
+    \item \textbf{Capítulo 2 - Marco Teórico:} Presenta los fundamentos teóricos de deep learning, redes convolucionales, mecanismos de atención, normalización geométrica, y el estado del arte en clasificación de COVID-19.
+
+    \item \textbf{Capítulo 3 - Metodología:} Describe en detalle el sistema propuesto, incluyendo la arquitectura del modelo de landmarks, el proceso de warping, y las métricas de evaluación.
+
+    \item \textbf{Capítulo 4 - Implementación:} Detalla los aspectos técnicos de implementación, incluyendo el dataset, preprocesamiento, hiperparámetros, y configuración experimental.
+
+    \item \textbf{Capítulo 5 - Resultados:} Presenta los resultados experimentales de predicción de landmarks, clasificación, robustez, generalización, y validación geométrica.
+
+    \item \textbf{Capítulo 6 - Discusión:} Analiza los resultados en el contexto de la hipótesis, interpreta el mecanismo de robustez, y discute las implicaciones y limitaciones.
+
+    \item \textbf{Capítulo 7 - Conclusiones:} Resume las contribuciones, conclusiones principales, y direcciones de trabajo futuro.
+\end{itemize}
+
+% ============================================================================
+\chapter{Marco Teórico y Estado del Arte}
+\label{chap:marco_teorico}
+% ============================================================================
+
+\section{COVID-19: Aspectos Clínicos y Diagnóstico por Imagen}
+
+\subsection{Epidemiología y Patofisiología}
+
+El COVID-19 (Coronavirus Disease 2019) es una enfermedad infecciosa causada por el virus SARS-CoV-2 (Severe Acute Respiratory Syndrome Coronavirus 2). El virus pertenece a la familia Coronaviridae y se transmite principalmente por gotículas respiratorias y aerosoles.
+
+La patofisiología del COVID-19 involucra principalmente el sistema respiratorio, donde el virus utiliza el receptor ACE2 (enzima convertidora de angiotensina 2) para ingresar a las células. La infección puede manifestarse en un espectro que va desde casos asintomáticos hasta neumonía severa con síndrome de dificultad respiratoria aguda (SDRA).
+
+\subsection{Manifestaciones Radiológicas}
+
+Las radiografías de tórax de pacientes con COVID-19 presentan patrones característicos que incluyen:
+
+\begin{enumerate}
+    \item \textbf{Opacidades en vidrio esmerilado (ground-glass opacities):} Áreas de aumento de densidad que no oscurecen los vasos subyacentes, indicativas de daño alveolar temprano.
+
+    \item \textbf{Consolidaciones:} Áreas de opacificación densa que pueden borrar los márgenes vasculares, indicando llenado alveolar más avanzado.
+
+    \item \textbf{Distribución periférica y basal:} Los hallazgos tienden a localizarse en las regiones periféricas y bases pulmonares, especialmente en etapas tempranas.
+
+    \item \textbf{Afectación bilateral:} La enfermedad frecuentemente afecta ambos pulmones de manera simétrica o asimétrica.
+
+    \item \textbf{Engrosamiento intersticial:} Puede observarse engrosamiento de septos interlobulillares.
+\end{enumerate}
+
+\subsection{Comparación con Otras Neumonías}
+
+El diagnóstico diferencial radiológico entre COVID-19 y otras neumonías virales (influenza, virus sincitial respiratorio) o bacterianas puede ser desafiante, ya que comparten algunos hallazgos. Las neumonías bacterianas típicamente muestran consolidaciones lobares más focales, mientras que las neumonías virales tienden a presentar patrones más difusos.
+
+\subsection{Limitaciones del Diagnóstico por Imagen}
+
+Es importante reconocer que la radiografía de tórax tiene limitaciones:
+
+\begin{itemize}
+    \item Sensibilidad menor que la TC, especialmente en etapas tempranas
+    \item Variabilidad inter-observador en la interpretación
+    \item Hallazgos no patognomónicos (pueden verse en otras condiciones)
+    \item Calidad de imagen variable según técnica y equipamiento
+\end{itemize}
+
+\section{Deep Learning en Imágenes Médicas}
+
+\subsection{Fundamentos de Redes Neuronales}
+
+Las redes neuronales artificiales son modelos computacionales inspirados en la estructura del cerebro biológico. Una neurona artificial calcula una suma ponderada de sus entradas, aplica una función de activación no lineal, y produce una salida:
+
+\begin{equation}
+y = f\left(\sum_{i=1}^{n} w_i x_i + b\right) = f(\mathbf{w}^T\mathbf{x} + b)
+\end{equation}
+
+donde $\mathbf{x}$ es el vector de entradas, $\mathbf{w}$ son los pesos, $b$ es el sesgo, y $f$ es la función de activación.
+
+\subsection{Redes Neuronales Convolucionales (CNNs)}
+
+Las CNNs son arquitecturas especializadas para procesamiento de imágenes que explotan la estructura espacial de los datos mediante:
+
+\begin{enumerate}
+    \item \textbf{Capas convolucionales:} Aplican filtros que detectan patrones locales (bordes, texturas, formas) de manera traslacionalmente invariante:
+    \begin{equation}
+    (f * g)[m,n] = \sum_{i}\sum_{j} f[i,j] \cdot g[m-i, n-j]
+    \end{equation}
+
+    \item \textbf{Capas de pooling:} Reducen la resolución espacial preservando las características más relevantes, típicamente mediante operaciones de máximo o promedio.
+
+    \item \textbf{Capas fully-connected:} Al final de la red, combinan las características extraídas para la tarea final (clasificación, regresión).
+\end{enumerate}
+
+\subsection{Transfer Learning}
+
+El transfer learning permite utilizar modelos preentrenados en grandes datasets (como ImageNet con millones de imágenes) como punto de partida para tareas con datos limitados. Las estrategias comunes incluyen:
+
+\begin{itemize}
+    \item \textbf{Feature extraction:} Congelar el backbone preentrenado y entrenar solo las capas finales.
+    \item \textbf{Fine-tuning:} Descongelar y ajustar algunas o todas las capas con learning rates pequeños.
+\end{itemize}
+
+\subsection{Arquitectura ResNet}
+
+ResNet (Residual Network) \cite{he2016deep} introdujo las conexiones residuales que permiten entrenar redes muy profundas al mitigar el problema del gradiente que desaparece:
+
+\begin{equation}
+\mathbf{y} = \mathcal{F}(\mathbf{x}, \{W_i\}) + \mathbf{x}
+\end{equation}
+
+donde $\mathcal{F}$ representa las transformaciones residuales a aprender. Esta formulación facilita el aprendizaje de mapeos identidad cuando es apropiado.
+
+ResNet-18 contiene 18 capas con pesos y es una variante eficiente que balancea capacidad y costo computacional, siendo adecuada para datasets de tamaño moderado.
+
+\section{Mecanismos de Atención en Redes Neuronales}
+
+\subsection{Atención en Visión por Computadora}
+
+Los mecanismos de atención permiten a las redes enfocarse en regiones relevantes de la entrada, modulando las características según su importancia contextual.
+
+\subsection{Coordinate Attention}
+
+El módulo de Coordinate Attention \cite{hou2021coordinate} fue diseñado para capturar dependencias espaciales de largo alcance incorporando información posicional. A diferencia de otros mecanismos de atención que agregan globalmente, Coordinate Attention preserva información posicional mediante:
+
+\begin{enumerate}
+    \item \textbf{Pooling por coordenadas:} Se aplica pooling promedio a lo largo de cada dimensión espacial:
+    \begin{align}
+    z_c^h(h) &= \frac{1}{W} \sum_{0 \leq i < W} x_c(h, i) \\
+    z_c^w(w) &= \frac{1}{H} \sum_{0 \leq j < H} x_c(j, w)
+    \end{align}
+
+    \item \textbf{Concatenación y transformación:} Los tensores de altura y anchura se concatenan y pasan por una convolución 1×1 con activación:
+    \begin{equation}
+    f = \sigma(F_1([\mathbf{z}^h, \mathbf{z}^w]))
+    \end{equation}
+
+    \item \textbf{Separación y generación de atención:} El tensor se divide y se generan mapas de atención separados para cada dimensión:
+    \begin{align}
+    g^h &= \sigma(F_h(f^h)) \\
+    g^w &= \sigma(F_w(f^w))
+    \end{align}
+
+    \item \textbf{Modulación:} Las características originales se modulan multiplicativamente:
+    \begin{equation}
+    y_c(i,j) = x_c(i,j) \times g_c^h(i) \times g_c^w(j)
+    \end{equation}
+\end{enumerate}
+
+Este mecanismo es particularmente relevante para la predicción de landmarks, donde la información posicional es fundamental.
+
+\section{Predicción de Landmarks y Funciones de Pérdida}
+
+\subsection{Landmarks Anatómicos}
+
+Los landmarks son puntos de referencia anatómicos que definen la geometría de estructuras biológicas. En el contexto de radiografías de tórax, los 15 landmarks utilizados en esta tesis definen:
+
+\begin{itemize}
+    \item \textbf{Contorno pulmonar izquierdo (5 puntos):} L3, L5, L7, L12, L14
+    \item \textbf{Contorno pulmonar derecho (5 puntos):} L4, L6, L8, L13, L15
+    \item \textbf{Eje central mediastínico (5 puntos):} L1, L9, L10, L11, L2
+\end{itemize}
+
+\subsection{Wing Loss}
+
+Para la regresión de landmarks, se utiliza Wing Loss \cite{feng2018wing}, diseñada específicamente para localización de puntos de referencia faciales y anatómicos. Esta función de pérdida maneja de manera diferenciada los errores pequeños (cercanos al óptimo) y grandes:
+
+\begin{equation}
+\text{wing}(x) = \begin{cases}
+\omega \ln(1 + |x|/\epsilon) & \text{si } |x| < \omega \\
+|x| - C & \text{en otro caso}
+\end{cases}
+\end{equation}
+
+donde:
+\begin{itemize}
+    \item $\omega = 10$ controla el umbral entre regímenes
+    \item $\epsilon = 2$ controla la curvatura en errores pequeños
+    \item $C = \omega - \omega \ln(1 + \omega/\epsilon)$ garantiza continuidad
+\end{itemize}
+
+La forma logarítmica para errores pequeños proporciona gradientes más grandes que MSE, acelerando la convergencia hacia el óptimo. La forma lineal para errores grandes evita la sensibilidad excesiva a outliers.
+
+\section{Normalización Geométrica}
+
+\subsection{Análisis Procrustes Generalizado (GPA)}
+
+El GPA es un método estadístico para analizar la forma de objetos eliminando las diferencias debidas a traslación, rotación y escala. Dadas $n$ configuraciones de landmarks $X_1, X_2, \ldots, X_n$, el GPA encuentra:
+
+\begin{enumerate}
+    \item \textbf{Centrado:} $X_i \leftarrow X_i - \bar{X}_i$ (media de cada configuración)
+
+    \item \textbf{Escalado:} $X_i \leftarrow X_i / \|X_i\|$ (norma Frobenius)
+
+    \item \textbf{Rotación óptima:} Para cada par de formas, encontrar la rotación $R$ que minimiza:
+    \begin{equation}
+    \min_{R \in SO(2)} \| X_i R - X_j \|^2
+    \end{equation}
+
+    La solución se obtiene mediante descomposición SVD de $X_i^T X_j$.
+
+    \item \textbf{Iteración:} Repetir hasta convergencia, actualizando la forma media $\bar{X}$.
+\end{enumerate}
+
+La forma canónica resultante $\bar{X}$ representa la ``forma promedio'' del conjunto de entrenamiento.
+
+\subsection{Warping Afín por Partes}
+
+La transformación afín por partes utiliza triangulación para definir mapeos locales suaves entre configuraciones de landmarks:
+
+\begin{enumerate}
+    \item \textbf{Triangulación de Delaunay:} Se construye una malla triangular sobre los landmarks destino (canónicos). La triangulación de Delaunay maximiza el ángulo mínimo de los triángulos, evitando triángulos degenerados.
+
+    \item \textbf{Puntos de borde:} Para garantizar cobertura completa, se añaden 8 puntos adicionales: 4 esquinas de la imagen y 4 puntos medios de los bordes.
+
+    \item \textbf{Transformación afín por triángulo:} Para cada triángulo con vértices $(p_1, p_2, p_3)$ en origen y $(q_1, q_2, q_3)$ en destino, la transformación afín $T: p \mapsto q$ se calcula como:
+    \begin{equation}
+    \begin{pmatrix} q_x \\ q_y \end{pmatrix} = \begin{pmatrix} a & b \\ c & d \end{pmatrix} \begin{pmatrix} p_x \\ p_y \end{pmatrix} + \begin{pmatrix} e \\ f \end{pmatrix}
+    \end{equation}
+
+    Los 6 parámetros $(a, b, c, d, e, f)$ se obtienen resolviendo un sistema de 6 ecuaciones con los 3 pares de vértices correspondientes.
+
+    \item \textbf{Mapeo inverso:} Para cada píxel en la imagen destino, se determina el triángulo al que pertenece, se aplica la transformación inversa para encontrar las coordenadas en la imagen origen, y se interpola el valor del píxel (típicamente bilineal).
+\end{enumerate}
+
+\subsection{Fill Rate}
+
+El \textit{fill rate} es la proporción de píxeles en la imagen destino que tienen un mapeo válido desde la imagen origen. Los píxeles sin correspondencia (fuera del área triangulada) quedan negros (valor 0).
+
+\begin{itemize}
+    \item \textbf{Fill rate bajo ($\sim$47\%):} Sin puntos de borde, solo el área cubierta por los landmarks tiene mapeo válido.
+    \item \textbf{Fill rate alto ($\sim$96-99\%):} Con puntos de borde, casi toda la imagen tiene mapeo válido.
+\end{itemize}
+
+Como se demostrará, el fill rate tiene un impacto significativo en la robustez del clasificador.
+
+\section{Estado del Arte en Clasificación de COVID-19}
+
+[Esta sección se desarrollará con una revisión de trabajos relacionados, incluyendo:
+- COVID-Net
+- CheXNet
+- DenseNet para COVID-19
+- Enfoques de transfer learning
+- Métodos de ensemble
+- Tabla comparativa de resultados]
+
+\section{Robustez en Modelos de Deep Learning}
+
+[Esta sección cubrirá:
+- Tipos de perturbaciones (adversariales, naturales)
+- Métricas de robustez
+- Técnicas de mejora de robustez
+- Relevancia en imágenes médicas]
+
+% ============================================================================
+\chapter{Metodología}
+\label{chap:metodologia}
+% ============================================================================
+
+\section{Visión General del Sistema}
+
+El sistema propuesto sigue un enfoque de dos etapas, ilustrado en la Figura \ref{fig:pipeline_completo}:
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.5cm,
+        box/.style={rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, text centered},
+        arrow/.style={->, thick}
+    ]
+
+    % Nodos
+    \node[box] (input) {Imagen Original};
+    \node[box, right=of input] (landmarks) {Predicción de\\Landmarks};
+    \node[box, right=of landmarks] (warping) {Warping\\Geométrico};
+    \node[box, right=of warping] (classifier) {Clasificador\\CNN};
+    \node[box, right=of classifier] (output) {Diagnóstico};
+
+    % Flechas
+    \draw[arrow] (input) -- (landmarks);
+    \draw[arrow] (landmarks) -- (warping);
+    \draw[arrow] (warping) -- (classifier);
+    \draw[arrow] (classifier) -- (output);
+
+    % Etiquetas
+    \node[below=0.3cm of landmarks] {\small 15 landmarks};
+    \node[below=0.3cm of warping] {\small Imagen normalizada};
+    \node[below=0.3cm of output] {\small COVID/Normal/VP};
+
+    \end{tikzpicture}
+    \caption{Pipeline completo del sistema de clasificación propuesto.}
+    \label{fig:pipeline_completo}
+\end{figure}
+
+\begin{enumerate}
+    \item \textbf{Etapa 1 - Predicción de Landmarks:} Una red CNN predice las coordenadas de 15 landmarks anatómicos.
+
+    \item \textbf{Etapa 2 - Normalización Geométrica:} Las imágenes se transforman a una forma canónica mediante warping afín por partes.
+
+    \item \textbf{Etapa 3 - Clasificación:} Una segunda CNN clasifica las imágenes normalizadas en tres categorías: COVID-19, Normal, o Neumonía Viral.
+\end{enumerate}
+
+\section{Modelo de Predicción de Landmarks}
+
+\subsection{Arquitectura}
+
+El modelo de predicción de landmarks se basa en ResNet-18 con las siguientes modificaciones:
+
+\begin{figure}[H]
+    \centering
+    \fbox{\parbox{0.9\textwidth}{\centering [Figura: Diagrama detallado de la arquitectura del modelo de landmarks]}}
+    \caption{Arquitectura del modelo de predicción de landmarks.}
+    \label{fig:landmark_architecture}
+\end{figure}
+
+\subsubsection{Backbone: ResNet-18}
+
+\begin{itemize}
+    \item Pesos preentrenados en ImageNet
+    \item Capas convolucionales congeladas en Fase 1
+    \item Capa fully-connected final removida
+    \item Salida: tensor de características de dimensión 512
+\end{itemize}
+
+\subsubsection{Módulo de Coordinate Attention}
+
+Insertado después del backbone para capturar dependencias espaciales con información posicional:
+
+\begin{algorithm}[H]
+\caption{Coordinate Attention}
+\begin{algorithmic}[1]
+\Require Tensor de entrada $X \in \mathbb{R}^{C \times H \times W}$
+\Ensure Tensor con atención aplicada $Y \in \mathbb{R}^{C \times H \times W}$
+
+\State $z^h \gets \text{AvgPool}_{1 \times W}(X)$ \Comment{$z^h \in \mathbb{R}^{C \times H \times 1}$}
+\State $z^w \gets \text{AvgPool}_{H \times 1}(X)$ \Comment{$z^w \in \mathbb{R}^{C \times 1 \times W}$}
+\State $z^w \gets \text{Permute}(z^w)$ \Comment{$z^w \in \mathbb{R}^{C \times W \times 1}$}
+\State $f \gets \text{Concat}([z^h, z^w], \text{dim}=2)$ \Comment{$f \in \mathbb{R}^{C \times (H+W) \times 1}$}
+\State $f \gets \sigma(\text{BN}(\text{Conv1x1}(f)))$ \Comment{Reducción + activación}
+\State $f^h, f^w \gets \text{Split}(f)$ \Comment{Separar componentes}
+\State $g^h \gets \sigma(\text{Conv1x1}(f^h))$ \Comment{Atención altura}
+\State $g^w \gets \sigma(\text{Conv1x1}(f^w))$ \Comment{Atención anchura}
+\State $Y \gets X \odot g^h \odot g^w^T$ \Comment{Modulación}
+
+\Return $Y$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Cabeza de Regresión Profunda}
+
+Tres capas fully-connected con regularización:
+
+\begin{lstlisting}[language=Python, caption=Estructura de la cabeza de regresión]
+head = nn.Sequential(
+    nn.Linear(512, 768),
+    nn.GroupNorm(32, 768),
+    nn.ReLU(),
+    nn.Dropout(0.3),
+    nn.Linear(768, 768),
+    nn.GroupNorm(32, 768),
+    nn.ReLU(),
+    nn.Dropout(0.3),
+    nn.Linear(768, 30)  # 15 landmarks x 2 coordenadas
+)
+\end{lstlisting}
+
+La salida son 30 valores en el rango [0, 1], representando las coordenadas $(x, y)$ normalizadas de los 15 landmarks.
+
+\subsection{Función de Pérdida}
+
+Se utiliza Wing Loss, implementada como:
+
+\begin{lstlisting}[language=Python, caption=Implementación de Wing Loss]
+def wing_loss(pred, target, omega=10.0, epsilon=2.0):
+    diff = torch.abs(pred - target)
+    C = omega - omega * math.log(1 + omega / epsilon)
+
+    loss = torch.where(
+        diff < omega,
+        omega * torch.log(1 + diff / epsilon),
+        diff - C
+    )
+    return loss.mean()
+\end{lstlisting}
+
+\subsection{Estrategia de Entrenamiento en Dos Fases}
+
+\begin{table}[H]
+\centering
+\caption{Configuración de las dos fases de entrenamiento}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parámetro} & \textbf{Fase 1} & \textbf{Fase 2} \\
+\midrule
+Épocas & 15 & 100 \\
+Backbone & Congelado & Descongelado \\
+LR Backbone & 0 & 0.00002 \\
+LR Cabeza & 0.001 & 0.0002 \\
+Optimizer & AdamW & AdamW \\
+Scheduler & ReduceLROnPlateau & ReduceLROnPlateau \\
+\bottomrule
+\end{tabular}
+\label{tab:two_phase_training}
+\end{table}
+
+\textbf{Justificación:} La Fase 1 permite que la cabeza de regresión aprenda a interpretar las características del backbone preentrenado. La Fase 2 ajusta todo el modelo con learning rates diferenciados para evitar destruir las características aprendidas.
+
+\subsection{Ensemble y Test-Time Augmentation}
+
+Para maximizar la precisión, se utiliza:
+
+\begin{enumerate}
+    \item \textbf{Ensemble de 4 modelos:} Entrenados con seeds diferentes (123, 321, 111, 666) para diversidad.
+
+    \item \textbf{Test-Time Augmentation (TTA):} Para cada imagen de entrada:
+    \begin{itemize}
+        \item Predecir landmarks en imagen original
+        \item Predecir landmarks en imagen volteada horizontalmente
+        \item Invertir coordenadas x de la predicción volteada
+        \item Promediar ambas predicciones
+    \end{itemize}
+\end{enumerate}
+
+La predicción final se calcula como:
+
+\begin{equation}
+\hat{\mathbf{p}} = \frac{1}{4 \times 2} \sum_{m=1}^{4} \left[ f_m(\mathbf{x}) + \text{flip}(f_m(\text{flip}(\mathbf{x}))) \right]
+\end{equation}
+
+\section{Normalización Geométrica}
+
+\subsection{Cálculo de la Forma Canónica}
+
+\begin{algorithm}[H]
+\caption{Generalized Procrustes Analysis (GPA)}
+\begin{algorithmic}[1]
+\Require Conjunto de formas $\{X_1, \ldots, X_n\}$, cada $X_i \in \mathbb{R}^{L \times 2}$
+\Ensure Forma canónica $\bar{X}$
+
+\For{$i = 1$ to $n$}
+    \State $X_i \gets X_i - \text{centroid}(X_i)$ \Comment{Centrar}
+    \State $X_i \gets X_i / \|X_i\|_F$ \Comment{Escalar}
+\EndFor
+
+\State $\bar{X} \gets X_1$ \Comment{Inicializar con primera forma}
+
+\Repeat
+    \State $\bar{X}_{\text{prev}} \gets \bar{X}$
+    \For{$i = 1$ to $n$}
+        \State $U, S, V^T \gets \text{SVD}(X_i^T \bar{X})$
+        \State $R_i \gets V U^T$ \Comment{Rotación óptima}
+        \State $X_i \gets X_i R_i$ \Comment{Rotar}
+    \EndFor
+    \State $\bar{X} \gets \frac{1}{n} \sum_{i=1}^{n} X_i$ \Comment{Actualizar media}
+    \State $\bar{X} \gets \bar{X} / \|\bar{X}\|_F$ \Comment{Re-escalar}
+\Until{$\|\bar{X} - \bar{X}_{\text{prev}}\| < \epsilon$}
+
+\Return $\bar{X}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Proceso de Warping}
+
+\begin{algorithm}[H]
+\caption{Piecewise Affine Warping}
+\begin{algorithmic}[1]
+\Require Imagen origen $I$, landmarks predichos $P$, forma canónica $Q$
+\Ensure Imagen warpeada $I'$
+
+\State $P' \gets P \cup \text{boundary\_points}(I)$ \Comment{Añadir 8 puntos de borde}
+\State $Q' \gets Q \cup \text{boundary\_points}(I')$ \Comment{Correspondientes en destino}
+
+\State $\mathcal{T} \gets \text{Delaunay}(Q')$ \Comment{Triangulación sobre destino}
+
+\State $I' \gets \text{zeros}(\text{size}(I))$ \Comment{Inicializar imagen destino}
+
+\For{cada triángulo $t \in \mathcal{T}$}
+    \State $(q_1, q_2, q_3) \gets \text{vertices}(t)$ en $Q'$
+    \State $(p_1, p_2, p_3) \gets \text{correspondientes}$ en $P'$
+    \State $A \gets \text{compute\_affine}(p_1, p_2, p_3, q_1, q_2, q_3)$
+
+    \For{cada píxel $(x', y')$ en triángulo $t$}
+        \State $(x, y) \gets A^{-1}(x', y')$ \Comment{Mapeo inverso}
+        \State $I'(x', y') \gets \text{bilinear\_interp}(I, x, y)$
+    \EndFor
+\EndFor
+
+\Return $I'$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Configuraciones de Fill Rate}
+
+\begin{table}[H]
+\centering
+\caption{Configuraciones de warping evaluadas}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Configuración} & \textbf{Fill Rate} & \textbf{Boundary Pts} & \textbf{Margen} & \textbf{Uso} \\
+\midrule
+Warped 47\% & 47\% & No & N/A & Máx. robustez \\
+\rowcolor{lightgreen}
+Warped 96\% & 96\% & Sí & 1.05 & \textbf{Recomendado} \\
+Warped 99\% & 99\% & Sí & 1.15 & Legacy \\
+\bottomrule
+\end{tabular}
+\label{tab:fill_rate_configs}
+\end{table}
+
+\section{Clasificación}
+
+\subsection{Arquitecturas Evaluadas}
+
+Se evaluaron 7 arquitecturas de clasificación:
+
+\begin{table}[H]
+\centering
+\caption{Arquitecturas de clasificación evaluadas}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Arquitectura} & \textbf{Parámetros} & \textbf{Profundidad} & \textbf{ImageNet Top-1} \\
+\midrule
+ResNet-18 & 11.7M & 18 & 69.8\% \\
+ResNet-50 & 25.6M & 50 & 76.1\% \\
+EfficientNet-B0 & 5.3M & 237 & 77.1\% \\
+DenseNet-121 & 8.0M & 121 & 74.4\% \\
+VGG-16 & 138M & 16 & 71.6\% \\
+MobileNetV2 & 3.4M & 53 & 71.8\% \\
+AlexNet & 61M & 8 & 56.5\% \\
+\bottomrule
+\end{tabular}
+\label{tab:architectures}
+\end{table}
+
+ResNet-18 fue seleccionado como arquitectura principal por su buen balance entre rendimiento y eficiencia.
+
+\subsection{Preprocesamiento}
+
+\begin{enumerate}
+    \item \textbf{Redimensionamiento:} Imágenes escaladas a 224×224 píxeles
+    \item \textbf{CLAHE:} Contrast Limited Adaptive Histogram Equalization
+    \begin{itemize}
+        \item clip\_limit = 2.0
+        \item tile\_size = 4×4
+    \end{itemize}
+    \item \textbf{Normalización ImageNet:}
+    \begin{align}
+    \text{mean} &= [0.485, 0.456, 0.406] \\
+    \text{std} &= [0.229, 0.224, 0.225]
+    \end{align}
+\end{enumerate}
+
+\subsection{Data Augmentation}
+
+Durante entrenamiento:
+\begin{itemize}
+    \item Rotación aleatoria (±10°)
+    \item Traslación (±10\%)
+    \item Escalado (0.9-1.1)
+    \item Flip horizontal (50\%)
+\end{itemize}
+
+\section{Métricas de Evaluación}
+
+\subsection{Predicción de Landmarks}
+
+\begin{itemize}
+    \item \textbf{Error medio en píxeles:}
+    \begin{equation}
+    \bar{e} = \frac{1}{N \cdot L} \sum_{i=1}^{N} \sum_{j=1}^{L} \| \hat{\mathbf{p}}_{ij} - \mathbf{p}_{ij} \|_2
+    \end{equation}
+
+    \item \textbf{Desviación estándar}
+    \item \textbf{Error mediano}
+    \item \textbf{Error por categoría} (COVID, Normal, Neumonía Viral)
+    \item \textbf{Error por landmark individual}
+\end{itemize}
+
+\subsection{Clasificación}
+
+\begin{itemize}
+    \item \textbf{Accuracy:}
+    \begin{equation}
+    \text{Accuracy} = \frac{\text{TP} + \text{TN}}{N}
+    \end{equation}
+
+    \item \textbf{Precision, Recall, F1-Score por clase}
+
+    \item \textbf{F1 Macro:}
+    \begin{equation}
+    \text{F1}_{\text{macro}} = \frac{1}{C} \sum_{c=1}^{C} \text{F1}_c
+    \end{equation}
+
+    \item \textbf{F1 Weighted:}
+    \begin{equation}
+    \text{F1}_{\text{weighted}} = \sum_{c=1}^{C} \frac{n_c}{N} \text{F1}_c
+    \end{equation}
+
+    \item \textbf{Matriz de confusión}
+\end{itemize}
+
+\subsection{Robustez}
+
+\begin{itemize}
+    \item \textbf{Degradación:}
+    \begin{equation}
+    \text{Degradación} = \text{Accuracy}_{\text{limpio}} - \text{Accuracy}_{\text{perturbado}}
+    \end{equation}
+
+    \item \textbf{Perturbaciones evaluadas:}
+    \begin{itemize}
+        \item JPEG Q50, Q30
+        \item Blur Gaussiano σ=1, σ=2
+        \item Ruido Gaussiano σ=0.05, σ=0.10
+    \end{itemize}
+\end{itemize}
+
+\subsection{Generalización}
+
+\begin{itemize}
+    \item \textbf{Evaluación cruzada:} Modelos evaluados en datasets diferentes al de entrenamiento
+    \item \textbf{Gap de generalización:}
+    \begin{equation}
+    \text{Gap} = \text{Accuracy}_{A \to A} - \text{Accuracy}_{A \to B}
+    \end{equation}
+\end{itemize}
+
+% ============================================================================
+% Los capítulos restantes continúan con el mismo nivel de detalle...
+% ============================================================================
+
+\chapter{Implementación}
+\label{chap:implementacion}
+
+[Detalles del dataset, configuración experimental, hardware, reproducibilidad]
+
+% ============================================================================
+\chapter{Resultados}
+\label{chap:resultados}
+
+[Resultados completos con todas las tablas y figuras]
+
+% ============================================================================
+\chapter{Discusión}
+\label{chap:discusion}
+
+[Análisis e interpretación de resultados, mecanismo de robustez, limitaciones]
+
+% ============================================================================
+\chapter{Conclusiones y Trabajo Futuro}
+\label{chap:conclusiones}
+
+\section{Conclusiones}
+
+Esta tesis ha demostrado que la normalización geométrica mediante warping basado en landmarks anatómicos mejora la clasificación de COVID-19 en radiografías de tórax. Los principales hallazgos son:
+
+\begin{enumerate}
+    \item \textbf{Predicción de landmarks precisa:} El ensemble de 4 modelos con TTA alcanza un error de 3.61 píxeles, suficiente para warping efectivo.
+
+    \item \textbf{Mejora de accuracy:} Los modelos warped logran 99.10\% de accuracy, superando el 98.84\% de los modelos originales (+0.26\%).
+
+    \item \textbf{Mejora de robustez significativa:} Hasta 30x mejor robustez a JPEG y 5.9x mejor robustez a blur.
+
+    \item \textbf{Mejor generalización within-domain:} El gap de generalización se reduce 2.43x.
+
+    \item \textbf{Validación geométrica independiente:} Fisher LDA confirma +4.16\% de mejora en separabilidad lineal.
+
+    \item \textbf{Mecanismo identificado:} La robustez proviene de reducción de información ($\sim$75\%) + normalización geométrica ($\sim$25\%).
+
+    \item \textbf{Limitación documentada:} El domain shift entre instituciones permanece como desafío fundamental.
+\end{enumerate}
+
+\section{Contribuciones}
+
+\begin{enumerate}
+    \item Pipeline de dos etapas para clasificación médica con normalización geométrica
+    \item Evidencia experimental rigurosa de mejora en robustez
+    \item Validación mediante métodos clásicos independientes del deep learning
+    \item Análisis cuantitativo del mecanismo de robustez
+    \item Documentación honesta de limitaciones
+\end{enumerate}
+
+\section{Trabajo Futuro}
+
+\begin{enumerate}
+    \item \textbf{Domain Adaptation:} Investigar técnicas para mejorar generalización cross-domain
+    \item \textbf{Datasets mayores:} Validación con más muestras y múltiples instituciones
+    \item \textbf{Anotación multi-anotador:} Cuantificar variabilidad inter-anotador
+    \item \textbf{Extensión a otras patologías:} Tuberculosis, neumonía bacteriana, etc.
+    \item \textbf{Imágenes 3D:} Aplicación a tomografías computarizadas
+    \item \textbf{Validación clínica:} Estudios prospectivos con evaluación por radiólogos
+\end{enumerate}
+
+% ============================================================================
+% MATERIAL COMPLEMENTARIO
+% ============================================================================
+\backmatter
+
+\chapter*{Referencias}
+\addcontentsline{toc}{chapter}{Referencias}
+
+[Referencias bibliográficas - usar BibLaTeX]
+
+% Apéndices
+\appendix
+
+\chapter{Código de Reproducción}
+
+[Comandos y scripts para reproducir resultados]
+
+\chapter{Tablas Completas de Resultados}
+
+[Tablas detalladas adicionales]
+
+\chapter{Visualizaciones}
+
+[Ejemplos de warping, Grad-CAM, etc.]
+
+\end{document}
