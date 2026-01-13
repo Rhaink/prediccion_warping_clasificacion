@@ -2,7 +2,7 @@
   "_metadata": {
     "description": "Valores validados experimentalmente para verificacion de scripts",
     "version": "2.1.0",
-    "last_updated": "2026-01-12",
+    "last_updated": "2026-01-13",
     "reference": "docs/REFERENCIA_SESIONES_FUTURAS.md",
     "validated_sessions": [
       39,
@@ -81,14 +81,14 @@
         "fill_rate": 47
       },
       "warped_lung_best": {
-        "accuracy": 97.94,
-        "f1_macro": 96.75,
-        "f1_weighted": 97.93,
+        "accuracy": 98.05,
+        "f1_macro": 97.12,
+        "f1_weighted": 98.04,
         "fill_rate": 47,
         "dataset_path": "outputs/warped_lung_best/session_warping",
-        "classifier_path": "outputs/classifier_warped_lung_best/session_2026-01-12",
+        "classifier_path": "outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on",
         "preprocessing": "Grayscale + CLAHE",
-        "note": "Best actual en warped_lung_best (ResNet18, 2026-01-12)"
+        "note": "Best actual en warped_lung_best (ResNet18 sweep, 2026-01-13)"
       },
       "warped_99": {
         "accuracy": 98.73,

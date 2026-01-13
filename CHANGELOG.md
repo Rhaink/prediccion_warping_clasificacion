@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ResNet18 classifier reproduction notes for warped_lung_best.
 - Documented classifier smoke test artifacts for warped_lung_best.
 - Documented ResNet18 full run metrics for warped_lung_best (session_2026-01-12).
-- Updated best actual classifier metrics for warped_lung_best.
+- Updated best actual classifier metrics for warped_lung_best (sweep 2026-01-13).
 - Added TTA option for classifier evaluation and inference.
 - Added classifier accuracy sweep helper script.
 
