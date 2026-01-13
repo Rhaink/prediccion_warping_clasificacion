@@ -1657,6 +1657,11 @@ def classify(
         "--tta/--no-tta",
         help="Usar Test-Time Augmentation para landmarks"
     ),
+    classifier_tta: bool = typer.Option(
+        False,
+        "--classifier-tta/--no-classifier-tta",
+        help="Usar Test-Time Augmentation (flip horizontal) para clasificador"
+    ),
     canonical_shape: str = typer.Option(
         "outputs/shape_analysis/canonical_shape_gpa.json",
         "--canonical",
@@ -1720,6 +1725,9 @@ def classify(
     Modo con ensemble de landmarks:
         python -m src_v2 classify directorio/ --classifier clf.pt \\
             --warp --landmark-ensemble m1.pt m2.pt m3.pt m4.pt --tta
+
+    TTA para clasificador (sin warping):
+        python -m src_v2 classify imagen.png --classifier clf.pt --classifier-tta
     """
     import json
     import sys
@@ -1937,6 +1945,10 @@ def classify(
             # Clasificar
             with torch.no_grad():
                 logits = classifier(img_tensor)
+                if classifier_tta:
+                    flipped = torch.flip(img_tensor, dims=[3])
+                    logits_flipped = classifier(flipped)
+                    logits = (logits + logits_flipped) / 2.0
                 probs = torch.softmax(logits, dim=1)
                 pred_class = probs.argmax(dim=1).item()
 
@@ -2447,6 +2459,11 @@ def evaluate_classifier(
         "--batch-size",
         help="Tamano de batch"
     ),
+    tta: bool = typer.Option(
+        False,
+        "--tta/--no-tta",
+        help="Usar Test-Time Augmentation (flip horizontal) en evaluacion"
+    ),
 ):
     """
     Evaluar clasificador en dataset.
@@ -2454,6 +2471,8 @@ def evaluate_classifier(
     Ejemplo:
         python -m src_v2 evaluate-classifier outputs/classifier/best_classifier.pt \\
             --data-dir outputs/warped_lung_best/session_warping --split test
+        python -m src_v2 evaluate-classifier outputs/classifier/best_classifier.pt \\
+            --data-dir outputs/warped_lung_best/session_warping --split test --tta
     """
     import json
 
@@ -2526,6 +2545,10 @@ def evaluate_classifier(
         for inputs, labels in dataloader:
             inputs = inputs.to(torch_device)
             outputs = model(inputs)
+            if tta:
+                flipped = torch.flip(inputs, dims=[3])
+                outputs_flipped = model(flipped)
+                outputs = (outputs + outputs_flipped) / 2.0
             _, predicted = outputs.max(1)
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(labels.numpy())
