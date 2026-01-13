@@ -2006,8 +2006,9 @@ def classify(
 
 @app.command("train-classifier")
 def train_classifier(
-    data_dir: str = typer.Argument(
-        ...,
+    ctx: typer.Context,
+    data_dir: Optional[str] = typer.Argument(
+        None,
         help="Directorio del dataset (debe contener train/, val/, test/)"
     ),
     output_dir: str = typer.Option(
@@ -2059,6 +2060,11 @@ def train_classifier(
         "-s",
         help="Semilla aleatoria"
     ),
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="JSON con defaults para reproducir entrenamiento"
+    ),
 ):
     """
     Entrenar clasificador CNN para COVID-19.
@@ -2073,8 +2079,9 @@ def train_classifier(
         └── test/
 
     Ejemplo:
-        python -m src_v2 train-classifier outputs/warped_dataset \\
+        python -m src_v2 train-classifier outputs/warped_lung_best/session_warping \\
             --backbone resnet18 --epochs 50 --batch-size 32
+        python -m src_v2 train-classifier --config configs/classifier_warped_base.json
     """
     import json
     from collections import Counter
@@ -2094,6 +2101,70 @@ def train_classifier(
     logger.info("COVID-19 Classifier Training")
     logger.info("=" * 60)
 
+    if config:
+        from click import ParameterSource
+
+        config_path = Path(config)
+        if not config_path.is_file():
+            logger.error("Config no existe: %s", config)
+            raise typer.Exit(code=1)
+        with config_path.open("r") as handle:
+            config_data = json.load(handle)
+        if not isinstance(config_data, dict):
+            logger.error("Config debe ser un JSON con pares clave/valor.")
+            raise typer.Exit(code=1)
+
+        alias_map = {"model": "backbone"}
+        normalized = {}
+        for key, value in config_data.items():
+            normalized[alias_map.get(key, key)] = value
+
+        valid_keys = {
+            "data_dir",
+            "output_dir",
+            "backbone",
+            "epochs",
+            "batch_size",
+            "lr",
+            "use_class_weights",
+            "patience",
+            "device",
+            "seed",
+        }
+        unknown_keys = sorted(set(normalized) - valid_keys)
+        if unknown_keys:
+            logger.error("Config con claves desconocidas: %s", ", ".join(unknown_keys))
+            raise typer.Exit(code=1)
+
+        param_values = {
+            "data_dir": data_dir,
+            "output_dir": output_dir,
+            "backbone": backbone,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "lr": lr,
+            "use_class_weights": use_class_weights,
+            "patience": patience,
+            "device": device,
+            "seed": seed,
+        }
+        for key, value in normalized.items():
+            if ctx.get_parameter_source(key) == ParameterSource.DEFAULT:
+                param_values[key] = value
+
+        data_dir = param_values["data_dir"]
+        output_dir = param_values["output_dir"]
+        backbone = param_values["backbone"]
+        epochs = param_values["epochs"]
+        batch_size = param_values["batch_size"]
+        lr = param_values["lr"]
+        use_class_weights = param_values["use_class_weights"]
+        patience = param_values["patience"]
+        device = param_values["device"]
+        seed = param_values["seed"]
+
+        logger.info("Config cargada: %s", config_path)
+
     # Configurar semilla completa para reproducibilidad
     random.seed(seed)
     np.random.seed(seed)
@@ -2102,6 +2173,10 @@ def train_classifier(
         torch.cuda.manual_seed_all(seed)
 
     # Verificar directorios
+    if not data_dir:
+        logger.error("data_dir es requerido. Usa argumento o --config.")
+        raise typer.Exit(code=1)
+
     data_path = Path(data_dir)
     train_dir = data_path / "train"
     val_dir = data_path / "val"
@@ -2372,7 +2447,7 @@ def evaluate_classifier(
 
     Ejemplo:
         python -m src_v2 evaluate-classifier outputs/classifier/best_classifier.pt \\
-            --data-dir outputs/warped_dataset --split test
+            --data-dir outputs/warped_lung_best/session_warping --split test
     """
     import json
 
@@ -3684,7 +3759,7 @@ def generate_dataset(
         └── {split}/landmarks.json, images.csv
 
     Ejemplo:
-        python -m src_v2 generate-dataset data/COVID-19_Radiography_Dataset outputs/warped --checkpoint checkpoints/model.pt --margin 1.05
+        python -m src_v2 generate-dataset data/dataset/COVID-19_Radiography_Dataset outputs/warped_lung_best/session_warping --checkpoint checkpoints/model.pt --margin 1.05
     """
     import json
     import time
@@ -4586,19 +4661,19 @@ def compare_architectures(
 
     Ejemplos:
         # Comparar todas las arquitecturas
-        python -m src_v2 compare-architectures outputs/warped_dataset \\
+        python -m src_v2 compare-architectures outputs/warped_lung_best/session_warping \\
             --epochs 30 --seed 42
 
         # Comparar arquitecturas especificas
-        python -m src_v2 compare-architectures outputs/warped_dataset \\
+        python -m src_v2 compare-architectures outputs/warped_lung_best/session_warping \\
             --architectures resnet18,efficientnet_b0,densenet121
 
         # Modo rapido para pruebas
-        python -m src_v2 compare-architectures outputs/warped_dataset --quick
+        python -m src_v2 compare-architectures outputs/warped_lung_best/session_warping --quick
 
         # Comparar warped vs original
-        python -m src_v2 compare-architectures outputs/warped_dataset \\
-            --original-data-dir data/COVID-19_Radiography_Dataset
+        python -m src_v2 compare-architectures outputs/warped_lung_best/session_warping \\
+            --original-data-dir data/dataset/COVID-19_Radiography_Dataset
     """
     import json
     import time
@@ -5034,7 +5109,7 @@ def gradcam(
     Ejemplo batch:
         python -m src_v2 gradcam \\
             --checkpoint outputs/classifier/best.pt \\
-            --data-dir outputs/warped_dataset/test \\
+            --data-dir outputs/warped_lung_best/session_warping/test \\
             --output-dir outputs/gradcam_analysis \\
             --num-samples 20
     """
@@ -5302,7 +5377,7 @@ def analyze_errors(
     Ejemplo:
         python -m src_v2 analyze-errors \\
             --checkpoint outputs/classifier/best.pt \\
-            --data-dir outputs/warped_dataset/test \\
+            --data-dir outputs/warped_lung_best/session_warping/test \\
             --output-dir outputs/error_analysis \\
             --visualize --gradcam
     """
@@ -5580,13 +5655,13 @@ def pfs_analysis(
     Ejemplo basico:
         python -m src_v2 pfs-analysis \\
             --checkpoint outputs/classifier/best.pt \\
-            --data-dir outputs/warped_dataset/test \\
+            --data-dir outputs/warped_lung_best/session_warping/test \\
             --mask-dir data/dataset/COVID-19_Radiography_Dataset
 
     Con mascaras aproximadas (sin mascaras reales):
         python -m src_v2 pfs-analysis \\
             --checkpoint outputs/classifier/best.pt \\
-            --data-dir outputs/warped_dataset/test \\
+            --data-dir outputs/warped_lung_best/session_warping/test \\
             --approximate --margin 0.15
     """
     import torch
@@ -5928,7 +6003,7 @@ def generate_lung_masks(
 
     Ejemplo:
         python -m src_v2 generate-lung-masks \\
-            --data-dir outputs/warped_dataset \\
+            --data-dir outputs/warped_lung_best/session_warping \\
             --output-dir outputs/lung_masks \\
             --method rectangular --margin 0.15
     """
@@ -6139,7 +6214,7 @@ def optimize_margin(
 
     Ejemplo:
         python -m src_v2 optimize-margin \\
-            --data-dir data/COVID-19_Radiography_Dataset \\
+            --data-dir data/dataset/COVID-19_Radiography_Dataset \\
             --landmarks-csv data/landmarks.csv \\
             --margins 1.00,1.05,1.10,1.15,1.20,1.25,1.30 \\
             --epochs 10 \\

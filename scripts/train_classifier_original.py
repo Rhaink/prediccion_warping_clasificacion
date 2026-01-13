@@ -53,6 +53,11 @@ class OriginalDataset(Dataset):
         # Mapeo de categorias a indices
         self.class_to_idx = {'COVID': 0, 'Normal': 1, 'Viral_Pneumonia': 2}
         self.classes = ['COVID', 'Normal', 'Viral_Pneumonia']
+        self.category_to_dir = {
+            'COVID': 'COVID',
+            'Normal': 'Normal',
+            'Viral_Pneumonia': 'Viral Pneumonia',
+        }
 
         # Construir lista de rutas e etiquetas
         self.samples = []
@@ -62,8 +67,9 @@ class OriginalDataset(Dataset):
 
             # Construir ruta a imagen original
             # El nombre original puede tener espacio ("Viral Pneumonia-123")
-            # pero el directorio es "Viral_Pneumonia"
-            img_path = self.original_data_dir / category / f"{image_name}.png"
+            # y el directorio usa espacio, pero el split usa underscore.
+            dir_name = self.category_to_dir.get(category, category)
+            img_path = self.original_data_dir / dir_name / f"{image_name}.png"
 
             if img_path.exists():
                 self.samples.append((img_path, self.class_to_idx[category]))
@@ -275,10 +281,10 @@ def main():
     parser.add_argument('--config', type=str, default=None,
                         help='Path to JSON config file with default values')
     parser.add_argument('--warped-data-dir', type=str,
-                        default='outputs/warped_dataset',
+                        default='outputs/warped_lung_best/session_warping',
                         help='Directorio del dataset warpeado (para leer splits)')
     parser.add_argument('--original-data-dir', type=str,
-                        default='data/dataset',
+                        default='data/dataset/COVID-19_Radiography_Dataset',
                         help='Directorio de imagenes originales')
     parser.add_argument('--model', type=str, default='resnet18',
                         choices=['resnet18', 'efficientnet_b0'],
