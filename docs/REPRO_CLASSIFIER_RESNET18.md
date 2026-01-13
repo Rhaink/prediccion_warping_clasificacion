@@ -73,6 +73,24 @@ python -m src_v2 evaluate-classifier \
   --data-dir outputs/warped_lung_best/session_warping --split test --tta
 ```
 
+## Opcion C: Sweep de accuracy (plan)
+Objetivo: maximizar accuracy en test, seleccionando por val accuracy.
+
+Script recomendado:
+```bash
+bash scripts/run_classifier_sweep_accuracy.sh
+```
+
+Variables utiles:
+```bash
+OUTPUT_ROOT=outputs/classifier_warped_lung_best/sweeps_2026-01-12 \
+SEEDS="42 123 321" \
+LRS="5e-5 2e-4" \
+CLASS_WEIGHTS_MODES="on off" \
+DEVICE=cuda \
+bash scripts/run_classifier_sweep_accuracy.sh
+```
+
 ## Futuras pruebas (no implementadas)
 - Label smoothing: suaviza targets (ej. 0.9/0.1) para reducir overfitting y mejorar calibracion.
 - Focal loss: enfoca el aprendizaje en ejemplos dificiles; puede mejorar recall de clases minoritarias.
