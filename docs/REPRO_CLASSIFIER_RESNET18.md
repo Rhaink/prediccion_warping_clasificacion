@@ -45,6 +45,11 @@ Salidas esperadas:
   El script hace el mapeo automatico desde `Viral_Pneumonia`.
 - Si deseas overrides, puedes pasar flags del CLI despues de `--config`.
 
+## Smoke test (2026-01-12)
+- Comando: `python -m src_v2 train-classifier --config configs/classifier_warped_base.json --epochs 1 --batch-size 4`
+- Resultados (test): accuracy 0.9203, F1 macro 0.8948, F1 weighted 0.9186
+- Artefactos archivados: `outputs/archive/classifier_warped_lung_best_smoketest_2026-01-12`
+
 ## Baseline existente (referencia)
 - `outputs/classifier_full/results.json`
 - `outputs/classifier_original_3classes/results.json`

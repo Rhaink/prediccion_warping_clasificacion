@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/extract_predictions.py` config/models support for reproducible outputs.
 - `train-classifier` CLI `--config` support (with `model` alias for `backbone`).
 - ResNet18 classifier reproduction notes for warped_lung_best.
+- Documented classifier smoke test artifacts for warped_lung_best.
 
 ### Changed
 - Landmark ensemble best improves to 3.61 px with seed666 combo (see `GROUND_TRUTH.json`).
