@@ -2102,8 +2102,6 @@ def train_classifier(
     logger.info("=" * 60)
 
     if config:
-        from click import ParameterSource
-
         config_path = Path(config)
         if not config_path.is_file():
             logger.error("Config no existe: %s", config)
@@ -2148,8 +2146,16 @@ def train_classifier(
             "device": device,
             "seed": seed,
         }
+        def is_default_source(source: object) -> bool:
+            if source is None:
+                return True
+            source_name = getattr(source, "name", None)
+            if source_name:
+                return source_name == "DEFAULT"
+            return str(source).lower() == "default"
+
         for key, value in normalized.items():
-            if ctx.get_parameter_source(key) == ParameterSource.DEFAULT:
+            if is_default_source(ctx.get_parameter_source(key)):
                 param_values[key] = value
 
         data_dir = param_values["data_dir"]
