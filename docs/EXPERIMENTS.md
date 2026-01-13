@@ -45,12 +45,13 @@ Short index of validated experiments and the authoritative artifacts
 
 ## Classifier (ResNet18)
 
-### Best actual (2026-01-12)
+### Best actual (2026-01-13)
 - Dataset: outputs/warped_lung_best/session_warping (fill_rate ~0.47)
-- Accuracy (test): 97.94%
-- F1 macro: 96.75%
-- Checkpoint: outputs/classifier_warped_lung_best/session_2026-01-12/best_classifier.pt
-- Results: outputs/classifier_warped_lung_best/session_2026-01-12/results.json
+- Accuracy (test): 98.05%
+- F1 macro: 97.12%
+- F1 weighted: 98.04%
+- Checkpoint: outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/best_classifier.pt
+- Results: outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/results.json
 - Source: docs/REPRO_CLASSIFIER_RESNET18.md
 
 ## Notes

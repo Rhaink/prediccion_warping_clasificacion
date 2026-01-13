@@ -54,7 +54,7 @@ Salidas esperadas:
 - Resultados (test): accuracy 0.9203, F1 macro 0.8948, F1 weighted 0.9186
 - Artefactos archivados: `outputs/archive/classifier_warped_lung_best_smoketest_2026-01-12`
 
-## Run completo (2026-01-12)
+## Run completo (2026-01-12, baseline)
 - Comando:
   `python -m src_v2 train-classifier --config configs/classifier_warped_base.json --output-dir outputs/classifier_warped_lung_best/session_2026-01-12 --device cuda`
 - Mejor val F1: 0.9791 (epoch 36), early stopping en epoch 46
@@ -65,15 +65,16 @@ Salidas esperadas:
 - Artefactos:
   - `outputs/classifier_warped_lung_best/session_2026-01-12/best_classifier.pt`
   - `outputs/classifier_warped_lung_best/session_2026-01-12/results.json`
+- Nota: superado por el sweep 2026-01-13 (ver Opcion C).
 
 ## Evaluacion con TTA (opcional)
 ```bash
 python -m src_v2 evaluate-classifier \
-  outputs/classifier_warped_lung_best/session_2026-01-12/best_classifier.pt \
+  outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/best_classifier.pt \
   --data-dir outputs/warped_lung_best/session_warping --split test --tta
 ```
 
-## Opcion C: Sweep de accuracy (plan)
+## Opcion C: Sweep de accuracy (2026-01-13)
 Objetivo: maximizar accuracy en test, seleccionando por val accuracy.
 
 Script recomendado:
@@ -90,6 +91,16 @@ CLASS_WEIGHTS_MODES="on off" \
 DEVICE=cuda \
 bash scripts/run_classifier_sweep_accuracy.sh
 ```
+
+Resultado best actual (sweep):
+- Run: `lr2e-4_seed321_on`
+- Resultados (test):
+  - accuracy 0.9805
+  - F1 macro 0.9712
+  - F1 weighted 0.9804
+- Artefactos:
+  - `outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/best_classifier.pt`
+  - `outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/results.json`
 
 ## Futuras pruebas (no implementadas)
 - Label smoothing: suaviza targets (ej. 0.9/0.1) para reducir overfitting y mejorar calibracion.
