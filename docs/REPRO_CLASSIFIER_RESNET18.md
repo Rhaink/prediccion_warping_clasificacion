@@ -45,6 +45,10 @@ Salidas esperadas:
   El script hace el mapeo automatico desde `Viral_Pneumonia`.
 - Si deseas overrides, puedes pasar flags del CLI despues de `--config`.
 
+## Decision de alcance (2026-01-12)
+- Prioridad actual: reproducir el clasificador y maximizar accuracy en warped_lung_best.
+- Se pospone la limpieza/alineacion de scripts legacy hasta terminar este objetivo.
+
 ## Smoke test (2026-01-12)
 - Comando: `python -m src_v2 train-classifier --config configs/classifier_warped_base.json --epochs 1 --batch-size 4`
 - Resultados (test): accuracy 0.9203, F1 macro 0.8948, F1 weighted 0.9186
