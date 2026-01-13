@@ -54,6 +54,18 @@ Salidas esperadas:
 - Resultados (test): accuracy 0.9203, F1 macro 0.8948, F1 weighted 0.9186
 - Artefactos archivados: `outputs/archive/classifier_warped_lung_best_smoketest_2026-01-12`
 
+## Run completo (2026-01-12)
+- Comando:
+  `python -m src_v2 train-classifier --config configs/classifier_warped_base.json --output-dir outputs/classifier_warped_lung_best/session_2026-01-12 --device cuda`
+- Mejor val F1: 0.9791 (epoch 36), early stopping en epoch 46
+- Resultados (test):
+  - accuracy 0.9794
+  - F1 macro 0.9675
+  - F1 weighted 0.9793
+- Artefactos:
+  - `outputs/classifier_warped_lung_best/session_2026-01-12/best_classifier.pt`
+  - `outputs/classifier_warped_lung_best/session_2026-01-12/results.json`
+
 ## Baseline existente (referencia)
 - `outputs/classifier_full/results.json`
 - `outputs/classifier_original_3classes/results.json`
