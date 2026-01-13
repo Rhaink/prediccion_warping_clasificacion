@@ -33,6 +33,7 @@ scripts/
 | `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
 | `run_best_ensemble.sh` | Evaluar el mejor ensemble actual |
 | `quickstart_landmarks.sh` | Entrenar + evaluar + extraer predicciones (hasta pre-warping) |
+| `run_classifier_sweep_accuracy.sh` | Sweep de accuracy para clasificador CNN |
 
 Nota: `run_repro_split_ensemble.sh` y `run_option1_new_seeds.sh` fueron movidos a
 `scripts/archive/` (reemplazados por `run_seed_sweep.sh`).
