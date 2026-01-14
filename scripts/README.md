@@ -101,12 +101,14 @@ Ubicacion: `visualization/`
 
 | Script | Proposito |
 |--------|-----------|
-| `compare_classifiers.py` | Comparar clasificadores |
 | `evaluate_external_baseline.py` | Evaluacion en FedCOVIDx |
 | `evaluate_external_warped.py` | Evaluacion externa warpeada |
 | `extract_predictions.py` | Predicciones del ensemble + triangulacion (test split) |
-| `gradcam_*.py` | Analisis Grad-CAM |
 | `calculate_pfs_warped.py` | Calculo PFS en warped |
+
+Nota: `compare_classifiers.py` y `gradcam_*.py` fueron movidos a
+`scripts/archive/classification/`. Para Grad-CAM usar el CLI:
+`python -m src_v2 gradcam`.
 
 ## Scripts de Verificacion
 
@@ -119,7 +121,7 @@ Ubicacion: `visualization/`
 
 ## Directorio archive/
 
-Scripts archivados de sesiones anteriores (19 scripts):
+Scripts archivados de sesiones anteriores:
 
 - `debug_*.py` - Scripts de debugging temporales
 - `session30_*.py`, `session31_*.py` - Scripts de sesiones especificas
@@ -128,6 +130,7 @@ Scripts archivados de sesiones anteriores (19 scripts):
 - `test_*.py` - Tests que deberian estar en `tests/`
 
 Estos se mantienen por referencia historica pero no se usan directamente.
+Ver `docs/ARCHIVE_LOG.md` para el detalle de movimientos recientes.
 
 Nota: `archive/invalid_warping/generate_warped_dataset_full_coverage.py` fue movido
 por generar datasets con warping incorrecto (ver docs/reportes/REPORTE_VERIFICACION_DESCUBRIMIENTOS_GEOMETRICOS.md).

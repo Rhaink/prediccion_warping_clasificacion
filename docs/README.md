@@ -9,6 +9,7 @@ keep experimental context close to the code.
 - docs/QUICKSTART_LANDMARKS.md: quickstart from scratch to prediction outputs.
 - docs/PLAN_WARPING_AGENT.md: detailed plan to build the warping dataset stage.
 - docs/EXPERIMENTS.md: index of validated experiments and artifacts.
+- docs/ARCHIVE_LOG.md: record of archived scripts and the reason for moves.
 - docs/CONFIGS.md: config templates and usage examples.
 - docs/sesiones/: validated experiment notes (example: session 53 fill rate).
 - docs/reportes/: verification and audit notes.
