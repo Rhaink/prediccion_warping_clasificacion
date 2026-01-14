@@ -1,0 +1,557 @@
+% =============================================================================
+% CAPITULO 2: MARCO TEORICO
+% =============================================================================
+
+\chapter{Marco Te\'orico}
+\label{cap:marco_teorico}
+
+Este cap\'itulo establece los fundamentos f\'isicos, matem\'aticos y
+computacionales que sustentan el sistema propuesto. Se describen los
+principios de formaci\'on de la radiograf\'ia, la representaci\'on anat\'omica
+mediante landmarks, los m\'etodos de preprocesamiento, la regresi\'on de
+coordenadas con CNNs, la normalizaci\'on geom\'etrica por An\'alisis de
+Procrustes Generalizado y warping af\'in por partes, as\'i como los criterios
+de entrenamiento y evaluaci\'on del clasificador. El enfoque se basa en un
+pipeline modular: detecci\'on de landmarks, alineaci\'on geom\'etrica y
+clasificaci\'on.
+
+\section{Radiograf\'ias de t\'orax y formaci\'on de imagen}
+\label{sec:radiografia_torax}
+
+La radiograf\'ia de t\'orax se fundamenta en la atenuaci\'on diferencial de los
+rayos X al atravesar tejidos con distintas densidades. La intensidad
+transmitida obedece la ley de Beer--Lambert \cite{bushberg2011essential}:
+
+\begin{equation}
+I(x) = I_0 \exp\left(-\int_0^x \mu(s)\, ds\right),
+\label{eq:beer_lambert}
+\end{equation}
+
+donde $I_0$ es la intensidad incidente y $\mu(s)$ es el coeficiente de
+atenuaci\'on lineal del tejido. Esta propiedad hace visibles diferencias entre
+aire, tejido blando y hueso, justificando el uso de RX en diagn\'ostico
+pulmonar \cite{who2020chest}.
+
+\section{Representaci\'on anat\'omica mediante landmarks}
+\label{sec:landmarks}
+
+El contorno pulmonar se modela con $n=15$ landmarks $\{\mathbf{l}_i\}_{i=1}^n$,
+con $\mathbf{l}_i = (x_i, y_i)^\top$. La representaci\'on vectorizada es:
+
+\begin{equation}
+\mathbf{L} = [x_1, y_1, \dots, x_{15}, y_{15}]^\top \in \mathbb{R}^{30}.
+\label{eq:landmark_vector}
+\end{equation}
+
+Se define un eje central entre $L_1$ y $L_2$:
+
+\begin{equation}
+\mathbf{p}(t) = \mathbf{l}_1 + t(\mathbf{l}_2 - \mathbf{l}_1), \quad t \in [0, 1],
+\label{eq:axis_param}
+\end{equation}
+
+donde los landmarks centrales se ubican en $t=\{0.25, 0.50, 0.75\}$, lo cual
+refuerza una estructura geom\'etrica consistente. Adem\'as, se consideran pares
+bilaterales sim\'etricos $(L_3,L_4)$, $(L_5,L_6)$, $(L_7,L_8)$, $(L_{12},L_{13})$
+y $(L_{14},L_{15})$.
+
+Para normalizar coordenadas a $[0,1]$, se utiliza el tama\~no real de la
+imagen $(W, H)$:
+
+\begin{equation}
+\tilde{\mathbf{l}}_i =
+\left(\frac{x_i}{W}, \frac{y_i}{H}\right)^\top.
+\label{eq:landmark_norm}
+\end{equation}
+
+Esta definici\'on es necesaria para compatibilizar im\'agenes con resoluci\'on
+original $299 \times 299$ con el tama\~no de entrada $224 \times 224$.
+
+\section{Preprocesamiento y normalizaci\'on radiom\'etrica}
+\label{sec:preprocesamiento}
+
+Las im\'agenes se redimensionan a $224 \times 224$ y se normalizan con los
+estad\'isticos de ImageNet, lo cual facilita el uso de pesos preentrenados
+\cite{deng2009imagenet}:
+
+\begin{equation}
+\mathbf{x}_{\text{norm}} = \frac{\mathbf{x}/255 - \bm{\mu}}{\bm{\sigma}},
+\label{eq:imagenet_norm}
+\end{equation}
+
+con $\bm{\mu}=(0.485,0.456,0.406)$ y $\bm{\sigma}=(0.229,0.224,0.225)$. Cuando
+la imagen es en escala de grises, se replica a tres canales para cumplir con
+la entrada de modelos preentrenados.
+
+Se aplica CLAHE para mejorar contraste local \cite{pizer1987adaptive,clahe1994},
+lo cual resulta relevante para RX con baja separaci\'on tejido--aire. El
+preprocesamiento con CLAHE se ejecuta antes del redimensionamiento para
+preservar detalle.
+
+\section{Aumentaci\'on geom\'etrica y fotom\'etrica}
+\label{sec:augmentacion}
+
+La aumentaci\'on incrementa la variabilidad efectiva del conjunto de
+entrenamiento \cite{perez2017effectiveness}. Para el modelo de landmarks se
+aplican transformaciones geom\'etricas que deben propagarse a las coordenadas:
+
+\textbf{Flip horizontal.} Para una coordenada normalizada $\tilde{\mathbf{l}}_i
+=(x_i, y_i)$:
+
+\begin{equation}
+x_i' = 1 - x_i, \quad y_i' = y_i,
+\label{eq:flip}
+\end{equation}
+
+seguido del intercambio de pares bilaterales sim\'etricos para preservar la
+sem\'antica anat\'omica.
+
+\textbf{Rotaci\'on.} La imagen se rota un \'angulo $\theta$ alrededor del centro
+$\mathbf{c}=(0.5,0.5)$. Las coordenadas se actualizan con la transformaci\'on
+inversa:
+
+\begin{equation}
+\mathbf{l}' = \mathbf{R}(-\theta)(\mathbf{l}-\mathbf{c}) + \mathbf{c}, \quad
+\mathbf{R}(\theta)=
+\begin{bmatrix}
+\cos\theta & -\sin\theta \\
+\sin\theta & \cos\theta
+\end{bmatrix}.
+\label{eq:rotation}
+\end{equation}
+
+Se emplean adem\'as cambios de brillo y contraste, modelados de forma general
+como $\mathbf{x}'=\alpha\mathbf{x}+\beta$, manteniendo los landmarks intactos.
+
+\section{Redes neuronales convolucionales y transferencia de aprendizaje}
+\label{sec:cnn_transfer}
+
+Las CNNs realizan convoluciones discretas sobre la imagen \cite{lecun1998gradient}:
+
+\begin{equation}
+Y[i,j] = \sum_{m=0}^{M-1}\sum_{n=0}^{N-1} X[i+m, j+n]\, W[m,n] + b.
+\label{eq:conv}
+\end{equation}
+
+El backbone principal para regresi\'on de landmarks es ResNet-18
+\cite{he2016deep}, cuya conexi\'on residual se expresa como:
+
+\begin{equation}
+\mathbf{y} = \mathcal{F}(\mathbf{x}, \{W_i\}) + \mathbf{x}.
+\label{eq:residual}
+\end{equation}
+
+Se adopta transfer learning desde ImageNet, lo cual acelera convergencia y
+mejora generalizaci\'on en conjuntos m\'edicos con menor tama\~no
+\cite{yosinski2014transferable,raghu2019transfusion}. Para clasificaci\'on se
+consideran arquitecturas con distinto perfil de capacidad y eficiencia:
+ResNet \cite{he2016deep}, DenseNet \cite{huang2017densely}, EfficientNet
+\cite{tan2019efficientnet}, VGG \cite{simonyan2014very}, AlexNet
+\cite{krizhevsky2012imagenet} y MobileNetV2 \cite{sandler2018mobilenetv2}.
+
+\section{Atenci\'on y normalizaci\'on de caracter\'isticas}
+\label{sec:attention_norm}
+
+\textbf{Coordinate Attention.} Dado un mapa de caracter\'isticas
+$\mathbf{F} \in \mathbb{R}^{C\times H\times W}$, la atenci\'on coordenada
+\cite{hou2021coordinate} calcula agregaciones separadas:
+
+\begin{equation}
+f_h(c,h) = \frac{1}{W}\sum_{w=1}^W F(c,h,w), \quad
+f_w(c,w) = \frac{1}{H}\sum_{h=1}^H F(c,h,w),
+\label{eq:coord_attention}
+\end{equation}
+
+que posteriormente se combinan y proyectan para producir pesos que codifican
+informaci\'on posicional.
+
+\textbf{Group Normalization.} Para un grupo $g$ de canales, la normalizaci\'on
+se define como \cite{wu2018group}:
+
+\begin{equation}
+\hat{x} = \frac{x - \mu_g}{\sqrt{\sigma_g^2 + \epsilon}}, \quad
+y = \gamma \hat{x} + \beta,
+\label{eq:groupnorm}
+\end{equation}
+
+con $\mu_g$ y $\sigma_g^2$ calculados sobre el grupo y dimensiones espaciales.
+Esto mejora estabilidad con batch peque\~no.
+
+\section{Regresi\'on de landmarks}
+\label{sec:regresion_landmarks}
+
+El modelo de landmarks aprende una funci\'on $f_{\theta}$:
+
+\begin{equation}
+f_{\theta}: \mathbf{I} \mapsto \hat{\mathbf{L}} \in [0,1]^{30}.
+\label{eq:landmark_model}
+\end{equation}
+
+\subsection{Wing Loss y variantes}
+\label{subsec:wing_loss}
+
+La Wing Loss penaliza errores peque\~nos de forma logar\'itmica y mantiene
+comportamiento lineal para errores grandes \cite{feng2018wing}:
+
+\begin{equation}
+\mathcal{L}_{\text{wing}}(e)=
+\begin{cases}
+\omega \ln\left(1+\frac{|e|}{\epsilon}\right), & |e| < \omega, \\
+|e| - C, & |e| \geq \omega,
+\end{cases}
+\label{eq:wing}
+\end{equation}
+
+donde $C = \omega - \omega \ln(1+\omega/\epsilon)$. Para coordenadas
+normalizadas se usa $\omega$ y $\epsilon$ escaladas por el tama\~no de imagen.
+
+La versi\'on ponderada asigna un peso $w_i$ a cada landmark:
+
+\begin{equation}
+\mathcal{L}_{\text{ww}} = \frac{1}{n}\sum_{i=1}^{n} w_i\, \mathcal{L}_{\text{wing}}(e_i).
+\label{eq:weighted_wing}
+\end{equation}
+
+\subsection{Alineaci\'on central y simetr\'ia suave}
+\label{subsec:central_symmetry}
+
+La alineaci\'on central fuerza a $L_9,L_{10},L_{11}$ a permanecer sobre el eje
+$L_1$--$L_2$. Sea $\mathbf{u} = (\mathbf{l}_2 - \mathbf{l}_1) /
+\|\mathbf{l}_2 - \mathbf{l}_1\|_2$, la distancia perpendicular de $\mathbf{p}$
+al eje es:
+
+\begin{equation}
+d(\mathbf{p}) = \left\|(\mathbf{p}-\mathbf{l}_1) -
+\big[(\mathbf{p}-\mathbf{l}_1)\cdot \mathbf{u}\big]\mathbf{u}\right\|_2.
+\label{eq:central_distance}
+\end{equation}
+
+La p\'erdida central se define como el promedio de $d(\cdot)$ sobre los
+landmarks centrales. La simetr\'ia suave compara distancias perpendiculares
+para pares bilaterales $(i,j)$ usando el vector normal $\mathbf{n}$:
+
+\begin{equation}
+\Delta_{ij} = \left||(\mathbf{l}_i-\mathbf{l}_1)\cdot\mathbf{n}| -
+|(\mathbf{l}_j-\mathbf{l}_1)\cdot\mathbf{n}|\right|,
+\label{eq:symmetry_delta}
+\end{equation}
+
+y penaliza solo asimetr\'ias mayores a un margen $m$:
+
+\begin{equation}
+\mathcal{L}_{\text{sym}} =
+\frac{1}{|\mathcal{P}|}\sum_{(i,j)\in\mathcal{P}}
+\max(0, \Delta_{ij} - m)^2.
+\label{eq:soft_symmetry}
+\end{equation}
+
+\subsection{P\'erdida combinada}
+\label{subsec:combined_loss}
+
+La p\'erdida final combina los t\'erminos anteriores:
+
+\begin{equation}
+\mathcal{L}_{\text{total}} =
+\mathcal{L}_{\text{ww}} + \alpha\, \mathcal{L}_{\text{central}}
+ + \beta\, \mathcal{L}_{\text{sym}}.
+\label{eq:combined_loss}
+\end{equation}
+
+Los hiperpar\'ametros $\alpha$ y $\beta$ controlan el balance entre ajuste
+local y restricciones geom\'etricas.
+
+\subsection{Estrategia de entrenamiento y balanceo de clases}
+\label{subsec:landmark_training}
+
+El entrenamiento de landmarks se organiza en dos fases: (i) congelar el
+backbone y optimizar solo la cabeza de regresi\'on, y (ii) descongelar toda la
+red con tasas de aprendizaje diferenciadas para backbone y cabeza. Esta
+estrategia reduce el sobreajuste y estabiliza la convergencia en conjuntos
+m\'edicos \cite{yosinski2014transferable,raghu2019transfusion}. La fase de
+fine-tuning emplea un scheduler cosenoidal \cite{loshchilov2016sgdr} para
+disminuir la tasa de aprendizaje de forma suave.
+
+En presencia de desbalance de clases, se aplica muestreo ponderado por
+categor\'ia en el DataLoader, asignando un peso $w_c$ a cada clase $c$ y
+muestreando ejemplos con probabilidad proporcional a $w_c$. Esto incrementa
+la frecuencia de clases minoritarias sin alterar el conjunto de validaci\'on.
+
+La partici\'on de datos usa splits estratificados con proporciones 75/15/10
+para train/val/test, manteniendo la distribuci\'on de clases.
+
+\section{Ensembles y Test-Time Augmentation}
+\label{sec:ensemble_tta}
+
+Para reducir varianza, se usa un ensemble de $M$ modelos:
+
+\begin{equation}
+\hat{\mathbf{L}} = \frac{1}{M}\sum_{m=1}^{M} f_{\theta_m}(\mathbf{I}).
+\label{eq:ensemble}
+\end{equation}
+
+La TTA integra una transformaci\'on $\mathcal{T}$ (flip horizontal) y su
+inversa $\mathcal{T}^{-1}$:
+
+\begin{equation}
+\hat{\mathbf{L}}_{\text{tta}} =
+\frac{1}{2}\left(f_{\theta}(\mathbf{I}) +
+\mathcal{T}^{-1}(f_{\theta}(\mathcal{T}(\mathbf{I})))\right).
+\label{eq:tta}
+\end{equation}
+
+La inversa incluye la reflexi\'on $x \mapsto 1-x$ y el intercambio de pares
+sim\'etricos.
+
+\section{An\'alisis de forma: GPA}
+\label{sec:gpa}
+
+Dadas $N$ configuraciones $\{\mathbf{X}_i\}_{i=1}^N$ con $n$ landmarks, el GPA
+alinea formas eliminando traslaci\'on, escala y rotaci\'on
+\cite{gower1975generalized,dryden2016statistical}. El centrado se define como:
+
+\begin{equation}
+\tilde{\mathbf{X}}_i = \mathbf{X}_i - \frac{1}{n}\mathbf{1}\mathbf{1}^\top\mathbf{X}_i.
+\label{eq:center_shape}
+\end{equation}
+
+La normalizaci\'on de escala usa la norma de Frobenius:
+
+\begin{equation}
+s_i = \|\tilde{\mathbf{X}}_i\|_F, \quad
+\mathbf{Y}_i = \frac{\tilde{\mathbf{X}}_i}{s_i}.
+\label{eq:scale_shape}
+\end{equation}
+
+La rotaci\'on \'optima se obtiene resolviendo el problema Procrustes
+\cite{schonemann1966generalized}:
+
+\begin{equation}
+\mathbf{R}_i^* = \arg\min_{\mathbf{R}\in SO(2)} \|\mathbf{Y}_i\mathbf{R} -
+\bar{\mathbf{X}}\|_F,
+\label{eq:procrustes_objective}
+\end{equation}
+
+con soluci\'on por SVD:
+
+\begin{equation}
+\mathbf{R}_i^* = \mathbf{V}\mathbf{U}^\top, \quad
+\text{SVD}(\mathbf{Y}_i^\top \bar{\mathbf{X}}) = \mathbf{U}\bm{\Sigma}\mathbf{V}^\top.
+\label{eq:procrustes_svd}
+\end{equation}
+
+La forma can\'onica $\bar{\mathbf{X}}$ se actualiza iterativamente como el
+promedio de las formas alineadas hasta convergencia.
+
+\subsection{Escalado a coordenadas de imagen}
+\label{subsec:canonical_scale}
+
+La forma can\'onica normalizada se escala a $S\times S$ con padding relativo
+$p$:
+
+\begin{equation}
+s = \frac{(1-2p)S}{\max(\Delta x, \Delta y)}, \quad
+\mathbf{X}_{\text{pix}} = s(\bar{\mathbf{X}} - \bar{\mathbf{x}}) + \mathbf{c},
+\label{eq:canonical_scale}
+\end{equation}
+
+donde $\Delta x$ y $\Delta y$ son los rangos de la forma, $\bar{\mathbf{x}}$ es
+el centro de masa y $\mathbf{c}=(S/2, S/2)$ es el centro de la imagen.
+
+\section{Triangulaci\'on de Delaunay}
+\label{sec:delaunay}
+
+La triangulaci\'on de Delaunay maximiza el \'angulo m\'inimo y evita tri\'angulos
+degenerados \cite{delaunay1934sphere,berg2008computational}. Su propiedad clave
+es que el circ\'unc\'irculo de cada tri\'angulo no contiene otros puntos de la
+configuraci\'on.
+
+\section{Warping af\'in por partes}
+\label{sec:warping}
+
+El warping af\'in por partes divide la imagen en tri\'angulos y aplica una
+transformaci\'on af\'in por cada uno \cite{wolberg1990digital}. Para un
+tri\'angulo fuente $\{\mathbf{p}_k\}_{k=1}^3$ y destino
+$\{\mathbf{q}_k\}_{k=1}^3$, se busca $\mathbf{A}\in\mathbb{R}^{2\times 2}$ y
+$\mathbf{b}\in\mathbb{R}^2$ tales que:
+
+\begin{equation}
+\mathbf{q}_k = \mathbf{A}\mathbf{p}_k + \mathbf{b}, \quad k=1,2,3.
+\label{eq:affine_tri}
+\end{equation}
+
+De forma equivalente, para coordenadas baric\'entricas
+$\mathbf{x}=\sum_k \alpha_k \mathbf{p}_k$, la imagen warp es
+$\mathbf{x}'=\sum_k \alpha_k \mathbf{q}_k$, lo que preserva continuidad en el
+interior del tri\'angulo.
+
+\subsection{Expansi\'on por margen y clipping}
+\label{subsec:margin_scaling}
+
+Para cubrir estructuras pulmonares completas se usa una expansi\'on desde el
+centroide $\mathbf{c}$:
+
+\begin{equation}
+\mathbf{l}_i' = \mathbf{c} + m(\mathbf{l}_i - \mathbf{c}),
+\label{eq:margin_scale}
+\end{equation}
+
+donde $m$ es el factor de margen (por ejemplo $m=1.05$). Posteriormente se
+aplica clipping para garantizar que los puntos permanezcan en los l\'imites
+de la imagen.
+
+\subsection{Cobertura total y \textit{fill rate}}
+\label{subsec:fill_rate}
+
+La opci\'on de cobertura total agrega 8 puntos de borde (4 esquinas y 4
+puntos medios) para evitar regiones vac\'ias. En contraste, el modo de
+warping solo-pulm\'on utiliza exclusivamente los 15 landmarks, preservando
+la regi\'on anat\'omica pero con menor cobertura. La cobertura se cuantifica
+mediante el \textit{fill rate}:
+
+\begin{equation}
+\text{fill\_rate} = 1 - \frac{N_{\text{negros}}}{N_{\text{total}}},
+\label{eq:fill_rate}
+\end{equation}
+
+donde $N_{\text{negros}}$ es el n\'umero de p\'ixeles sin informaci\'on
+resultantes del warping.
+
+\section{Generaci\'on del dataset warpeado}
+\label{sec:warped_dataset}
+
+El dataset warpeado se construye aplicando el warping a todas las im\'agenes,
+organizando splits estratificados y guardando metadatos por partici\'on. En el
+flujo principal se usan proporciones $0.75/0.125/0.125$ para
+train/val/test, y se almacena informaci\'on de landmarks, rutas y estad\'isticas
+de fill rate. Para optimizar tiempo se utiliza cach\'e de predicciones de
+landmarks, evitando inferencia redundante.
+
+\section{Clasificaci\'on de radiograf\'ias}
+\label{sec:clasificacion}
+
+El clasificador opera sobre im\'agenes normalizadas (warped) y produce una
+predicci\'on en tres clases: COVID, Normal y Viral\_Pneumonia. En el
+preprocesamiento se convierten im\'agenes en escala de grises a RGB, se
+redimensionan a $224 \times 224$ y se aplican augmentations moderadas en
+entrenamiento (flip horizontal, rotaci\'on y transformaciones afines con
+traslaci\'on y escala).
+
+Sea $\mathbf{z}\in\mathbb{R}^K$ el vector de logits para $K=3$ clases. La
+probabilidad se calcula con softmax:
+
+\begin{equation}
+p_k = \frac{\exp(z_k)}{\sum_{j=1}^K \exp(z_j)}.
+\label{eq:softmax}
+\end{equation}
+
+La p\'erdida de entrop\'ia cruzada con pesos de clase es:
+
+\begin{equation}
+\mathcal{L}_{\text{CE}} = - w_y \log p_y,
+\label{eq:weighted_ce}
+\end{equation}
+
+donde $w_y$ corrige desbalance de clases. Los pesos se obtienen como:
+
+\begin{equation}
+w_k = \frac{N}{K n_k},
+\label{eq:class_weights}
+\end{equation}
+
+con $n_k$ el n\'umero de muestras de la clase $k$.
+
+En evaluaci\'on se puede aplicar TTA al clasificador con flip horizontal y
+promedio de logits, lo que reduce la varianza de predicci\'on.
+
+\subsection{Optimizaci\'on y regularizaci\'on}
+\label{subsec:optim}
+
+Se emplea AdamW con decaimiento desacoplado \cite{loshchilov2019adamw}. Para
+gradiente $\mathbf{g}_t$ y par\'ametros $\bm{\theta}_t$:
+
+\begin{align}
+\mathbf{m}_t &= \beta_1 \mathbf{m}_{t-1} + (1-\beta_1)\mathbf{g}_t, \\
+\mathbf{v}_t &= \beta_2 \mathbf{v}_{t-1} + (1-\beta_2)\mathbf{g}_t^2, \\
+\bm{\theta}_{t+1} &=
+\bm{\theta}_t - \eta \left(\frac{\mathbf{m}_t}{\sqrt{\mathbf{v}_t}+\epsilon}
++ \lambda \bm{\theta}_t\right).
+\label{eq:adamw}
+\end{align}
+
+La tasa de aprendizaje se ajusta con ReduceLROnPlateau sobre F1 macro, y se
+aplica early stopping si la m\'etrica no mejora en un n\'umero fijo de \'epocas.
+
+\section{M\'etricas de evaluaci\'on}
+\label{sec:metricas}
+
+\subsection{Landmarks}
+El error por landmark se define como la distancia euclidiana en p\'ixeles:
+
+\begin{equation}
+e_i = \left\|(\hat{\mathbf{l}}_i - \mathbf{l}_i)\odot (W,H)\right\|_2.
+\label{eq:pixel_error}
+\end{equation}
+
+El error medio por imagen es $\bar{e} = \frac{1}{n}\sum_{i=1}^n e_i$, y se
+reportan estad\'isticas como media, mediana y percentiles.
+Tambi\'en se reportan errores por landmark y por categor\'ia para identificar
+patrones sistem\'aticos.
+
+\subsection{Clasificaci\'on}
+Se reportan accuracy y F1 macro/ponderado \cite{sokolova2009systematic,grandini2020metrics}:
+
+\begin{equation}
+\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN},
+\label{eq:accuracy}
+\end{equation}
+
+\begin{equation}
+\text{F1} = \frac{2\, \text{Precision}\cdot \text{Recall}}
+{\text{Precision} + \text{Recall}}.
+\label{eq:f1}
+\end{equation}
+
+El F1 macro promedia clases por igual, mientras que el F1 ponderado considera
+el soporte de cada clase. La matriz de confusi\'on permite inspeccionar
+errores por categor\'ia.
+
+\subsection{Generalizaci\'on cruzada}
+Para evaluar transferencia entre dominios, se utiliza un gap de
+generalizaci\'on:
+
+\begin{equation}
+\Delta_{\text{gen}} = \text{Acc}(\mathcal{M}, \mathcal{D}_\text{in})
+- \text{Acc}(\mathcal{M}, \mathcal{D}_\text{out}),
+\label{eq:gen_gap}
+\end{equation}
+
+con $\mathcal{D}_\text{out}$ un dominio distinto. Este an\'alisis se
+fundamenta en la literatura de \textit{domain shift} en imagen m\'edica
+\cite{zech2018variable}.
+
+\section{Modelo jer\'arquico de landmarks (alternativo)}
+\label{sec:hierarchical}
+
+El modelo jer\'arquico predice primero el eje central $(L_1, L_2)$ y luego
+par\'ametros relativos. Sea $\mathbf{a} = \mathbf{l}_2 - \mathbf{l}_1$ y
+$\mathbf{n}$ el vector perpendicular unitario. Los landmarks centrales se
+reconstruyen como:
+
+\begin{equation}
+\mathbf{l}_c = \mathbf{l}_1 + (t_c + \Delta t_c)\mathbf{a},
+\label{eq:hier_central}
+\end{equation}
+
+con $t_c \in \{0.25, 0.50, 0.75\}$. Para un par bilateral $(i,j)$:
+
+\begin{align}
+\mathbf{b} &= \mathbf{l}_1 + (t_{ij} + \Delta t_{ij})\mathbf{a}, \\
+\mathbf{l}_i &= \mathbf{b} + d_i \|\mathbf{a}\|_2 \mathbf{n}, \\
+\mathbf{l}_j &= \mathbf{b} - d_j \|\mathbf{a}\|_2 \mathbf{n},
+\label{eq:hier_bilateral}
+\end{align}
+
+donde $d_i,d_j \in [0, d_{\max}]$ se obtienen con funciones sigmoides para
+garantizar rangos v\'alidos. Esta formulaci\'on explota la estructura
+geom\'etrica del etiquetado y permite imponer restricciones anat\'omicas
+expl\'icitas.

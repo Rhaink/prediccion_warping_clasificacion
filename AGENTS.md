@@ -1,24 +1,25 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`src_v2/` contains the main CLI and modules (`data/`, `models/`, `training/`, `processing/`,
-`evaluation/`, `visualization/`). Configuration lives in `configs/` (JSON templates). Tests
-live in `tests/`. Repro and experiment notes are in `docs/`. Utility scripts are in
-`scripts/`, but prefer the CLI (`python -m src_v2`) unless a script is explicitly required.
-Local artifacts (`data/`, `checkpoints/`, `outputs/`) are not versioned.
+Source code lives in `src_v2/`, organized by domain (`data/`, `models/`, `training/`,
+`processing/`, `evaluation/`, `visualization/`). Configuration templates are in `configs/`
+(JSON). Tests are in `tests/`. Repro notes and experiment docs live in `docs/`. Utility
+scripts are under `scripts/`, but prefer the CLI (`python -m src_v2`) unless a script is
+explicitly required. Local artifacts are kept in `data/`, `checkpoints/`, and `outputs/`
+and are not versioned.
 
 ## Build, Test, and Development Commands
-Create a venv and install deps:
+Create a virtual environment and install dependencies:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-For dev extras:
+Install dev extras when needed:
 ```bash
 pip install -e ".[dev]"
 ```
-Run the main CLI (examples from the current pipeline):
+Run the CLI (examples):
 ```bash
 python -m src_v2 compute-canonical data/coordenadas/coordenadas_maestro.csv --output-dir outputs/shape_analysis
 python -m src_v2 generate-dataset --config configs/warping_best.json
@@ -26,32 +27,30 @@ python -m src_v2 train-classifier --config configs/classifier_warped_base.json
 ```
 
 ## Coding Style & Naming Conventions
-Follow PEP 8 with type hints, 100-character max lines, and Google-style docstrings.
-Keep imports grouped (stdlib, third-party, local) and alphabetized. Test files are
-`test_*.py` and functions are `test_*`. Use clear English identifiers in code, but
-preserve existing Spanish file names and labels where they are part of the dataset
-or documentation.
+Follow PEP 8 with type hints and a 100-character line limit. Use Google-style docstrings.
+Group imports as stdlib, third-party, local, and alphabetize within each group. Use clear
+English identifiers in code, but preserve existing Spanish file names and labels tied to
+datasets or documentation.
 
 ## Testing Guidelines
-Pytest is the test runner. Run the full suite with:
+Pytest is the test runner. Test files use `test_*.py`, and test functions use `test_*`.
+Run the suite with:
 ```bash
 python -m pytest tests/ -v
 ```
-Coverage (optional):
+Optional coverage:
 ```bash
 python -m pytest tests/ -v --cov=src_v2 --cov-report=html
 ```
-Add tests under `tests/`, and target edge cases for warping, transforms, and CLI
-flows.
+Add tests for warping, transforms, and CLI flows when touching those areas.
 
 ## Commit & Pull Request Guidelines
-Recent history mixes descriptive Spanish messages and Conventional Commits
-(`feat:`, `docs:`, `fix:`). Prefer Conventional Commits for new work and keep
-messages short and imperative. PRs should include a concise summary, linked issues
-if any, and test results; include screenshots only when visualizations or figures
-change.
+Commit history mixes descriptive Spanish messages and Conventional Commits
+(`feat:`, `fix:`, `docs:`). Prefer concise Conventional Commits for new work. PRs should
+include a short summary, linked issues if any, and test results. Add screenshots only for
+visualization changes.
 
 ## Data, Artifacts, and Source of Truth
-`GROUND_TRUTH.json` is the source for validated metrics. Do not commit data or
-checkpoints; keep outputs under `outputs/` and document reproducible runs in
-`docs/` when results change.
+`GROUND_TRUTH.json` is the source for validated metrics. Do not commit data or model
+checkpoints. Keep outputs under `outputs/` and document reproducible runs in `docs/` when
+results change.
