@@ -16,6 +16,9 @@
   "landmarks": {
     "description": "Error de prediccion de landmarks (pixeles en imagen 224x224)",
     "ensemble_4_models_tta": {
+      "obsolete": true,
+      "obsolete_reason": "Superseded by ensemble_4_models_tta_best_20260111 (3.61 px with seeds 123,321,111,666)",
+      "obsolete_date": "2026-01-14",
       "mean_error_px": 3.71,
       "std_px": 2.42,
       "median_px": 3.17,
@@ -34,6 +37,9 @@
     "original_image_size": 299,
     "model_input_size": 224,
     "ensemble_4_models_tta_best_20260110": {
+      "obsolete": true,
+      "obsolete_reason": "Superseded by ensemble_4_models_tta_best_20260111 (3.61 px with seed666 instead of seed111)",
+      "obsolete_date": "2026-01-14",
       "mean_error_px": 3.67,
       "std_px": 2.45,
       "median_px": 3.18,
@@ -67,16 +73,25 @@
     ],
     "datasets": {
       "original_100": {
+        "obsolete": true,
+        "obsolete_reason": "Not part of current methodology (warped_lung_best is current)",
+        "obsolete_date": "2026-01-14",
         "accuracy": 98.84,
         "f1_score": 98.16,
         "fill_rate": 100
       },
       "original_cropped_47": {
+        "obsolete": true,
+        "obsolete_reason": "Not part of current methodology (warped_lung_best is current)",
+        "obsolete_date": "2026-01-14",
         "accuracy": 98.89,
         "f1_score": 98.25,
         "fill_rate": 47
       },
       "warped_47": {
+        "obsolete": true,
+        "obsolete_reason": "Superseded by warped_lung_best (98.05%, same fill_rate but better preprocessing)",
+        "obsolete_date": "2026-01-14",
         "accuracy": 98.02,
         "fill_rate": 47
       },
@@ -91,6 +106,9 @@
         "note": "Best actual en warped_lung_best (ResNet18 sweep, 2026-01-13)"
       },
       "warped_99": {
+        "obsolete": true,
+        "obsolete_reason": "Superseded by warped_lung_best (98.05%, fill_rate=47%). RGB+CLAHE inflates fill_rate artificially",
+        "obsolete_date": "2026-01-14",
         "accuracy": 98.73,
         "f1_score": 97.95,
         "fill_rate": 99,
@@ -99,6 +117,9 @@
         "preprocessing": "RGB + CLAHE (LAB space)"
       },
       "warped_96": {
+        "obsolete": true,
+        "obsolete_reason": "Superseded by warped_lung_best (98.05%, fill_rate=47%). warped_96 was using full coverage which is not the current approach",
+        "obsolete_date": "2026-01-14",
         "accuracy": 99.1,
         "f1_score": 98.45,
         "fill_rate": 96,
@@ -110,6 +131,9 @@
     }
   },
   "robustness": {
+    "obsolete": true,
+    "obsolete_reason": "Robustness experiments were done with warped_96/warped_99, not with warped_lung_best (current method)",
+    "obsolete_date": "2026-01-14",
     "description": "Degradacion de accuracy bajo perturbaciones (%)",
     "jpeg_q50": {
       "original_100": 16.14,
@@ -148,6 +172,9 @@
     }
   },
   "cross_evaluation": {
+    "obsolete": true,
+    "obsolete_reason": "Cross-evaluation was done with warped_99, not with warped_lung_best (current method)",
+    "obsolete_date": "2026-01-14",
     "description": "Accuracy de modelos evaluados en datasets cruzados",
     "original_model": {
       "on_original": 98.84,
@@ -162,12 +189,18 @@
     "generalization_improvement_factor": 2.43
   },
   "pfs": {
+    "obsolete": true,
+    "obsolete_reason": "PFS metric not computed for warped_lung_best (current method)",
+    "obsolete_date": "2026-01-14",
     "description": "Pulmonary Focus Score (proporcion de atencion en pulmones)",
     "mean": 0.487,
     "std": 0.091,
     "interpretation": "~0.49 aproximadamente igual a chance (50%), NO hay evidencia de foco pulmonar forzado"
   },
   "fill_rate_tradeoff": {
+    "obsolete": true,
+    "obsolete_reason": "Trade-off analysis was done with warped_47/warped_96/warped_99, not with warped_lung_best (current method)",
+    "obsolete_date": "2026-01-14",
     "description": "Trade-off entre fill rate, accuracy y robustez (Sesion 53)",
     "analysis": {
       "warped_47": {
@@ -208,6 +241,9 @@
     }
   },
   "external_validation": {
+    "obsolete": true,
+    "obsolete_reason": "External validation was done with warped_96, not with warped_lung_best (current method)",
+    "obsolete_date": "2026-01-14",
     "description": "Evaluacion en datasets externos (fuera de distribucion) - Sesion 55",
     "dataset3_fedcovidx": {
       "n_samples": 8482,
