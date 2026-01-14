@@ -1,0 +1,46 @@
+\section{Introducción}
+\label{sec:introduccion}
+
+% JUSTIFICACIÓN DE ESTA SECCIÓN:
+% - Establece el contexto global del problema
+% - Conecta con los objetivos ya definidos
+% - Prepara al lector para la hipótesis
+
+La radiografía de tórax constituye el estudio de imagenología médica más frecuente a nivel mundial, con aproximadamente 2 mil millones de procedimientos realizados anualmente \citep{bushberg2011essential}. Esta modalidad diagnóstica es fundamental para la evaluación de patologías pulmonares, cardiovasculares y torácicas, proporcionando información crítica para la toma de decisiones clínicas. La pandemia de COVID-19 intensificó dramáticamente la demanda de análisis radiológico automatizado, evidenciando las limitaciones de los sistemas existentes \citep{who2020chest}.
+
+\subsection{Planteamiento del Problema}
+\label{subsec:planteamiento}
+
+El análisis automatizado de radiografías de tórax enfrenta un desafío fundamental: la \textbf{variabilidad geométrica inherente} a las condiciones de adquisición. Las diferencias en posicionamiento del paciente, distancia foco-detector, angulación del haz de rayos X y características anatómicas individuales introducen variaciones significativas en la representación espacial de las estructuras torácicas.
+
+Esta variabilidad impacta negativamente en los sistemas de diagnóstico asistido por computadora (CAD), ya que:
+
+\begin{enumerate}
+    \item Los clasificadores aprenden características dependientes de la geometría específica del conjunto de entrenamiento.
+    \item La robustez ante artefactos de compresión (común en entornos hospitalarios) se ve comprometida.
+    \item La generalización a datos de diferentes instituciones es limitada \citep{zech2018variable}.
+\end{enumerate}
+
+\subsection{Pregunta de Investigación}
+\label{subsec:pregunta}
+
+El presente trabajo aborda la siguiente pregunta central:
+
+\begin{quote}
+\textit{¿Cómo diseñar un sistema de normalización geométrica basado en landmarks anatómicos que mejore la robustez y precisión de clasificadores de patologías pulmonares en radiografías de tórax?}
+\end{quote}
+
+\subsection{Enfoque Propuesto}
+\label{subsec:enfoque}
+
+Se propone un pipeline de tres etapas:
+
+\begin{enumerate}
+    \item \textbf{Predicción de landmarks}: Localización automática de 15 puntos anatómicos mediante redes neuronales convolucionales \citep{he2016deep} con función de pérdida Wing Loss \citep{feng2018wing} y restricciones geométricas.
+    \item \textbf{Normalización geométrica}: Transformación de la imagen a una forma canónica mediante análisis de Procrustes \citep{gower1975generalized} y warping afín por partes.
+    \item \textbf{Clasificación}: Detección de patologías (COVID-19, neumonía viral, normal) sobre imágenes normalizadas.
+\end{enumerate}
+
+Este enfoque permite separar la variabilidad geométrica extrínseca de las características patológicas intrínsecas, mejorando tanto la precisión como la robustez del sistema.
+
+En la siguiente sección se formulan las hipótesis cuantificables que guían el desarrollo experimental (Sección~\ref{sec:hipotesis}).

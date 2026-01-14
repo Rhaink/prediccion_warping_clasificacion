@@ -1,0 +1,117 @@
+\documentclass[12pt,letterpaper]{report}
+\usepackage[spanish]{babel}
+\usepackage[letterpaper, margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{nameref}
+
+% Configuración de bibliografía - Estilo IEEE
+\usepackage[numbers]{natbib}
+\bibliographystyle{IEEEtran}
+
+% Nombres en español
+\renewcommand{\tablename}{Tabla}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\contentsname}{Contenido}
+\renewcommand{\algorithmicforall}{\textbf{para todo}}
+\renewcommand{\algorithmicdo}{\textbf{hacer}}
+\renewcommand{\algorithmicend}{\textbf{fin}}
+\renewcommand{\algorithmicif}{\textbf{si}}
+\renewcommand{\algorithmicthen}{\textbf{entonces}}
+\renewcommand{\algorithmicelse}{\textbf{sino}}
+\renewcommand{\algorithmicwhile}{\textbf{mientras}}
+\renewcommand{\algorithmicrepeat}{\textbf{repetir}}
+\renewcommand{\algorithmicuntil}{\textbf{hasta que}}
+\renewcommand{\algorithmicreturn}{\textbf{devolver}}
+
+% Numeración de ecuaciones, figuras y tablas por capítulo
+\numberwithin{equation}{chapter}
+\numberwithin{figure}{chapter}
+\numberwithin{table}{chapter}
+
+% Evitar hyphenation excesiva
+\pretolerance=5000
+\tolerance=2000
+\emergencystretch=30pt
+
+% BibTeX habilitado - usar natbib con estilo IEEEtran (numérico)
+
+\begin{document}
+
+\setstretch{1.15}
+
+% ============================================================================
+% PORTADA ORIGINAL (BUAP)
+% ============================================================================
+\input{title-page}
+
+% ============================================================================
+% TABLA DE CONTENIDO
+% ============================================================================
+\newpage
+\tableofcontents
+
+% ============================================================================
+% OBJETIVOS
+% ============================================================================
+\newpage
+\input{0-Objetivos}
+
+% ============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% ============================================================================
+\newpage
+
+% Sección 4.1: Descripción General del Sistema
+\input{capitulo4/4_1_descripcion_general}
+
+% Sección 4.2: Dataset y Preprocesamiento
+\newpage
+\input{capitulo4/4_2_dataset_preprocesamiento}
+
+% Sección 4.3: Modelo de Predicción de Landmarks
+\newpage
+%\input{capitulo4/4_3_modelo_landmarks}
+
+% Sección 4.4: Normalización Geométrica
+\newpage
+%\input{capitulo4/4_4_normalizacion_geometrica}
+
+% Sección 4.5: Clasificación de Enfermedades Pulmonares
+\newpage
+%\input{capitulo4/4_5_clasificacion}
+
+% Sección 4.6: Protocolo de Evaluación Experimental
+\newpage
+%\input{capitulo4/4_6_protocolo_evaluacion}
+
+% ============================================================================
+% CAPÍTULOS PENDIENTES (según ESTRUCTURA_TESIS.md):
+% - Capítulo 1: Introducción
+% - Capítulo 2: Marco Teórico
+% - Capítulo 3: Estado del Arte
+% - Capítulo 5: Resultados y Discusión
+% - Capítulo 6: Conclusiones y Trabajo Futuro
+% ============================================================================
+
+% ============================================================================
+% BIBLIOGRAFÍA
+% ============================================================================
+\newpage
+\bibliography{references}
+
+\end{document}

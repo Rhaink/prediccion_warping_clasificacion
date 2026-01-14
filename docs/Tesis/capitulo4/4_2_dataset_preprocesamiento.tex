@@ -1,0 +1,291 @@
+% =============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% Sección 4.2: Dataset y Preprocesamiento
+% =============================================================================
+
+\section{Conjunto de Datos y Preprocesamiento}
+\label{sec:dataset_preprocesamiento}
+
+Esta sección describe el conjunto de datos utilizado para el desarrollo y evaluación del sistema propuesto, así como los procesos de anotación y preprocesamiento aplicados a las imágenes.
+
+\subsection{COVID-19 Radiography Database}
+\label{subsec:covid19_radiography_database}
+
+El presente trabajo utiliza el \textit{COVID-19 Radiography Database}, un conjunto de datos públicamente disponible desarrollado por investigadores de Qatar University, University of Dhaka y colaboradores de Malasia y Pakistán \cite{chowdhury2020can, rahman2021exploring}. Este conjunto de datos ha sido ampliamente utilizado en la literatura para el desarrollo de sistemas de detección de COVID-19 basados en radiografías de tórax.
+
+El conjunto de datos contiene imágenes de radiografías posteroanterior (PA) de tórax organizadas en tres categorías diagnósticas:
+
+\begin{itemize}
+    \item \textbf{COVID-19:} Radiografías de pacientes con diagnóstico confirmado de COVID-19 mediante prueba RT-PCR.
+    \item \textbf{Normal:} Radiografías de pacientes sin patología pulmonar aparente.
+    \item \textbf{Neumonía Viral:} Radiografías de pacientes con neumonía viral de etiología distinta a SARS-CoV-2.
+\end{itemize}
+
+La Tabla \ref{tab:distribucion_dataset} presenta la distribución de imágenes por categoría utilizada en este trabajo.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Distribución del conjunto de datos por categoría diagnóstica.}
+    \label{tab:distribucion_dataset}
+    \begin{tabular}{lrrr}
+        \toprule
+        \textbf{Categoría} & \textbf{Imágenes} & \textbf{Porcentaje} & \textbf{Fuente} \\
+        \midrule
+        COVID-19 & 3,616 & 23.9\% & BIMCV, Eurorad, GitHub \\
+        Normal & 10,192 & 67.2\% & RSNA, CheXpert \\
+        Neumonía Viral & 1,345 & 8.9\% & Chest X-Ray Images \\
+        \midrule
+        \textbf{Total} & \textbf{15,153} & \textbf{100\%} & --- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Las imágenes originales tienen un tamaño de $299 \times 299$ píxeles en formato PNG. El conjunto de datos presenta un desbalance de clases natural, con predominancia de imágenes normales, lo cual refleja la distribución típica en escenarios clínicos reales.
+
+\subsection{Anotación de Landmarks Anatómicos}
+\label{subsec:anotacion_landmarks}
+
+Para el entrenamiento del modelo de predicción de landmarks, se realizó la anotación manual de 15 puntos característicos en un subconjunto del conjunto de datos. Estos landmarks definen el contorno de la región pulmonar bilateral y fueron seleccionados para permitir una triangulación robusta en el proceso de normalización geométrica.
+
+\subsubsection{Definición de los 15 Landmarks}
+
+Los landmarks no corresponden a estructuras anatómicas específicas, sino que representan puntos de control sobre la silueta pulmonar diseñados para capturar la forma global del contorno. La Figura \ref{fig:landmarks_anatomicos} ilustra la ubicación de cada landmark.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: Insertar figura de landmarks]
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{4cm}
+    [Diagrama de los 15 landmarks sobre una radiografía de ejemplo]\\
+    Mostrando: Eje central (L1-L2), contornos bilaterales (L3-L8, L12-L15), y puntos intermedios (L9-L11)
+    \vspace{4cm}}}
+    \caption{Ubicación de los 15 landmarks que definen el contorno pulmonar. Los puntos L1 y L2 definen el eje vertical central. Los landmarks L3-L8 delimitan los contornos laterales, mientras que L9-L11 dividen el eje central en cuatro segmentos iguales. Los pares (L12,L13) y (L14,L15) corresponden a las esquinas superior e inferior respectivamente.}
+    \label{fig:landmarks_anatomicos}
+\end{figure}
+
+La estructura geométrica de los landmarks se organiza de la siguiente manera:
+
+\begin{enumerate}
+    \item \textbf{Eje central vertical:} Los landmarks L1 (superior) y L2 (inferior) definen la línea media de la silueta pulmonar. Los puntos L9, L10 y L11 dividen este eje en cuatro segmentos de igual longitud, correspondiendo a las posiciones relativas $t = 0.25$, $t = 0.50$ y $t = 0.75$ respectivamente.
+
+    \item \textbf{Contorno pulmonar izquierdo:} Los landmarks L12, L3, L5, L7 y L14 trazan el borde lateral izquierdo de la silueta, desde la región superior hasta la inferior.
+
+    \item \textbf{Contorno pulmonar derecho:} De manera simétrica, los landmarks L13, L4, L6, L8 y L15 definen el borde lateral derecho.
+
+    \item \textbf{Pares simétricos:} Existen cinco pares de landmarks bilateralmente simétricos: (L3, L4), (L5, L6), (L7, L8), (L12, L13) y (L14, L15). Esta simetría estructural facilita la transformación de coordenadas durante el aumento de datos (flip horizontal).
+\end{enumerate}
+
+La Tabla \ref{tab:landmarks_descripcion} resume la ubicación y función de cada landmark.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Descripción de los 15 landmarks anatómicos.}
+    \label{tab:landmarks_descripcion}
+    \begin{tabular}{clll}
+        \toprule
+        \textbf{ID} & \textbf{Ubicación} & \textbf{Posición $t$} & \textbf{Par simétrico} \\
+        \midrule
+        L1 & Ápex (eje central superior) & 0.00 & --- \\
+        L2 & Base (eje central inferior) & 1.00 & --- \\
+        L3 & Contorno izquierdo superior & 0.25 & L4 \\
+        L4 & Contorno derecho superior & 0.25 & L3 \\
+        L5 & Contorno izquierdo medio & 0.50 & L6 \\
+        L6 & Contorno derecho medio & 0.50 & L5 \\
+        L7 & Contorno izquierdo inferior & 0.75 & L8 \\
+        L8 & Contorno derecho inferior & 0.75 & L7 \\
+        L9 & Eje central (cuarto superior) & 0.25 & --- \\
+        L10 & Eje central (punto medio) & 0.50 & --- \\
+        L11 & Eje central (cuarto inferior) & 0.75 & --- \\
+        L12 & Esquina superior izquierda & 0.00 & L13 \\
+        L13 & Esquina superior derecha & 0.00 & L12 \\
+        L14 & Esquina inferior izquierda & 1.00 & L15 \\
+        L15 & Esquina inferior derecha & 1.00 & L14 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection{Proceso de Anotación}
+
+Para realizar la anotación de landmarks se desarrolló una herramienta gráfica interactiva basada en OpenCV que facilita el proceso mediante un algoritmo semi-automático. La anotación se realizó sobre un subconjunto de 957 imágenes seleccionadas del conjunto de datos completo, asegurando representatividad de las tres categorías diagnósticas.
+
+\paragraph{Herramienta de Anotación}
+
+La herramienta desarrollada implementa un proceso de anotación en dos fases que reduce significativamente el tiempo requerido respecto a la marcación individual de cada punto. La Figura \ref{fig:herramienta_etiquetado} ilustra la interfaz de la herramienta.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F4.2b - Interfaz de la herramienta de etiquetado]
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
+    [Captura de pantalla de la herramienta de etiquetado]\\
+    Mostrando: imagen de radiografía con landmarks superpuestos,\\
+    línea central azul, puntos verdes numerados, y menú de teclas de ajuste
+    \vspace{4cm}}}
+    \caption{Interfaz de la herramienta de anotación de landmarks. La ventana principal muestra la radiografía con una línea vertical central de referencia. Los landmarks se visualizan como puntos verdes conectados por líneas rojas que definen el contorno pulmonar.}
+    \label{fig:herramienta_etiquetado}
+\end{figure}
+
+\paragraph{Fase 1: Generación Automática}
+
+El proceso inicia con tres interacciones del operador que definen la geometría base:
+
+\begin{enumerate}
+    \item \textbf{Primer click (L1):} Define el ápex superior de la silueta pulmonar.
+    \item \textbf{Segundo click (L2):} Define la base inferior, estableciendo el eje central del contorno.
+    \item \textbf{Tercer click:} Confirma la selección y activa el algoritmo de generación automática.
+\end{enumerate}
+
+El algoritmo de generación automática calcula los 13 landmarks restantes (L3-L15) mediante el siguiente procedimiento:
+
+\begin{enumerate}
+    \item Calcula la línea central entre L1 y L2, determinando su pendiente.
+    \item Divide el eje central en cuatro segmentos iguales, ubicando los puntos intermedios L9, L10 y L11 en las posiciones $t = 0.25$, $t = 0.50$ y $t = 0.75$ respectivamente.
+    \item Genera líneas perpendiculares al eje central en cada punto de división.
+    \item Ubica los landmarks laterales (L3-L8, L12-L15) sobre estas perpendiculares a distancias predefinidas del eje central.
+\end{enumerate}
+
+\paragraph{Fase 2: Ajuste Manual}
+
+Los landmarks generados automáticamente proporcionan una aproximación inicial que raramente coincide exactamente con el contorno pulmonar visible. La herramienta permite ajustar cada landmark horizontalmente mediante atajos de teclado, manteniendo la coherencia geométrica al desplazar los puntos a lo largo de sus respectivas líneas perpendiculares.
+
+El ajuste se realiza hasta que cada landmark coincida visualmente con el borde de la silueta pulmonar en la imagen.
+
+\paragraph{Criterios de Anotación}
+
+El proceso de anotación siguió las siguientes directrices para garantizar consistencia:
+
+\begin{enumerate}
+    \item Se colocó cada landmark sobre el borde perceptible de la silueta pulmonar, no sobre estructuras anatómicas internas.
+    \item En casos de ambigüedad por baja calidad de imagen o superposición de estructuras, se priorizó la consistencia visual sobre la precisión anatómica.
+    \item Se verificó visualmente que los pares simétricos (L3-L4, L5-L6, etc.) mantuvieran una distribución razonable respecto al eje central.
+    \item Las coordenadas se registraron en píxeles respecto a la imagen original de $299 \times 299$ píxeles.
+\end{enumerate}
+
+Las anotaciones se almacenaron en formato CSV con la estructura mostrada en la Tabla \ref{tab:formato_csv}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Formato del archivo CSV de coordenadas de landmarks.}
+    \label{tab:formato_csv}
+    \begin{tabular}{lp{8cm}}
+        \toprule
+        \textbf{Campo} & \textbf{Descripción} \\
+        \midrule
+        índice & Identificador numérico de la imagen \\
+        L1\_x, L1\_y, ..., L15\_x, L15\_y & Coordenadas $(x, y)$ de cada landmark en píxeles \\
+        image\_name & Nombre del archivo de imagen (categoría-ID) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+La distribución del subconjunto anotado por categoría se presenta en la Tabla \ref{tab:distribucion_anotado}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Distribución del subconjunto anotado con landmarks.}
+    \label{tab:distribucion_anotado}
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Categoría} & \textbf{Imágenes anotadas} & \textbf{Porcentaje} \\
+        \midrule
+        COVID-19 & 306 & 32.0\% \\
+        Normal & 468 & 48.9\% \\
+        Neumonía Viral & 183 & 19.1\% \\
+        \midrule
+        \textbf{Total} & \textbf{957} & \textbf{100\%} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Preprocesamiento de Imágenes}
+\label{subsec:preprocesamiento}
+
+Las imágenes radiográficas requieren preprocesamiento para mitigar las variaciones introducidas por distintos equipos de adquisición y diversas condiciones de exposición. El proceso implementado consta de tres etapas: mejora de contraste, redimensionamiento y normalización.
+
+\subsubsection{Mejora de Contraste mediante CLAHE}
+
+Se aplica el algoritmo \textit{Contrast Limited Adaptive Histogram Equalization} (CLAHE) \cite{pizer1987adaptive} para mejorar el contraste local de las imágenes. A diferencia de la ecualización de histograma global, CLAHE opera sobre regiones locales (tiles) y limita la amplificación de contraste para evitar el realce excesivo de ruido.
+
+Los parámetros utilizados fueron determinados experimentalmente:
+
+\begin{itemize}
+    \item \textbf{Clip limit:} $2.0$ --- Controla el límite máximo de amplificación de contraste. Valores mayores producen mayor contraste pero pueden amplificar ruido.
+    \item \textbf{Tile size:} $4 \times 4$ --- Tamaño de las regiones para ecualización local. Un valor menor produce una adaptación más fina pero aumenta el tiempo de cómputo.
+\end{itemize}
+
+La Figura \ref{fig:clahe_comparison} muestra el efecto del preprocesamiento CLAHE sobre una radiografía de ejemplo.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: Insertar figura comparativa CLAHE]
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}
+    [Comparación lado a lado: imagen original vs. imagen con CLAHE aplicado]
+    \vspace{3cm}}}
+    \caption{Efecto del preprocesamiento CLAHE. (a) Imagen original con bajo contraste en la región pulmonar. (b) Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 4$, mostrando mejor definición de estructuras pulmonares.}
+    \label{fig:clahe_comparison}
+\end{figure}
+
+\subsubsection{Redimensionamiento}
+
+Las imágenes se redimensionan de su tamaño original ($299 \times 299$ píxeles) a $224 \times 224$ píxeles mediante interpolación bilineal. Este tamaño corresponde a la entrada estándar de las arquitecturas de redes neuronales preentrenadas en ImageNet \cite{deng2009imagenet}.
+
+\subsubsection{Normalización}
+
+Para el modelo de predicción de landmarks basado en ResNet-18 preentrenado, se aplica normalización utilizando las estadísticas del conjunto de datos ImageNet:
+
+\begin{equation}
+    \hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}
+\end{equation}
+
+\noindent donde $x_c$ es el valor del canal $c$, $\mu_c$ es la media y $\sigma_c$ la desviación estándar para cada canal RGB:
+
+\begin{align}
+    \mu &= (0.485, 0.456, 0.406) \\
+    \sigma &= (0.229, 0.224, 0.225)
+\end{align}
+
+Las coordenadas de los landmarks se normalizan al rango $[0, 1]$ dividiendo entre el tamaño de la imagen ($224$ píxeles), facilitando el entrenamiento del modelo de regresión.
+
+\subsection{División del Conjunto de Datos}
+\label{subsec:division_dataset}
+
+El conjunto de datos se divide en tres subconjuntos mutuamente excluyentes para entrenamiento, validación y prueba. La división se realiza de manera estratificada por categoría diagnóstica para mantener las proporciones de clases en cada subconjunto.
+
+\begin{itemize}
+    \item \textbf{Entrenamiento (75\%):} Utilizado para optimizar los parámetros del modelo.
+    \item \textbf{Validación (15\%):} Utilizado para selección de hiperparámetros y criterio de parada temprana.
+    \item \textbf{Prueba (10\%):} Reservado exclusivamente para la evaluación final del modelo.
+\end{itemize}
+
+La Tabla \ref{tab:division_splits} presenta la distribución resultante para el conjunto de datos de clasificación (15,153 imágenes).
+
+\begin{table}[htbp]
+    \centering
+    \caption{División del conjunto de datos en subconjuntos de entrenamiento, validación y prueba.}
+    \label{tab:division_splits}
+    \begin{tabular}{lrrrr}
+        \toprule
+        \textbf{Conjunto} & \textbf{COVID-19} & \textbf{Normal} & \textbf{Viral} & \textbf{Total} \\
+        \midrule
+        Entrenamiento (75\%) & 2,712 & 7,644 & 1,008 & 11,364 \\
+        Validación (15\%) & 543 & 1,529 & 202 & 2,274 \\
+        Prueba (10\%) & 361 & 1,019 & 135 & 1,515 \\
+        \midrule
+        \textbf{Total} & \textbf{3,616} & \textbf{10,192} & \textbf{1,345} & \textbf{15,153} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Para garantizar la reproducibilidad de los experimentos, se utiliza una semilla aleatoria fija ($seed = 42$) en todas las operaciones que involucran aleatorización, incluyendo la división del conjunto de datos, inicialización de pesos del modelo y muestreo durante el entrenamiento.
+
+El subconjunto con anotaciones de landmarks (957 imágenes) sigue la misma proporción de división:
+
+\begin{itemize}
+    \item Entrenamiento: 717 imágenes (75\%)
+    \item Validación: 144 imágenes (15\%)
+    \item Prueba: 96 imágenes (10\%)
+\end{itemize}
+
+% Referencias temporales para esta sección
+% \cite{chowdhury2020can} - COVID-19 Radiography Database
+% \cite{rahman2021exploring} - Exploring the effect of image enhancement
+% \cite{pizer1987adaptive} - CLAHE original paper
+% \cite{deng2009imagenet} - ImageNet dataset

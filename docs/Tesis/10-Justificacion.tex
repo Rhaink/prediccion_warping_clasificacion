@@ -1,0 +1,63 @@
+\section{Justificación}
+\label{sec:justificacion}
+
+% JUSTIFICACIÓN DE ESTA SECCIÓN:
+% - Demuestra relevancia clínica y científica
+% - Presenta contribuciones originales
+% - Prepara al lector para el marco teórico
+
+\subsection{Relevancia Clínica}
+\label{subsec:relevancia}
+
+La pandemia de COVID-19 evidenció dramáticamente la brecha entre la demanda de análisis radiológico y la capacidad disponible de especialistas \citep{who2020chest}. En el pico de la crisis sanitaria, los sistemas de salud enfrentaron:
+
+\begin{itemize}
+    \item Incremento exponencial en volumen de radiografías de tórax
+    \item Necesidad de triaje rápido para priorización de pacientes
+    \item Variabilidad en equipos y protocolos entre instituciones
+    \item Compresión de imágenes para transmisión y almacenamiento
+\end{itemize}
+
+Los sistemas de diagnóstico asistido por computadora (CAD), como COVID-Net \citep{wang2020covidnet} y CheXNet \citep{rajpurkar2017chexnet}, ofrecen una solución potencial, pero su efectividad depende críticamente de la robustez ante las condiciones reales de operación hospitalaria.
+
+\subsection{Contribuciones Científicas}
+\label{subsec:contribuciones}
+
+Este trabajo aporta las siguientes contribuciones:
+
+\begin{enumerate}
+    \item \textbf{Robustez mejorada a artefactos}: La normalización geométrica proporciona 5.3$\times$ mejor robustez a compresión JPEG Q50 (3.06\% vs 16.14\% degradación), alcanzando hasta 30$\times$ con warping de 47\% fill rate, crítico para deployment en entornos hospitalarios donde la compresión es inevitable.
+
+    \item \textbf{Función de pérdida geométrica multi-componente}: Integración de Wing Loss \citep{feng2018wing} con restricciones de alineación central y simetría bilateral, logrando error de localización de 3.71 píxeles en 15 landmarks anatómicos.
+
+    \item \textbf{Análisis del mecanismo de robustez}: Experimento de control que identifica dos componentes causales de la mejora: aproximadamente 75\% atribuible a reducción de información (regularización implícita) y 25\% adicional a normalización geométrica propiamente dicha.
+
+    \item \textbf{Validación rigurosa con limitaciones documentadas}: Evaluación en dataset externo FedCOVIDx (8,482 muestras de múltiples instituciones) con documentación honesta del domain shift \citep{zech2018variable}. La accuracy de 53--55\% en datos externos (comparable al modelo original sin normalización) confirma que el domain shift cross-institucional persiste, consistente con la literatura en imágenes médicas.
+
+    \item \textbf{Pipeline reproducible}: Implementación completa con código fuente, configuraciones y checkpoints disponibles para replicación.
+\end{enumerate}
+
+\subsection{Impacto Potencial}
+\label{subsec:impacto}
+
+La normalización geométrica propuesta puede servir como:
+
+\begin{itemize}
+    \item Preprocesamiento estándar para sistemas CAD pulmonares
+    \item Base para segmentación automática mediante Active Shape Models
+    \item Método de regularización implícita para mejorar generalización
+    \item Técnica de reducción de sensibilidad a artefactos de compresión
+\end{itemize}
+
+\subsection{Alcance y Limitaciones}
+\label{subsec:alcance}
+
+Es importante delimitar que este trabajo:
+\begin{itemize}
+    \item Se enfoca en radiografías PA de tórax (proyección posteroanterior)
+    \item Valida dentro del dominio de entrenamiento con alta precisión (99.10\% accuracy)
+    \item Documenta honestamente las limitaciones de generalización cross-institucional
+    \item No pretende reemplazar el diagnóstico médico profesional
+\end{itemize}
+
+Para implementar la solución propuesta, es necesario establecer los fundamentos teóricos que se presentan en la Sección~\ref{sec:marco-teorico}.
