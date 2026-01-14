@@ -5,8 +5,7 @@ predicciones del ensemble, antes de pasar a warping.
 
 ## Requisitos
 - Entorno activo: `source .venv/bin/activate`
-- Datos en `data/`
-- CSV en `data/coordenadas/coordenadas_maestro.csv`
+- Datos y checkpoints necesarios (provistos por el autor)
 
 ## Quickstart (una sola linea)
 ```bash

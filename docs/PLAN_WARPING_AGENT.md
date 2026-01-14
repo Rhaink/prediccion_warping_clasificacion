@@ -1,5 +1,8 @@
 # Plan detallado: dejar warping listo (para agente de IA)
 
+**Nota**: Este plan ya fue implementado. El flujo actual esta en
+`docs/QUICKSTART_WARPING.md` y `docs/REPRO_FULL_PIPELINE.md`.
+
 Objetivo: preparar la parte de **warping** para que sea reproducible desde cero,
 usando el **ensemble best 3.61 px**, y dejar dataset warpeado listo para la fase
 de clasificación. Este plan termina **después** de generar el dataset warpeado,

@@ -17,6 +17,7 @@ scripts/
 | Script | Proposito | CLI Equivalente |
 |--------|-----------|-----------------|
 | `predict.py` | Prediccion de landmarks | `python -m src_v2 predict` |
+| `predict_landmarks_dataset.py` | Cache de landmarks para dataset completo | - |
 | `train.py` | Entrenamiento de modelos | `python -m src_v2 train` |
 | `train_classifier.py` | Wrapper del CLI (clasificador) | `python -m src_v2 train-classifier` |
 | `train_hierarchical.py` | Entrenar modelo jerarquico | - |
@@ -32,6 +33,7 @@ scripts/
 | `run_seed_sweep.sh` | Entrenar seeds arbitrarios y correr opcion 1 + opcion 2 |
 | `run_best_ensemble.sh` | Evaluar el mejor ensemble actual |
 | `quickstart_landmarks.sh` | Entrenar + evaluar + extraer predicciones (hasta pre-warping) |
+| `quickstart_warping.sh` | Pipeline warping con cache de landmarks + dataset warped |
 | `run_classifier_sweep_accuracy.sh` | Sweep de accuracy para clasificador CNN |
 
 Nota: `run_repro_split_ensemble.sh` y `run_option1_new_seeds.sh` fueron movidos a
@@ -91,8 +93,12 @@ Ubicacion: `visualization/`
 
 | Script | Proposito |
 |--------|-----------|
-| `generate_warped_dataset.py` | Dataset warpeado (47% fill) |
-| `generate_full_warped_dataset.py` | Dataset completo warpeado |
+| `predict_landmarks_dataset.py` | Cache de landmarks para warping (recomendado) |
+| `generate_warped_dataset.py` | Legacy (Sesion 21): warping con GT, fill ~47% |
+| `generate_full_warped_dataset.py` | Legacy (Sesion 25): warping inline, sin cache |
+
+Nota: el flujo actual usa `python -m src_v2 generate-dataset` con `--predictions`
+o `--config configs/warping_best.json` (ver `docs/QUICKSTART_WARPING.md`).
 
 Nota: `generate_original_cropped_47.py` y `filter_dataset_3_classes.py` fueron movidos a
 `scripts/archive/classification/`.

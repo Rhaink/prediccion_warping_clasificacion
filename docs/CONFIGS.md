@@ -17,6 +17,12 @@ CLI flags always override config values.
 - Example:
   - python scripts/evaluate_ensemble_from_config.py --config configs/ensemble_best.json
 
+## Warping (Best)
+- File: configs/warping_best.json
+- Script: python -m src_v2 generate-dataset
+- Example:
+  - python -m src_v2 generate-dataset --config configs/warping_best.json
+
 ## Classifier (Warped)
 - File: configs/classifier_warped_base.json
 - Script: scripts/train_classifier.py (wrapper del CLI)
