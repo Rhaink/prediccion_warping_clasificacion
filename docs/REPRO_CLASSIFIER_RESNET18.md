@@ -108,6 +108,13 @@ Validacion de estabilidad (3 seeds, lr2e-4, class_weights=on):
 - F1 macro: 96.51% +/- 0.46
 - F1 weighted: 97.59% +/- 0.34
 
+Refinamiento LR (1.5e-4, 3 seeds):
+- Seeds: 42, 123, 321
+- Test accuracy: 97.89% +/- 0.13
+- F1 macro: 96.82% +/- 0.12
+- F1 weighted: 97.88% +/- 0.13
+- Nota: mas estable, pero no supera el best actual individual (0.9805).
+
 ## Futuras pruebas (no implementadas)
 - Label smoothing: suaviza targets (ej. 0.9/0.1) para reducir overfitting y mejorar calibracion.
 - Focal loss: enfoca el aprendizaje en ejemplos dificiles; puede mejorar recall de clases minoritarias.
