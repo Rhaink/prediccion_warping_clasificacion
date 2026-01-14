@@ -6,70 +6,35 @@
 \section{Clasificación de Enfermedades Pulmonares}
 \label{sec:clasificacion}
 
-Una vez que las imágenes han sido normalizadas geométricamente mediante el proceso de warping descrito en la sección anterior, el siguiente paso del sistema es la clasificación automática en una de tres categorías diagnósticas: COVID-19, Normal o Neumonía Viral. Esta sección describe las arquitecturas de clasificación evaluadas, la estrategia de aprendizaje por transferencia empleada y la configuración del entrenamiento.
+Una vez que las imágenes han sido normalizadas geométricamente mediante el proceso de warping descrito en la sección anterior, el siguiente paso del sistema es la clasificación automática en una de tres categorías diagnósticas: COVID-19, Normal o Neumonía Viral. Esta sección describe la arquitectura ResNet-18 seleccionada, la estrategia de aprendizaje por transferencia empleada y la configuración del entrenamiento.
 
-\subsection{Arquitecturas CNN Evaluadas}
-\label{subsec:arquitecturas_evaluadas}
+\subsection{Arquitectura del Clasificador}
+\label{subsec:arquitectura_clasificador}
 
-Para la tarea de clasificación se evaluaron siete arquitecturas de redes neuronales convolucionales ampliamente utilizadas en visión por computadora. Todas las arquitecturas se inicializaron con pesos preentrenados en ImageNet \cite{deng2009imagenet}, aprovechando el conocimiento transferible de características visuales genéricas.
+Para la tarea de clasificación se seleccionó ResNet-18 \cite{he2016deep} como arquitectura base, inicializada con pesos preentrenados en ImageNet \cite{deng2009imagenet}. ResNet-18 ofrece un balance óptimo entre capacidad de representación y eficiencia computacional para este problema.
 
-La Tabla \ref{tab:arquitecturas_evaluadas} presenta las arquitecturas evaluadas junto con sus características principales.
+\subsubsection{Justificación de ResNet-18}
+
+La selección de ResNet-18 se fundamenta en las siguientes características:
+
+\begin{enumerate}
+    \item \textbf{Consistencia arquitectónica:} Utiliza la misma familia de arquitectura que el modelo de predicción de landmarks (ResNet-18 con Coordinate Attention), facilitando la integración y mantenimiento del sistema completo.
+
+    \item \textbf{Eficiencia computacional:} Con 11.2 millones de parámetros, permite iteraciones rápidas durante el entrenamiento y la experimentación sin comprometer significativamente el rendimiento.
+
+    \item \textbf{Conexiones residuales:} Las conexiones de salto (skip connections) mitigan el problema de desvanecimiento de gradiente, permitiendo entrenar modelos más profundos de manera efectiva \cite{he2016deep}.
+
+    \item \textbf{Rendimiento comprobado:} ResNet-18 ha demostrado buen desempeño en múltiples tareas de clasificación de imágenes médicas, incluyendo diagnóstico de enfermedades torácicas en radiografías \cite{rajpurkar2017chexnet}.
+\end{enumerate}
+
+\subsubsection{Rendimiento Obtenido}
+
+La Tabla \ref{tab:rendimiento_resnet18} presenta el rendimiento del clasificador ResNet-18 en el conjunto de datos normalizado geométricamente.
 
 \begin{table}[htbp]
     \centering
-    \caption{Arquitecturas CNN evaluadas para clasificación. Todas utilizan pesos preentrenados de ImageNet y se adaptan para clasificación de 3 clases.}
-    \label{tab:arquitecturas_evaluadas}
-    \begin{tabular}{llcc}
-        \toprule
-        \textbf{Arquitectura} & \textbf{Referencia} & \textbf{Parámetros} & \textbf{Año} \\
-        \midrule
-        AlexNet & Krizhevsky et al. \cite{krizhevsky2012imagenet} & 57.0M & 2012 \\
-        VGG-16 & Simonyan \& Zisserman \cite{simonyan2014very} & 134.3M & 2014 \\
-        ResNet-18 & He et al. \cite{he2016deep} & 11.2M & 2016 \\
-        ResNet-50 & He et al. \cite{he2016deep} & 23.5M & 2016 \\
-        DenseNet-121 & Huang et al. \cite{huang2017densely} & 7.0M & 2017 \\
-        MobileNetV2 & Sandler et al. \cite{sandler2018mobilenetv2} & 2.2M & 2018 \\
-        EfficientNet-B0 & Tan \& Le \cite{tan2019efficientnet} & 4.0M & 2019 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-La selección de arquitecturas abarca diferentes paradigmas de diseño de CNNs:
-
-\begin{itemize}
-    \item \textbf{Arquitecturas clásicas} (AlexNet, VGG-16): Establecieron las bases del aprendizaje profundo en visión, aunque con alto costo computacional.
-
-    \item \textbf{Redes residuales} (ResNet-18, ResNet-50): Introducen conexiones de salto que permiten entrenar redes más profundas mitigando el problema de desvanecimiento de gradiente \cite{he2016deep}.
-
-    \item \textbf{Conexiones densas} (DenseNet-121): Cada capa recibe entradas de todas las capas anteriores, promoviendo la reutilización de características \cite{huang2017densely}.
-
-    \item \textbf{Arquitecturas eficientes} (MobileNetV2, EfficientNet-B0): Diseñadas para maximizar la precisión con restricciones de recursos computacionales.
-\end{itemize}
-
-\subsubsection{Enfoque en ResNet-18 y EfficientNet-B0}
-
-De las siete arquitecturas evaluadas, ResNet-18 y EfficientNet-B0 emergieron como las opciones más adecuadas para este proyecto, considerando el balance entre rendimiento y eficiencia.
-
-\textbf{ResNet-18} ofrece varias ventajas:
-\begin{enumerate}
-    \item \textbf{Consistencia con el sistema:} Utiliza la misma familia de arquitectura que el modelo de predicción de landmarks, facilitando la integración.
-    \item \textbf{Eficiencia computacional:} Con 11.2M parámetros, permite iteraciones rápidas durante la experimentación.
-    \item \textbf{Robustez demostrada:} Ha mostrado buen rendimiento en múltiples tareas de clasificación de imágenes médicas \cite{rajpurkar2017chexnet}.
-\end{enumerate}
-
-\textbf{EfficientNet-B0} representa una alternativa moderna:
-\begin{enumerate}
-    \item \textbf{Escalado compuesto:} Balancea uniformemente profundidad, ancho y resolución de la red \cite{tan2019efficientnet}.
-    \item \textbf{Alta eficiencia:} Alcanza rendimiento competitivo con solo 4.0M parámetros.
-    \item \textbf{Estado del arte:} Demostró resultados superiores en ImageNet con menor costo computacional.
-\end{enumerate}
-
-La Tabla \ref{tab:comparacion_resnet_efficientnet} presenta la comparación de rendimiento entre ambas arquitecturas en el conjunto de datos normalizado.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Arquitectura y rendimiento del clasificador ResNet-18 en el conjunto de datos normalizado geométricamente.}
-    \label{tab:comparacion_resnet_efficientnet}
+    \caption{Rendimiento del clasificador ResNet-18 en el conjunto de prueba con imágenes normalizadas geométricamente.}
+    \label{tab:rendimiento_resnet18}
     \begin{tabular}{lcccc}
         \toprule
         \textbf{Arquitectura} & \textbf{Accuracy} & \textbf{F1-Macro} & \textbf{F1-Weighted} & \textbf{Parámetros} \\
@@ -79,7 +44,7 @@ La Tabla \ref{tab:comparacion_resnet_efficientnet} presenta la comparación de r
     \end{tabular}
 \end{table}
 
-Se seleccionó ResNet-18 como la arquitectura del clasificador debido a su balance entre capacidad de representación y eficiencia computacional. Con 11.2 millones de parámetros preentrenados en ImageNet, la arquitectura alcanza 98.05\% de \textit{accuracy} en el conjunto de prueba, con F1-Macro de 97.12\% y F1-Weighted de 98.04\%.
+El clasificador alcanza 98.05\% de \textit{accuracy} en el conjunto de prueba, con F1-Macro de 97.12\% y F1-Weighted de 98.04\%. El F1-Macro, que pondera equitativamente el rendimiento en cada clase, es particularmente relevante dado el desbalance del conjunto de datos (67\% Normal, 24\% COVID-19, 9\% Neumonía Viral).
 
 \subsection{Estrategia de Aprendizaje por Transferencia}
 \label{subsec:transfer_learning_clasificacion}

@@ -278,9 +278,9 @@ La \textit{tasa de llenado} cuantifica la proporción de la imagen warpeada que 
 
 \noindent donde $\mathbb{1}[\cdot]$ es la función indicadora.
 
-Con los parámetros seleccionados (\texttt{margin\_scale}=1.05, \texttt{use\_full\_coverage}=falso), el método produce una tasa de llenado (\textit{fill rate}) de aproximadamente 47\%, correspondiente a la región pulmonar sin el fondo circundante. Alternativamente, con la estrategia de cobertura completa (\texttt{use\_full\_coverage}=verdadero), la tasa de llenado alcanza valores superiores al 95\%, dependiendo del preprocesamiento aplicado a las imágenes.
+Con los parámetros seleccionados (\texttt{margin\_scale}=1.05), el método produce una tasa de llenado (\textit{fill rate}) de aproximadamente 47\%, correspondiente a la región pulmonar sin el fondo circundante.
 
-La Figura \ref{fig:warping_comparison} muestra la diferencia visual entre el warping estándar y el de cobertura completa.
+La Figura \ref{fig:warping_comparison} muestra la comparación visual entre la imagen original y la imagen normalizada geométricamente mediante warping.
 
 \begin{figure}[htbp]
     \centering
@@ -288,10 +288,9 @@ La Figura \ref{fig:warping_comparison} muestra la diferencia visual entre el war
     \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
     [Figura F4.8: Comparación de imágenes]\\
     (a) Imagen original\\
-    (b) Imagen warpeada sin cobertura completa (tasa de llenado $\approx$ 47\%)\\
-    (c) Imagen warpeada con cobertura completa (tasa de llenado $\approx$ 96\%)
+    (b) Imagen warpeada (tasa de llenado $\approx$ 47\%)
     \vspace{4cm}}}
-    \caption{Comparación del proceso de warping. (a) Radiografía original con variabilidad de pose y escala. (b) Warping estándar que cubre solo la región delimitada por los landmarks, dejando esquinas negras. (c) Warping con cobertura completa que procesa toda la imagen, preservando el contexto periférico.}
+    \caption{Comparación del proceso de warping. (a) Radiografía original con variabilidad de pose y escala. (b) Imagen normalizada geométricamente mediante warping, enfocándose en la región delimitada por los landmarks (margin\_scale=1.05, fill\_rate=47\%).}
     \label{fig:warping_comparison}
 \end{figure}
 
