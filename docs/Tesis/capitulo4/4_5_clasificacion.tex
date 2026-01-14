@@ -68,19 +68,18 @@ La Tabla \ref{tab:comparacion_resnet_efficientnet} presenta la comparación de r
 
 \begin{table}[htbp]
     \centering
-    \caption{Comparación de rendimiento entre ResNet-18 y EfficientNet-B0 en imágenes normalizadas geométricamente.}
+    \caption{Arquitectura y rendimiento del clasificador ResNet-18 en el conjunto de datos normalizado geométricamente.}
     \label{tab:comparacion_resnet_efficientnet}
     \begin{tabular}{lcccc}
         \toprule
-        \textbf{Arquitectura} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{Parámetros} & \textbf{Tiempo/Época} \\
+        \textbf{Arquitectura} & \textbf{Accuracy} & \textbf{F1-Macro} & \textbf{F1-Weighted} & \textbf{Parámetros} \\
         \midrule
-        ResNet-18 & 99.10\% & 98.45\% & 11.2M & $\sim$40s \\
-        EfficientNet-B0 & 97.76\% & 96.80\% & 4.0M & $\sim$100s \\
+        ResNet-18 & 98.05\% & 97.12\% & 98.04\% & 11.2M \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Basándose en estos resultados, se seleccionó \textbf{ResNet-18} como la arquitectura principal del clasificador debido a su mejor rendimiento en el conjunto de datos normalizado (99.10\% vs 97.76\%) y su menor tiempo de entrenamiento. Aunque EfficientNet-B0 ofrece un modelo más compacto, la diferencia de 1.34 puntos porcentuales en accuracy favoreció la selección de ResNet-18.
+Se seleccionó ResNet-18 como la arquitectura del clasificador debido a su balance entre capacidad de representación y eficiencia computacional. Con 11.2 millones de parámetros preentrenados en ImageNet, la arquitectura alcanza 98.05\% de \textit{accuracy} en el conjunto de prueba, con F1-Macro de 97.12\% y F1-Weighted de 98.04\%.
 
 \subsection{Estrategia de Aprendizaje por Transferencia}
 \label{subsec:transfer_learning_clasificacion}

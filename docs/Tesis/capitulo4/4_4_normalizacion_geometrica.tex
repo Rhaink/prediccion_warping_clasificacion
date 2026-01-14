@@ -278,7 +278,7 @@ La \textit{tasa de llenado} cuantifica la proporción de la imagen warpeada que 
 
 \noindent donde $\mathbb{1}[\cdot]$ es la función indicadora.
 
-Sin la estrategia de cobertura completa, la tasa de llenado típica es del 40-50\%, dejando grandes regiones negras en las esquinas. Con la cobertura completa, la tasa de llenado alcanza valores superiores al 95\%, dependiendo del preprocesamiento aplicado a las imágenes.
+Con los parámetros seleccionados (\texttt{margin\_scale}=1.05, \texttt{use\_full\_coverage}=falso), el método produce una tasa de llenado (\textit{fill rate}) de aproximadamente 47\%, correspondiente a la región pulmonar sin el fondo circundante. Alternativamente, con la estrategia de cobertura completa (\texttt{use\_full\_coverage}=verdadero), la tasa de llenado alcanza valores superiores al 95\%, dependiendo del preprocesamiento aplicado a las imágenes.
 
 La Figura \ref{fig:warping_comparison} muestra la diferencia visual entre el warping estándar y el de cobertura completa.
 

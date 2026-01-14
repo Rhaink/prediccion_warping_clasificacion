@@ -392,7 +392,7 @@ Para reducir la varianza en la predicción de landmarks y mejorar la precisión,
 
 \subsubsection{Configuración del Ensemble}
 
-Se entrenaron cuatro modelos con semillas aleatorias distintas ($123$, $456$, $321$, $789$) utilizando la configuración descrita en las secciones anteriores. La predicción final del ensemble se obtiene mediante promedio aritmético de las predicciones individuales:
+Se entrenaron cuatro modelos con semillas aleatorias distintas ($123$, $321$, $111$, $666$) utilizando la configuración descrita en las secciones anteriores. La predicción final del ensemble se obtiene mediante promedio aritmético de las predicciones individuales:
 
 \begin{equation}
     \hat{\mathbf{L}}_{\text{ensemble}} = \frac{1}{K} \sum_{k=1}^{K} \hat{\mathbf{L}}_k
@@ -414,14 +414,14 @@ La Tabla \ref{tab:ensemble_resultados} compara el desempeño del ensemble con lo
         \textbf{Configuración} & \textbf{Error medio (px)} & \textbf{Desv. est. (px)} \\
         \midrule
         Mejor modelo individual (seed 456) & 4.04 & 2.58 \\
-        Ensemble 4 modelos + TTA & 3.71 & 2.42 \\
+        Ensemble 4 modelos + TTA & 3.61 & 2.48 \\
         \midrule
-        \textbf{Mejora relativa} & \textbf{8.2\%} & --- \\
+        \textbf{Mejora relativa} & \textbf{10.6\%} & --- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-El ensemble alcanza un error medio de $3.71$ píxeles, una mejora del 8.2\% respecto al mejor modelo individual ($4.04$ píxeles). Esta mejora se atribuye a la reducción de varianza mediante el promediado de predicciones diversas.
+El ensemble alcanza un error medio de $3.61$ píxeles, una mejora del 10.6\% respecto al mejor modelo individual ($4.04$ píxeles). Esta mejora se atribuye a la reducción de varianza mediante el promediado de predicciones diversas.
 
 Adicionalmente, se aplica \textit{Test-Time Augmentation} (TTA) durante la inferencia, promediando las predicciones de la imagen original y su versión reflejada horizontalmente. Esta técnica proporciona una reducción adicional del error al explotar la simetría inherente de las radiografías de tórax.
 
