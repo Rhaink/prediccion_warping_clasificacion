@@ -19,7 +19,6 @@ scripts/
 | `predict.py` | Prediccion de landmarks | `python -m src_v2 predict` |
 | `train.py` | Entrenamiento de modelos | `python -m src_v2 train` |
 | `train_classifier.py` | Wrapper del CLI (clasificador) | `python -m src_v2 train-classifier` |
-| `train_classifier_original.py` | Clasificador en imagenes originales | - |
 | `train_hierarchical.py` | Entrenar modelo jerarquico | - |
 | `evaluate_ensemble_from_config.py` | Evaluar ensemble desde config | - |
 | `verify_individual_models.py` | Verificacion de modelos | - |
@@ -68,9 +67,9 @@ Wrapper equivalente:
 python scripts/train_classifier.py --config configs/classifier_warped_base.json
 ```
 
-Clasificador original:
+Clasificador original (legacy, archivado):
 ```bash
-python scripts/train_classifier_original.py --config configs/classifier_original_base.json
+python scripts/archive/classification/train_classifier_original.py --config configs/classifier_original_base.json
 ```
 
 Modelo jerarquico:
@@ -94,21 +93,24 @@ Ubicacion: `visualization/`
 |--------|-----------|
 | `generate_warped_dataset.py` | Dataset warpeado (47% fill) |
 | `generate_full_warped_dataset.py` | Dataset completo warpeado |
-| `generate_original_cropped_47.py` | Dataset control (47% fill) |
-| `filter_dataset_3_classes.py` | Filtrado a 3 clases |
+
+Nota: `generate_original_cropped_47.py` y `filter_dataset_3_classes.py` fueron movidos a
+`scripts/archive/classification/`.
 
 ## Scripts de Evaluacion
 
 | Script | Proposito |
 |--------|-----------|
-| `evaluate_external_baseline.py` | Evaluacion en FedCOVIDx |
-| `evaluate_external_warped.py` | Evaluacion externa warpeada |
 | `extract_predictions.py` | Predicciones del ensemble + triangulacion (test split) |
 | `calculate_pfs_warped.py` | Calculo PFS en warped |
 
 Nota: `compare_classifiers.py` y `gradcam_*.py` fueron movidos a
 `scripts/archive/classification/`. Para Grad-CAM usar el CLI:
 `python -m src_v2 gradcam`.
+
+Nota: la pipeline de validacion externa (`evaluate_external_*.py`,
+`analyze_class_mapping.py`, `prepare_dataset3.py`, `warp_dataset3.py`) fue movida a
+`scripts/archive/classification/`.
 
 ## Scripts de Verificacion
 

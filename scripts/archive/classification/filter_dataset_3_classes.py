@@ -16,7 +16,7 @@ SOLUCION:
 - Permitir cross-evaluation justo
 
 Uso:
-    python scripts/filter_dataset_3_classes.py
+    python scripts/archive/classification/filter_dataset_3_classes.py
 
 O con CLI (si se implementa):
     .venv/bin/python -m src_v2 filter-dataset-classes \

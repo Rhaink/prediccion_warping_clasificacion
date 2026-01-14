@@ -19,7 +19,7 @@ METODO:
 - Fill rate resultante: 154*154 / 224*224 = 47.27%
 
 Uso:
-    python scripts/generate_original_cropped_47.py
+    python scripts/archive/classification/generate_original_cropped_47.py
 """
 
 import sys

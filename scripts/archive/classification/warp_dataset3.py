@@ -144,7 +144,7 @@ def main():
     # Verificar que existe Dataset3
     if not input_dir.exists():
         print(f"\nError: No existe {input_dir}")
-        print("Ejecuta primero: python scripts/prepare_dataset3.py")
+        print("Ejecuta primero: python scripts/archive/classification/prepare_dataset3.py")
         return
 
     # Crear directorio de salida
@@ -289,7 +289,7 @@ def main():
 
     print("\n" + "=" * 70)
     print("SIGUIENTE PASO:")
-    print("  Ejecutar: python scripts/evaluate_external_warped.py")
+    print("  Ejecutar: python scripts/archive/classification/evaluate_external_warped.py")
     print("=" * 70)
 
     return summary

@@ -28,11 +28,12 @@ python -m src_v2 evaluate-classifier \
   --data-dir outputs/warped_lung_best/session_warping --split test
 ```
 
-## Entrenar clasificador en imagenes originales (mismos splits)
+## Entrenar clasificador en imagenes originales (mismos splits, legacy)
 Este script usa los splits del warpeado pero lee imagenes originales.
+El script fue archivado para reducir ruido operativo.
 
 ```bash
-python scripts/train_classifier_original.py --config configs/classifier_original_base.json
+python scripts/archive/classification/train_classifier_original.py --config configs/classifier_original_base.json
 ```
 
 Salidas esperadas:
@@ -120,6 +121,6 @@ Refinamiento LR (1.5e-4, 3 seeds):
 - Focal loss: enfoca el aprendizaje en ejemplos dificiles; puede mejorar recall de clases minoritarias.
 
 ## Baseline existente (referencia)
-- `outputs/classifier_full/results.json`
-- `outputs/classifier_original_3classes/results.json`
-- `outputs/classifier_original_cropped_47/results.json`
+- `outputs/archive/classifier_full/results.json`
+- `outputs/archive/classifier_original_3classes/results.json`
+- `outputs/archive/classifier_original_cropped_47/results.json`

@@ -26,9 +26,9 @@ CLI flags always override config values.
 
 ## Classifier (Original)
 - File: configs/classifier_original_base.json
-- Script: scripts/train_classifier_original.py
+- Script: scripts/archive/classification/train_classifier_original.py (legacy)
 - Example:
-  - python scripts/train_classifier_original.py --config configs/classifier_original_base.json
+  - python scripts/archive/classification/train_classifier_original.py --config configs/classifier_original_base.json
 
 ## Hierarchical Landmark Model
 - File: configs/hierarchical_train_base.json

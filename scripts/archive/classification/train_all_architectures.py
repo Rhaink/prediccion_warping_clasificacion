@@ -20,9 +20,9 @@ Datasets:
 - original: data/dataset/ (imagenes originales 299x299)
 
 Uso:
-    python scripts/train_all_architectures.py --model resnet50 --dataset warped
-    python scripts/train_all_architectures.py --model alexnet --dataset original
-    python scripts/train_all_architectures.py --run-all  # Ejecuta todos los experimentos
+    python scripts/archive/classification/train_all_architectures.py --model resnet50 --dataset warped
+    python scripts/archive/classification/train_all_architectures.py --model alexnet --dataset original
+    python scripts/archive/classification/train_all_architectures.py --run-all  # Ejecuta todos los experimentos
 """
 
 import os
@@ -857,13 +857,13 @@ def main():
         epilog="""
 Ejemplos de uso:
   # Entrenar un modelo especifico
-  python scripts/train_all_architectures.py --model resnet50 --dataset warped
+  python scripts/archive/classification/train_all_architectures.py --model resnet50 --dataset warped
 
   # Ejecutar todos los experimentos
-  python scripts/train_all_architectures.py --run-all
+  python scripts/archive/classification/train_all_architectures.py --run-all
 
   # Solo generar reporte (si ya existen resultados)
-  python scripts/train_all_architectures.py --report-only
+  python scripts/archive/classification/train_all_architectures.py --report-only
         """
     )
 

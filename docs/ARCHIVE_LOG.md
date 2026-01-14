@@ -20,3 +20,22 @@ Movidos a `scripts/archive/classification/`:
 - `scripts/train_resnet18_expanded.py` -> `scripts/archive/classification/train_resnet18_expanded.py`
 - `scripts/train_baseline_original_15k.py` -> `scripts/archive/classification/train_baseline_original_15k.py`
 - `scripts/compare_classifiers.py` -> `scripts/archive/classification/compare_classifiers.py`
+- `scripts/train_classifier_original.py` -> `scripts/archive/classification/train_classifier_original.py`
+- `scripts/filter_dataset_3_classes.py` -> `scripts/archive/classification/filter_dataset_3_classes.py`
+- `scripts/generate_original_cropped_47.py` -> `scripts/archive/classification/generate_original_cropped_47.py`
+- `scripts/evaluate_external_baseline.py` -> `scripts/archive/classification/evaluate_external_baseline.py`
+- `scripts/evaluate_external_warped.py` -> `scripts/archive/classification/evaluate_external_warped.py`
+- `scripts/analyze_class_mapping.py` -> `scripts/archive/classification/analyze_class_mapping.py`
+- `scripts/prepare_dataset3.py` -> `scripts/archive/classification/prepare_dataset3.py`
+- `scripts/warp_dataset3.py` -> `scripts/archive/classification/warp_dataset3.py`
+
+Movidos a `outputs/archive/`:
+- `outputs/classifier_full` -> `outputs/archive/classifier_full`
+- `outputs/classifier_original_3classes` -> `outputs/archive/classifier_original_3classes`
+- `outputs/classifier_original_cropped_47` -> `outputs/archive/classifier_original_cropped_47`
+- `outputs/classifier_efficientnet` -> `outputs/archive/classifier_efficientnet`
+- `outputs/classifier_config_smoketest` -> `outputs/archive/classifier_config_smoketest`
+
+Movidos a `results/figures/archive/`:
+- `results/figures/gradcam` -> `results/figures/archive/gradcam`
+- `results/figures/gradcam_multi` -> `results/figures/archive/gradcam_multi`

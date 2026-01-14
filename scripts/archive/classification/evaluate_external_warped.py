@@ -282,7 +282,7 @@ def main():
     # Verificar que existe Dataset3 warpeado
     if not (warped_data_dir / 'test').exists():
         print(f"\nError: No se encuentra Dataset3 warpeado en {warped_data_dir}")
-        print("Ejecuta primero: python scripts/warp_dataset3.py")
+        print("Ejecuta primero: python scripts/archive/classification/warp_dataset3.py")
         return
 
     # Cargar dataset warpeado

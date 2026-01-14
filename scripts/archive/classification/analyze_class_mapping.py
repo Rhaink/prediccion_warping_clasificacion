@@ -504,7 +504,7 @@ def main():
 
     if not (external_data_dir / 'test').exists():
         print(f"Error: No se encuentra Dataset3 en {external_data_dir}")
-        print("Ejecuta primero: python scripts/prepare_dataset3.py")
+        print("Ejecuta primero: python scripts/archive/classification/prepare_dataset3.py")
         return
 
     # Cargar dataset
