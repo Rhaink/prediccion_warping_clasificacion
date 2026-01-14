@@ -353,9 +353,181 @@ done
 
 ---
 
-## 6. Análisis Adicionales (Opcionales)
+## 6. Clasificación Binaria (COVID+Neumonía vs Normal)
 
-### 6.1. Error por Landmark Individual (con warped_lung_best)
+**Estado:** ❌ NO realizado
+**Prioridad:** MEDIA
+
+### Descripción
+
+Evaluar el rendimiento del sistema en una tarea de clasificación binaria, agrupando COVID-19 y Neumonía Viral en una sola clase "patológica" vs Normal. Esto simula un escenario de screening inicial donde el objetivo es detectar cualquier anomalía pulmonar.
+
+### Justificación
+
+La clasificación binaria puede ofrecer:
+1. **Mayor sensibilidad**: Detectar cualquier anomalía pulmonar sin distinguir tipo específico
+2. **Datasets balanceados**: Reducir desbalance de clases (actualmente 24% COVID + 9% Viral vs 67% Normal)
+3. **Aplicación clínica**: Screening inicial antes de diagnóstico diferencial
+
+### Protocolo
+
+#### 6.1. Preparar Dataset Binario
+
+```bash
+# Crear dataset binario agrupando COVID + Viral_Pneumonia
+python scripts/create_binary_dataset.py \
+  --input outputs/warped_lung_best/session_warping \
+  --output outputs/warped_lung_best_binary \
+  --group-covid-viral
+```
+
+**Mapeo de clases:**
+- `Pathological` (COVID + Viral_Pneumonia): 33% del dataset
+- `Normal`: 67% del dataset
+
+#### 6.2. Entrenar Clasificador Binario
+
+```bash
+python -m src_v2 train-classifier \
+  --data-dir outputs/warped_lung_best_binary \
+  --backbone resnet18 \
+  --epochs 50 \
+  --batch-size 32 \
+  --lr 1e-4 \
+  --use-class-weights \
+  --output outputs/classifier_warped_lung_best_binary
+```
+
+#### 6.3. Evaluar
+
+```bash
+python -m src_v2 evaluate-classifier \
+  outputs/classifier_warped_lung_best_binary/best_classifier.pt \
+  --data-dir outputs/warped_lung_best_binary --split test
+```
+
+### Métricas a Reportar
+
+**Comparación 3 clases vs 2 clases:**
+
+| Métrica | 3 Clases (actual) | 2 Clases (esperado) |
+|---------|-------------------|---------------------|
+| Accuracy | 98.05% | ? |
+| F1-Macro | 97.12% | ? |
+| F1-Weighted | 98.04% | ? |
+| Sensitivity (Patológico) | - | ? |
+| Specificity (Normal) | - | ? |
+| AUC-ROC | - | ? |
+
+**Análisis esperado:**
+- ¿Mejora accuracy al simplificar el problema?
+- ¿Cómo afecta el balanceo de clases?
+- ¿Es más robusto ante perturbaciones?
+
+---
+
+## 7. Evaluación de Arquitecturas Alternativas
+
+**Estado:** ❌ NO realizado
+**Prioridad:** BAJA
+
+### Descripción
+
+Evaluar arquitecturas CNN alternativas en el dataset warped_lung_best para determinar si ResNet-18 es realmente la opción óptima o si otras arquitecturas ofrecen mejor rendimiento.
+
+### Justificación
+
+Actualmente solo se utilizó ResNet-18. Otras arquitecturas modernas podrían ofrecer:
+1. **Mejor accuracy**: Arquitecturas más profundas o con diseños optimizados
+2. **Menor costo computacional**: MobileNetV2, EfficientNet-B0
+3. **Mejor generalización**: DenseNet-121 con conexiones densas
+
+### Arquitecturas a Evaluar
+
+Basadas en la Tabla 4.1 (eliminada de tesis pero disponibles en código):
+
+| Arquitectura | Parámetros | Ventaja Principal |
+|--------------|------------|-------------------|
+| AlexNet | 57.0M | Baseline histórico |
+| VGG-16 | 134.3M | Simplicidad arquitectónica |
+| ResNet-18 | 11.2M | **Actual (baseline)** |
+| ResNet-50 | 23.5M | Mayor profundidad |
+| DenseNet-121 | 7.0M | Conexiones densas, eficiente |
+| MobileNetV2 | 2.2M | Máxima eficiencia |
+| EfficientNet-B0 | 4.0M | Balance accuracy/eficiencia |
+
+### Protocolo
+
+#### 7.1. Entrenar Cada Arquitectura
+
+```bash
+for ARCH in alexnet vgg16 resnet50 densenet121 mobilenet_v2 efficientnet_b0; do
+  python -m src_v2 train-classifier \
+    --data-dir outputs/warped_lung_best/session_warping \
+    --backbone $ARCH \
+    --epochs 50 \
+    --batch-size 32 \
+    --lr 1e-4 \
+    --use-class-weights \
+    --output outputs/classifier_warped_lung_best_${ARCH}
+done
+```
+
+#### 7.2. Evaluar Todas
+
+```bash
+for ARCH in alexnet vgg16 resnet18 resnet50 densenet121 mobilenet_v2 efficientnet_b0; do
+  python -m src_v2 evaluate-classifier \
+    outputs/classifier_warped_lung_best_${ARCH}/best_classifier.pt \
+    --data-dir outputs/warped_lung_best/session_warping --split test \
+    --output outputs/architecture_comparison/${ARCH}_results.json
+done
+```
+
+#### 7.3. Generar Tabla Comparativa
+
+```bash
+python scripts/compare_architectures.py \
+  --results-dir outputs/architecture_comparison \
+  --output docs/architecture_comparison_table.md
+```
+
+### Métricas a Reportar
+
+**Tabla de Comparación:**
+
+| Arquitectura | Accuracy | F1-Macro | F1-Weighted | Parámetros | Tiempo/Época | Inferencia (ms) |
+|--------------|----------|----------|-------------|------------|--------------|-----------------|
+| ResNet-18 (baseline) | 98.05% | 97.12% | 98.04% | 11.2M | ~40s | ? |
+| AlexNet | ? | ? | ? | 57.0M | ? | ? |
+| VGG-16 | ? | ? | ? | 134.3M | ? | ? |
+| ResNet-50 | ? | ? | ? | 23.5M | ? | ? |
+| DenseNet-121 | ? | ? | ? | 7.0M | ? | ? |
+| MobileNetV2 | ? | ? | ? | 2.2M | ? | ? |
+| EfficientNet-B0 | ? | ? | ? | 4.0M | ? | ? |
+
+**Análisis esperado:**
+- Ranking por accuracy
+- Trade-off accuracy vs eficiencia
+- Curvas de entrenamiento (convergencia)
+- Posible ensemble de mejores arquitecturas
+
+### Tiempo Estimado
+
+- Entrenamiento: ~6-8 horas (50 épocas × 7 arquitecturas)
+- Evaluación y análisis: 2-3 horas
+- **Total: ~10 horas**
+
+### Scripts a Crear
+
+- ⚠️ `scripts/compare_architectures.py` (generar tabla comparativa)
+- Resto de comandos ya soportados por CLI actual
+
+---
+
+## 8. Análisis Adicionales (Opcionales)
+
+### 8.1. Error por Landmark Individual (con warped_lung_best)
 
 Verificar si la distribución de errores por landmark se mantiene consistente.
 
@@ -365,7 +537,7 @@ python scripts/analyze_per_landmark_errors.py \
   --output outputs/analysis/per_landmark_warped_lung_best.json
 ```
 
-### 6.2. Matriz de Confusión Detallada
+### 8.2. Matriz de Confusión Detallada
 
 Analizar patrones de confusión entre clases con warped_lung_best.
 
@@ -377,7 +549,7 @@ python scripts/generate_confusion_matrix.py \
   --output outputs/analysis/confusion_matrix.png
 ```
 
-### 6.3. Ablation Study: Impacto de TTA
+### 8.3. Ablation Study: Impacto de TTA
 
 Medir contribución de Test-Time Augmentation al rendimiento del ensemble.
 
@@ -414,13 +586,21 @@ python scripts/evaluate_ensemble_from_config.py \
    - Tiempo estimado: 6-8 horas (incluye entrenamiento de clasificador original)
    - Impacto: Medio (argumenta beneficio de warping para generalización)
 
+4. **Clasificación Binaria (COVID+Neumonía vs Normal)**
+   - Tiempo estimado: 3-4 horas
+   - Impacto: Medio (escenario clínico de screening, balanceo de clases)
+
 ### BAJA PRIORIDAD (nice to have)
 
-4. **PFS (Pulmonary Focus Score)**
+5. **Evaluación de Arquitecturas Alternativas**
+   - Tiempo estimado: 10 horas (entrenamiento de 6 arquitecturas)
+   - Impacto: Bajo (ResNet-18 funciona bien, pero bueno saber si hay mejores opciones)
+
+6. **PFS (Pulmonary Focus Score)**
    - Tiempo estimado: 3-4 horas
    - Impacto: Bajo (interpretabilidad, no crítico)
 
-5. **Fill Rate Trade-off**
+7. **Fill Rate Trade-off**
    - Tiempo estimado: 8-10 horas (grid search completo)
    - Impacto: Bajo (ya se usó para seleccionar margin_scale=1.05)
 
