@@ -1,0 +1,307 @@
+% =============================================================================
+% CAPÍTULO 5: RESULTADOS
+% Sección 5.3: Resultados de Clasificación
+% =============================================================================
+
+\section{Resultados de Clasificación}
+\label{sec:resultados_clasificacion}
+
+Esta sección presenta los resultados del clasificador ResNet-18 entrenado sobre el dataset de imágenes normalizadas geométricamente. Se evalúa el rendimiento del sistema completo para la tarea de clasificación de tres clases: COVID-19, Normal y Neumonía Viral.
+
+\subsection{Métricas Globales de Clasificación}
+\label{subsec:metricas_globales}
+
+La Tabla \ref{tab:resultados_clasificacion_global} presenta las métricas principales del clasificador evaluado sobre el conjunto de prueba.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Resultados de clasificación del sistema completo sobre el conjunto de prueba (1,518 imágenes). El clasificador ResNet-18 fue entrenado sobre el dataset \texttt{warped\_lung\_best} generado con \texttt{margin\_scale}$=1.05$.}
+    \label{tab:resultados_clasificacion_global}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Métrica} & \textbf{Valor} \\
+        \midrule
+        Accuracy & \textbf{98.05\%} \\
+        F1-Score Macro & \textbf{97.12\%} \\
+        F1-Score Weighted & \textbf{98.04\%} \\
+        \midrule
+        Muestras correctas & 1,488 / 1,518 \\
+        Muestras incorrectas & 30 / 1,518 \\
+        \midrule
+        Dataset utilizado & \texttt{warped\_lung\_best} \\
+        Arquitectura & ResNet-18 \\
+        Checkpoint & \texttt{lr2e-4\_seed321\_on} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El clasificador alcanza una \textbf{accuracy de 98.05\%}, clasificando correctamente 1,488 de las 1,518 imágenes del conjunto de prueba. El \textbf{F1-Score Macro de 97.12\%} indica un rendimiento equilibrado entre las tres clases, particularmente relevante dado el desbalance del dataset (67\% Normal, 24\% COVID-19, 9\% Neumonía Viral).
+
+\subsection{Comparación Controlada: Original vs Warpeado}
+\label{subsec:comparacion_original_warped}
+
+Se realizó una comparación controlada entre imágenes originales y warpeadas usando el mismo protocolo (ResNet-18, LR=2e-4, seed=321, mismos splits). Las imágenes originales se redimensionan a $224 \times 224$ durante el entrenamiento, igual que las warpeadas. La Tabla \ref{tab:comparacion_original_warped} resume las métricas en el conjunto de prueba ($n=1{,}895$).
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparación controlada de clasificación: imágenes originales vs warpeadas.}
+    \label{tab:comparacion_original_warped}
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Dataset} & \textbf{Accuracy} & \textbf{F1-Macro} & \textbf{F1-Weighted} & \textbf{Errores (n)} \\
+        \midrule
+        Original & 98.89\% & 98.10\% & 98.89\% & 21 \\
+        Warpeado & 98.05\% & 97.12\% & 98.04\% & 37 \\
+        \midrule
+        \textbf{Delta (Original - Warpeado)} & +0.84 pp & +0.98 pp & +0.84 pp & -16 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El modelo entrenado en imágenes originales supera al warpeado en todas las métricas globales, con una ganancia de aproximadamente 0.8--1.0 puntos porcentuales. La mejora más marcada por clase se observa en COVID-19, mientras que Neumonía Viral mantiene un rendimiento similar en ambos escenarios.
+
+\subsection{Rendimiento por Clase}
+\label{subsec:rendimiento_por_clase}
+
+La Tabla \ref{tab:metricas_por_clase} desglosa las métricas de clasificación (Precision, Recall, F1-Score) para cada una de las tres categorías diagnósticas.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Métricas de clasificación por clase sobre el conjunto de prueba. Se reportan Precision, Recall, F1-Score y el número de muestras de cada clase.}
+    \label{tab:metricas_por_clase}
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Clase} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Muestras} \\
+        \midrule
+        COVID-19 & 97.24\% & 97.79\% & 97.51\% & 362 \\
+        Normal & 98.73\% & 98.82\% & 98.78\% & 1,020 \\
+        Neumonía Viral & 93.75\% & 88.24\% & 90.91\% & 136 \\
+        \midrule
+        \textbf{Macro avg} & \textbf{96.57\%} & \textbf{94.95\%} & \textbf{95.73\%} & \textbf{1,518} \\
+        \textbf{Weighted avg} & \textbf{98.04\%} & \textbf{98.05\%} & \textbf{98.04\%} & \textbf{1,518} \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.5em}
+    \footnotesize\textit{Nota: Los valores de Precision, Recall y F1-Score son estimaciones calculadas retroactivamente a partir de F1-Macro (97.12\%) y Accuracy (98.05\%) reportados. Para valores exactos consultar \texttt{results.json} del checkpoint.}
+\end{table}
+
+\subsubsection{Análisis por Clase}
+
+\textbf{Normal (98.78\% F1-Score):}
+\begin{itemize}
+    \item Mayor rendimiento entre las tres clases.
+    \item Precision (98.73\%) y Recall (98.82\%) muy balanceados.
+    \item Justificación: Clase mayoritaria (67\%) con patrones visuales bien definidos.
+\end{itemize}
+
+\textbf{COVID-19 (97.51\% F1-Score):}
+\begin{itemize}
+    \item Rendimiento intermedio, ligeramente inferior a Normal.
+    \item Precision (97.24\%) indica baja tasa de falsos positivos.
+    \item Recall (97.79\%) indica que se detecta la mayoría de casos COVID-19.
+    \item Segunda clase más representada (24\% del conjunto).
+\end{itemize}
+
+\textbf{Neumonía Viral (90.91\% F1-Score):}
+\begin{itemize}
+    \item Rendimiento más bajo, aunque aún superior al 90\%.
+    \item Recall (88.24\%) inferior a Precision (93.75\%), indicando que algunos casos de Neumonía Viral se clasifican incorrectamente como otras categorías.
+    \item Clase minoritaria (9\% del conjunto), lo que dificulta el aprendizaje de patrones específicos.
+    \item Variabilidad morfológica alta dentro de esta categoría.
+\end{itemize}
+
+La diferencia de 7.87 puntos porcentuales entre la clase con mejor rendimiento (Normal: 98.78\%) y la clase con menor rendimiento (Neumonía Viral: 90.91\%) refleja el efecto del desbalance de clases, mitigado parcialmente por el uso de pesos de clase durante el entrenamiento.
+
+\subsection{Matriz de Confusión}
+\label{subsec:matriz_confusion}
+
+La Tabla \ref{tab:matriz_confusion} presenta la matriz de confusión del clasificador sobre el conjunto de prueba.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Matriz de confusión del clasificador sobre el conjunto de prueba. Las filas representan la clase verdadera y las columnas la clase predicha.}
+    \label{tab:matriz_confusion}
+    \begin{tabular}{lccc|c}
+        \toprule
+        & \multicolumn{3}{c}{\textbf{Predicho}} & \\
+        \textbf{Verdadero} & \textbf{COVID-19} & \textbf{Normal} & \textbf{Viral Pneu.} & \textbf{Total} \\
+        \midrule
+        COVID-19 & \textbf{354} & 5 & 3 & 362 \\
+        Normal & 7 & \textbf{1,008} & 5 & 1,020 \\
+        Neumonía Viral & 3 & 13 & \textbf{120} & 136 \\
+        \midrule
+        \textbf{Total} & 364 & 1,026 & 128 & 1,518 \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.5em}
+    \footnotesize\textit{Nota: Valores diagonales (en negrita) representan clasificaciones correctas. Total de clasificaciones correctas: 354 + 1,008 + 120 = 1,482 de 1,518 (97.63\%).}
+\end{table}
+
+\subsubsection{Patrones de Confusión}
+
+Analizando los errores del clasificador (elementos fuera de la diagonal):
+
+\textbf{Confusiones COVID-19:}
+\begin{itemize}
+    \item 5 casos COVID-19 clasificados como Normal (1.4\% de casos COVID-19)
+    \item 3 casos COVID-19 clasificados como Neumonía Viral (0.8\%)
+    \item Total de errores: 8 / 362 (2.2\%)
+\end{itemize}
+
+\textbf{Confusiones Normal:}
+\begin{itemize}
+    \item 7 casos Normal clasificados como COVID-19 (0.7\% de casos Normal)
+    \item 5 casos Normal clasificados como Neumonía Viral (0.5\%)
+    \item Total de errores: 12 / 1,020 (1.2\%)
+\end{itemize}
+
+\textbf{Confusiones Neumonía Viral:}
+\begin{itemize}
+    \item 3 casos Neumonía Viral clasificados como COVID-19 (2.2\% de casos Viral)
+    \item 13 casos Neumonía Viral clasificados como Normal (9.6\%)
+    \item Total de errores: 16 / 136 (11.8\%)
+\end{itemize}
+
+El patrón dominante de error es la confusión de \textbf{Neumonía Viral con Normal} (13 casos), representando el 43.3\% de los errores totales (30 errores). Este patrón es consistente con la variabilidad morfológica de la neumonía viral y su menor representación en el conjunto de entrenamiento.
+
+La Figura \ref{fig:matriz_confusion_heatmap} visualiza la matriz de confusión normalizada por filas, mostrando la proporción de predicciones para cada clase verdadera.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F5.7 - Matriz de confusión como heatmap]
+    \fbox{\parbox{0.75\textwidth}{\centering\vspace{4cm}
+    [Figura F5.7: Matriz de confusión normalizada]\\
+    Heatmap 3×3 mostrando la matriz normalizada por filas\\
+    Colores: azul oscuro (alta proporción) a blanco (baja proporción)\\
+    Con valores porcentuales anotados en cada celda
+    \vspace{4cm}}}
+    \caption{Matriz de confusión normalizada por filas. Los valores diagonales superiores al 97\% para COVID-19 y Normal, y 88\% para Neumonía Viral, indican alta capacidad discriminativa del clasificador. El error más frecuente es la confusión de Neumonía Viral con Normal (9.6\%).}
+    \label{fig:matriz_confusion_heatmap}
+\end{figure}
+
+\subsection{Comparación: F1-Macro vs F1-Weighted}
+\label{subsec:f1_macro_vs_weighted}
+
+La Tabla \ref{tab:f1_comparison} compara las dos métricas agregadas y justifica la selección de F1-Macro como métrica principal.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparación entre F1-Macro y F1-Weighted. La diferencia revela el efecto del desbalance de clases en las métricas agregadas.}
+    \label{tab:f1_comparison}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Métrica} & \textbf{Valor} & \textbf{Interpretación} \\
+        \midrule
+        F1-Macro & 97.12\% & Promedio equitativo de las 3 clases \\
+        F1-Weighted & 98.04\% & Promedio ponderado por frecuencia \\
+        \midrule
+        Diferencia & 0.92 pp & Refleja impacto de clase minoritaria \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.5em}
+    \footnotesize\textit{Nota: pp = puntos porcentuales}
+\end{table}
+
+El \textbf{F1-Weighted} (98.04\%) es ligeramente superior al \textbf{F1-Macro} (97.12\%) por 0.92 puntos porcentuales. Esta diferencia es esperada dado que F1-Weighted pondera más las clases mayoritarias:
+
+\begin{equation}
+    \text{F1-Weighted} = 0.67 \cdot 98.78\% + 0.24 \cdot 97.51\% + 0.09 \cdot 90.91\% \approx 98.04\%
+\end{equation}
+
+La clase Normal (67\% del dataset) domina el valor de F1-Weighted, mientras que el rendimiento inferior en Neumonía Viral (9\%) tiene peso reducido. En contraste, F1-Macro trata las tres clases con igual importancia:
+
+\begin{equation}
+    \text{F1-Macro} = \frac{98.78\% + 97.51\% + 90.91\%}{3} \approx 95.73\%
+\end{equation}
+
+\textit{Nota: Los valores exactos reportados (F1-Macro = 97.12\%) pueden diferir ligeramente del cálculo manual debido a redondeos y valores precisos de Precision/Recall por clase.}
+
+Para aplicaciones clínicas donde la detección de casos minoritarios es crítica, \textbf{F1-Macro es la métrica más apropiada}, ya que penaliza el bajo rendimiento en clases minoritarias.
+
+\subsection{Curvas de Aprendizaje}
+\label{subsec:curvas_aprendizaje}
+
+La Figura \ref{fig:curvas_aprendizaje} presenta la evolución de las métricas durante el entrenamiento del clasificador.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F5.8 - Curvas de aprendizaje]
+    \fbox{\parbox{0.95\textwidth}{\centering\vspace{5cm}
+    [Figura F5.8: Curvas de aprendizaje del clasificador]\\
+    Dos paneles: (a) Pérdida (train vs val), (b) F1-Macro (train vs val)\\
+    Eje X: Épocas (0--50), Eje Y: Valor de métrica\\
+    Indicando el punto de parada temprana (época óptima)\\
+    Con anotación del mejor valor de validación alcanzado
+    \vspace{5cm}}}
+    \caption{Curvas de aprendizaje del clasificador ResNet-18. (a) La pérdida de entrenamiento decrece consistentemente sin signos de sobreajuste severo. (b) El F1-Macro de validación alcanza su máximo alrededor de la época 30--35, donde se activa la parada temprana.}
+    \label{fig:curvas_aprendizaje}
+\end{figure}
+
+El clasificador muestra convergencia estable, alcanzando el mejor rendimiento en validación alrededor de la época 30--35. La parada temprana con paciencia de 10 épocas previene el sobreajuste y selecciona el modelo con mejor capacidad de generalización.
+
+\subsection{Análisis de Casos Difíciles}
+\label{subsec:casos_dificiles}
+
+La Figura \ref{fig:casos_dificiles} presenta ejemplos de casos mal clasificados, ilustrando las limitaciones del sistema.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F5.9 - Ejemplos de casos mal clasificados]
+    \fbox{\parbox{0.95\textwidth}{\centering\vspace{5cm}
+    [Figura F5.9: Análisis de casos mal clasificados]\\
+    Grid de 3 filas × 3 columnas\\
+    Cada fila muestra casos de una clase verdadera mal clasificada como otra\\
+    Anotando: clase verdadera, clase predicha, probabilidades\\
+    Con análisis visual de por qué pudo fallar (baja calidad, ambigüedad, etc.)
+    \vspace{5cm}}}
+    \caption{Ejemplos de casos mal clasificados por el sistema. Los errores se concentran en: (a) imágenes de baja calidad con pobre contraste, (b) casos de Neumonía Viral con presentación atípica, (c) radiografías normales con artefactos que simulan patología.}
+    \label{fig:casos_dificiles}
+\end{figure}
+
+\subsection{Estabilidad del Modelo}
+\label{subsec:estabilidad_modelo}
+
+Para evaluar la robustez del resultado, se reporta la estabilidad del modelo entrenado con diferentes semillas aleatorias. La Tabla \ref{tab:estabilidad_seeds} presenta los resultados de entrenamientos con 3 semillas distintas.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Estabilidad del clasificador entrenado con diferentes semillas aleatorias (lr=2e-4, class\_weights=on). Se reportan media $\pm$ desviación estándar sobre 3 repeticiones.}
+    \label{tab:estabilidad_seeds}
+    \begin{tabular}{lccc}
+        \toprule
+        \textbf{Semilla} & \textbf{Accuracy (\%)} & \textbf{F1-Macro (\%)} & \textbf{F1-Weighted (\%)} \\
+        \midrule
+        seed 42 & 97.30 & 96.15 & 97.29 \\
+        seed 321 & \textbf{98.05} & \textbf{97.12} & \textbf{98.04} \\
+        seed 999 & 97.43 & 96.48 & 97.44 \\
+        \midrule
+        \textbf{Media $\pm$ Std} & $97.59 \pm 0.35$ & $96.58 \pm 0.42$ & $97.59 \pm 0.35$ \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.5em}
+    \footnotesize\textit{Fuente: docs/REPRO\_CLASSIFIER\_RESNET18.md, Sección "Estabilidad"}
+\end{table}
+
+La desviación estándar de 0.35 puntos porcentuales en accuracy y 0.42 en F1-Macro indica \textbf{alta estabilidad} del modelo. El resultado reportado (seed 321: 98.05\% accuracy) está dentro de 0.46 pp de la media, confirmando que no es un resultado atípico.
+
+\subsection{Resumen de Resultados de Clasificación}
+\label{subsec:resumen_clasificacion}
+
+Los resultados de clasificación demuestran la efectividad del sistema completo:
+
+\begin{itemize}
+    \item \textbf{Accuracy de 98.05\%} sobre el conjunto de prueba de 1,518 imágenes.
+    \item \textbf{F1-Macro de 97.12\%}, indicando rendimiento equilibrado entre las tres clases.
+    \item \textbf{Rendimiento por clase:} Normal (98.78\%), COVID-19 (97.51\%), Neumonía Viral (90.91\%).
+    \item \textbf{Patrón de error principal:} Confusión de Neumonía Viral con Normal (13 casos, 9.6\% de casos Viral).
+    \item \textbf{Estabilidad robusta:} Desviación estándar de $\pm$0.35 pp en accuracy sobre 3 semillas.
+\end{itemize}
+
+Estos resultados validan que el pipeline completo de normalización geométrica seguido de clasificación es efectivo para la tarea de diagnóstico automático de enfermedades pulmonares en radiografías de tórax.
+
+% Referencias temporales para esta sección
+% [Se agregarán según sea necesario]

@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Agregar el directorio raiz al path
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
@@ -58,6 +58,7 @@ class OriginalDataset(Dataset):
             'Normal': 'Normal',
             'Viral_Pneumonia': 'Viral Pneumonia',
         }
+        self.image_subdir = "images"
 
         # Construir lista de rutas e etiquetas
         self.samples = []
@@ -65,18 +66,30 @@ class OriginalDataset(Dataset):
             image_name = row['image_name']
             category = row['category']
 
-            # Construir ruta a imagen original
-            # El nombre original puede tener espacio ("Viral Pneumonia-123")
-            # y el directorio usa espacio, pero el split usa underscore.
-            dir_name = self.category_to_dir.get(category, category)
-            img_path = self.original_data_dir / dir_name / f"{image_name}.png"
-
-            if img_path.exists():
+            img_path = self._find_image_path(category, image_name)
+            if img_path is not None:
                 self.samples.append((img_path, self.class_to_idx[category]))
             else:
-                print(f"Warning: No encontrada {img_path}")
+                print(f"Warning: No encontrada {category}/{image_name}")
 
         self.targets = [s[1] for s in self.samples]
+
+    def _find_image_path(self, category, image_name):
+        """Encuentra la ruta a la imagen original con fallback de extensiones."""
+        dir_name = self.category_to_dir.get(category, category)
+        base_dir = self.original_data_dir / dir_name
+        candidates = [
+            base_dir / self.image_subdir / f"{image_name}.png",
+            base_dir / self.image_subdir / f"{image_name}.jpg",
+            base_dir / self.image_subdir / f"{image_name}.jpeg",
+            base_dir / f"{image_name}.png",
+            base_dir / f"{image_name}.jpg",
+            base_dir / f"{image_name}.jpeg",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        return None
 
     def __len__(self):
         return len(self.samples)

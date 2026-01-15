@@ -32,6 +32,8 @@ python -m src_v2 evaluate-classifier \
 Este script usa los splits del warpeado pero lee imagenes originales.
 El script fue archivado para reducir ruido operativo.
 
+Nota: para comparacion directa con el mejor modelo warped, usar seed 321 y lr 2e-4.
+
 ```bash
 python scripts/archive/classification/train_classifier_original.py --config configs/classifier_original_base.json
 ```
@@ -39,6 +41,17 @@ python scripts/archive/classification/train_classifier_original.py --config conf
 Salidas esperadas:
 - `outputs/classifier_original_warped_lung_best/best_classifier.pt`
 - `outputs/classifier_original_warped_lung_best/results.json`
+
+### Resultados (seed 321, lr 2e-4)
+
+Run original:
+- Output: `outputs/classifier_original_warped_lung_best_seed321/`
+- Test (n=1,895): Accuracy 98.89%, F1-Macro 98.10%, F1-Weighted 98.89%
+- Confusion: 21 errores (vs 37 en warped con seed 321)
+
+Run warped (referencia):
+- Output: `outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/`
+- Test (n=1,895): Accuracy 98.05%, F1-Macro 97.12%, F1-Weighted 98.04%
 
 ## Notas
 - `train_classifier.py` es solo un wrapper del CLI.

@@ -8,21 +8,76 @@
 
 ## Resumen Ejecutivo
 
-Durante la actualización de la metodología de tesis (FASES 1-5, completadas 2026-01-14), se identificaron **experimentos obsoletos** que fueron realizados con configuraciones anteriores (warped_96, warped_99) pero NO con el método actual **warped_lung_best**.
+Durante la actualización de la metodología de tesis (FASES 1-5, completadas 2026-01-14), se identificaron **experimentos obsoletos** realizados con configuraciones anteriores (warped_96, warped_99).
 
-Este documento lista los experimentos que deben **replicarse** con warped_lung_best para completar la evaluación del sistema.
+**Prioridad actual:** ejecutar una comparación controlada entre clasificación en imágenes originales vs. warpeadas usando el mismo protocolo (mismos splits, hiperparámetros y preprocesamiento) para que los resultados sean directamente comparables.
+
+**Postergado:** cross-evaluation entre dominios y validación externa.  
+**Obsoleto:** robustez ante perturbaciones.  
+**Futuro lejano:** evaluar normalización de contraste SAHS (ver `docs/SAHS`).
+
+---
+
+## 0. Comparación Controlada Original vs Warped (PRIORIDAD ACTUAL)
+
+**Estado:** ✅ Completado  
+**Prioridad:** ALTA
+
+### Objetivo
+
+Medir el impacto del warping en la clasificación comparando el mismo clasificador entrenado con:
+- Imágenes originales (sin warping).
+- Imágenes warpeadas (`warped_lung_best`).
+
+La comparación debe usar el **mismo protocolo** (splits, hiperparámetros, arquitectura y semillas) para que sea válida.
+
+### Protocolo recomendado (mismo split)
+
+Usar los splits ya generados en `outputs/warped_lung_best/session_warping` para asegurar consistencia:
+
+```bash
+python -m src_v2 compare-architectures \
+  outputs/warped_lung_best/session_warping \
+  --architectures resnet18 \
+  --original-data-dir data/dataset/COVID-19_Radiography_Dataset \
+  --epochs 50 \
+  --batch-size 32 \
+  --lr 1e-4 \
+  --patience 10 \
+  --seed 321 \
+  --output-dir outputs/compare_original_vs_warped
+```
+
+### Resultados obtenidos (seed 321, lr 2e-4)
+
+**Test (n=1,895):**
+- Original: Accuracy 98.89%, F1-Macro 98.10%, F1-Weighted 98.89% (21 errores)
+- Warpeado: Accuracy 98.05%, F1-Macro 97.12%, F1-Weighted 98.04% (37 errores)
+- Delta (Original - Warpeado): +0.84 pp Accuracy, +0.98 pp F1-Macro
+
+**Artefactos:**
+- Original: `outputs/classifier_original_warped_lung_best_seed321/results_original.json`
+- Warpeado: `outputs/classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on/results.json`
+
+### Métricas a reportar
+
+- Accuracy, F1-Macro, F1-Weighted (test).
+- Matriz de confusión (ambos dominios).
+- Diferencia directa (warped - original) en métricas clave.
 
 ---
 
 ## 1. Evaluación de Robustez ante Perturbaciones
 
-**Estado:** ❌ NO realizado con warped_lung_best
+**Estado:** ⛔ Obsoleto (no requerido)
 **Referencia obsoleta:** GROUND_TRUTH.json sección `robustness` (marcada obsoleta 2026-01-14)
-**Prioridad:** ALTA
+**Prioridad:** NULA
 
 ### Descripción
 
-Evaluar la resistencia del clasificador entrenado con warped_lung_best ante perturbaciones comunes en imágenes médicas.
+Evaluar la resistencia del clasificador ante perturbaciones comunes en imágenes médicas.
+
+**Nota:** Esta línea se considera obsoleta y no se ejecutará salvo nueva indicación.
 
 ### Perturbaciones a Aplicar
 
@@ -126,9 +181,9 @@ python scripts/generate_perturbed_dataset.py \
 
 ## 2. Cross-Evaluation: Generalización entre Dominios
 
-**Estado:** ❌ NO realizado con warped_lung_best
+**Estado:** ⏸ Postergado
 **Referencia obsoleta:** GROUND_TRUTH.json sección `cross_evaluation` (marcada obsoleta 2026-01-14)
-**Prioridad:** MEDIA
+**Prioridad:** BAJA (después de comparación original vs warped)
 
 ### Descripción
 
@@ -247,9 +302,9 @@ PFS = (Atención en región pulmonar) / (Atención total)
 
 ## 4. Validación Externa (Dataset3 FedCOVIDx)
 
-**Estado:** ❌ NO realizado con warped_lung_best
+**Estado:** ⏸ Postergado
 **Referencia obsoleta:** GROUND_TRUTH.json sección `external_validation` (marcada obsoleta 2026-01-14)
-**Prioridad:** ALTA (crítico para generalización)
+**Prioridad:** BAJA (no requerido ahora)
 
 ### Descripción
 
@@ -260,36 +315,8 @@ Evaluar el clasificador en un dataset externo (fuera de distribución) para medi
 
 ### Protocolo
 
-#### 4.1. Preparar Dataset Externo
-
-```bash
-# Descargar Dataset3 (si no existe)
-# Referencia: https://github.com/ranihorev/Kather_texture_2016_image_tiles_5000
-
-# Preprocesar: CLAHE + Predicción de landmarks + Warping
-python scripts/prepare_external_dataset.py \
-  --input /path/to/dataset3_fedcovidx \
-  --output outputs/external_validation/d3_warped_lung_best \
-  --ensemble-config configs/ensemble_best.json \
-  --warping-config configs/warping_best.json \
-  --preprocessing clahe
-```
-
-#### 4.2. Evaluación
-
-```bash
-# Evaluar en imágenes ORIGINALES (sin warping)
-python scripts/evaluate_external.py \
-  --classifier outputs/classifier_warped_lung_best/best_classifier.pt \
-  --data-dir /path/to/dataset3_fedcovidx \
-  --output outputs/external_validation/results_original.json
-
-# Evaluar en imágenes WARPED
-python scripts/evaluate_external.py \
-  --classifier outputs/classifier_warped_lung_best/best_classifier.pt \
-  --data-dir outputs/external_validation/d3_warped_lung_best \
-  --output outputs/external_validation/results_warped.json
-```
+**Nota:** Este experimento queda pospuesto. Cuando se retome, revisar la pipeline archivada
+en `scripts/archive/classification/` y alinear el preprocesamiento con el método actual.
 
 ### Métricas a Reportar
 
@@ -568,49 +595,61 @@ python scripts/evaluate_ensemble_from_config.py \
 
 ---
 
+## 9. Normalización de Contraste SAHS (Futuro)
+
+**Estado:** ⏳ Pendiente  
+**Prioridad:** BAJA (futuro)
+
+Reemplazar CLAHE por el método SAHS para evaluar su impacto en la clasificación.
+Referencias y consideraciones técnicas en `docs/SAHS`.
+
+---
+
 ## Priorización Recomendada
 
-### ALTA PRIORIDAD (crítico para tesis)
+### ALTA PRIORIDAD (actual)
 
-1. **Evaluación de Robustez** (JPEG, blur)
-   - Tiempo estimado: 2-3 horas
-   - Impacto: Alto (argumenta ventajas del warping)
+1. **Comparación controlada original vs. warped**
+   - Tiempo estimado: 4-6 horas
+   - Impacto: Alto (cuantifica el efecto real del warping)
 
-2. **Validación Externa** (Dataset3)
-   - Tiempo estimado: 4-6 horas (incluye preparación de dataset)
-   - Impacto: Muy alto (evalúa generalización real)
+### MEDIA PRIORIDAD (después)
 
-### MEDIA PRIORIDAD
+2. **Cross-Evaluation**
+   - Tiempo estimado: 6-8 horas
+   - Impacto: Medio (generalización entre dominios)
 
-3. **Cross-Evaluation**
-   - Tiempo estimado: 6-8 horas (incluye entrenamiento de clasificador original)
-   - Impacto: Medio (argumenta beneficio de warping para generalización)
+### BAJA PRIORIDAD (postergado)
+
+3. **Validación Externa (Dataset3/FedCOVIDx)**
+   - Impacto: Bajo por ahora (no requerido)
 
 4. **Clasificación Binaria (COVID+Neumonía vs Normal)**
-   - Tiempo estimado: 3-4 horas
-   - Impacto: Medio (escenario clínico de screening, balanceo de clases)
-
-### BAJA PRIORIDAD (nice to have)
+   - Impacto: Bajo por ahora
 
 5. **Evaluación de Arquitecturas Alternativas**
-   - Tiempo estimado: 10 horas (entrenamiento de 6 arquitecturas)
-   - Impacto: Bajo (ResNet-18 funciona bien, pero bueno saber si hay mejores opciones)
+   - Impacto: Bajo
 
 6. **PFS (Pulmonary Focus Score)**
-   - Tiempo estimado: 3-4 horas
-   - Impacto: Bajo (interpretabilidad, no crítico)
+   - Impacto: Bajo
 
 7. **Fill Rate Trade-off**
-   - Tiempo estimado: 8-10 horas (grid search completo)
-   - Impacto: Bajo (ya se usó para seleccionar margin_scale=1.05)
+   - Impacto: Bajo
+
+8. **Normalización de contraste SAHS**
+   - Impacto: Bajo (futuro lejano)
+
+### OBSOLETO
+
+- **Evaluación de Robustez** (JPEG, blur): no requerida.
 
 ---
 
 ## Checklist de Implementación
 
-Para cada experimento, seguir este workflow:
+Para cada experimento activo, seguir este workflow:
 
-- [ ] Implementar scripts si no existen (`scripts/generate_perturbed_dataset.py`, etc.)
+- [ ] Implementar scripts necesarios para la comparación original vs warped (si aplica)
 - [ ] Ejecutar protocolo documentado
 - [ ] Registrar resultados en archivo JSON
 - [ ] Actualizar GROUND_TRUTH.json con nuevos valores (eliminar flag `obsolete`)
@@ -637,11 +676,7 @@ Para cada experimento, seguir este workflow:
 - `src_v2/cli.py` (comandos: generate-dataset, train-classifier, evaluate-classifier)
 
 **Scripts a crear:**
-- `scripts/generate_perturbed_dataset.py` ⚠️
-- `scripts/compute_pfs.py` ⚠️
-- `scripts/analyze_pfs.py` ⚠️
-- `scripts/prepare_external_dataset.py` ⚠️
-- `scripts/evaluate_external.py` ⚠️
+- Ninguno requerido para la prioridad actual (comparación original vs warped).
 
 ---
 
