@@ -1,0 +1,49 @@
+% =============================================================================
+% CAPÍTULO 5: RESULTADOS
+% Sección 5.5: Discusión de Resultados
+% =============================================================================
+
+\section{Discusión de Resultados}
+\label{sec:discusion_resultados}
+
+Esta sección interpreta los resultados experimentales presentados en las secciones anteriores, discute sus implicaciones y analiza las limitaciones del estudio.
+
+\subsection{Interpretación de Resultados de Landmarks}
+\label{subsec:interpretacion_landmarks}
+
+El error medio de 3.61 píxeles del ensemble de landmarks representa el 1.6\% del tamaño de imagen ($224 \times 224$ píxeles). Este nivel de precisión es adecuado para la aplicación de warping, dado que:
+
+\begin{enumerate}
+    \item El error está por debajo del umbral perceptual: un error de 3.61 píxeles en una imagen de 224 píxeles equivale a un desplazamiento del 1.6\% de la dimensión de la imagen.
+
+    \item La mediana de 3.07 píxeles indica que el 50\% de las predicciones tienen error inferior a 3.1 píxeles, aproximadamente 1.4\% del tamaño de imagen.
+
+    \item Los landmarks del eje central (L9, L10, L11) presentan alta precisión (2.44--2.94 px), proporcionando puntos de referencia estables para la alineación.
+\end{enumerate}
+
+El error de landmarks es comparable o superior a trabajos relacionados en detección de puntos anatómicos en radiografías de tórax. Por ejemplo, Van Ginneken et al. \cite{ginneken2006active} reportan errores de 5--10 píxeles en imágenes de resolución similar para detección de campos pulmonares, mientras que nuestro sistema alcanza 3.61 píxeles con un método completamente automático.
+
+\subsection{Validación de la Precisión Suficiente para Warping}
+\label{subsec:precision_suficiente}
+
+Un error medio de 3.61 píxeles en imágenes de $224 \times 224$ representa el 1.6\% del tamaño de imagen. Este nivel de precisión es adecuado para el propósito de normalización geométrica, donde el objetivo no es localización sub-píxel, sino alineación consistente de estructuras anatómicas. La Tabla \ref{tab:tolerancia_warping} contextualiza este error.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Interpretación del error de landmarks en el contexto de la aplicación de warping.}
+    \label{tab:tolerancia_warping}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Métrica} & \textbf{Valor} & \textbf{Interpretación} \\
+        \midrule
+        Error medio (px) & 3.61 & 1.6\% del tamaño de imagen (224 px) \\
+        Error medio (mm) & $\sim$3--4 & Escala clínica (radiografías PA) \\
+        Suficiencia para warping & Sí & Error < 5 px en 75\% de landmarks \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+La precisión de 3.61 píxeles (1.6\% del tamaño de imagen) es suficiente para generar transformaciones de warping que preservan la estructura anatómica general sin introducir distorsiones significativas.
+
+% Referencias temporales para esta sección
+% [Se agregarán según sea necesario]

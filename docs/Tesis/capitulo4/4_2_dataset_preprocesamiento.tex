@@ -53,11 +53,7 @@ Los landmarks no corresponden a estructuras anatómicas específicas, sino que r
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: Insertar figura de landmarks]
-    \fbox{\parbox{0.85\textwidth}{\centering\vspace{4cm}
-    [Diagrama de los 15 landmarks sobre una radiografía de ejemplo]\\
-    Mostrando: Eje central (L1-L2), contornos bilaterales (L3-L8, L12-L15), y puntos intermedios (L9-L11)
-    \vspace{4cm}}}
+    \includegraphics[width=0.85\textwidth]{Figures/F4.3_landmarks_15.png}
     \caption{Ubicación de los 15 landmarks que definen el contorno pulmonar. Los puntos L1 y L2 definen el eje vertical central. Los landmarks L3-L8 delimitan los contornos laterales, mientras que L9-L11 dividen el eje central en cuatro segmentos iguales. Los pares (L12,L13) y (L14,L15) corresponden a las esquinas superior e inferior respectivamente.}
     \label{fig:landmarks_anatomicos}
 \end{figure}
@@ -113,12 +109,7 @@ La herramienta desarrollada implementa un proceso de anotación en dos fases que
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F4.2b - Interfaz de la herramienta de etiquetado]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
-    [Captura de pantalla de la herramienta de etiquetado]\\
-    Mostrando: imagen de radiografía con landmarks superpuestos,\\
-    línea central azul, puntos verdes numerados, y menú de teclas de ajuste
-    \vspace{4cm}}}
+    \includegraphics[width=0.85\textwidth]{Figures/F4.2b_interfaz_etiquetado.png}
     \caption{Interfaz de la herramienta de anotación de landmarks. La ventana principal muestra la radiografía con una línea vertical central de referencia. Los landmarks se visualizan como puntos verdes conectados por líneas rojas que definen el contorno pulmonar.}
     \label{fig:herramienta_etiquetado}
 \end{figure}
@@ -215,10 +206,7 @@ La Figura \ref{fig:clahe_comparison} muestra el efecto del preprocesamiento CLAH
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: Insertar figura comparativa CLAHE]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}
-    [Comparación lado a lado: imagen original vs. imagen con CLAHE aplicado]
-    \vspace{3cm}}}
+    \includegraphics[width=0.9\textwidth]{Figures/F4.4_clahe_comparacion.png}
     \caption{Efecto del preprocesamiento CLAHE. (a) Imagen original con bajo contraste en la región pulmonar. (b) Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 4$, mostrando mejor definición de estructuras pulmonares.}
     \label{fig:clahe_comparison}
 \end{figure}

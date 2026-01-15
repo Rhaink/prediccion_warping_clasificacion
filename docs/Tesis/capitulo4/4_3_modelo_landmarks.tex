@@ -15,11 +15,7 @@ El modelo propuesto se basa en una arquitectura de red neuronal convolucional co
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: Insertar figura de arquitectura]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
-    [Diagrama de arquitectura del modelo]\\
-    Entrada (224×224×3) $\rightarrow$ ResNet-18 Backbone $\rightarrow$ Coordinate Attention $\rightarrow$ Global Average Pooling $\rightarrow$ Cabeza de Regresión $\rightarrow$ Salida (30)
-    \vspace{4cm}}}
+    \includegraphics[width=0.95\textwidth]{Figures/F4.5_arquitectura_modelo.png}
     \caption{Arquitectura del modelo de predicción de landmarks. El backbone ResNet-18 extrae características de alto nivel, el módulo Coordinate Attention incorpora información posicional, y la cabeza de regresión predice las 30 coordenadas (15 landmarks $\times$ 2 coordenadas).}
     \label{fig:arquitectura_modelo}
 \end{figure}
@@ -229,11 +225,7 @@ La Figura \ref{fig:wing_loss} ilustra el comportamiento de Wing Loss comparado c
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: Insertar gráfica comparativa]
-    \fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}
-    [Gráfica comparativa de Wing Loss vs L1 vs L2]\\
-    Mostrando el cambio de régimen en $\omega = 10$ píxeles
-    \vspace{3cm}}}
+    \includegraphics[width=0.85\textwidth]{Figures/F4.6_wing_loss_grafica.png}
     \caption{Comparación de Wing Loss con pérdidas L1 y L2. Wing Loss proporciona gradientes más fuertes para errores pequeños (región logarítmica) mientras mantiene estabilidad para errores grandes (región lineal).}
     \label{fig:wing_loss}
 \end{figure}

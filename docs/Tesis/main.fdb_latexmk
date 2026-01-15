@@ -1,15 +1,15 @@
 # Fdb version 4
-["bibtex main"] 1768387886.77655 "main.aux" "main.bbl" "main" 1768387888.40219 0
+["bibtex main"] 1768387886.77655 "main.aux" "main.bbl" "main" 1768390569.38612 0
   "./references.bib" 1768369710.2795 11550 104354902b8463c6fbce7ebf75693d7a ""
   "/usr/share/texlive/texmf-dist/bibtex/bst/ieeetran/IEEEtran.bst" 1440712899 57748 7c8250ecf02814ce6ddc0cdbb63df1dd ""
-  "main.aux" 1768387888.11183 36178 05c9d456bf203b4e6b0c35831bb5dabf "pdflatex"
+  "main.aux" 1768390569.09621 36178 05c9d456bf203b4e6b0c35831bb5dabf "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1768387886.86196 "/home/donrobot/Projects/prediccion_warping_clasificacion/docs/Tesis/main.tex" "main.pdf" "main" 1768387888.40243 0
+["pdflatex"] 1768390567.94364 "/home/donrobot/Projects/prediccion_warping_clasificacion/docs/Tesis/main.tex" "main.pdf" "main" 1768390569.38638 0
   "/etc/texmf/web2c/texmf.cnf" 1762644457.10681 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/donrobot/Projects/prediccion_warping_clasificacion/docs/Tesis/main.tex" 1768387883.93281 3579 ea5ed3c248720fe678d685cd7e2f14d7 ""
+  "/home/donrobot/Projects/prediccion_warping_clasificacion/docs/Tesis/main.tex" 1768390567.7422 3550 b883d0fac388faf119b7babd3e2cf2b9 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/tcrm1200.tfm" 1136768653 1536 74b7293ec3713bb7fdca8dd1bd1f469c ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy6.tfm" 1246382020 1124 14ccf5552bc7f77ca02a8a402bea8bfb ""
@@ -148,11 +148,11 @@
   "capitulo4/4_4_normalizacion_geometrica.tex" 1768387688.14772 23180 fd7e1fce81262296e12c27c61cdb3350 ""
   "capitulo4/4_5_clasificacion.tex" 1768387736.57698 13931 ea3afa4c6ee09d30854b417ed8f100ae ""
   "capitulo4/4_6_protocolo_evaluacion.tex" 1768385683.68103 12499 d8f0f5d15113e8544a17a1bd0b44761d ""
-  "main.aux" 1768387888.11183 36178 05c9d456bf203b4e6b0c35831bb5dabf "pdflatex"
+  "main.aux" 1768390569.09621 36178 05c9d456bf203b4e6b0c35831bb5dabf "pdflatex"
   "main.bbl" 1768387886.85582 6154 af1d86e660a081d4aae296f1bae86121 "bibtex main"
-  "main.out" 1768387888.11483 7696 8cf9451466e4c42409b57a05c2a4dcc5 "pdflatex"
-  "main.tex" 1768387883.93281 3579 ea5ed3c248720fe678d685cd7e2f14d7 ""
-  "main.toc" 1768387888.11483 7239 d56fd160e3660401b50ef9e6db2b925d "pdflatex"
+  "main.out" 1768390569.09921 7696 8cf9451466e4c42409b57a05c2a4dcc5 "pdflatex"
+  "main.tex" 1768390567.7422 3550 b883d0fac388faf119b7babd3e2cf2b9 ""
+  "main.toc" 1768390569.09921 7239 d56fd160e3660401b50ef9e6db2b925d "pdflatex"
   "title-page.tex" 1765932004.31842 1467 f73c675c5c77151a62edb539f6d45368 ""
   (generated)
   "main.aux"

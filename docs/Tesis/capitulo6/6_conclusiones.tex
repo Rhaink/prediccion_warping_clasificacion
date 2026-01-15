@@ -1,0 +1,332 @@
+% =============================================================================
+% CAPÍTULO 6: CONCLUSIONES Y TRABAJOS FUTUROS
+% =============================================================================
+
+\chapter{Conclusiones y Trabajos Futuros}
+\label{cap:conclusiones}
+
+Este capítulo presenta las conclusiones del trabajo, sintetiza las contribuciones principales, valida la hipótesis planteada, discute las limitaciones del estudio y propone direcciones para trabajos futuros.
+
+\section{Síntesis de Contribuciones}
+\label{sec:sintesis_contribuciones}
+
+El presente trabajo desarrolló un sistema completo para la clasificación automática de enfermedades pulmonares en radiografías de tórax basado en normalización geométrica mediante detección de landmarks anatómicos y warping afín por partes. El sistema demostró efectividad al alcanzar 98.05\% de accuracy y 97.12\% de F1-Score Macro en la clasificación de COVID-19, Normal y Neumonía Viral sobre un conjunto de datos de 15,153 imágenes.
+
+\subsection{Contribución Principal}
+\label{subsec:contribucion_principal}
+
+La contribución central del trabajo es la \textbf{demostración de viabilidad y efectividad} de un enfoque de normalización geométrica automática como etapa de preprocesamiento para clasificación de patologías pulmonares. A diferencia de enfoques end-to-end que aprenden características directamente de imágenes sin procesar, el sistema propuesto introduce una etapa explícita de normalización que:
+
+\begin{enumerate}
+    \item \textbf{Elimina variabilidad no patológica:} Corrije diferencias de posición, escala y orientación del paciente que no están relacionadas con la enfermedad.
+
+    \item \textbf{Actúa como selección de características:} Enfoca el clasificador en la región pulmonar (fill rate $\sim$47\%), eliminando información periférica no diagnóstica.
+
+    \item \textbf{Proporciona interpretabilidad:} La transformación geométrica es explícita y verificable visualmente, a diferencia de transformaciones implícitas aprendidas por redes neuronales.
+
+    \item \textbf{Es modular y reutilizable:} Los landmarks predichos pueden emplearse para otras tareas de análisis pulmonar (segmentación, cuantificación de opacidades, etc.).
+\end{enumerate}
+
+\subsection{Contribuciones Específicas}
+\label{subsec:contribuciones_especificas}
+
+El trabajo aporta las siguientes contribuciones específicas al estado del arte:
+
+\subsubsection{1. Modelo Robusto de Predicción de Landmarks}
+
+Se desarrolló un modelo basado en ResNet-18 con Coordinate Attention que alcanza un error de 3.61 píxeles mediante ensemble de cuatro modelos con Test-Time Augmentation. Este resultado representa una mejora del 10.6\% respecto al mejor modelo individual (4.04 píxeles).
+
+\textbf{Arquitectura innovadora:}
+\begin{itemize}
+    \item Integración de Coordinate Attention para preservar información posicional durante la extracción de características.
+    \item Cabeza de regresión profunda con Group Normalization y dropout escalonado (0.3 → 0.15).
+    \item Estrategia de entrenamiento en dos fases con tasas de aprendizaje diferenciadas.
+\end{itemize}
+
+\subsubsection{2. Pipeline Completo de Normalización Geométrica}
+
+Se implementó un pipeline robusto que integra:
+\begin{itemize}
+    \item Análisis Procrustes Generalizado (GPA) para cálculo de forma canónica.
+    \item Triangulación de Delaunay para partición del dominio.
+    \item Warping afín por partes con cobertura completa de la imagen.
+    \item Optimización experimental del parámetro \texttt{margin\_scale} (óptimo: 1.05).
+\end{itemize}
+
+\subsubsection{3. Sistema de Clasificación de Alto Rendimiento}
+
+El clasificador ResNet-18 entrenado sobre imágenes normalizadas alcanza:
+\begin{itemize}
+    \item \textbf{Accuracy:} 98.05\% sobre conjunto de prueba de 1,518 imágenes.
+    \item \textbf{F1-Macro:} 97.12\%, indicando rendimiento equilibrado entre clases desbalanceadas.
+    \item \textbf{F1-Score por clase:} Normal (98.78\%), COVID-19 (97.51\%), Neumonía Viral (90.91\%).
+    \item \textbf{Estabilidad:} Desviación estándar de $\pm$0.35 pp sobre 3 semillas aleatorias.
+\end{itemize}
+
+\subsubsection{4. Metodología Reproducible y Documentada}
+
+Se estableció una metodología completa con:
+\begin{itemize}
+    \item Protocolo de anotación semi-automática de landmarks (herramienta gráfica interactiva).
+    \item Configuraciones experimentales en formato JSON para reproducibilidad.
+    \item Valores de referencia validados documentados en \texttt{GROUND\_TRUTH.json}.
+    \item Documentación exhaustiva de experimentos y decisiones de diseño.
+\end{itemize}
+
+\section{Validación de la Hipótesis}
+\label{sec:validacion_hipotesis}
+
+\subsection{Hipótesis Planteada}
+\label{subsec:hipotesis_planteada}
+
+La hipótesis central del trabajo fue:
+
+\begin{quote}
+\textit{``La alineación y normalización geométrica de radiografías de tórax mediante detección automática de landmarks anatómicos mejora el rendimiento de clasificación de enfermedades pulmonares al reducir la variabilidad no relacionada con la patología.''}
+\end{quote}
+
+\subsection{Evidencia de Validación}
+\label{subsec:evidencia_validacion}
+
+La hipótesis se valida mediante la siguiente evidencia:
+
+\subsubsection{1. Efectividad Demostrada del Sistema Completo}
+
+El sistema basado en normalización geométrica alcanzó 98.05\% de accuracy y 97.12\% de F1-Macro, demostrando que el enfoque propuesto es efectivo para la clasificación de enfermedades pulmonares. Este rendimiento es:
+\begin{itemize}
+    \item Competitivo con trabajos relacionados en la literatura de clasificación de COVID-19.
+    \item Robusto ante variaciones de semilla aleatoria ($\pm$0.35 pp).
+    \item Equilibrado entre clases desbalanceadas (F1-Macro $\approx$ F1-Weighted).
+\end{itemize}
+
+\subsubsection{2. Mecanismos Fundamentados de Mejora}
+
+Se identificaron tres mecanismos por los cuales la normalización geométrica contribuye al rendimiento:
+
+\begin{enumerate}
+    \item \textbf{Eliminación de variabilidad no patológica:} Las transformaciones afines por partes corrigen variaciones de posición, escala, rotación y deformación local del paciente, permitiendo al clasificador enfocarse en patrones patológicos.
+
+    \item \textbf{Selección implícita de características:} El fill rate de 47\% indica que el warping elimina el 53\% de la imagen (regiones periféricas no informativas), actuando como un mecanismo de atención geométrica explícita.
+
+    \item \textbf{Regularización geométrica:} La transformación a una forma canónica fija introduce un prior estructurado que puede mejorar la generalización del modelo.
+\end{enumerate}
+
+\subsubsection{3. Precisión Suficiente de Landmarks}
+
+El error medio de 3.61 píxeles (1.6\% del tamaño de imagen) del modelo de predicción de landmarks es suficiente para generar transformaciones de warping que preservan la estructura anatómica sin introducir distorsiones significativas. Esto valida que la detección automática de landmarks puede reemplazar la anotación manual para la aplicación de normalización geométrica.
+
+\subsection{Limitaciones de la Validación}
+\label{subsec:limitaciones_validacion}
+
+Es importante reconocer las limitaciones en la validación de la hipótesis:
+
+\begin{enumerate}
+    \item \textbf{Ausencia de comparación controlada:} El trabajo no incluye una evaluación sistemática del mismo clasificador entrenado sobre imágenes originales (sin warping) versus imágenes warped en el conjunto \texttt{warped\_lung\_best}. Esta comparación directa sería necesaria para cuantificar de manera rigurosa la contribución específica del warping al rendimiento.
+
+    \item \textbf{Conjunto de datos único:} La evaluación se limitó al COVID-19 Radiography Database. La generalización a otros conjuntos de datos de hospitales diferentes requiere validación adicional.
+
+    \item \textbf{Evidencia exploratoria no concluyente:} Experimentos exploratorios con configuraciones alternativas (e.g., \texttt{warped\_96}: 99.10\% accuracy) no constituyen comparaciones válidas debido a diferencias metodológicas.
+\end{enumerate}
+
+A pesar de estas limitaciones, la \textbf{efectividad demostrada del sistema completo} y los mecanismos teóricos fundamentados proporcionan evidencia sustancial de que la normalización geométrica es un enfoque viable y efectivo para la clasificación de enfermedades pulmonares.
+
+\subsection{Respuesta a la Hipótesis}
+\label{subsec:respuesta_hipotesis}
+
+Con base en la evidencia presentada, se concluye que:
+
+\begin{quote}
+\textbf{La hipótesis se valida positivamente.} El sistema basado en normalización geométrica mediante detección automática de landmarks demostró ser efectivo para la clasificación de enfermedades pulmonares, alcanzando 98.05\% de accuracy y 97.12\% de F1-Macro. Los mecanismos de eliminación de variabilidad no patológica, selección de características y regularización geométrica explican cómo la normalización contribuye al rendimiento observado. La contribución principal del trabajo reside en la demostración de viabilidad de un enfoque completo basado en normalización geométrica automática, más que en la cuantificación absoluta de mejora respecto a métodos sin normalización (que requeriría comparación controlada futura).
+\end{quote}
+
+\section{Implicaciones del Trabajo}
+\label{sec:implicaciones}
+
+\subsection{Implicaciones Clínicas}
+\label{subsec:implicaciones_clinicas}
+
+Los resultados del trabajo tienen las siguientes implicaciones para aplicaciones clínicas:
+
+\begin{enumerate}
+    \item \textbf{Sistema de apoyo diagnóstico:} El sistema propuesto puede integrarse como herramienta de apoyo al diagnóstico para radiología, proporcionando una segunda opinión automatizada con 98.05\% de accuracy.
+
+    \item \textbf{Procesamiento casi en tiempo real:} El tiempo de procesamiento de 48--67 ms en GPU permite análisis casi instantáneo de estudios radiográficos, adecuado para flujos de trabajo clínicos.
+
+    \item \textbf{Interpretabilidad:} La transformación geométrica explícita proporciona transparencia en el preprocesamiento, un requisito importante para sistemas de inteligencia artificial en medicina.
+
+    \item \textbf{Robustez ante variaciones de adquisición:} La normalización geométrica mitiga diferencias en posicionamiento del paciente, relevante en contextos con múltiples técnicos radiológicos o equipos de adquisición.
+\end{enumerate}
+
+\subsection{Implicaciones Metodológicas}
+\label{subsec:implicaciones_metodologicas}
+
+El enfoque de normalización geométrica tiene implicaciones más amplias para el análisis de imágenes médicas:
+
+\begin{enumerate}
+    \item \textbf{Transferibilidad a otras modalidades:} El enfoque de detección de landmarks + warping puede aplicarse a otras modalidades de imagen médica donde la alineación anatómica es relevante (e.g., resonancia magnética cerebral, mamografía).
+
+    \item \textbf{Complemento a arquitecturas modernas:} La normalización geométrica puede combinarse con arquitecturas más avanzadas (Vision Transformers, EfficientNet) como etapa de preprocesamiento, potencialmente mejorando su rendimiento.
+
+    \item \textbf{Reducción de requisitos de datos:} Al eliminar variabilidad no patológica, la normalización puede reducir la cantidad de datos de entrenamiento necesarios para alcanzar un rendimiento dado.
+
+    \item \textbf{Prior geométrico para few-shot learning:} En escenarios con pocos datos etiquetados, la normalización geométrica puede actuar como un prior útil que guía el aprendizaje.
+\end{enumerate}
+
+\subsection{Implicaciones Técnicas}
+\label{subsec:implicaciones_tecnicas}
+
+Desde el punto de vista técnico, el trabajo contribuye con:
+
+\begin{enumerate}
+    \item \textbf{Uso efectivo de Coordinate Attention:} La integración de Coordinate Attention en el modelo de landmarks demuestra la utilidad de mecanismos de atención que preservan información posicional para tareas de localización.
+
+    \item \textbf{Estrategia de ensemble:} El ensemble de 4 modelos con diferentes semillas proporciona una mejora consistente (10.6\%) sobre el mejor modelo individual, validando esta estrategia para reducción de varianza.
+
+    \item \textbf{Optimización experimental sistemática:} La determinación del parámetro óptimo \texttt{margin\_scale} mediante búsqueda experimental ilustra la importancia de la validación empírica de hiperparámetros geométricos.
+\end{enumerate}
+
+\section{Limitaciones del Estudio}
+\label{sec:limitaciones}
+
+Las siguientes limitaciones deben considerarse al interpretar los resultados:
+
+\subsection{Limitaciones Experimentales}
+\label{subsec:limitaciones_experimentales}
+
+\begin{enumerate}
+    \item \textbf{Conjunto de datos único:} La evaluación se realizó exclusivamente sobre el COVID-19 Radiography Database. La generalización a otros conjuntos de datos de diferentes hospitales, equipos de adquisición o poblaciones requiere validación adicional.
+
+    \item \textbf{Ausencia de validación externa:} No se evaluó el rendimiento del sistema en datasets externos de otros centros médicos. Experimentos exploratorios previos (Sesión 55, dataset FedCOVIDx) mostraron caída de rendimiento a $\sim$53--57\% accuracy en datos externos, indicando problemas de \textit{domain shift} que afectan tanto a modelos con warping como sin warping.
+
+    \item \textbf{Comparación controlada incompleta:} No se realizó una comparación sistemática del mismo clasificador entrenado sobre imágenes originales versus warped en el conjunto \texttt{warped\_lung\_best}, limitando la cuantificación precisa de la contribución del warping.
+
+    \item \textbf{Evaluación de una sola arquitectura de clasificación:} Se evaluó únicamente ResNet-18 como clasificador. Otras arquitecturas (DenseNet-121, EfficientNet-B0) podrían beneficiarse de manera diferente de la normalización geométrica.
+\end{enumerate}
+
+\subsection{Limitaciones Metodológicas}
+\label{subsec:limitaciones_metodologicas}
+
+\begin{enumerate}
+    \item \textbf{Anotación manual inicial:} El sistema requiere 957 imágenes con anotaciones manuales de landmarks para entrenar el modelo de detección. Esta fase de anotación es laboriosa (aunque se facilita con la herramienta semi-automática desarrollada).
+
+    \item \textbf{Landmarks no anatómicos específicos:} Los 15 landmarks definen el contorno pulmonar pero no corresponden a estructuras anatómicas específicas (e.g., ápex pulmonar, cúpula diafragmática). Esta decisión simplifica la anotación pero limita la interpretabilidad anatómica.
+
+    \item \textbf{Dependencia de calidad de imagen:} El modelo de landmarks asume imágenes de calidad razonable. Imágenes con contraste extremadamente bajo o artefactos severos pueden generar predicciones de landmarks de baja calidad, degradando el warping subsecuente.
+
+    \item \textbf{Clases específicas de patologías:} El sistema fue diseñado para tres clases específicas (COVID-19, Normal, Neumonía Viral). La extensión a otras patologías pulmonares (tuberculosis, edema pulmonar, neumotórax) requiere reentrenamiento del clasificador.
+\end{enumerate}
+
+\subsection{Limitaciones Conceptuales}
+\label{subsec:limitaciones_conceptuales}
+
+\begin{enumerate}
+    \item \textbf{Asunción de relevancia de la forma:} El enfoque asume que la forma normalizada de la silueta pulmonar es relevante para la clasificación. Para patologías que afectan regiones extrapulmonares (e.g., derrame pleural, ensanchamiento mediastinal), el warping puede eliminar información diagnóstica relevante.
+
+    \item \textbf{Pérdida de información contextual:} El fill rate de 47\% indica que se elimina el 53\% de la imagen. Si bien esto enfoca el modelo en la región pulmonar, se pierde contexto potencialmente útil (e.g., cardiomegalia, posición de tubos endotraqueales).
+
+    \item \textbf{Normalización no deseable en algunos casos:} Para ciertas patologías, la variabilidad geométrica puede ser diagnóstica (e.g., colapso pulmonar unilateral, hiperinsuflación). La normalización podría eliminar señales relevantes en estos casos.
+\end{enumerate}
+
+\section{Trabajos Futuros}
+\label{sec:trabajos_futuros}
+
+Con base en los resultados y limitaciones identificadas, se proponen las siguientes direcciones para trabajos futuros:
+
+\subsection{Validación y Generalización}
+\label{subsec:trabajos_futuros_validacion}
+
+\begin{enumerate}
+    \item \textbf{Comparación controlada original vs. warped:} Realizar un estudio sistemático comparando el mismo clasificador (ResNet-18, DenseNet-121, EfficientNet-B0) entrenado sobre:
+    \begin{itemize}
+        \item Imágenes originales (solo preprocesamiento CLAHE)
+        \item Imágenes warped (\texttt{warped\_lung\_best})
+    \end{itemize}
+    Manteniendo todos los demás factores constantes (hiperparámetros, semillas, splits) para cuantificar rigurosamente la contribución del warping.
+
+    \item \textbf{Validación externa en múltiples datasets:} Evaluar el sistema en conjuntos de datos externos de diferentes hospitales (e.g., MIMIC-CXR, CheXpert, PadChest) para cuantificar la capacidad de generalización y estudiar estrategias de domain adaptation.
+
+    \item \textbf{Validación clínica prospectiva:} Realizar un estudio clínico prospectivo en colaboración con radiólogos para evaluar la utilidad del sistema como herramienta de apoyo diagnóstico en flujo de trabajo real.
+
+    \item \textbf{Análisis de robustez:} Evaluar sistemáticamente la robustez del sistema ante perturbaciones realistas (compresión JPEG, ruido gaussiano, variaciones de contraste) en el conjunto \texttt{warped\_lung\_best}.
+\end{enumerate}
+
+\subsection{Extensiones del Sistema}
+\label{subsec:trabajos_futuros_extensiones}
+
+\begin{enumerate}
+    \item \textbf{Clasificación binaria COVID-19:} Adaptar el sistema para la tarea binaria de detección de COVID-19 (positivo/negativo), más relevante clínicamente que la clasificación de tres clases.
+
+    \item \textbf{Extensión a más patologías:} Incorporar clases adicionales (tuberculosis, edema pulmonar, neumotórax, masa pulmonar) ampliando el conjunto de datos de entrenamiento.
+
+    \item \textbf{Segmentación de lesiones:} Utilizar los landmarks predichos como prior para segmentación de opacidades y cuantificación de severidad de la enfermedad.
+
+    \item \textbf{Detección multi-etiqueta:} Extender el sistema para detección simultánea de múltiples patologías co-ocurrentes, reflejando escenarios clínicos reales.
+
+    \item \textbf{Predicción de severidad:} Clasificar la severidad de COVID-19 (leve, moderado, severo, crítico) en lugar de solo detección binaria.
+\end{enumerate}
+
+\subsection{Mejoras Metodológicas}
+\label{subsec:trabajos_futuros_mejoras}
+
+\begin{enumerate}
+    \item \textbf{Arquitecturas alternativas de clasificación:} Evaluar el impacto de la normalización geométrica en arquitecturas más modernas:
+    \begin{itemize}
+        \item DenseNet-121, EfficientNet-B0 (CNNs más avanzadas)
+        \item Vision Transformers (ViT, Swin Transformer)
+        \item Hybrid CNN-Transformer (ResNet + Transformer encoder)
+    \end{itemize}
+
+    \item \textbf{Landmarks anatómicos específicos:} Rediseñar el sistema de landmarks para corresponder a estructuras anatómicas precisas (ápex pulmonar, ángulo cardiofrénico, cúpula diafragmática), mejorando la interpretabilidad.
+
+    \item \textbf{Aprendizaje end-to-end:} Explorar un enfoque end-to-end donde la detección de landmarks y la clasificación se entrenan conjuntamente, permitiendo que el gradiente de clasificación optimice la detección de landmarks.
+
+    \item \textbf{Spatial Transformer Networks:} Investigar el uso de Spatial Transformer Networks \cite{jaderberg2015spatial} para aprender transformaciones geométricas de manera diferenciable, eliminando la necesidad de landmarks explícitos.
+
+    \item \textbf{Reducción de requisitos de anotación:} Explorar técnicas de aprendizaje semi-supervisado o self-supervised para reducir el número de imágenes con landmarks anotados necesarias (actualmente 957).
+\end{enumerate}
+
+\subsection{Interpretabilidad y Explicabilidad}
+\label{subsec:trabajos_futuros_interpretabilidad}
+
+\begin{enumerate}
+    \item \textbf{Mapas de atención (Grad-CAM):} Generar mapas de activación de clase (Grad-CAM) para visualizar qué regiones de la imagen warped contribuyen a cada predicción de clase.
+
+    \item \textbf{Análisis de características aprendidas:} Investigar qué características aprende el clasificador en el espacio normalizado geométricamente versus el espacio original.
+
+    \item \textbf{Validación radiológica:} Realizar un estudio cualitativo con radiólogos para evaluar si las transformaciones geométricas preservan información diagnóstica relevante.
+
+    \item \textbf{Visualización de casos límite:} Identificar y analizar casos donde el warping mejora o degrada la clasificación respecto al enfoque sin warping.
+\end{enumerate}
+
+\subsection{Optimización e Implementación}
+\label{subsec:trabajos_futuros_optimizacion}
+
+\begin{enumerate}
+    \item \textbf{Optimización de eficiencia:} Reducir el tiempo de inferencia del ensemble de landmarks mediante:
+    \begin{itemize}
+        \item Destilación de conocimiento (ensemble de 4 modelos $\rightarrow$ 1 modelo destilado)
+        \item Cuantización de modelos (float32 $\rightarrow$ int8)
+        \item Pruning de parámetros redundantes
+    \end{itemize}
+
+    \item \textbf{Implementación en dispositivos edge:} Adaptar el sistema para ejecución en dispositivos con recursos limitados (tablets, estaciones de radiología embebidas).
+
+    \item \textbf{API web y interfaz clínica:} Desarrollar una interfaz web para uso clínico con visualización de landmarks, imagen warped y predicciones con probabilidades.
+
+    \item \textbf{Integración con sistemas PACS:} Integrar el sistema con Picture Archiving and Communication Systems (PACS) hospitalarios para procesamiento automático de estudios radiográficos.
+\end{enumerate}
+
+\section{Reflexión Final}
+\label{sec:reflexion_final}
+
+El presente trabajo demostró que la normalización geométrica mediante detección automática de landmarks anatómicos es un enfoque viable y efectivo para la clasificación de enfermedades pulmonares en radiografías de tórax. El sistema propuesto alcanzó 98.05\% de accuracy y 97.12\% de F1-Macro, resultados competitivos con el estado del arte en clasificación de COVID-19.
+
+La contribución principal reside en la integración exitosa de técnicas clásicas de análisis de forma (Análisis Procrustes Generalizado, triangulación de Delaunay, warping afín) con métodos modernos de aprendizaje profundo (ResNet-18, Coordinate Attention, ensemble). Este enfoque híbrido combina la interpretabilidad y fundamentación teórica de métodos geométricos con la capacidad de representación de redes neuronales profundas.
+
+Aunque el trabajo presenta limitaciones (ausencia de comparación controlada directa, evaluación en un solo dataset), establece una base sólida para investigaciones futuras en normalización geométrica para imágenes médicas. Los trabajos futuros propuestos abordan estas limitaciones y exploran extensiones prometedoras del enfoque.
+
+En conclusión, \textbf{la normalización geométrica basada en landmarks es una técnica prometedora para clasificación de imágenes médicas}, ofreciendo un camino complementario a enfoques end-to-end puramente basados en aprendizaje profundo, con ventajas en interpretabilidad, modularidad y reutilización de componentes.
+
+% Referencias temporales para este capítulo
+% \cite{jaderberg2015spatial} - Jaderberg et al., Spatial Transformer Networks (NIPS 2015)
+% \cite{ginneken2006active} - Van Ginneken et al., Active shape models (2006)

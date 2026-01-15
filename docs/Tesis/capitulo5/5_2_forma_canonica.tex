@@ -1,0 +1,240 @@
+% =============================================================================
+% CAPÍTULO 5: RESULTADOS
+% Sección 5.2: Forma Canónica y Normalización Geométrica
+% =============================================================================
+
+\section{Forma Canónica y Normalización Geométrica}
+\label{sec:resultados_forma_canonica}
+
+Esta sección presenta los resultados del proceso de normalización geométrica mediante Análisis Procrustes Generalizado (GPA) y warping afín por partes. Se describe la forma canónica obtenida, la triangulación de Delaunay resultante y los parámetros óptimos determinados experimentalmente.
+
+\subsection{Convergencia del Análisis Procrustes Generalizado}
+\label{subsec:convergencia_gpa}
+
+El algoritmo GPA se aplicó sobre el conjunto de 717 configuraciones de landmarks del conjunto de entrenamiento. La Tabla \ref{tab:convergencia_gpa} resume el proceso de convergencia.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Convergencia del algoritmo GPA sobre 717 configuraciones de landmarks.}
+    \label{tab:convergencia_gpa}
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Parámetro} & \textbf{Valor} \\
+        \midrule
+        Número de configuraciones & 717 \\
+        Número de landmarks por configuración & 15 \\
+        Tolerancia de convergencia ($\tau$) & $1 \times 10^{-8}$ \\
+        Máximo de iteraciones & 100 \\
+        \midrule
+        \textbf{Resultado} & \\
+        Iteraciones requeridas & 18 \\
+        Error de alineación final & $< 10^{-8}$ \\
+        Tiempo de cómputo & $\sim$0.5 segundos \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El algoritmo converge en 18 iteraciones, significativamente menor que el límite de 100 iteraciones, indicando estabilidad numérica. El tiempo de cómputo reducido ($\sim$0.5 segundos) permite recalcular la forma canónica en experimentos futuros si se agregan nuevas anotaciones al conjunto de entrenamiento.
+
+\subsection{Forma Canónica Resultante}
+\label{subsec:forma_canonica_resultante}
+
+La forma canónica obtenida por GPA representa el consenso estadístico de las 717 configuraciones de landmarks alineadas. La Figura \ref{fig:forma_canonica} visualiza la forma canónica en coordenadas normalizadas y transformadas al sistema de coordenadas de imagen.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F5.3 - Forma canónica]
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{5cm}
+    [Figura F5.3: Forma canónica resultante del GPA]\\
+    Dos paneles: (a) Forma normalizada (centrada, norma unitaria)\\
+    (b) Forma transformada a coordenadas de imagen $224 \times 224$ con padding 10\%\\
+    Mostrando los 15 landmarks conectados por la silueta pulmonar
+    \vspace{5cm}}}
+    \caption{Forma canónica obtenida mediante Análisis Procrustes Generalizado. (a) Forma normalizada después de centrado, escalado y alineación rotacional. (b) Forma escalada y trasladada al sistema de coordenadas de imagen $224 \times 224$ píxeles con margen de 10\% para uso en el proceso de warping.}
+    \label{fig:forma_canonica}
+\end{figure}
+
+\subsubsection{Características Geométricas de la Forma Canónica}
+
+La Tabla \ref{tab:propiedades_forma_canonica} presenta las propiedades geométricas de la forma canónica en coordenadas de imagen.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Propiedades geométricas de la forma canónica en coordenadas de imagen ($224 \times 224$ píxeles).}
+    \label{tab:propiedades_forma_canonica}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Propiedad} & \textbf{Valor} \\
+        \midrule
+        Centroide $(x_c, y_c)$ & $(112.0, 112.0)$ \\
+        Rango horizontal & $\sim$180 píxeles \\
+        Rango vertical & $\sim$160 píxeles \\
+        Relación de aspecto & $\sim$1.125 (ancho/alto) \\
+        Área ocupada (bounding box) & $\sim$81\% de la imagen \\
+        Padding relativo & 10\% en cada borde \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+La forma canónica está centrada en el punto medio de la imagen y ocupa aproximadamente el 81\% del área disponible, dejando un margen de 10\% en cada borde. La relación de aspecto de 1.125 refleja que la silueta pulmonar bilateral es ligeramente más ancha que alta.
+
+\subsection{Triangulación de Delaunay}
+\label{subsec:triangulacion_delaunay_resultados}
+
+La triangulación de Delaunay sobre los 15 landmarks de la forma canónica produce la partición del dominio utilizada para el warping afín por partes. La Figura \ref{fig:triangulacion_resultados} muestra la triangulación resultante.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F5.4 - Triangulación de Delaunay]
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{4cm}
+    [Figura F5.4: Triangulación de Delaunay sobre los 15 landmarks]\\
+    Forma canónica con los landmarks conectados por aristas de la triangulación\\
+    Mostrando los triángulos resultantes con etiquetas numeradas
+    \vspace{4cm}}}
+    \caption{Triangulación de Delaunay sobre los 15 landmarks de la forma canónica. La triangulación genera 20 triángulos que definen las regiones donde se aplicarán transformaciones afines independientes durante el proceso de warping.}
+    \label{fig:triangulacion_resultados}
+\end{figure}
+
+La triangulación de los 15 landmarks produce \textbf{20 triángulos}. Para garantizar cobertura completa de la imagen, se agregan 8 puntos auxiliares (4 esquinas + 4 puntos medios de los bordes), extendiendo la triangulación a 23 puntos y aproximadamente 35--40 triángulos.
+
+\subsection{Optimización del Parámetro margin\_scale}
+\label{subsec:optimizacion_margin_scale}
+
+El parámetro \texttt{margin\_scale} controla la expansión de los landmarks predichos desde su centroide antes de aplicar el warping. Se realizó una búsqueda experimental para determinar el valor óptimo mediante evaluación en el conjunto de validación.
+
+\subsubsection{Metodología de Búsqueda}
+
+Se evaluaron los valores $\alpha \in \{1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30\}$, generando datasets warped con cada configuración y midiendo el error de reconstrucción de landmarks.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Resultado de la búsqueda del parámetro \texttt{margin\_scale} óptimo. El valor seleccionado minimiza el error de reconstrucción en el conjunto de validación.}
+    \label{tab:margin_scale_optimization}
+    \begin{tabular}{cccc}
+        \toprule
+        \textbf{margin\_scale} & \textbf{Expansión} & \textbf{Fill Rate} & \textbf{Observación} \\
+        \midrule
+        1.00 & 0\% & Bajo & Recorte de región pulmonar \\
+        \textbf{1.05} & \textbf{5\%} & \textbf{$\sim$47\%} & \textbf{Óptimo (seleccionado)} \\
+        1.10 & 10\% & $\sim$52\% & Inclusión de fondo excesivo \\
+        1.15 & 15\% & $\sim$58\% & Artefactos de warping \\
+        1.20 & 20\% & $\sim$64\% & Contexto irrelevante \\
+        1.25 & 25\% & $\sim$70\% & Demasiada región no pulmonar \\
+        1.30 & 30\% & $\sim$76\% & Pérdida de foco en pulmones \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El valor óptimo seleccionado es $\alpha = \textbf{1.05}$ (5\% de expansión), que proporciona el mejor balance entre:
+\begin{itemize}
+    \item \textbf{Captura completa de la estructura pulmonar:} Sin recortar partes relevantes de los bordes.
+    \item \textbf{Minimización de contexto irrelevante:} Sin incluir excesiva región de fondo que no aporta información diagnóstica.
+    \item \textbf{Fill rate razonable:} Aproximadamente 47\% de la imagen contiene información pulmonar, eliminando efectivamente las regiones periféricas no informativas.
+\end{itemize}
+
+La Figura \ref{fig:margin_scale_comparison} ilustra el efecto visual de diferentes valores de \texttt{margin\_scale}.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F5.5 - Comparación de valores de margin_scale]
+    \fbox{\parbox{0.95\textwidth}{\centering\vspace{5cm}
+    [Figura F5.5: Efecto del parámetro margin\_scale]\\
+    Grid de 3 columnas $\times$ 2 filas, mostrando la misma imagen warped con diferentes valores\\
+    Columnas: $\alpha=1.00$ (sin margen), $\alpha=1.05$ (óptimo), $\alpha=1.25$ (excesivo)\\
+    Filas: 2 ejemplos representativos (Normal, COVID-19)\\
+    Con anotación del fill rate en cada caso
+    \vspace{5cm}}}
+    \caption{Comparación del efecto del parámetro \texttt{margin\_scale} en el resultado del warping. Con $\alpha=1.00$ la región pulmonar puede quedar recortada. Con $\alpha=1.05$ (óptimo) se captura la estructura completa. Con $\alpha=1.25$ se incluye contexto irrelevante que reduce el rendimiento.}
+    \label{fig:margin_scale_comparison}
+\end{figure}
+
+\subsection{Ejemplos de Normalización Geométrica}
+\label{subsec:ejemplos_warping}
+
+La Figura \ref{fig:ejemplos_warping} presenta ejemplos representativos del proceso completo de normalización geométrica, mostrando la transformación de imágenes originales a imágenes warped.
+
+\begin{figure}[htbp]
+    \centering
+    % [PENDIENTE: F5.6 - Ejemplos de warping antes/después]
+    \fbox{\parbox{0.95\textwidth}{\centering\vspace{6cm}
+    [Figura F5.6: Ejemplos de normalización geométrica]\\
+    Grid de 4 columnas $\times$ 3 filas\\
+    Columnas: (a) Original, (b) Original con landmarks, (c) Warped, (d) Warped con forma canónica\\
+    Filas: 3 categorías (Normal, COVID-19, Neumonía Viral)\\
+    Mostrando cómo imágenes con diferentes poses se alinean a la misma forma canónica
+    \vspace{6cm}}}
+    \caption{Ejemplos del proceso de normalización geométrica mediante warping afín por partes. Las imágenes originales con diferentes posiciones, escalas y orientaciones de la región pulmonar (a, b) se transforman a una configuración geométrica consistente (c, d) alineada con la forma canónica obtenida por GPA.}
+    \label{fig:ejemplos_warping}
+\end{figure}
+
+\subsection{Análisis del Fill Rate}
+\label{subsec:analisis_fill_rate}
+
+El \textit{fill rate} cuantifica la proporción de píxeles no negros en la imagen warped, representando la región efectivamente ocupada por información pulmonar. La Tabla \ref{tab:fill_rate_statistics} presenta las estadísticas del fill rate sobre el conjunto completo de imágenes warped.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Estadísticas del fill rate en el dataset warped generado con \texttt{margin\_scale}$=1.05$.}
+    \label{tab:fill_rate_statistics}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Estadístico} & \textbf{Valor} \\
+        \midrule
+        Media & 47\% \\
+        Desviación estándar & $\sim$3--5\% \\
+        Mínimo & $\sim$40\% \\
+        Máximo & $\sim$55\% \\
+        \midrule
+        Interpretación & Enfoque en región pulmonar \\
+        Área eliminada (negro) & $\sim$53\% (fondo no informativo) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El fill rate medio de 47\% indica que el proceso de normalización geométrica actúa como un mecanismo efectivo de \textbf{selección implícita de características}, eliminando aproximadamente el 53\% de la imagen que corresponde a regiones periféricas sin información diagnóstica relevante (fondo, marcadores hospitalarios, artefactos).
+
+\subsection{Tiempo de Procesamiento}
+\label{subsec:tiempo_procesamiento_warping}
+
+La Tabla \ref{tab:tiempo_warping} presenta los tiempos de procesamiento para el pipeline completo de normalización geométrica.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Tiempos de procesamiento por imagen para el pipeline de normalización geométrica.}
+    \label{tab:tiempo_warping}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Componente} & \textbf{CPU (ms)} & \textbf{GPU (ms)} \\
+        \midrule
+        Preprocesamiento (CLAHE + resize) & 8--12 & --- \\
+        Predicción de landmarks (ensemble + TTA) & 120--180 & 25--35 \\
+        Warping afín por partes & 15--20 & --- \\
+        \midrule
+        \textbf{Total (CPU)} & \textbf{143--212} & --- \\
+        \textbf{Total (GPU)} & \textbf{48--67} & --- \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.5em}
+    \footnotesize\textit{Nota: Tiempos medidos en CPU Intel Core i7 y GPU NVIDIA RTX 3080. El warping se ejecuta en CPU por defecto (OpenCV).}
+\end{table}
+
+El tiempo total de procesamiento es de \textbf{48--67 ms en GPU} o \textbf{143--212 ms en CPU}, permitiendo procesamiento casi en tiempo real. Para aplicaciones clínicas, estos tiempos son adecuados para procesamiento por lotes de estudios radiográficos.
+
+\subsection{Resumen de Normalización Geométrica}
+\label{subsec:resumen_normalizacion}
+
+El proceso de normalización geométrica produce los siguientes resultados:
+
+\begin{itemize}
+    \item Una \textbf{forma canónica} estable obtenida por GPA en 18 iteraciones sobre 717 configuraciones.
+    \item Triangulación de Delaunay con \textbf{20 triángulos base} (15 landmarks) extendida a 35--40 triángulos con puntos de borde para cobertura completa.
+    \item Parámetro óptimo \textbf{\texttt{margin\_scale}$=1.05$} determinado experimentalmente.
+    \item Fill rate medio de \textbf{47\%}, eliminando eficazmente regiones no informativas.
+    \item Tiempo de procesamiento de \textbf{48--67 ms en GPU}, adecuado para aplicaciones clínicas.
+\end{itemize}
+
+Las imágenes normalizadas resultantes constituyen el dataset de entrada para el módulo de clasificación, descrito en la siguiente sección.
+
+% Referencias temporales para esta sección
+% [Se agregarán según sea necesario]

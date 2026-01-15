@@ -134,14 +134,7 @@ La Figura \ref{fig:gpa_proceso} ilustra el proceso de GPA aplicado al conjunto d
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F4.6 - Proceso de GPA]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
-    [Figura F4.6: Proceso de GPA]\\
-    (a) Configuraciones originales de landmarks superpuestas\\
-    (b) Configuraciones después de centrado y escalado\\
-    (c) Configuraciones después de alineación rotacional\\
-    (d) Forma canónica resultante (consenso de Procrustes)
-    \vspace{4cm}}}
+    \includegraphics[width=0.95\textwidth]{Figures/F4.7_proceso_gpa.png}
     \caption{Proceso de Análisis Procrustes Generalizado. (a) Las 957 configuraciones de landmarks originales muestran variabilidad en posición, escala y orientación. (b) Después del centrado y escalado, las formas comparten origen y norma unitaria. (c) La alineación rotacional minimiza las diferencias residuales. (d) La forma canónica representa el consenso estadístico del conjunto.}
     \label{fig:gpa_proceso}
 \end{figure}
@@ -170,13 +163,7 @@ La Figura \ref{fig:triangulacion_delaunay} muestra la triangulación resultante 
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F4.7 - Triangulación Delaunay]
-    \fbox{\parbox{0.85\textwidth}{\centering\vspace{4cm}
-    [Figura F4.7: Triangulación Delaunay]\\
-    Forma canónica con los 15 landmarks conectados por\\
-    la triangulación de Delaunay, mostrando los triángulos\\
-    que definen las regiones de transformación local
-    \vspace{4cm}}}
+    \includegraphics[width=0.85\textwidth]{Figures/F4.8_triangulacion_delaunay.png}
     \caption{Triangulación de Delaunay sobre los 15 landmarks de la forma canónica. Los triángulos definen las regiones donde se aplicarán transformaciones afines independientes durante el proceso de warping.}
     \label{fig:triangulacion_delaunay}
 \end{figure}
@@ -284,12 +271,7 @@ La Figura \ref{fig:warping_comparison} muestra la comparación visual entre la i
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F4.8 - Comparación Original vs Warped]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
-    [Figura F4.8: Comparación de imágenes]\\
-    (a) Imagen original\\
-    (b) Imagen warpeada (tasa de llenado $\approx$ 47\%)
-    \vspace{4cm}}}
+    \includegraphics[width=0.9\textwidth]{Figures/F4.9_original_vs_warped.png}
     \caption{Comparación del proceso de warping. (a) Radiografía original con variabilidad de pose y escala. (b) Imagen normalizada geométricamente mediante warping, enfocándose en la región delimitada por los landmarks (margin\_scale=1.05, fill\_rate=47\%).}
     \label{fig:warping_comparison}
 \end{figure}
@@ -348,14 +330,7 @@ La Figura \ref{fig:margin_scale_effect} ilustra el efecto de diferentes valores 
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F4.9 - Efecto de margin_scale]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
-    [Figura F4.9: Efecto de margin\_scale]\\
-    Comparación de imágenes warpeadas con diferentes valores:\\
-    (a) $\alpha = 1.00$ - Sin margen\\
-    (b) $\alpha = 1.05$ - Margen óptimo\\
-    (c) $\alpha = 1.25$ - Margen excesivo
-    \vspace{4cm}}}
+    \includegraphics[width=0.9\textwidth]{Figures/F4.10_margin_scale.png}
     \caption{Efecto del parámetro margin\_scale en el resultado del warping. (a) Sin margen adicional, la región pulmonar puede quedar recortada. (b) Con el valor óptimo de 1.05, la estructura pulmonar se captura completamente. (c) Un margen excesivo incluye regiones periféricas irrelevantes.}
     \label{fig:margin_scale_effect}
 \end{figure}
@@ -367,16 +342,7 @@ La Figura \ref{fig:proceso_normalizacion} presenta el diagrama de flujo del proc
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: Diagrama de flujo del proceso de normalización]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}
-    [Diagrama de flujo del proceso de normalización]\\
-    1. Predicción de landmarks $\rightarrow$
-    2. Escalado con margin\_scale $\rightarrow$\\
-    3. Adición de puntos de borde $\rightarrow$
-    4. Triangulación Delaunay $\rightarrow$\\
-    5. Warping afín por partes $\rightarrow$
-    6. Imagen normalizada
-    \vspace{3cm}}}
+    \includegraphics[width=0.95\textwidth]{Figures/F4.11_flujo_normalizacion.png}
     \caption{Proceso completo de normalización geométrica. El sistema transforma una radiografía de entrada en una imagen geométricamente normalizada mediante la secuencia de predicción de landmarks, escalado, triangulación y warping afín por partes.}
     \label{fig:proceso_normalizacion}
 \end{figure}

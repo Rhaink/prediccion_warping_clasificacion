@@ -17,14 +17,7 @@ La Figura \ref{fig:fases_sistema} ilustra la relación entre ambas fases del sis
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F4.1 - Diagrama de fases del sistema]
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
-    [Diagrama de las dos fases del sistema]\\[0.5cm]
-    \textbf{Fase de Preparación (offline):}\\
-    Anotación manual de landmarks $\rightarrow$ Entrenamiento de modelos $\rightarrow$ Cálculo de forma canónica\\[0.5cm]
-    \textbf{Fase de Operación (runtime):}\\
-    Imagen nueva $\rightarrow$ Secuencia de 4 módulos $\rightarrow$ Clasificación
-    \vspace{4cm}}}
+    \includegraphics[width=0.95\textwidth]{Figures/F4.1_fases_sistema.png}
     \caption{Estructura general del sistema en dos fases. La fase de preparación se ejecuta una única vez e incluye la anotación manual del conjunto de datos de entrenamiento, el entrenamiento de los modelos y el cálculo de la forma canónica mediante GPA. La fase de operación procesa cada imagen nueva a través de la secuencia de cuatro módulos.}
     \label{fig:fases_sistema}
 \end{figure}
@@ -36,12 +29,7 @@ La Figura \ref{fig:flujo_general} presenta el diagrama de bloques del flujo de o
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F4.2 - Diagrama de bloques del flujo de operación]
-    % \includegraphics[width=0.95\textwidth]{Figures/flujo_general.pdf}
-    \fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}
-    [Diagrama de bloques del flujo de operación]\\
-    Entrada $\rightarrow$ Preprocesamiento $\rightarrow$ Predicción de Landmarks $\rightarrow$ Normalización Geométrica $\rightarrow$ Clasificación
-    \vspace{3cm}}}
+    \includegraphics[width=0.95\textwidth]{Figures/F4.2_pipeline_operacion.png}
     \caption{Flujo de operación del sistema. Las radiografías de tórax se procesan mediante cuatro módulos: preprocesamiento con CLAHE, predicción de 15 landmarks anatómicos, normalización geométrica mediante warping afín por partes, y clasificación en tres categorías (COVID-19, Normal, Neumonía Viral).}
     \label{fig:flujo_general}
 \end{figure}
