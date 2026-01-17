@@ -6,210 +6,58 @@
 \chapter{Resultados}
 \label{cap:resultados}
 
-Este capítulo presenta los resultados experimentales obtenidos durante el desarrollo y evaluación del sistema propuesto. Se reportan las métricas de desempeño para cada componente del sistema: predicción de landmarks anatómicos, normalización geométrica y clasificación de enfermedades pulmonares. Los resultados se organizan siguiendo el flujo del sistema descrito en el Capítulo \ref{cap:metodologia}.
+Este capítulo presenta los resultados obtenidos en cada etapa del sistema: la detección de puntos de referencia anatómicos, la normalización geométrica de las imágenes y la clasificación de enfermedades pulmonares.
 
-\section{Resultados de Predicción de Landmarks}
+\section{Detección de Puntos de Referencia}
 \label{sec:resultados_landmarks}
 
-Esta sección presenta los resultados del modelo de predicción de landmarks anatómicos, evaluado sobre el conjunto de prueba que contiene 96 imágenes con anotaciones de referencia (ground truth). Se reportan métricas de error euclidiano, análisis por landmark individual y por categoría diagnóstica.
+El sistema detecta automáticamente 15 puntos de referencia que definen el contorno de los pulmones en las radiografías. Esta sección presenta la precisión alcanzada por el modelo, evaluado sobre 96 imágenes del conjunto de prueba que cuentan con anotaciones de referencia realizadas por expertos.
 
-\subsection{Desempeño del Ensemble}
+\subsection{Precisión del Sistema}
 \label{subsec:desempeno_ensemble}
 
-La Tabla \ref{tab:resultados_ensemble_landmarks} presenta las métricas principales del ensemble de cuatro modelos con Test-Time Augmentation (TTA), comparado con el mejor modelo individual.
+La Tabla \ref{tab:resultados_ensemble_landmarks} presenta los resultados de detección de puntos de referencia. Se compara el mejor modelo individual contra el sistema final que combina cuatro modelos.
 
 \begin{table}[htbp]
     \centering
-    \caption{Comparación de error de predicción entre el mejor modelo individual y el ensemble de cuatro modelos con TTA. Las métricas se calculan sobre el conjunto de prueba (96 imágenes) en píxeles sobre imágenes de $224 \times 224$.}
+    \caption{Precisión de detección de puntos de referencia. El error se mide en píxeles sobre imágenes de $224 \times 224$.}
     \label{tab:resultados_ensemble_landmarks}
-    \begin{tabular}{lcccc}
+    \begin{tabular}{lccc}
         \toprule
-        \textbf{Configuración} & \textbf{Media (px)} & \textbf{Desv. Est. (px)} & \textbf{Mediana (px)} & \textbf{Mejora} \\
+        \textbf{Configuración} & \textbf{Error promedio} & \textbf{Error mediano} & \textbf{Mejora} \\
         \midrule
-        Mejor individual (seed 456) & 4.04 & 2.58 & --- & --- \\
-        Ensemble 4 modelos + TTA & 3.61 & 2.48 & 3.07 & 10.6\% \\
+        Mejor modelo individual & 4.04 px & --- & --- \\
+        Sistema combinado (4 modelos) & 3.61 px & 3.07 px & 10.6\% \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-El ensemble alcanza un error medio de \textbf{3.61 píxeles}, representando una mejora del 10.6\% respecto al mejor modelo individual (4.04 píxeles). La desviación estándar se reduce de 2.58 a 2.48 píxeles, indicando mayor consistencia en las predicciones. La mediana de 3.07 píxeles confirma que el 50\% de las predicciones tienen un error inferior a 3.1 píxeles.
+El sistema combinado alcanza un error promedio de \textbf{3.61 píxeles}, lo que representa una mejora del 10.6\% respecto al mejor modelo individual. En una imagen de 224 píxeles, este error equivale al 1.6\% del tamaño de la imagen. El error mediano de 3.07 píxeles indica que la mitad de las predicciones tienen un error menor o igual a este valor.
 
-\subsubsection{Modelos del Ensemble}
-
-El ensemble está compuesto por cuatro modelos entrenados con diferentes semillas aleatorias:
-
-\begin{itemize}
-    \item \textbf{Modelo 1 (seed 123):} \texttt{checkpoints/session10/ensemble/seed123/final\_model.pt}
-    \item \textbf{Modelo 2 (seed 321):} \texttt{checkpoints/session13/seed321/final\_model.pt}
-    \item \textbf{Modelo 3 (seed 111):} \texttt{checkpoints/repro\_split111/session14/seed111/final\_model.pt}
-    \item \textbf{Modelo 4 (seed 666):} \texttt{checkpoints/repro\_split666/session16/seed666/final\_model.pt}
-\end{itemize}
-
-La predicción final se obtiene mediante promedio aritmético de las predicciones individuales, seguido de un segundo promedio con la imagen reflejada horizontalmente (TTA), corrigiendo la simetría de los landmarks bilaterales.
-
-\subsection{Distribución de Errores}
-\label{subsec:distribucion_errores}
-
-La Tabla \ref{tab:percentiles_landmarks_resultados} presenta los percentiles de la distribución de errores del ensemble, caracterizando el comportamiento en diferentes regiones de la distribución.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Estadísticos de distribución del error de predicción del ensemble sobre el conjunto de prueba.}
-    \label{tab:percentiles_landmarks_resultados}
-    \begin{tabular}{lcc}
-        \toprule
-        \textbf{Estadístico} & \textbf{Valor (px)} & \textbf{Interpretación} \\
-        \midrule
-        Media & 3.61 & Error promedio del ensemble \\
-        Mediana (P50) & 3.07 & 50\% de predicciones con error $< 3.1$ px \\
-        Desviación estándar & 2.48 & Dispersión alrededor de la media \\
-        \midrule
-        \multicolumn{3}{l}{\textit{Nota: Percentiles P75, P90, P95 no disponibles en datos validados.}} \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-La baja desviación estándar (2.48 píxeles) en comparación con la media (3.61 píxeles) indica una distribución relativamente concentrada, con pocos casos de errores extremos.
-
-\subsection{Error por Landmark Individual}
+\subsection{Precisión por Punto de Referencia}
 \label{subsec:error_por_landmark}
 
-El análisis por landmark individual revela patrones sistemáticos de error. La Tabla \ref{tab:error_por_landmark} presenta el error medio de cada uno de los 15 landmarks.
+No todos los puntos de referencia se detectan con la misma facilidad. Los puntos del eje central (línea de la columna vertebral) presentan los errores más bajos (2.44--2.94 píxeles) debido a que esta estructura está bien definida en las radiografías. En contraste, las esquinas superiores de los pulmones presentan mayor dificultad (5.35--5.43 píxeles) porque los límites del pulmón son menos nítidos en esa zona. Los puntos del contorno medio tienen errores intermedios (2.88--3.96 píxeles).
 
-\begin{table}[htbp]
-    \centering
-    \caption{Error medio por landmark individual del ensemble con TTA. Los landmarks se ordenan según su función anatómica en el sistema de anotación.}
-    \label{tab:error_por_landmark}
-    \begin{tabular}{clcc}
-        \toprule
-        \textbf{ID} & \textbf{Ubicación} & \textbf{Error (px)} & \textbf{Clasificación} \\
-        \midrule
-        \multicolumn{4}{l}{\textit{Eje central vertical}} \\
-        L1 & Ápex superior & 3.22 & Medio \\
-        L2 & Base inferior & 3.96 & Medio \\
-        L9 & Cuarto superior (t=0.25) & 2.76 & \textbf{Bajo} \\
-        L10 & Punto medio (t=0.50) & 2.44 & \textbf{Bajo} \\
-        L11 & Cuarto inferior (t=0.75) & 2.94 & Bajo \\
-        \midrule
-        \multicolumn{4}{l}{\textit{Contorno izquierdo}} \\
-        L12 & Esquina superior izquierda & 5.43 & \textbf{Alto} \\
-        L3 & Contorno izquierdo superior & 3.18 & Medio \\
-        L5 & Contorno izquierdo medio & 2.88 & \textbf{Bajo} \\
-        L7 & Contorno izquierdo inferior & 3.29 & Medio \\
-        L14 & Esquina inferior izquierda & 4.39 & Alto \\
-        \midrule
-        \multicolumn{4}{l}{\textit{Contorno derecho}} \\
-        L13 & Esquina superior derecha & 5.35 & \textbf{Alto} \\
-        L4 & Contorno derecho superior & 3.65 & Medio \\
-        L6 & Contorno derecho medio & 2.94 & Bajo \\
-        L8 & Contorno derecho inferior & 3.50 & Medio \\
-        L15 & Esquina inferior derecha & 4.29 & Alto \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsubsection{Observaciones Principales}
-
-\textbf{Landmarks con menor error (< 3.0 px):}
-\begin{itemize}
-    \item \textbf{L10} (2.44 px): Punto medio del eje central, landmark más preciso
-    \item \textbf{L9} (2.76 px): Cuarto superior del eje central
-    \item \textbf{L5} (2.88 px): Contorno izquierdo medio
-\end{itemize}
-
-\textbf{Landmarks con mayor error (> 5.0 px):}
-\begin{itemize}
-    \item \textbf{L12} (5.43 px): Esquina superior izquierda
-    \item \textbf{L13} (5.35 px): Esquina superior derecha
-    \item \textbf{L14} (4.39 px): Esquina inferior izquierda
-\end{itemize}
-
-Los landmarks del eje central (L9, L10, L11) presentan sistemáticamente menor error que los landmarks laterales, particularmente aquellos en las esquinas (L12, L13, L14, L15). Este patrón es consistente con la dificultad de localizar con precisión los límites extremos de la silueta pulmonar, donde el contraste con el fondo es más ambiguo.
-
-La Figura \ref{fig:error_por_landmark_visual} ilustra visualmente la distribución de errores sobre la forma canónica.
+La Figura \ref{fig:error_por_landmark_visual} muestra visualmente la distribución de errores sobre la forma estándar, donde se aprecia que los puntos centrales y del contorno medio tienen menor error que las esquinas.
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F5.1 - Visualización del error por landmark]
-    \fbox{\parbox{0.85\textwidth}{\centering\vspace{4cm}
-    [Figura F5.1: Error por landmark]\\
-    Forma canónica con los 15 landmarks, coloreados según magnitud de error\\
-    (verde: bajo $<3$ px, amarillo: medio $3-4$ px, rojo: alto $>4$ px)\\
-    Con círculos de radio proporcional al error
-    \vspace{4cm}}}
-    \caption{Visualización del error por landmark sobre la forma canónica. Los landmarks del eje central (L9, L10, L11) muestran los errores más bajos (verde), mientras que las esquinas superiores (L12, L13) presentan los errores más altos (rojo).}
+    \includegraphics[width=0.98\textwidth]{Figures/F5.1_error_por_landmark.png}
+    \caption{Distribución del error de detección por punto de referencia. (a) Error medio en píxeles para cada punto L1--L15. (b) Visualización sobre la forma estándar pulmonar, donde el color indica el error medio (escala continua). Los puntos del eje central presentan la mayor precisión.}
     \label{fig:error_por_landmark_visual}
 \end{figure}
 
-\subsection{Error por Categoría Diagnóstica}
-\label{subsec:error_por_categoria}
-
-El análisis por categoría diagnóstica permite evaluar si el modelo presenta sesgos sistemáticos hacia patrones específicos de cada condición. La Tabla \ref{tab:error_por_categoria} presenta los resultados.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Error medio de predicción de landmarks por categoría diagnóstica sobre el conjunto de prueba.}
-    \label{tab:error_por_categoria}
-    \begin{tabular}{lccc}
-        \toprule
-        \textbf{Categoría} & \textbf{Error (px)} & \textbf{Muestras (test)} & \textbf{Diferencia vs. Media} \\
-        \midrule
-        Normal & 3.22 & $\sim$48 & -10.8\% \\
-        COVID-19 & 3.93 & $\sim$31 & +8.9\% \\
-        Neumonía Viral & 4.11 & $\sim$17 & +13.9\% \\
-        \midrule
-        \textbf{Promedio total} & \textbf{3.61} & \textbf{96} & --- \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsubsection{Interpretación}
-
-El modelo presenta un desempeño ligeramente mejor en imágenes \textbf{normales} (3.22 px, 10.8\% mejor que la media), lo cual es esperable dado que:
-\begin{enumerate}
-    \item Las radiografías normales tienen siluetas pulmonares más definidas y simétricas.
-    \item Representan la categoría mayoritaria en el conjunto de entrenamiento (48.9\%).
-\end{enumerate}
-
-Las categorías patológicas muestran errores moderadamente mayores:
-\begin{itemize}
-    \item \textbf{COVID-19} (3.93 px): 8.9\% peor que la media. Las opacidades bilaterales características de COVID-19 pueden dificultar la delimitación de la silueta pulmonar.
-    \item \textbf{Neumonía Viral} (4.11 px): 13.9\% peor que la media. Esta categoría presenta la mayor variabilidad morfológica y es la menos representada en el entrenamiento (19.1\%).
-\end{itemize}
-
-La diferencia máxima entre categorías es de 0.89 píxeles (Normal vs. Neumonía Viral), representando una variación del 24.6\% entre los extremos. Esta variación es razonable y no indica un sesgo severo del modelo hacia ninguna categoría específica.
-
-\subsection{Ejemplos Visuales de Predicción}
-\label{subsec:ejemplos_visuales_landmarks}
-
-La Figura \ref{fig:ejemplos_prediccion_landmarks} presenta ejemplos representativos de predicciones del ensemble en imágenes de las tres categorías diagnósticas.
+La Figura \ref{fig:ejemplos_prediccion} presenta ejemplos de detección automática de puntos sobre imágenes reales de las tres categorías diagnósticas. Puede observarse cómo el sistema identifica correctamente el contorno pulmonar incluso en presencia de opacidades por COVID-19 o neumonía viral, manteniendo precisión consistente entre categorías (error promedio de 3.22 px en imágenes normales, 3.93 px en COVID-19, y 4.11 px en neumonía viral).
 
 \begin{figure}[htbp]
     \centering
-    % [PENDIENTE: F5.2 - Ejemplos de predicción de landmarks]
-    \fbox{\parbox{0.95\textwidth}{\centering\vspace{5cm}
-    [Figura F5.2: Ejemplos de predicción de landmarks]\\
-    Grid de 3 columnas (Normal, COVID-19, Neumonía Viral) $\times$ 2 filas (casos bueno/difícil)\\
-    Cada imagen muestra: radiografía + landmarks ground truth (azul) + landmarks predichos (rojo)\\
-    Con error euclidiano medio anotado por imagen
-    \vspace{5cm}}}
-    \caption{Ejemplos de predicción de landmarks del ensemble sobre el conjunto de prueba. Fila superior: casos con bajo error ($< 3$ px). Fila inferior: casos con mayor error ($> 5$ px) que ilustran situaciones desafiantes como siluetas asimétricas o baja calidad de imagen.}
-    \label{fig:ejemplos_prediccion_landmarks}
+    \includegraphics[width=0.98\textwidth]{Figures/F5.2_ejemplos_prediccion.png}
+    \caption{Ejemplos de predicción automática de puntos de referencia sobre imágenes reales. Cada fila muestra dos ejemplos de una categoría diagnóstica (Normal, COVID-19, Neumonía Viral). Los puntos indican las predicciones del sistema. El modelo mantiene precisión consistente independientemente del tipo de patología presente.}
+    \label{fig:ejemplos_prediccion}
 \end{figure}
 
-\subsection{Resumen de Resultados de Landmarks}
+\subsection{Resumen}
 \label{subsec:resumen_landmarks}
 
-Los resultados de predicción de landmarks demuestran la efectividad del enfoque propuesto:
-
-\begin{itemize}
-    \item El ensemble de cuatro modelos con TTA alcanza un error medio de \textbf{3.61 píxeles}, mejorando en 10.6\% el mejor modelo individual.
-    \item Los landmarks del eje central presentan la mayor precisión (2.44--2.94 px), mientras que las esquinas superiores son los más difíciles de localizar (5.35--5.43 px).
-    \item El modelo presenta un rendimiento balanceado entre categorías diagnósticas, con una variación máxima del 24.6\% entre Normal (mejor) y Neumonía Viral (peor).
-    \item La precisión obtenida es suficiente para la aplicación de warping, dado que el error medio de 3.61 px representa el 1.6\% del tamaño de imagen ($224 \times 224$).
-\end{itemize}
-
-Estos landmarks constituyen la base para el proceso de normalización geométrica descrito en la siguiente sección.
-
-% Referencias temporales para esta sección
-% [Se agregarán según sea necesario]
+El sistema de detección de puntos de referencia alcanza una precisión de 3.61 píxeles en promedio, equivalente al 1.6\% del tamaño de la imagen. Esta precisión es suficiente para el proceso de normalización geométrica, ya que permite alinear correctamente la región pulmonar sin introducir distorsiones significativas.

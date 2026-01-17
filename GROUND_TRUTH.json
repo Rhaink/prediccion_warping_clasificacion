@@ -128,6 +128,26 @@
         "preprocessing": "Grayscale + CLAHE",
         "note": "RECOMMENDED - Best accuracy with good robustness"
       }
+    },
+    "cross_validation": {
+      "description": "K-fold CV on train+val with fixed test holdout (not evaluated)",
+      "timestamp": "2026-01-16T11:12:51.314406",
+      "data_dir": "outputs/warped_lung_best/session_warping",
+      "output_dir": "outputs/classifier_cv",
+      "backbone": "resnet18",
+      "folds": 5,
+      "seed": 42,
+      "eval_test": false,
+      "metrics_percent": {
+        "val_accuracy_mean": 98.5971,
+        "val_accuracy_std": 0.2551,
+        "val_f1_macro_mean": 98.0035,
+        "val_f1_macro_std": 0.3613,
+        "val_f1_weighted_mean": 98.5983,
+        "val_f1_weighted_std": 0.2516
+      },
+      "source": "outputs/classifier_cv/cross_validation_results.json",
+      "note": "Metrics converted to percent from CV summary (scale 0-1)."
     }
   },
   "robustness": {

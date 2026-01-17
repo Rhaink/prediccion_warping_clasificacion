@@ -2601,6 +2601,647 @@ def evaluate_classifier(
     logger.info("=" * 60)
 
 
+@app.command("cross-validate-classifier")
+def cross_validate_classifier(
+    ctx: typer.Context,
+    data_dir: Optional[str] = typer.Argument(
+        None,
+        help="Directorio del dataset (debe contener train/, val/, test/)"
+    ),
+    output_dir: str = typer.Option(
+        "outputs/classifier_cross_validation",
+        "--output-dir",
+        "-o",
+        help="Directorio de salida para resultados por fold"
+    ),
+    backbone: str = typer.Option(
+        "resnet18",
+        "--backbone",
+        "-b",
+        help="Arquitectura: resnet18, efficientnet_b0 o densenet121"
+    ),
+    epochs: int = typer.Option(
+        50,
+        "--epochs",
+        "-e",
+        help="Numero de epocas"
+    ),
+    batch_size: int = typer.Option(
+        32,
+        "--batch-size",
+        help="Tamano de batch"
+    ),
+    lr: float = typer.Option(
+        1e-4,
+        "--lr",
+        help="Learning rate"
+    ),
+    use_class_weights: bool = typer.Option(
+        True,
+        "--class-weights/--no-class-weights",
+        help="Usar pesos de clase para balanceo"
+    ),
+    patience: int = typer.Option(
+        10,
+        "--patience",
+        help="Paciencia para early stopping"
+    ),
+    device: str = typer.Option(
+        "auto",
+        "--device",
+        help="Dispositivo: auto, cuda, cpu, mps"
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        "-s",
+        help="Semilla aleatoria"
+    ),
+    folds: int = typer.Option(
+        5,
+        "--folds",
+        "-k",
+        help="Numero de folds para validacion cruzada"
+    ),
+    eval_test: bool = typer.Option(
+        False,
+        "--eval-test/--no-eval-test",
+        help="Evaluar cada fold en el split test fijo"
+    ),
+    save_checkpoints: bool = typer.Option(
+        True,
+        "--save-checkpoints/--no-save-checkpoints",
+        help="Guardar el mejor modelo por fold"
+    ),
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="JSON con defaults para reproducir entrenamiento"
+    ),
+):
+    """
+    Validacion cruzada (k-fold) para el clasificador CNN.
+
+    Usa train+val como pool para folds estratificados y deja test fijo.
+
+    Ejemplo:
+        python -m src_v2 cross-validate-classifier \\
+            outputs/warped_lung_best/session_warping \\
+            --folds 5 --device cuda --eval-test
+        python -m src_v2 cross-validate-classifier --config configs/classifier_warped_base.json \\
+            --folds 5 --output-dir outputs/classifier_cv
+    """
+    import copy
+    import json
+    import random
+    from collections import Counter
+    from datetime import datetime
+
+    import numpy as np
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    from PIL import Image
+    from sklearn.metrics import (
+        accuracy_score,
+        classification_report,
+        confusion_matrix,
+        f1_score,
+    )
+    from sklearn.model_selection import StratifiedKFold
+    from torch.utils.data import DataLoader, Dataset
+    from torchvision import datasets
+
+    from src_v2.models import ImageClassifier, get_classifier_transforms, get_class_weights
+
+    logger.info("=" * 60)
+    logger.info("COVID-19 Classifier Cross-Validation")
+    logger.info("=" * 60)
+
+    if config:
+        config_path = Path(config)
+        if not config_path.is_file():
+            logger.error("Config no existe: %s", config)
+            raise typer.Exit(code=1)
+        with config_path.open("r") as handle:
+            config_data = json.load(handle)
+        if not isinstance(config_data, dict):
+            logger.error("Config debe ser un JSON con pares clave/valor.")
+            raise typer.Exit(code=1)
+
+        alias_map = {"model": "backbone"}
+        normalized = {}
+        for key, value in config_data.items():
+            normalized[alias_map.get(key, key)] = value
+
+        valid_keys = {
+            "data_dir",
+            "output_dir",
+            "backbone",
+            "epochs",
+            "batch_size",
+            "lr",
+            "use_class_weights",
+            "patience",
+            "device",
+            "seed",
+            "folds",
+            "eval_test",
+            "save_checkpoints",
+        }
+        unknown_keys = sorted(set(normalized) - valid_keys)
+        if unknown_keys:
+            logger.error("Config con claves desconocidas: %s", ", ".join(unknown_keys))
+            raise typer.Exit(code=1)
+
+        param_values = {
+            "data_dir": data_dir,
+            "output_dir": output_dir,
+            "backbone": backbone,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "lr": lr,
+            "use_class_weights": use_class_weights,
+            "patience": patience,
+            "device": device,
+            "seed": seed,
+            "folds": folds,
+            "eval_test": eval_test,
+            "save_checkpoints": save_checkpoints,
+        }
+
+        def is_default_source(source: object) -> bool:
+            if source is None:
+                return True
+            source_name = getattr(source, "name", None)
+            if source_name:
+                return source_name == "DEFAULT"
+            return str(source).lower() == "default"
+
+        for key, value in normalized.items():
+            if is_default_source(ctx.get_parameter_source(key)):
+                param_values[key] = value
+
+        data_dir = param_values["data_dir"]
+        output_dir = param_values["output_dir"]
+        backbone = param_values["backbone"]
+        epochs = param_values["epochs"]
+        batch_size = param_values["batch_size"]
+        lr = param_values["lr"]
+        use_class_weights = param_values["use_class_weights"]
+        patience = param_values["patience"]
+        device = param_values["device"]
+        seed = param_values["seed"]
+        folds = param_values["folds"]
+        eval_test = param_values["eval_test"]
+        save_checkpoints = param_values["save_checkpoints"]
+
+        logger.info("Config cargada: %s", config_path)
+
+    if not data_dir:
+        logger.error("data_dir es requerido. Usa argumento o --config.")
+        raise typer.Exit(code=1)
+
+    if folds < 2:
+        logger.error("folds debe ser >= 2 (recibido=%d)", folds)
+        raise typer.Exit(code=1)
+
+    # Configurar semilla completa para reproducibilidad
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+    data_path = Path(data_dir)
+    train_dir = data_path / "train"
+    val_dir = data_path / "val"
+    test_dir = data_path / "test"
+
+    for split_dir in [train_dir, val_dir, test_dir]:
+        if not split_dir.exists():
+            logger.error("Directorio no existe: %s", split_dir)
+            raise typer.Exit(code=1)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    torch_device = get_device(device)
+    logger.info("Dispositivo: %s", torch_device)
+
+    base_train = datasets.ImageFolder(train_dir)
+    base_val = datasets.ImageFolder(val_dir)
+
+    if base_train.classes != base_val.classes:
+        logger.error("Las clases de train y val no coinciden.")
+        raise typer.Exit(code=1)
+
+    class_names = base_train.classes
+    full_samples = base_train.samples + base_val.samples
+    full_labels = base_train.targets + base_val.targets
+
+    class_counts = Counter(full_labels)
+    min_count = min(class_counts.values()) if class_counts else 0
+    if min_count < folds:
+        logger.error(
+            "Clases insuficientes para %d folds (min_count=%d).",
+            folds,
+            min_count,
+        )
+        raise typer.Exit(code=1)
+
+    logger.info("Clases: %s", class_names)
+    logger.info("Train+Val pool: %d muestras", len(full_samples))
+    for idx, name in enumerate(class_names):
+        logger.info("  %s: %d", name, class_counts.get(idx, 0))
+
+    eval_transform = get_classifier_transforms(train=False, img_size=DEFAULT_IMAGE_SIZE)
+    train_transform = get_classifier_transforms(train=True, img_size=DEFAULT_IMAGE_SIZE)
+
+    test_dataset = None
+    if eval_test:
+        test_dataset = datasets.ImageFolder(test_dir, transform=eval_transform)
+        logger.info("Test fijo: %d muestras", len(test_dataset))
+
+    labels_order = list(range(len(class_names)))
+
+    class ImagePathDataset(Dataset):
+        """Dataset basado en una lista de (path, label)."""
+
+        def __init__(self, samples: list[tuple[str, int]], transform):
+            self.samples = samples
+            self.transform = transform
+
+        def __len__(self) -> int:
+            return len(self.samples)
+
+        def __getitem__(self, idx: int):
+            path, label = self.samples[idx]
+            with Image.open(path) as img:
+                image = img.convert("RGB")
+            if self.transform:
+                image = self.transform(image)
+            return image, label
+
+    def evaluate_basic(model, loader, criterion):
+        model.eval()
+        total_loss = 0.0
+        preds = []
+        labels = []
+        with torch.no_grad():
+            for inputs, labels_batch in loader:
+                inputs = inputs.to(torch_device)
+                labels_batch = labels_batch.to(torch_device)
+                outputs = model(inputs)
+                loss = criterion(outputs, labels_batch)
+                total_loss += loss.item() * inputs.size(0)
+                _, predicted = outputs.max(1)
+                preds.extend(predicted.cpu().numpy())
+                labels.extend(labels_batch.cpu().numpy())
+        if not labels:
+            return 0.0, 0.0, 0.0, 0.0
+        val_loss = total_loss / len(labels)
+        val_acc = accuracy_score(labels, preds)
+        val_f1_macro = f1_score(labels, preds, average="macro")
+        val_f1_weighted = f1_score(labels, preds, average="weighted")
+        return val_loss, val_acc, val_f1_macro, val_f1_weighted
+
+    def evaluate_full(model, loader):
+        if loader is None:
+            return None
+        model.eval()
+        preds = []
+        labels = []
+        with torch.no_grad():
+            for inputs, labels_batch in loader:
+                inputs = inputs.to(torch_device)
+                outputs = model(inputs)
+                _, predicted = outputs.max(1)
+                preds.extend(predicted.cpu().numpy())
+                labels.extend(labels_batch.numpy())
+
+        if not labels:
+            empty_cm = [[0 for _ in labels_order] for _ in labels_order]
+            return {
+                "accuracy": 0.0,
+                "f1_macro": 0.0,
+                "f1_weighted": 0.0,
+                "per_class_metrics": {},
+                "confusion_matrix": empty_cm,
+                "n_samples": 0,
+            }
+
+        acc = accuracy_score(labels, preds)
+        f1_macro = f1_score(labels, preds, average="macro")
+        f1_weighted = f1_score(labels, preds, average="weighted")
+        report = classification_report(
+            labels,
+            preds,
+            labels=labels_order,
+            target_names=class_names,
+            output_dict=True,
+            zero_division=0,
+        )
+        cm = confusion_matrix(labels, preds, labels=labels_order)
+        return {
+            "accuracy": float(acc),
+            "f1_macro": float(f1_macro),
+            "f1_weighted": float(f1_weighted),
+            "per_class_metrics": report,
+            "confusion_matrix": cm.tolist(),
+            "n_samples": len(labels),
+        }
+
+    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+    fold_results = []
+
+    logger.info("Iniciando %d-fold CV...", folds)
+
+    for fold_idx, (train_idx, val_idx) in enumerate(
+        skf.split(full_samples, full_labels),
+        start=1,
+    ):
+        logger.info("-" * 40)
+        logger.info("Fold %d/%d", fold_idx, folds)
+
+        fold_dir = output_path / f"fold_{fold_idx:02d}"
+        fold_dir.mkdir(parents=True, exist_ok=True)
+
+        train_samples = [full_samples[i] for i in train_idx]
+        val_samples = [full_samples[i] for i in val_idx]
+
+        train_labels = [full_labels[i] for i in train_idx]
+        val_labels = [full_labels[i] for i in val_idx]
+
+        train_counts = Counter(train_labels)
+        val_counts = Counter(val_labels)
+
+        logger.info("Train: %d muestras", len(train_samples))
+        for idx, name in enumerate(class_names):
+            logger.info("  %s: %d", name, train_counts.get(idx, 0))
+
+        logger.info("Val: %d muestras", len(val_samples))
+        for idx, name in enumerate(class_names):
+            logger.info("  %s: %d", name, val_counts.get(idx, 0))
+
+        train_dataset = ImagePathDataset(train_samples, train_transform)
+        val_dataset = ImagePathDataset(val_samples, eval_transform)
+
+        use_pin_memory = torch_device.type == "cuda"
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=get_optimal_num_workers(),
+            pin_memory=use_pin_memory,
+        )
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=get_optimal_num_workers(),
+            pin_memory=use_pin_memory,
+        )
+
+        test_loader = None
+        if eval_test and test_dataset is not None:
+            test_loader = DataLoader(
+                test_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=get_optimal_num_workers(),
+                pin_memory=use_pin_memory,
+            )
+
+        model = ImageClassifier(
+            backbone=backbone,
+            num_classes=len(class_names),
+            pretrained=True,
+            dropout=0.3,
+        )
+        model = model.to(torch_device)
+
+        class_weights_tensor = None
+        if use_class_weights:
+            class_weights_tensor = get_class_weights(train_labels, len(class_names)).to(torch_device)
+            logger.info("Class weights: %s", class_weights_tensor.cpu().numpy())
+
+        criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
+        optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="max",
+            factor=0.5,
+            patience=5,
+        )
+
+        history = {
+            "train_loss": [],
+            "train_acc": [],
+            "val_loss": [],
+            "val_acc": [],
+            "val_f1_macro": [],
+            "val_f1_weighted": [],
+        }
+
+        best_val_f1 = 0.0
+        patience_counter = 0
+        best_model_state = None
+
+        for epoch in range(epochs):
+            model.train()
+            train_loss = 0.0
+            train_correct = 0
+            train_total = 0
+
+            for inputs, labels_batch in train_loader:
+                inputs = inputs.to(torch_device)
+                labels_batch = labels_batch.to(torch_device)
+
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs, labels_batch)
+                loss.backward()
+                optimizer.step()
+
+                train_loss += loss.item() * inputs.size(0)
+                _, predicted = outputs.max(1)
+                train_total += labels_batch.size(0)
+                train_correct += predicted.eq(labels_batch).sum().item()
+
+            train_loss /= max(train_total, 1)
+            train_acc = train_correct / max(train_total, 1)
+
+            val_loss, val_acc, val_f1_macro, val_f1_weighted = evaluate_basic(
+                model,
+                val_loader,
+                criterion,
+            )
+
+            scheduler.step(val_f1_macro)
+
+            history["train_loss"].append(float(train_loss))
+            history["train_acc"].append(float(train_acc))
+            history["val_loss"].append(float(val_loss))
+            history["val_acc"].append(float(val_acc))
+            history["val_f1_macro"].append(float(val_f1_macro))
+            history["val_f1_weighted"].append(float(val_f1_weighted))
+
+            logger.info(
+                "Epoch %3d/%d: Train Loss=%.4f Acc=%.4f | Val Loss=%.4f Acc=%.4f F1=%.4f",
+                epoch + 1,
+                epochs,
+                train_loss,
+                train_acc,
+                val_loss,
+                val_acc,
+                val_f1_macro,
+            )
+
+            if val_f1_macro > best_val_f1:
+                best_val_f1 = val_f1_macro
+                patience_counter = 0
+                best_model_state = copy.deepcopy(model.state_dict())
+                logger.info("  -> Nuevo mejor modelo: F1 = %.4f", best_val_f1)
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    logger.info("Early stopping en epoch %d", epoch + 1)
+                    break
+
+        if best_model_state is not None:
+            model.load_state_dict(best_model_state)
+
+        val_metrics = evaluate_full(model, val_loader)
+        test_metrics = evaluate_full(model, test_loader) if test_loader else None
+
+        if save_checkpoints:
+            model_path = fold_dir / "best_classifier.pt"
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "class_names": class_names,
+                    "model_name": backbone,
+                    "best_val_f1": float(best_val_f1),
+                    "fold": fold_idx,
+                    "k_folds": folds,
+                },
+                model_path,
+            )
+            logger.info("Modelo guardado en: %s", model_path)
+
+        history_path = fold_dir / "training_history.json"
+        with open(history_path, "w") as f:
+            json.dump(history, f, indent=2)
+
+        fold_result = {
+            "fold": fold_idx,
+            "epochs_trained": len(history["train_loss"]),
+            "best_val_f1": float(best_val_f1),
+            "train_samples": len(train_dataset),
+            "val_samples": len(val_dataset),
+            "class_distribution": {
+                "train": {class_names[i]: int(train_counts.get(i, 0)) for i in labels_order},
+                "val": {class_names[i]: int(val_counts.get(i, 0)) for i in labels_order},
+            },
+            "val_metrics": val_metrics,
+            "test_metrics": test_metrics,
+        }
+
+        results_path = fold_dir / "results.json"
+        with open(results_path, "w") as f:
+            json.dump(fold_result, f, indent=2)
+        logger.info("Resultados guardados en: %s", results_path)
+
+        fold_results.append(fold_result)
+
+    val_accs = [r["val_metrics"]["accuracy"] for r in fold_results]
+    val_f1s = [r["val_metrics"]["f1_macro"] for r in fold_results]
+    val_f1w = [r["val_metrics"]["f1_weighted"] for r in fold_results]
+
+    summary = {
+        "val_accuracy_mean": float(np.mean(val_accs)),
+        "val_accuracy_std": float(np.std(val_accs)),
+        "val_f1_macro_mean": float(np.mean(val_f1s)),
+        "val_f1_macro_std": float(np.std(val_f1s)),
+        "val_f1_weighted_mean": float(np.mean(val_f1w)),
+        "val_f1_weighted_std": float(np.std(val_f1w)),
+    }
+
+    if eval_test:
+        test_accs = [r["test_metrics"]["accuracy"] for r in fold_results if r["test_metrics"]]
+        test_f1s = [r["test_metrics"]["f1_macro"] for r in fold_results if r["test_metrics"]]
+        test_f1w = [r["test_metrics"]["f1_weighted"] for r in fold_results if r["test_metrics"]]
+        summary.update({
+            "test_accuracy_mean": float(np.mean(test_accs)) if test_accs else 0.0,
+            "test_accuracy_std": float(np.std(test_accs)) if test_accs else 0.0,
+            "test_f1_macro_mean": float(np.mean(test_f1s)) if test_f1s else 0.0,
+            "test_f1_macro_std": float(np.std(test_f1s)) if test_f1s else 0.0,
+            "test_f1_weighted_mean": float(np.mean(test_f1w)) if test_f1w else 0.0,
+            "test_f1_weighted_std": float(np.std(test_f1w)) if test_f1w else 0.0,
+        })
+
+    summary_payload = {
+        "timestamp": datetime.now().isoformat(),
+        "data_dir": str(data_dir),
+        "output_dir": str(output_dir),
+        "backbone": backbone,
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "lr": lr,
+        "use_class_weights": use_class_weights,
+        "patience": patience,
+        "device": str(torch_device),
+        "seed": seed,
+        "folds": folds,
+        "eval_test": eval_test,
+        "class_names": class_names,
+        "train_val_samples": len(full_samples),
+        "test_samples": len(test_dataset) if test_dataset else None,
+        "fold_results": fold_results,
+        "summary": summary,
+    }
+
+    summary_path = output_path / "cross_validation_results.json"
+    with open(summary_path, "w") as f:
+        json.dump(summary_payload, f, indent=2)
+
+    logger.info("-" * 40)
+    logger.info("RESUMEN CV")
+    logger.info("-" * 40)
+    logger.info(
+        "Val Accuracy: %.4f +/- %.4f",
+        summary["val_accuracy_mean"],
+        summary["val_accuracy_std"],
+    )
+    logger.info(
+        "Val F1 Macro: %.4f +/- %.4f",
+        summary["val_f1_macro_mean"],
+        summary["val_f1_macro_std"],
+    )
+    logger.info(
+        "Val F1 Weighted: %.4f +/- %.4f",
+        summary["val_f1_weighted_mean"],
+        summary["val_f1_weighted_std"],
+    )
+    if eval_test:
+        logger.info(
+            "Test Accuracy: %.4f +/- %.4f",
+            summary["test_accuracy_mean"],
+            summary["test_accuracy_std"],
+        )
+        logger.info(
+            "Test F1 Macro: %.4f +/- %.4f",
+            summary["test_f1_macro_mean"],
+            summary["test_f1_macro_std"],
+        )
+
+    logger.info("Resumen guardado en: %s", summary_path)
+    logger.info("=" * 60)
+    logger.info("Cross-validation completada!")
+    logger.info("=" * 60)
+
+
 @app.command("cross-evaluate")
 def cross_evaluate(
     model_a: str = typer.Argument(
@@ -4456,6 +5097,1138 @@ def generate_dataset(
     logger.info("=" * 60)
     logger.info("Generacion de dataset completada!")
     logger.info("=" * 60)
+
+
+# =============================================================================
+# GENERATE CROPPED DATASET
+# =============================================================================
+
+
+@app.command("generate-cropped-dataset")
+def generate_cropped_dataset(
+    input_dir: Optional[str] = typer.Argument(
+        None,
+        help="Directorio del dataset original (estructura COVID/Normal/Viral_Pneumonia/images/)"
+    ),
+    output_dir: Optional[str] = typer.Argument(
+        None,
+        help="Directorio de salida para dataset recortado"
+    ),
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="Path a un JSON con parametros de recorte"
+    ),
+    crop_pct: float = typer.Option(
+        0.10,
+        "--crop-pct",
+        "-p",
+        help="Porcentaje a recortar por borde (0.10 = 10%%)"
+    ),
+    min_fill_rate: float = typer.Option(
+        0.47,
+        "--min-fill-rate",
+        help="Fill rate minimo esperado (referencia: warped ~47%%)"
+    ),
+    splits: str = typer.Option(
+        "0.75,0.125,0.125",
+        "--splits",
+        help="Ratios train,val,test separados por coma"
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        "-s",
+        help="Semilla para reproducibilidad de splits"
+    ),
+    classes: str = typer.Option(
+        "COVID,Normal,Viral Pneumonia",
+        "--classes",
+        help="Clases a procesar separadas por coma"
+    ),
+):
+    """
+    Generar dataset recortado (sin warping) con splits train/val/test.
+
+    Este comando:
+    1. Carga imagenes del dataset original
+    2. Recorta un porcentaje fijo por borde para eliminar etiquetas
+    3. Redimensiona a 224x224
+    4. Crea splits train/val/test estratificados
+    5. Guarda metadata (images.csv, dataset_summary.json)
+
+    Estructura de salida:
+        output_dir/
+        ├── train/
+        │   ├── COVID/
+        │   ├── Normal/
+        │   └── Viral_Pneumonia/
+        ├── val/
+        ├── test/
+        └── dataset_summary.json
+
+    Ejemplo:
+        python -m src_v2 generate-cropped-dataset data/dataset/COVID-19_Radiography_Dataset \\
+            outputs/cropped_lung/session_crop10 --crop-pct 0.10
+        python -m src_v2 generate-cropped-dataset --config configs/cropping_10.json
+    """
+    import json
+    import time
+    from collections import defaultdict
+
+    import cv2
+    import numpy as np
+    from tqdm import tqdm
+
+    logger.info("=" * 60)
+    logger.info("COVID-19 Landmark Detection - Generate Cropped Dataset")
+    logger.info("=" * 60)
+
+    argv = sys.argv[1:]
+
+    def option_present(*names: str) -> bool:
+        for name in names:
+            if name in argv:
+                return True
+            prefix = f"{name}="
+            if any(arg.startswith(prefix) for arg in argv):
+                return True
+        return False
+
+    config_data = {}
+    if config:
+        config_path = Path(config)
+        if not config_path.exists():
+            logger.error("Config no existe: %s", config)
+            raise typer.Exit(code=1)
+        with open(config_path, "r") as f:
+            config_data = json.load(f)
+
+        def override_param(
+            param_name: str,
+            current_value,
+            config_key: Optional[str] = None,
+            option_names: Optional[tuple[str, ...]] = None,
+        ):
+            key = config_key or param_name
+            if key not in config_data:
+                return current_value
+            if option_names and option_present(*option_names):
+                return current_value
+            if option_names is None and current_value is not None:
+                return current_value
+            return config_data[key]
+
+        input_dir = override_param("input_dir", input_dir, "input_dir")
+        output_dir = override_param("output_dir", output_dir, "output_dir")
+        crop_pct = override_param("crop_pct", crop_pct, "crop_pct", ("--crop-pct", "-p"))
+        min_fill_rate = override_param(
+            "min_fill_rate",
+            min_fill_rate,
+            "min_fill_rate",
+            ("--min-fill-rate",),
+        )
+        splits = override_param("splits", splits, "splits", ("--splits",))
+        seed = override_param("seed", seed, "seed", ("--seed", "-s"))
+        classes = override_param("classes", classes, "classes", ("--classes",))
+
+    if isinstance(splits, (list, tuple)):
+        splits = ",".join(str(x) for x in splits)
+    if isinstance(classes, (list, tuple)):
+        classes = ",".join(str(x) for x in classes)
+
+    if input_dir is None or output_dir is None:
+        logger.error("input_dir y output_dir son requeridos (usa argumentos o --config)")
+        raise typer.Exit(code=1)
+
+    # Normalizar percentiles si se pasan como 10 en lugar de 0.10
+    if crop_pct > 1.0:
+        logger.info("crop_pct=%.2f interpretado como porcentaje", crop_pct)
+        crop_pct = crop_pct / 100.0
+    if min_fill_rate > 1.0:
+        logger.info("min_fill_rate=%.2f interpretado como porcentaje", min_fill_rate)
+        min_fill_rate = min_fill_rate / 100.0
+
+    if crop_pct < 0 or crop_pct >= 0.5:
+        logger.error("crop_pct debe estar en [0, 0.5); recibido: %.3f", crop_pct)
+        raise typer.Exit(code=1)
+
+    if min_fill_rate <= 0 or min_fill_rate > 1.0:
+        logger.error("min_fill_rate debe estar en (0, 1]; recibido: %.3f", min_fill_rate)
+        raise typer.Exit(code=1)
+
+    # Verificar paths
+    input_path = Path(input_dir)
+    if not input_path.exists():
+        logger.error("Directorio de entrada no existe: %s", input_dir)
+        raise typer.Exit(code=1)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Parsear splits
+    try:
+        split_ratios = [float(x) for x in splits.split(",")]
+        if len(split_ratios) != 3:
+            raise ValueError("Se requieren exactamente 3 valores")
+        if abs(sum(split_ratios) - 1.0) > 0.01:
+            raise ValueError(f"Los ratios deben sumar 1.0, suman {sum(split_ratios)}")
+        train_ratio, val_ratio, test_ratio = split_ratios
+    except Exception as e:
+        logger.error("Error parseando splits '%s': %s", splits, e)
+        raise typer.Exit(code=1)
+
+    # Parsear clases
+    class_list = [c.strip() for c in classes.split(",")]
+    class_mapping = {c: c.replace(" ", "_") for c in class_list}
+    logger.info("Clases a procesar: %s", class_list)
+
+    # Calcular fill rate esperado (area relativa con redondeo de pixeles)
+    crop_pixels = int(round(DEFAULT_IMAGE_SIZE * crop_pct))
+    remaining = DEFAULT_IMAGE_SIZE - (2 * crop_pixels)
+    expected_fill_rate = (remaining / DEFAULT_IMAGE_SIZE) ** 2 if remaining > 0 else 0.0
+    logger.info(
+        "Recorte: %.1f%% por borde (%d px) | Fill rate esperado: %.1f%%",
+        crop_pct * 100,
+        crop_pixels,
+        expected_fill_rate * 100,
+    )
+    if expected_fill_rate < min_fill_rate:
+        logger.error("Fill rate esperado %.1f%% < minimo %.1f%% (ajusta crop_pct)",
+                     expected_fill_rate * 100, min_fill_rate * 100)
+        raise typer.Exit(code=1)
+
+    crop_label = int(round(crop_pct * 100))
+
+    # Recolectar imagenes
+    logger.info("Recolectando imagenes del dataset...")
+    all_images = []
+
+    for class_name in class_list:
+        # Buscar en estructura típica: class_name/images/
+        class_dir = input_path / class_name / "images"
+        if not class_dir.exists():
+            # Intentar sin subcarpeta images
+            class_dir = input_path / class_name
+        if not class_dir.exists():
+            logger.warning("Directorio de clase no existe: %s", class_dir)
+            continue
+
+        images = list(class_dir.glob("*.png")) + list(class_dir.glob("*.jpg"))
+        mapped_class = class_mapping[class_name]
+        all_images.extend([(img, mapped_class) for img in images])
+        logger.info("  %s: %d imagenes", class_name, len(images))
+
+    if not all_images:
+        logger.error("No se encontraron imagenes")
+        raise typer.Exit(code=1)
+
+    logger.info("Total: %d imagenes", len(all_images))
+
+    # Crear splits estratificados
+    logger.info("Creando splits (train=%.0f%%, val=%.0f%%, test=%.0f%%)...",
+                train_ratio * 100, val_ratio * 100, test_ratio * 100)
+
+    # Configurar semilla para reproducibilidad
+    random.seed(seed)
+    np.random.seed(seed)
+
+    # Agrupar por clase
+    by_class = defaultdict(list)
+    for path, class_name in all_images:
+        by_class[class_name].append(path)
+
+    split_data = {'train': [], 'val': [], 'test': []}
+
+    for class_name, paths in by_class.items():
+        np.random.shuffle(paths)
+        n = len(paths)
+        n_train = int(n * train_ratio)
+        n_val = int(n * val_ratio)
+
+        split_data['train'].extend([(p, class_name) for p in paths[:n_train]])
+        split_data['val'].extend([(p, class_name) for p in paths[n_train:n_train + n_val]])
+        split_data['test'].extend([(p, class_name) for p in paths[n_train + n_val:]])
+
+    for split_name, split_images in split_data.items():
+        np.random.shuffle(split_images)
+        by_class_count = defaultdict(int)
+        for _, c in split_images:
+            by_class_count[c] += 1
+        logger.info("  %s: %d imagenes %s", split_name, len(split_images), dict(by_class_count))
+
+    # Procesar imagenes
+    logger.info("Procesando imagenes (crop=%.1f%%)...", crop_pct * 100)
+    all_stats = {}
+    start_time = time.time()
+
+    for split_name, split_images in split_data.items():
+        logger.info("=== %s ===", split_name.upper())
+
+        stats = {
+            'processed': 0,
+            'failed': 0,
+            'fill_rates': [],
+            'by_class': defaultdict(lambda: {'count': 0, 'fill_rates': []})
+        }
+
+        pbar = tqdm(split_images, desc=f"  {split_name}", ncols=80)
+
+        for image_path, class_name in pbar:
+            output_filename = f"{image_path.stem}_crop{crop_label}.png"
+            image_output_path = output_path / split_name / class_name / output_filename
+
+            try:
+                image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+                if image is None:
+                    stats['failed'] += 1
+                    continue
+
+                if image.shape[0] != DEFAULT_IMAGE_SIZE or image.shape[1] != DEFAULT_IMAGE_SIZE:
+                    image = cv2.resize(image, (DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE))
+
+                height, width = image.shape[:2]
+                crop_y = int(round(height * crop_pct))
+                crop_x = int(round(width * crop_pct))
+
+                if crop_y > 0 or crop_x > 0:
+                    new_h = height - 2 * crop_y
+                    new_w = width - 2 * crop_x
+                    if new_h <= 0 or new_w <= 0:
+                        stats['failed'] += 1
+                        continue
+                    cropped = image[crop_y:height - crop_y, crop_x:width - crop_x]
+                    fill_rate = (cropped.size / image.size) if image.size else 0.0
+                else:
+                    cropped = image
+                    fill_rate = 1.0
+
+                if cropped.shape[0] != DEFAULT_IMAGE_SIZE or cropped.shape[1] != DEFAULT_IMAGE_SIZE:
+                    cropped = cv2.resize(cropped, (DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE))
+
+                image_output_path.parent.mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(str(image_output_path), cropped)
+
+                stats['processed'] += 1
+                stats['fill_rates'].append(fill_rate)
+                stats['by_class'][class_name]['count'] += 1
+                stats['by_class'][class_name]['fill_rates'].append(fill_rate)
+
+                if stats['processed'] % 100 == 0:
+                    avg_fill = np.mean(stats['fill_rates'][-100:]) if stats['fill_rates'] else 0
+                    pbar.set_postfix({'fill': f'{avg_fill:.1%}'})
+
+            except Exception as e:
+                stats['failed'] += 1
+                logger.debug("Error procesando %s: %s", image_path, e)
+                continue
+
+        all_stats[split_name] = stats
+
+        if stats['fill_rates']:
+            fill_rates = np.array(stats['fill_rates'])
+            logger.info("  Procesadas: %d/%d, Failed: %d",
+                        stats['processed'], len(split_images), stats['failed'])
+            logger.info(
+                "  Fill rate: %.1f%% +/- %.1f%%",
+                fill_rates.mean() * 100,
+                fill_rates.std() * 100,
+            )
+
+    elapsed = time.time() - start_time
+
+    # Guardar metadatos
+    logger.info("Guardando metadatos...")
+
+    summary = {
+        'crop_pct': crop_pct,
+        'crop_pixels': crop_pixels,
+        'min_fill_rate': min_fill_rate,
+        'expected_fill_rate': expected_fill_rate,
+        'source_dataset': str(input_path),
+        'classes': list(class_mapping.values()),
+        'splits': {},
+        'processing_time_minutes': elapsed / 60,
+        'seed': seed,
+        'config': config,
+    }
+
+    for split_name, stats in all_stats.items():
+        fill_rates = np.array(stats['fill_rates']) if stats['fill_rates'] else np.array([0])
+        summary['splits'][split_name] = {
+            'total': len(split_data[split_name]),
+            'processed': stats['processed'],
+            'failed': stats['failed'],
+            'fill_rate_mean': float(fill_rates.mean()) if len(fill_rates) > 0 else 0,
+            'fill_rate_std': float(fill_rates.std()) if len(fill_rates) > 0 else 0,
+            'by_class': {
+                class_name: {
+                    'count': class_stats['count'],
+                    'fill_rate_mean': float(np.mean(class_stats['fill_rates']))
+                    if class_stats['fill_rates'] else 0
+                }
+                for class_name, class_stats in stats['by_class'].items()
+            }
+        }
+
+    summary_path = output_path / "dataset_summary.json"
+    with open(summary_path, 'w') as f:
+        json.dump(summary, f, indent=2)
+    logger.info("Resumen guardado en: %s", summary_path)
+
+    # Crear archivos CSV de indice
+    for split_name in split_data.keys():
+        if not split_data[split_name]:
+            continue
+        split_dir = output_path / split_name
+        split_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = split_dir / "images.csv"
+
+        with open(csv_path, 'w') as f:
+            f.write("image_name,category,cropped_filename\n")
+            for image_path, class_name in split_data[split_name]:
+                cropped_name = f"{image_path.stem}_crop{crop_label}.png"
+                f.write(f"{image_path.stem},{class_name},{cropped_name}\n")
+
+    total_processed = sum(s['processed'] for s in all_stats.values())
+    total_failed = sum(s['failed'] for s in all_stats.values())
+
+    logger.info("-" * 40)
+    logger.info("RESUMEN FINAL")
+    logger.info("-" * 40)
+    logger.info("Total procesadas: %d", total_processed)
+    logger.info("Total fallidas: %d", total_failed)
+    logger.info("Crop pct: %.1f%%", crop_pct * 100)
+    logger.info("Tiempo: %.1f minutos (%.2fs por imagen)",
+                elapsed / 60, elapsed / max(total_processed, 1))
+    logger.info("Dataset generado en: %s", output_path)
+
+    logger.info("\nEstructura:")
+    logger.info("  %s/", output_path.name)
+    for split_name, stats in all_stats.items():
+        logger.info("  ├── %s/ (%d imagenes)", split_name, stats['processed'])
+        for class_name in sorted(stats['by_class'].keys()):
+            count = stats['by_class'][class_name]['count']
+            logger.info("  │   ├── %s/ (%d)", class_name, count)
+
+    logger.info("=" * 60)
+    logger.info("Generacion de dataset completada!")
+    logger.info("=" * 60)
+
+
+# =============================================================================
+# APPLY CONTRAST DATASET (SAHS / CLAHE)
+# =============================================================================
+
+
+def _parse_contrast_exts(exts: str) -> set[str]:
+    """
+    Parse comma-separated image extensions.
+
+    Args:
+        exts: Comma-separated extensions (e.g., ".png,.jpg,jpeg").
+
+    Returns:
+        Set of normalized extensions with a leading dot.
+    """
+    parsed = set()
+    for token in exts.split(","):
+        value = token.strip().lower()
+        if not value:
+            continue
+        if not value.startswith("."):
+            value = f".{value}"
+        parsed.add(value)
+    return parsed
+
+
+def _is_subpath(child: Path, parent: Path) -> bool:
+    """
+    Check whether child path is inside parent.
+
+    Args:
+        child: Candidate child path.
+        parent: Candidate parent path.
+
+    Returns:
+        True if child is inside parent.
+    """
+    try:
+        child.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
+def _to_gray(image: "np.ndarray") -> "np.ndarray":
+    """
+    Convert an image array to grayscale.
+
+    Args:
+        image: Input array (grayscale, BGR, or BGRA).
+
+    Returns:
+        Grayscale array.
+    """
+    import cv2
+
+    if image.ndim == 2:
+        return image
+    if image.ndim == 3 and image.shape[2] == 3:
+        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    if image.ndim == 3 and image.shape[2] == 4:
+        return cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
+    raise ValueError(f"Unsupported image shape: {image.shape}")
+
+
+def _build_foreground_mask(gray: "np.ndarray", threshold: int) -> "np.ndarray":
+    """
+    Build a foreground mask from a grayscale image.
+
+    Args:
+        gray: Grayscale image array.
+        threshold: Pixels <= threshold are considered background.
+
+    Returns:
+        Boolean mask for foreground pixels.
+    """
+    return gray > threshold
+
+
+def _apply_sahs_to_gray(
+    gray: "np.ndarray",
+    upper_factor: float,
+    lower_factor: float,
+    mask: Optional["np.ndarray"],
+) -> "np.ndarray":
+    """
+    Apply SAHS contrast enhancement to a grayscale image.
+
+    Args:
+        gray: Grayscale image array.
+        upper_factor: Upper std multiplier.
+        lower_factor: Lower std multiplier.
+        mask: Optional mask for foreground pixels.
+
+    Returns:
+        Enhanced grayscale image array.
+    """
+    import numpy as np
+
+    if gray is None:
+        raise ValueError("gray is None")
+
+    apply_mask = mask is not None
+    mask_values = mask if mask is not None else np.ones_like(gray, dtype=bool)
+    if not np.any(mask_values):
+        return gray
+
+    gray_float = gray.astype(np.float32)
+    masked_pixels = gray_float[mask_values]
+    gray_mean = float(np.mean(masked_pixels))
+
+    above_mean = masked_pixels[masked_pixels > gray_mean]
+    below_or_equal = masked_pixels[masked_pixels <= gray_mean]
+
+    max_value = gray_mean
+    min_value = gray_mean
+
+    if above_mean.size:
+        std_above = float(np.sqrt(np.mean((above_mean - gray_mean) ** 2)))
+        max_value = gray_mean + upper_factor * std_above
+
+    if below_or_equal.size:
+        std_below = float(np.sqrt(np.mean((below_or_equal - gray_mean) ** 2)))
+        min_value = gray_mean - lower_factor * std_below
+
+    if np.issubdtype(gray.dtype, np.integer):
+        scale_max = float(np.iinfo(gray.dtype).max)
+    else:
+        scale_max = float(np.max(gray_float)) if gray_float.size else 1.0
+
+    if max_value == min_value:
+        enhanced_full = gray_float
+    else:
+        enhanced_full = (scale_max / (max_value - min_value)) * (gray_float - min_value)
+        enhanced_full = np.clip(enhanced_full, 0.0, scale_max)
+
+    if apply_mask:
+        output = gray_float.copy()
+        output[mask_values] = enhanced_full[mask_values]
+        return output.astype(gray.dtype)
+
+    return enhanced_full.astype(gray.dtype)
+
+
+def _apply_clahe_to_gray(
+    gray: "np.ndarray",
+    clip_limit: float,
+    tile_size: int,
+    mask: Optional["np.ndarray"],
+) -> "np.ndarray":
+    """
+    Apply CLAHE to a grayscale image.
+
+    Args:
+        gray: Grayscale image array.
+        clip_limit: CLAHE clip limit.
+        tile_size: CLAHE tile size.
+        mask: Optional mask for foreground pixels.
+
+    Returns:
+        Enhanced grayscale image array.
+    """
+    import cv2
+    import numpy as np
+
+    if gray is None:
+        raise ValueError("gray is None")
+
+    if gray.dtype != np.uint8:
+        gray_u8 = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    else:
+        gray_u8 = gray
+
+    if mask is not None and not np.any(mask):
+        return gray_u8 if gray.dtype == np.uint8 else gray
+
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(tile_size, tile_size))
+    enhanced_full = clahe.apply(gray_u8)
+
+    if mask is None:
+        return enhanced_full if gray.dtype == np.uint8 else enhanced_full.astype(gray.dtype)
+
+    output = gray_u8.copy()
+    output[mask] = enhanced_full[mask]
+    return output if gray.dtype == np.uint8 else output.astype(gray.dtype)
+
+
+def _crop_to_foreground(
+    gray: "np.ndarray",
+    mask: Optional["np.ndarray"],
+    output_size: int,
+    pad_to_square: bool,
+    pad_value: int,
+) -> "np.ndarray":
+    """
+    Crop to the foreground bounding box and resize.
+
+    Args:
+        gray: Grayscale image array.
+        mask: Foreground mask for cropping.
+        output_size: Output size after resizing.
+        pad_to_square: Pad to square before resize.
+        pad_value: Padding value for background.
+
+    Returns:
+        Cropped and resized image array.
+    """
+    import cv2
+    import numpy as np
+
+    if mask is None or not np.any(mask):
+        return gray
+
+    ys, xs = np.where(mask)
+    y_min, y_max = ys.min(), ys.max() + 1
+    x_min, x_max = xs.min(), xs.max() + 1
+    cropped = gray[y_min:y_max, x_min:x_max]
+
+    if output_size <= 0:
+        return cropped
+
+    if pad_to_square:
+        side = max(cropped.shape[0], cropped.shape[1])
+        canvas = np.full((side, side), pad_value, dtype=cropped.dtype)
+        y_offset = (side - cropped.shape[0]) // 2
+        x_offset = (side - cropped.shape[1]) // 2
+        canvas[y_offset:y_offset + cropped.shape[0], x_offset:x_offset + cropped.shape[1]] = cropped
+        resized = cv2.resize(canvas, (output_size, output_size), interpolation=cv2.INTER_LINEAR)
+    else:
+        resized = cv2.resize(cropped, (output_size, output_size), interpolation=cv2.INTER_LINEAR)
+
+    return resized
+
+
+def _apply_contrast_dataset(
+    method: str,
+    input_dir: str,
+    output_dir: str,
+    exts: str,
+    copy_non_images: bool,
+    overwrite: bool,
+    preserve_background: bool,
+    background_threshold: int,
+    crop_foreground: bool,
+    output_size: int,
+    pad_to_square: bool,
+    pad_value: int,
+    upper_factor: float,
+    lower_factor: float,
+    clahe_clip: float,
+    clahe_tile: int,
+) -> None:
+    import shutil
+
+    import cv2
+    from tqdm import tqdm
+
+    method = method.lower().strip()
+    if method not in {"sahs", "clahe"}:
+        logger.error("Metodo invalido: %s (usa sahs o clahe)", method)
+        raise typer.Exit(code=1)
+
+    if background_threshold < 0:
+        logger.error("background_threshold debe ser >= 0")
+        raise typer.Exit(code=1)
+
+    if crop_foreground and output_size <= 0:
+        logger.error("output_size debe ser > 0 si se usa crop_foreground")
+        raise typer.Exit(code=1)
+
+    input_path = Path(input_dir)
+    output_path = Path(output_dir)
+
+    if not input_path.exists():
+        logger.error("Directorio de entrada no existe: %s", input_dir)
+        raise typer.Exit(code=1)
+
+    if input_path.resolve() == output_path.resolve():
+        logger.error("input_dir y output_dir deben ser distintos")
+        raise typer.Exit(code=1)
+
+    if _is_subpath(output_path.resolve(), input_path.resolve()):
+        logger.error("output_dir no puede estar dentro de input_dir")
+        raise typer.Exit(code=1)
+
+    exts_set = _parse_contrast_exts(exts)
+    if not exts_set:
+        logger.error("Lista de extensiones vacia: %s", exts)
+        raise typer.Exit(code=1)
+
+    files = [p for p in input_path.rglob("*") if p.is_file()]
+    if not files:
+        logger.error("No se encontraron archivos en %s", input_dir)
+        raise typer.Exit(code=1)
+
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Metodo: %s", method)
+    if method == "sahs":
+        logger.info("SAHS (upper=%.2f, lower=%.2f)", upper_factor, lower_factor)
+    else:
+        logger.info("CLAHE (clip=%.2f, tile=%d)", clahe_clip, clahe_tile)
+    logger.info("Extensiones: %s", ", ".join(sorted(exts_set)))
+    logger.info("Preservar fondo: %s (threshold=%d)", preserve_background, background_threshold)
+    logger.info("Crop foreground: %s (output=%d, pad=%s)", crop_foreground, output_size, pad_to_square)
+    logger.info("Copiar no imagenes: %s", copy_non_images)
+    logger.info("Overwrite: %s", overwrite)
+
+    processed = 0
+    copied = 0
+    skipped = 0
+    failed = 0
+
+    pbar = tqdm(files, desc=method.upper(), ncols=80)
+    for path in pbar:
+        rel_path = path.relative_to(input_path)
+        out_path = output_path / rel_path
+
+        if path.suffix.lower() in exts_set:
+            if out_path.exists() and not overwrite:
+                skipped += 1
+                continue
+            image = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+            if image is None:
+                failed += 1
+                continue
+
+            try:
+                gray = _to_gray(image)
+            except Exception:
+                failed += 1
+                continue
+
+            mask = None
+            if preserve_background or crop_foreground:
+                mask = _build_foreground_mask(gray, background_threshold)
+
+            if method == "sahs":
+                enhanced = _apply_sahs_to_gray(
+                    gray,
+                    upper_factor=upper_factor,
+                    lower_factor=lower_factor,
+                    mask=mask if preserve_background else None,
+                )
+            else:
+                enhanced = _apply_clahe_to_gray(
+                    gray,
+                    clip_limit=clahe_clip,
+                    tile_size=clahe_tile,
+                    mask=mask if preserve_background else None,
+                )
+
+            if crop_foreground:
+                enhanced = _crop_to_foreground(
+                    enhanced,
+                    mask=mask,
+                    output_size=output_size,
+                    pad_to_square=pad_to_square,
+                    pad_value=pad_value,
+                )
+
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            if cv2.imwrite(str(out_path), enhanced):
+                processed += 1
+            else:
+                failed += 1
+        else:
+            if not copy_non_images:
+                skipped += 1
+                continue
+            if out_path.exists() and not overwrite:
+                skipped += 1
+                continue
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, out_path)
+            copied += 1
+
+    logger.info("-" * 40)
+    logger.info("RESUMEN CONTRASTE")
+    logger.info("-" * 40)
+    logger.info("Procesadas: %d", processed)
+    logger.info("Copiadas: %d", copied)
+    logger.info("Saltadas: %d", skipped)
+    logger.info("Fallidas: %d", failed)
+    logger.info("Salida: %s", output_path)
+
+
+@app.command("apply-contrast-dataset")
+def apply_contrast_dataset(
+    input_dir: str = typer.Argument(
+        ...,
+        help="Directorio de entrada con dataset",
+    ),
+    output_dir: str = typer.Argument(
+        ...,
+        help="Directorio de salida para el dataset procesado",
+    ),
+    method: str = typer.Option(
+        "sahs",
+        "--method",
+        help="Metodo de contraste: sahs o clahe",
+    ),
+    exts: str = typer.Option(
+        ".png,.jpg,.jpeg",
+        "--exts",
+        help="Extensiones de imagen separadas por coma",
+    ),
+    copy_non_images: bool = typer.Option(
+        True,
+        "--copy-non-images/--no-copy-non-images",
+        help="Copiar archivos no imagen (CSV/JSON/etc.)",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Sobrescribir archivos existentes en output",
+    ),
+    preserve_background: bool = typer.Option(
+        True,
+        "--preserve-background/--no-preserve-background",
+        help="Preservar pixeles de fondo (<= threshold)",
+    ),
+    background_threshold: int = typer.Option(
+        0,
+        "--background-threshold",
+        help="Umbral para fondo (pixeles <= threshold)",
+    ),
+    crop_foreground: bool = typer.Option(
+        False,
+        "--crop-foreground/--no-crop-foreground",
+        help="Recortar al bounding box del foreground y redimensionar",
+    ),
+    output_size: int = typer.Option(
+        DEFAULT_IMAGE_SIZE,
+        "--output-size",
+        help="Tamano final si se usa crop_foreground",
+    ),
+    pad_to_square: bool = typer.Option(
+        True,
+        "--pad-to-square/--stretch",
+        help="Pad a cuadrado antes de redimensionar",
+    ),
+    pad_value: int = typer.Option(
+        0,
+        "--pad-value",
+        help="Valor de padding para el fondo",
+    ),
+    upper_factor: float = typer.Option(
+        2.5,
+        "--upper-factor",
+        help="Factor superior de desviacion estandar (SAHS)",
+    ),
+    lower_factor: float = typer.Option(
+        2.0,
+        "--lower-factor",
+        help="Factor inferior de desviacion estandar (SAHS)",
+    ),
+    clahe_clip: float = typer.Option(
+        DEFAULT_CLAHE_CLIP_LIMIT,
+        "--clahe-clip",
+        help="CLAHE clip limit",
+    ),
+    clahe_tile: int = typer.Option(
+        DEFAULT_CLAHE_TILE_SIZE,
+        "--clahe-tile",
+        help="CLAHE tile size",
+    ),
+):
+    """
+    Apply SAHS or CLAHE to all images in a dataset directory.
+
+    The command preserves directory structure and copies non-image
+    files (images.csv, dataset_summary.json, landmarks.json, etc.).
+
+    Examples:
+        python -m src_v2 apply-contrast-dataset outputs/warped_lung_best/session_warping \
+            outputs/warped_lung_best/session_warping_sahs --method sahs
+        python -m src_v2 apply-contrast-dataset outputs/warped_lung_best/session_warping \
+            outputs/warped_lung_best/session_warping_clahe --method clahe --clahe-tile 4
+    """
+    _apply_contrast_dataset(
+        method=method,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        exts=exts,
+        copy_non_images=copy_non_images,
+        overwrite=overwrite,
+        preserve_background=preserve_background,
+        background_threshold=background_threshold,
+        crop_foreground=crop_foreground,
+        output_size=output_size,
+        pad_to_square=pad_to_square,
+        pad_value=pad_value,
+        upper_factor=upper_factor,
+        lower_factor=lower_factor,
+        clahe_clip=clahe_clip,
+        clahe_tile=clahe_tile,
+    )
+
+
+# =============================================================================
+# CROP DATASET (remove black background from warped images)
+# =============================================================================
+
+
+def _crop_dataset_impl(
+    input_dir: str,
+    output_dir: str,
+    exts: str,
+    copy_non_images: bool,
+    overwrite: bool,
+    background_threshold: int,
+    output_size: int,
+    pad_to_square: bool,
+    pad_value: int,
+) -> None:
+    """Implementation of crop-dataset command."""
+    import shutil
+
+    import cv2
+    from tqdm import tqdm
+
+    if background_threshold < 0:
+        logger.error("background_threshold debe ser >= 0")
+        raise typer.Exit(code=1)
+
+    if output_size <= 0:
+        logger.error("output_size debe ser > 0")
+        raise typer.Exit(code=1)
+
+    input_path = Path(input_dir)
+    output_path = Path(output_dir)
+
+    if not input_path.exists():
+        logger.error("Directorio de entrada no existe: %s", input_dir)
+        raise typer.Exit(code=1)
+
+    if input_path.resolve() == output_path.resolve():
+        logger.error("input_dir y output_dir deben ser distintos")
+        raise typer.Exit(code=1)
+
+    if _is_subpath(output_path.resolve(), input_path.resolve()):
+        logger.error("output_dir no puede estar dentro de input_dir")
+        raise typer.Exit(code=1)
+
+    exts_set = _parse_contrast_exts(exts)
+    if not exts_set:
+        logger.error("Lista de extensiones vacia: %s", exts)
+        raise typer.Exit(code=1)
+
+    files = [p for p in input_path.rglob("*") if p.is_file()]
+    if not files:
+        logger.error("No se encontraron archivos en %s", input_dir)
+        raise typer.Exit(code=1)
+
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    logger.info("CROP DATASET")
+    logger.info("-" * 40)
+    logger.info("Entrada: %s", input_dir)
+    logger.info("Salida: %s", output_dir)
+    logger.info("Extensiones: %s", ", ".join(sorted(exts_set)))
+    logger.info("Background threshold: %d", background_threshold)
+    logger.info("Output size: %d", output_size)
+    logger.info("Pad to square: %s (pad_value=%d)", pad_to_square, pad_value)
+    logger.info("Copiar no imagenes: %s", copy_non_images)
+    logger.info("-" * 40)
+
+    processed = 0
+    copied = 0
+    skipped = 0
+    failed = 0
+
+    pbar = tqdm(files, desc="CROP", ncols=80)
+    for path in pbar:
+        rel_path = path.relative_to(input_path)
+        out_path = output_path / rel_path
+
+        if path.suffix.lower() in exts_set:
+            if out_path.exists() and not overwrite:
+                skipped += 1
+                continue
+
+            image = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+            if image is None:
+                failed += 1
+                continue
+
+            try:
+                gray = _to_gray(image)
+            except Exception:
+                failed += 1
+                continue
+
+            # Build foreground mask
+            mask = _build_foreground_mask(gray, background_threshold)
+
+            if not np.any(mask):
+                # No foreground found, skip or copy original
+                failed += 1
+                continue
+
+            # Crop to foreground bounding box and resize
+            cropped = _crop_to_foreground(
+                gray,
+                mask=mask,
+                output_size=output_size,
+                pad_to_square=pad_to_square,
+                pad_value=pad_value,
+            )
+
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            if cv2.imwrite(str(out_path), cropped):
+                processed += 1
+            else:
+                failed += 1
+        else:
+            if not copy_non_images:
+                skipped += 1
+                continue
+            if out_path.exists() and not overwrite:
+                skipped += 1
+                continue
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, out_path)
+            copied += 1
+
+    logger.info("-" * 40)
+    logger.info("RESUMEN CROP")
+    logger.info("-" * 40)
+    logger.info("Procesadas: %d", processed)
+    logger.info("Copiadas: %d", copied)
+    logger.info("Saltadas: %d", skipped)
+    logger.info("Fallidas: %d", failed)
+    logger.info("Salida: %s", output_path)
+
+
+@app.command("crop-dataset")
+def crop_dataset(
+    input_dir: str = typer.Argument(
+        ...,
+        help="Directorio de entrada con imagenes warped",
+    ),
+    output_dir: str = typer.Argument(
+        ...,
+        help="Directorio de salida para imagenes recortadas",
+    ),
+    exts: str = typer.Option(
+        ".png,.jpg,.jpeg",
+        "--exts",
+        help="Extensiones de imagen separadas por coma",
+    ),
+    copy_non_images: bool = typer.Option(
+        True,
+        "--copy-non-images/--no-copy-non-images",
+        help="Copiar archivos no imagen (CSV/JSON/etc.)",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Sobrescribir archivos existentes en output",
+    ),
+    background_threshold: int = typer.Option(
+        0,
+        "--background-threshold",
+        help="Umbral para fondo (pixeles <= threshold)",
+    ),
+    output_size: int = typer.Option(
+        DEFAULT_IMAGE_SIZE,
+        "--output-size",
+        help="Tamano final de imagen (default: 224)",
+    ),
+    pad_to_square: bool = typer.Option(
+        True,
+        "--pad-to-square/--stretch",
+        help="Pad a cuadrado antes de redimensionar (vs stretch)",
+    ),
+    pad_value: int = typer.Option(
+        0,
+        "--pad-value",
+        help="Valor de padding para el fondo (default: 0 negro)",
+    ),
+):
+    """
+    Crop warped images to remove black background and resize.
+
+    This command processes warped images that have black background regions,
+    crops to the bounding box of non-black pixels, and resizes to the
+    specified output size.
+
+    The command preserves directory structure and optionally copies
+    non-image files (CSV/JSON/etc.).
+
+    Examples:
+        # Crop warped images removing black background
+        python -m src_v2 crop-dataset outputs/warped_lung_best/session_warping \\
+            outputs/warped_cropped/session_warping
+
+        # With custom output size
+        python -m src_v2 crop-dataset outputs/warped_lung_best/session_warping \\
+            outputs/warped_cropped/session_warping --output-size 256
+    """
+    _crop_dataset_impl(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        exts=exts,
+        copy_non_images=copy_non_images,
+        overwrite=overwrite,
+        background_threshold=background_threshold,
+        output_size=output_size,
+        pad_to_square=pad_to_square,
+        pad_value=pad_value,
+    )
 
 
 # =============================================================================

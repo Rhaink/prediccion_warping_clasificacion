@@ -1,0 +1,48 @@
+% =============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% Sección 4.6: Protocolo de Inferencia y Evaluación
+% =============================================================================
+
+\section{Protocolo de Inferencia y Evaluación}
+\label{sec:inferencia_metricas}
+
+Esta sección describe el proceso completo de inferencia del sistema, las métricas utilizadas para evaluar su rendimiento y el protocolo experimental seguido para garantizar la validez de los resultados.
+
+\subsection{Proceso de Inferencia}
+\label{subsec:proceso_inferencia}
+
+El proceso de inferencia del sistema sigue un flujo secuencial de cuatro etapas. Una radiografía de entrada en formato RGB o escala de grises se procesa primero mediante CLAHE para normalizar el contraste, generando una imagen de $224 \times 224 \times 3$ píxeles. Esta imagen normalizada se alimenta al modelo de detección de landmarks, que produce un vector de 30 valores (15 coordenadas $(x,y)$ normalizadas al rango $[0,1]$). Utilizando estos landmarks predichos y la forma estándar pulmonar calculada previamente mediante GPA, el módulo de normalización geométrica aplica una transformación afín por partes que genera una nueva imagen de $224 \times 224 \times 3$ píxeles con la región pulmonar alineada. Finalmente, esta imagen normalizada se procesa mediante el clasificador, que produce un vector de tres probabilidades correspondientes a las categorías COVID-19, Normal y Neumonía Viral. La clase con mayor probabilidad constituye la predicción final del sistema.
+
+Este flujo modular permite que cada componente opere de forma independiente y secuencial, facilitando la identificación de posibles puntos de fallo y la interpretación de resultados intermedios. Los landmarks predichos, en particular, proporcionan una representación visual intermedia que permite verificar la calidad de la detección de la región pulmonar antes de la clasificación final.
+
+\subsection{Métricas de Evaluación}
+\label{subsec:metricas_evaluacion}
+
+El sistema se evalúa en dos niveles: la calidad de la detección de landmarks y el rendimiento del clasificador. Cada nivel requiere métricas específicas que capturen diferentes aspectos del desempeño.
+
+\subsubsection{Métricas para Detección de Landmarks}
+\label{subsubsec:metricas_landmarks}
+
+La calidad de la detección de landmarks se mide mediante el error en píxeles, definido como la distancia euclidiana entre la posición predicha y la posición anotada manualmente (ground truth) para cada landmark. Para una imagen dada, se calcula el error de cada uno de los 15 landmarks y se promedia para obtener el error medio por imagen. Esta métrica captura la precisión espacial del modelo de detección.
+
+Adicionalmente, se calcula el error promedio por landmark individual sobre todo el conjunto de prueba, lo cual permite identificar cuáles landmarks son más difíciles de detectar. En el contexto de imágenes de $224 \times 224$ píxeles, un error de pocos píxeles representa una desviación milimétrica en la radiografía original, lo cual es clínicamente aceptable para el propósito de normalización geométrica.
+
+\subsubsection{Métricas para Clasificación}
+\label{subsubsec:metricas_clasificacion}
+
+El rendimiento del clasificador se evalúa mediante un conjunto de métricas estándar en problemas de clasificación multiclase. La \textbf{exactitud (accuracy)} mide la proporción de predicciones correctas sobre el total de imágenes evaluadas, proporcionando una medida global del desempeño del sistema.
+
+Para evaluar el rendimiento por categoría diagnóstica, se calculan tres métricas fundamentales. La \textbf{precisión} mide, de todas las predicciones positivas para una clase dada, qué proporción son correctas. Esta métrica es relevante cuando el costo de falsos positivos es alto, como en diagnósticos de COVID-19 que pueden generar ansiedad innecesaria o protocolos de aislamiento incorrectos. La \textbf{sensibilidad (recall)} mide, de todos los casos reales de una clase, qué proporción detecta correctamente el sistema. Esta métrica es crítica cuando el costo de falsos negativos es alto, como en la detección de COVID-19 donde no identificar un caso positivo puede resultar en transmisión comunitaria.
+
+El \textbf{F1-Score} combina precisión y sensibilidad en una sola métrica mediante, proporcionando un balance entre ambos objetivos. Se calcula tanto el F1-Macro (promedio no ponderado entre las tres categorías, que trata todas las clases con igual importancia) como el F1-Weighted (promedio ponderado por el número de muestras de cada clase, que refleja el desempeño en el contexto de desbalance entre categorías).
+
+Finalmente, la \textbf{matriz de confusión} presenta la distribución completa de predicciones versus categorías reales, permitiendo identificar patrones de error específicos. Por ejemplo, si el sistema confunde frecuentemente COVID-19 con Neumonía Viral, esto sugiere similitud visual entre ambas patologías y orienta mejoras futuras. La matriz de confusión es particularmente útil en contextos clínicos donde ciertos tipos de error tienen mayor gravedad que otros.
+
+\subsubsection{Protocolo de Evaluación}
+\label{subsubsec:protocolo_evaluacion}
+
+El conjunto de datos se divide en tres particiones independientes: entrenamiento, validación y prueba. La partición de entrenamiento se utiliza para optimizar los pesos del modelo mediante descenso de gradiente. La partición de validación se emplea durante el entrenamiento para monitorear el rendimiento en datos no vistos y aplicar criterios de parada temprana que eviten el sobreajuste. Finalmente, la partición de prueba se reserva exclusivamente para la evaluación final del sistema y no se utiliza en ninguna decisión durante el entrenamiento.
+
+Para garantizar la validez de las métricas reportadas, las tres particiones se crean mediante estratificación por clase, lo cual asegura que cada conjunto mantenga el mismo peso en sus muestras de COVID-19, Normal y Neumonía Viral. Esta estratificación es crítica en presencia de desbalance entre clases, ya que evita que alguna partición carezca de representación adecuada de alguna categoría.
+
+Todas las métricas reportadas en el Capítulo \ref{cap:resultados} corresponden a evaluaciones sobre el conjunto de prueba, garantizando que los resultados reflejan la capacidad del sistema para generalizar a imágenes completamente no vistas durante el desarrollo del modelo.

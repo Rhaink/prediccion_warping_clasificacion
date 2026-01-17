@@ -6,85 +6,92 @@
 \section{Clasificación de Enfermedades Pulmonares}
 \label{sec:clasificacion}
 
-Una vez que las imágenes han sido normalizadas geométricamente mediante el proceso de warping descrito en la sección anterior, el siguiente paso del sistema es la clasificación automática en una de tres categorías diagnósticas: COVID-19, Normal o Neumonía Viral. Esta sección describe la arquitectura ResNet-18 seleccionada, la estrategia de aprendizaje por transferencia empleada y la configuración del entrenamiento.
+Una vez que las imágenes han sido normalizadas geométricamente mediante el proceso de deformación descrito en la sección anterior, el siguiente paso del sistema es la clasificación automática. El objetivo es determinar a cuál de las tres categorías diagnósticas pertenece cada radiografía: COVID-19, Normal o Neumonía Viral.
+
+Esta sección describe los componentes principales del módulo de clasificación: el preprocesamiento de contraste aplicado a las imágenes, la arquitectura de red neuronal seleccionada, la estrategia para aprovechar conocimiento previo de otras tareas (aprendizaje por transferencia), y la configuración del proceso de entrenamiento.
+
+\subsection{Preprocesamiento de Contraste}
+\label{subsec:preprocesamiento_contraste}
+
+Antes de la clasificación, las imágenes normalizadas geométricamente requieren un ajuste de contraste para optimizar la visibilidad de las estructuras pulmonares. Como se describe en la Sección \ref{sec:sahs}, las radiografías de tórax presentan histogramas de intensidad marcadamente asimétricos, lo que hace que técnicas convencionales como CLAHE presenten limitaciones: amplificación de ruido en áreas suaves y alteración de regiones brillantes indicativas de infiltrados pulmonares.
+
+Para abordar estas limitaciones, se aplica el método SAHS (\textit{Statistical Asymmetrical Histogram Stretching}) \cite{cruz2025sahs} a las imágenes deformadas. Este método calcula límites de estiramiento asimétricos que se adaptan a la distribución característica de los histogramas radiográficos, preservando la información diagnóstica relevante.
+
+La elección de SAHS sobre otras técnicas se fundamenta en:
+
+\begin{itemize}
+    \item \textbf{Preservación de información diagnóstica:} Los factores asimétricos (2.5 para el límite superior, 2.0 para el inferior) preservan las regiones brillantes características de infiltrados pulmonares.
+
+    \item \textbf{Robustez:} El enfoque estadístico minimiza la influencia de píxeles atípicos causados por ruido o artefactos del proceso de deformación.
+
+    \item \textbf{Eficiencia:} A diferencia de CLAHE, SAHS opera globalmente, reduciendo el costo computacional.
+\end{itemize}
+
+La Figura \ref{fig:warped_sahs} muestra el efecto de aplicar SAHS a imágenes normalizadas geométricamente de las tres categorías diagnósticas.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/F4.13_warped_sahs.png}
+    \caption{Efecto del preprocesamiento SAHS sobre imágenes normalizadas geométricamente. Cada fila muestra una categoría diagnóstica diferente (COVID-19, Normal, Neumonía Viral). Las columnas muestran: (a) imagen después del warping, histograma original, (b) imagen con SAHS aplicado, e histograma resultante. Se observa cómo SAHS redistribuye las intensidades mejorando el contraste sin amplificar artefactos.}
+    \label{fig:warped_sahs}
+\end{figure}
 
 \subsection{Arquitectura del Clasificador}
 \label{subsec:arquitectura_clasificador}
 
-Para la tarea de clasificación se seleccionó ResNet-18 \cite{he2016deep} como arquitectura base, inicializada con pesos preentrenados en ImageNet \cite{deng2009imagenet}. ResNet-18 ofrece un balance óptimo entre capacidad de representación y eficiencia computacional para este problema.
+Para la tarea de clasificación se seleccionó la arquitectura ResNet-18 \cite{he2016deep}, una red neuronal convolucional diseñada específicamente para el análisis de imágenes. El nombre hace referencia a su profundidad de 18 capas y a su característica distintiva: las conexiones residuales, que permiten que la información fluya de manera más eficiente a través de la red.
+
+Esta arquitectura se inicializa con conocimiento previamente adquirido del conjunto ImageNet \cite{deng2009imagenet}, una base de datos de millones de imágenes cotidianas. Aunque las radiografías difieren de las imágenes de ImageNet, las capas iniciales de la red aprenden a detectar patrones visuales básicos (bordes, texturas, formas) que son útiles para cualquier tarea de análisis de imágenes.
 
 \subsubsection{Justificación de ResNet-18}
 
 La selección de ResNet-18 se fundamenta en las siguientes características:
 
 \begin{enumerate}
-    \item \textbf{Consistencia arquitectónica:} Utiliza la misma familia de arquitectura que el modelo de predicción de landmarks (ResNet-18 con Coordinate Attention), facilitando la integración y mantenimiento del sistema completo.
+    \item \textbf{Consistencia con el sistema:} Se utiliza la misma familia de arquitectura que el modelo de detección de puntos de referencia, lo que facilita la integración y mantenimiento del sistema completo.
 
-    \item \textbf{Eficiencia computacional:} Con 11.2 millones de parámetros, permite iteraciones rápidas durante el entrenamiento y la experimentación sin comprometer significativamente el rendimiento.
+    \item \textbf{Eficiencia:} Con 11.2 millones de parámetros ajustables, la red es suficientemente expresiva para capturar patrones complejos, pero lo bastante compacta para entrenar de manera eficiente.
 
-    \item \textbf{Conexiones residuales:} Las conexiones de salto (skip connections) mitigan el problema de desvanecimiento de gradiente, permitiendo entrenar modelos más profundos de manera efectiva \cite{he2016deep}.
+    \item \textbf{Conexiones residuales:} Esta innovación arquitectónica permite que la información se transmita directamente entre capas no consecutivas, evitando que la señal de aprendizaje se degrade en redes profundas \cite{he2016deep}.
 
-    \item \textbf{Rendimiento comprobado:} ResNet-18 ha demostrado buen desempeño en múltiples tareas de clasificación de imágenes médicas, incluyendo diagnóstico de enfermedades torácicas en radiografías \cite{rajpurkar2017chexnet}.
+    \item \textbf{Rendimiento comprobado:} ResNet-18 ha demostrado buen desempeño en múltiples tareas de clasificación de imágenes médicas, incluyendo el diagnóstico de enfermedades torácicas en radiografías \cite{rajpurkar2017chexnet}.
 \end{enumerate}
-
-\subsubsection{Rendimiento Obtenido}
-
-La Tabla \ref{tab:rendimiento_resnet18} presenta el rendimiento del clasificador ResNet-18 en el conjunto de datos normalizado geométricamente.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Rendimiento del clasificador ResNet-18 en el conjunto de prueba con imágenes normalizadas geométricamente.}
-    \label{tab:rendimiento_resnet18}
-    \begin{tabular}{lcccc}
-        \toprule
-        \textbf{Arquitectura} & \textbf{Accuracy} & \textbf{F1-Macro} & \textbf{F1-Weighted} & \textbf{Parámetros} \\
-        \midrule
-        ResNet-18 & 98.05\% & 97.12\% & 98.04\% & 11.2M \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-El clasificador alcanza 98.05\% de \textit{accuracy} en el conjunto de prueba, con F1-Macro de 97.12\% y F1-Weighted de 98.04\%. El F1-Macro, que pondera equitativamente el rendimiento en cada clase, es particularmente relevante dado el desbalance del conjunto de datos (67\% Normal, 24\% COVID-19, 9\% Neumonía Viral).
 
 \subsection{Estrategia de Aprendizaje por Transferencia}
 \label{subsec:transfer_learning_clasificacion}
 
-El entrenamiento del clasificador emplea aprendizaje por transferencia desde ImageNet, una estrategia que ha demostrado ser efectiva para tareas de clasificación de imágenes médicas donde los conjuntos de datos disponibles son típicamente pequeños \cite{raghu2019transfusion}.
+El aprendizaje por transferencia es una técnica que permite aprovechar el conocimiento que una red neuronal ha adquirido en una tarea para aplicarlo a otra diferente. En este caso, se utiliza una red previamente entrenada para reconocer miles de objetos cotidianos (ImageNet) y se adapta para clasificar radiografías de tórax. Esta estrategia es especialmente efectiva cuando se dispone de conjuntos de datos relativamente pequeños, como es común en aplicaciones médicas \cite{raghu2019transfusion}.
 
 \subsubsection{Adaptación de la Arquitectura}
 
-Para adaptar las arquitecturas preentrenadas a la tarea de clasificación de tres clases, se modifica únicamente la capa de clasificación final:
+Para adaptar la red preentrenada a la clasificación de tres categorías diagnósticas, se realizan las siguientes modificaciones:
 
 \begin{enumerate}
-    \item \textbf{Carga de pesos:} Se cargan los pesos preentrenados en ImageNet para todas las capas convolucionales y de pooling.
+    \item \textbf{Conservación del extractor de características:} Se mantienen intactos los parámetros de las capas convolucionales, que han aprendido a identificar patrones visuales relevantes.
 
-    \item \textbf{Reemplazo del clasificador:} La capa fully connected original (diseñada para 1000 clases de ImageNet) se reemplaza por una nueva capa con la estructura:
-    \begin{equation}
-        \text{Clasificador} = \text{Dropout}(p=0.3) \rightarrow \text{Linear}(d_{\text{in}}, 3)
-    \end{equation}
-    donde $d_{\text{in}}$ es la dimensión de las características del backbone (512 para ResNet-18, 1280 para EfficientNet-B0).
+    \item \textbf{Reemplazo de la capa de decisión:} La capa final, originalmente diseñada para distinguir entre 1000 categorías de objetos, se reemplaza por una nueva capa que produce tres salidas correspondientes a las categorías diagnósticas (COVID-19, Normal, Neumonía Viral).
 
-    \item \textbf{Inicialización:} Los pesos de la nueva capa se inicializan aleatoriamente mientras que el resto de la red mantiene los pesos de ImageNet.
+    \item \textbf{Inicialización selectiva:} Solo los parámetros de la nueva capa de decisión se inicializan de forma aleatoria; el resto de la red conserva el conocimiento adquirido previamente.
 \end{enumerate}
 
 \subsubsection{Ajuste fino de la Red Completa}
 
-A diferencia del modelo de landmarks que utiliza un esquema de dos fases (backbone congelado seguido de ajuste fino), el clasificador se entrena con ajuste fino completo desde el inicio. Esta decisión se justifica por:
+El ajuste fino consiste en continuar el entrenamiento de toda la red, permitiendo que los parámetros preentrenados se adapten gradualmente a la nueva tarea. A diferencia del modelo de detección de puntos de referencia, que utiliza un esquema en dos fases, el clasificador se entrena con ajuste fino completo desde el inicio. Esta decisión se justifica por:
 
 \begin{itemize}
-    \item \textbf{Conjunto de datos más grande:} El conjunto de imágenes normalizadas (15,153 imágenes) es significativamente mayor que el conjunto de datos de landmarks (957 imágenes).
-    \item \textbf{Tarea más estándar:} La clasificación de imágenes es más similar a las tareas de ImageNet que la regresión de coordenadas.
-    \item \textbf{Regularización implícita:} El preprocesamiento CLAHE y la normalización geométrica reducen la variabilidad, actuando como regularización implícita.
+    \item \textbf{Mayor volumen de datos:} El conjunto de imágenes normalizadas (15,153 imágenes) es considerablemente mayor que el conjunto utilizado para entrenar el modelo de puntos de referencia (957 imágenes), lo que reduce el riesgo de sobreajuste.
+    \item \textbf{Similitud con la tarea original:} La clasificación de imágenes es más similar a las tareas de ImageNet que la predicción de coordenadas específicas.
+    \item \textbf{Preprocesamiento estandarizado:} La normalización geométrica aplicadas previamente reducen la variabilidad entre imágenes, facilitando el aprendizaje.
 \end{itemize}
 
 \subsection{Configuración del Entrenamiento}
 \label{subsec:config_entrenamiento_clasificador}
 
-El entrenamiento del clasificador sigue un protocolo estándar de clasificación de imágenes con adaptaciones específicas para el desbalance de clases presente en el conjunto de datos.
+El proceso de entrenamiento consiste en ajustar los parámetros de la red de manera iterativa, presentándole ejemplos etiquetados para que aprenda a distinguir entre las tres categorías diagnósticas. Esta sección describe los aspectos clave de la configuración, incluyendo cómo se manejan las diferencias en la cantidad de ejemplos disponibles para cada categoría.
 
 \subsubsection{Distribución del Conjunto de Datos}
 
-El conjunto de datos de imágenes normalizadas se divide en tres subconjuntos siguiendo la estrategia de partición estratificada descrita en la Sección \ref{sec:dataset_preprocesamiento}. La Tabla \ref{tab:distribucion_clasificador} muestra la distribución de clases.
+El conjunto de datos de imágenes normalizadas se divide en tres subconjuntos siguiendo la estrategia de partición descrita en la Sección \ref{sec:dataset_preprocesamiento}. La Tabla \ref{tab:distribucion_clasificador} muestra la distribución por categoría diagnóstica.
 
 \begin{table}[htbp]
     \centering
@@ -92,7 +99,7 @@ El conjunto de datos de imágenes normalizadas se divide en tres subconjuntos si
     \label{tab:distribucion_clasificador}
     \begin{tabular}{lcccc}
         \toprule
-        \textbf{Clase} & \textbf{Train} & \textbf{Val} & \textbf{Test} & \textbf{Total (\%)} \\
+        \textbf{Categoría} & \textbf{Entrenamiento} & \textbf{Validación} & \textbf{Prueba} & \textbf{Total (\%)} \\
         \midrule
         COVID-19 & 2,712 & 542 & 362 & 3,616 (24\%) \\
         Normal & 7,644 & 1,529 & 1,020 & 10,193 (67\%) \\
@@ -105,24 +112,17 @@ El conjunto de datos de imágenes normalizadas se divide en tres subconjuntos si
 
 \subsubsection{Manejo del Desbalance de Clases}
 
-El conjunto de datos presenta un desbalance significativo, con la clase Normal representando el 67\% de las muestras mientras que Neumonía Viral solo representa el 9\%. Para mitigar el sesgo hacia las clases mayoritarias, se utilizan pesos de clase inversamente proporcionales a su frecuencia:
+Como se observa en la Tabla \ref{tab:distribucion_clasificador}, el conjunto de datos presenta un desbalance considerable: la categoría Normal representa el 67\% de las muestras, mientras que Neumonía Viral solo el 9\%. Sin una corrección adecuada, el modelo tendería a favorecer las categorías más frecuentes, perjudicando la detección de las menos comunes.
 
-\begin{equation}
-    w_c = \frac{N}{K \cdot n_c}
-    \label{eq:class_weights}
-\end{equation}
-
-\noindent donde $N$ es el número total de muestras, $K$ es el número de clases (3), y $n_c$ es el número de muestras de la clase $c$.
-
-Aplicando la Ecuación \ref{eq:class_weights} al conjunto de entrenamiento:
+Para compensar este desbalance, se asigna a cada categoría un peso inversamente proporcional a su frecuencia. De esta manera, los errores en categorías poco representadas penalizan más al modelo durante el entrenamiento, incentivándolo a prestarles mayor atención. La Tabla \ref{tab:class_weights} muestra los pesos calculados.
 
 \begin{table}[htbp]
     \centering
-    \caption{Pesos de clase calculados para balanceo del entrenamiento.}
+    \caption{Pesos asignados a cada categoría para compensar el desbalance del conjunto de datos.}
     \label{tab:class_weights}
     \begin{tabular}{lcc}
         \toprule
-        \textbf{Clase} & \textbf{Muestras (Train)} & \textbf{Peso} \\
+        \textbf{Categoría} & \textbf{Muestras (Entrenamiento)} & \textbf{Peso} \\
         \midrule
         COVID-19 & 2,712 & 1.40 \\
         Normal & 7,644 & 0.50 \\
@@ -131,34 +131,27 @@ Aplicando la Ecuación \ref{eq:class_weights} al conjunto de entrenamiento:
     \end{tabular}
 \end{table}
 
-Estos pesos se incorporan en la función de pérdida Cross-Entropy:
+Estos pesos se incorporan en la función de pérdida, que es la medida que el modelo busca minimizar durante el entrenamiento. Al ponderar los errores de esta manera, se logra que el modelo aprenda a clasificar correctamente todas las categorías, no solo las más frecuentes.
 
-\begin{equation}
-    \mathcal{L}_{\text{CE}} = -\sum_{c=1}^{K} w_c \cdot y_c \cdot \log(\hat{y}_c)
-\end{equation}
+\subsubsection{Parámetros de Entrenamiento}
 
-\noindent donde $y_c$ es la etiqueta verdadera (one-hot) y $\hat{y}_c$ es la probabilidad predicha para la clase $c$.
-
-\subsubsection{Hiperparámetros de Entrenamiento}
-
-La Tabla \ref{tab:hiperparametros_clasificador} resume la configuración de hiperparámetros utilizada.
+Los parámetros de entrenamiento controlan aspectos como la velocidad de aprendizaje, el número de ejemplos procesados simultáneamente, y los criterios para detener el entrenamiento. La Tabla \ref{tab:hiperparametros_clasificador} resume la configuración utilizada.
 
 \begin{table}[htbp]
     \centering
-    \caption{Hiperparámetros del entrenamiento del clasificador.}
+    \caption{Parámetros de configuración del entrenamiento del clasificador.}
     \label{tab:hiperparametros_clasificador}
     \begin{tabular}{ll}
         \toprule
         \textbf{Parámetro} & \textbf{Valor} \\
         \midrule
         Épocas máximas & 50 \\
-        Tamaño de lote & 32 \\
-        Tasa de aprendizaje inicial & $1 \times 10^{-4}$ \\
-        Optimizador & Adam ($\beta_1=0.9$, $\beta_2=0.999$) \\
-        Función de pérdida & Cross-Entropy con pesos de clase \\
-        Dropout & 0.3 \\
-        Parada temprana & Paciencia = 10 épocas \\
-        Métrica de monitoreo & F1-Score Macro (validación) \\
+        Tamaño de lote & 32 imágenes \\
+        Tasa de aprendizaje & $1 \times 10^{-4}$ \\
+        Optimizador & Adam \\
+        Función de pérdida & Entropía cruzada con pesos \\
+        Dropout & 0.3 (30\% de neuronas desactivadas) \\
+        Parada temprana & Paciencia de 10 épocas \\
         Semilla aleatoria & 42 \\
         \bottomrule
     \end{tabular}
@@ -166,56 +159,73 @@ La Tabla \ref{tab:hiperparametros_clasificador} resume la configuración de hipe
 
 \subsubsection{Parada Temprana}
 
-Para prevenir el sobreajuste y determinar el momento óptimo de detención del entrenamiento, se implementa parada temprana basado en el F1-Score Macro del conjunto de validación:
+El sobreajuste ocurre cuando un modelo aprende demasiado bien los ejemplos de entrenamiento, incluyendo sus particularidades y ruido, perdiendo capacidad de generalizar a ejemplos nuevos. Para prevenirlo, se implementa un mecanismo de parada temprana que detiene el entrenamiento cuando el modelo deja de mejorar en el conjunto de validación.
+
+El proceso funciona de la siguiente manera:
 
 \begin{enumerate}
-    \item Se monitorea el F1-Score Macro después de cada época.
-    \item Si no hay mejora durante 10 épocas consecutivas, el entrenamiento se detiene.
-    \item Se guarda el modelo con el mejor F1-Score de validación.
+    \item Después de cada pasada completa por el conjunto de entrenamiento (época), se evalúa el rendimiento en el conjunto de validación.
+    \item Si transcurren 10 épocas consecutivas sin mejora, el entrenamiento se detiene automáticamente.
+    \item Se conserva la versión del modelo que obtuvo el mejor rendimiento en validación.
 \end{enumerate}
 
-La selección de F1-Score Macro sobre accuracy como métrica de monitoreo se justifica por el desbalance de clases: F1-Macro pondera equitativamente el rendimiento en cada clase, evitando que el modelo optimice solo para la clase mayoritaria.
+Como métrica de seguimiento para la parada temprana se utiliza el F1-Score Macro, que promedia el rendimiento en las tres categorías sin favorecer a las más frecuentes. Esta elección evita que el modelo se especialice en la categoría mayoritaria (Normal) durante el entrenamiento.
+
+\subsection{Métricas de Evaluación del Clasificador}
+\label{subsec:metricas_evaluacion_clasificador}
+
+La evaluación del rendimiento del clasificador utiliza múltiples métricas complementarias, con la \textbf{exactitud (accuracy)} como indicador principal del rendimiento global.
+
+\subsubsection{Exactitud como Métrica Principal}
+
+La exactitud se adopta como métrica principal de evaluación por las siguientes razones:
+
+\begin{enumerate}
+    \item \textbf{Compensación del desbalance:} Aunque el conjunto de datos presenta desbalance entre categorías, este se corrige durante el entrenamiento mediante pesos por clase (Tabla \ref{tab:class_weights}). Esta compensación permite que la exactitud refleje el rendimiento real del modelo sin sesgo hacia la clase mayoritaria.
+
+    \item \textbf{Objetivo de correctitud general:} El propósito del sistema es clasificar correctamente la mayor cantidad de radiografías posible, independientemente de la categoría. La exactitud cuantifica directamente este objetivo.
+
+    \item \textbf{Interpretabilidad clínica:} En el contexto médico, la exactitud tiene una interpretación directa: la proporción de diagnósticos correctos sobre el total de casos evaluados.
+\end{enumerate}
+
+\subsubsection{Métricas Complementarias}
+
+Adicionalmente, se reportan las siguientes métricas para caracterizar el comportamiento del clasificador:
+
+\begin{itemize}
+    \item \textbf{F1-Score Macro:} Promedio no ponderado del F1-Score de cada categoría. Verifica que el rendimiento sea equilibrado entre clases y no esté dominado por la categoría mayoritaria.
+
+    \item \textbf{Precisión y Sensibilidad por categoría:} Permiten identificar patrones específicos de error (falsos positivos vs. falsos negativos) para cada diagnóstico.
+
+    \item \textbf{Matriz de confusión:} Visualiza la distribución completa de predicciones, facilitando el análisis de errores clínicamente relevantes (e.g., confusión entre patologías que requieren tratamientos diferentes).
+\end{itemize}
 
 \subsection{Aumento de Datos}
 \label{subsec:augmentation_clasificador}
 
-Durante el entrenamiento se aplican transformaciones de aumento de datos para mejorar la generalización del modelo. Las transformaciones se diseñaron para ser compatibles con las características de las radiografías normalizadas.
+El aumento de datos es una técnica que consiste en crear variaciones artificiales de las imágenes de entrenamiento mediante transformaciones controladas. El objetivo es exponer al modelo a mayor diversidad de ejemplos, mejorando su capacidad de generalizar a imágenes nuevas. Las transformaciones se diseñan cuidadosamente para simular variaciones realistas que podrían ocurrir durante la adquisición de radiografías, sin alterar las características diagnósticas relevantes.
 
-\subsubsection{Transformaciones de Entrenamiento}
+\subsubsection{Transformaciones Durante el Entrenamiento}
 
-\begin{enumerate}
-    \item \textbf{Conversión a RGB:} Las imágenes en escala de grises se convierten a tres canales replicando el canal de luminancia, requisito de las arquitecturas preentrenadas en ImageNet.
-
-    \item \textbf{Redimensionamiento:} Las imágenes se escalan a $224 \times 224$ píxeles.
-
-    \item \textbf{Flip horizontal} (probabilidad 0.5): Refleja la imagen horizontalmente, simulando variaciones de orientación del paciente.
-
-    \item \textbf{Rotación aleatoria} ($\pm$10 grados): Introduce pequeñas variaciones rotacionales que pueden ocurrir durante la adquisición.
-
-    \item \textbf{Transformación afín aleatoria:}
-    \begin{itemize}
-        \item Traslación: $\pm$5\% en ambos ejes
-        \item Escala: 95\%--105\%
-    \end{itemize}
-
-    \item \textbf{Normalización ImageNet:} Se aplican media y desviación estándar de ImageNet:
-    \begin{align}
-        \mu &= [0.485, 0.456, 0.406] \\
-        \sigma &= [0.229, 0.224, 0.225]
-    \end{align}
-\end{enumerate}
-
-\subsubsection{Transformaciones de Evaluación}
-
-Durante la evaluación y prueba, solo se aplican las transformaciones determinísticas:
+Se aplican las siguientes transformaciones a cada imagen:
 
 \begin{enumerate}
-    \item Conversión a RGB
-    \item Redimensionamiento a $224 \times 224$
-    \item Normalización ImageNet
+    \item \textbf{Conversión a tres canales:} Las radiografías, originalmente en escala de grises, se convierten a formato de tres canales para compatibilidad con la arquitectura preentrenada.
+
+    \item \textbf{Ajuste de tamaño:} Todas las imágenes se escalan a 224 $\times$ 224 píxeles.
+
+    \item \textbf{Reflejo horizontal:} La imagen se refleja horizontalmente, simulando variaciones en la orientación del paciente durante la toma.
+
+    \item \textbf{Rotación leve:} Se aplican rotaciones aleatorias de hasta 10 grados en cualquier dirección, representando pequeñas variaciones en el posicionamiento.
+
+    \item \textbf{Desplazamiento y escala:} Se aplican pequeños desplazamientos (hasta 5\% en cada eje) y variaciones de escala (entre 95\% y 105\%), simulando diferencias en el encuadre de la imagen.
 \end{enumerate}
 
-La Figura \ref{fig:augmentation_clasificador} ilustra ejemplos de las transformaciones aplicadas.
+\subsubsection{Transformaciones Durante la Evaluación}
+
+Durante la evaluación del modelo, solo se aplican las transformaciones determinísticas (conversión a tres canales, ajuste de tamaño y normalización), sin variaciones aleatorias. Esto asegura que los resultados de evaluación sean reproducibles y comparables.
+
+La Figura \ref{fig:augmentation_clasificador} ilustra ejemplos de las transformaciones aplicadas durante el entrenamiento.
 
 \begin{figure}[htbp]
     \centering
@@ -224,10 +234,10 @@ La Figura \ref{fig:augmentation_clasificador} ilustra ejemplos de las transforma
     \label{fig:augmentation_clasificador}
 \end{figure}
 
-\subsection{Resumen de la Configuración del Clasificador}
+\subsection{Resumen de la Configuración}
 \label{subsec:resumen_clasificador}
 
-La Tabla \ref{tab:resumen_clasificador} consolida la configuración completa del módulo de clasificación.
+La Tabla \ref{tab:resumen_clasificador} consolida los aspectos principales del módulo de clasificación descritos en esta sección.
 
 \begin{table}[htbp]
     \centering
@@ -235,39 +245,30 @@ La Tabla \ref{tab:resumen_clasificador} consolida la configuración completa del
     \label{tab:resumen_clasificador}
     \begin{tabular}{llc}
         \toprule
-        \textbf{Categoría} & \textbf{Parámetro} & \textbf{Valor} \\
+        \textbf{Aspecto} & \textbf{Elemento} & \textbf{Valor/Descripción} \\
+        \midrule
+        Preprocesamiento
+            & Mejora de contraste & SAHS (asimétrico) \\
         \midrule
         \multirow{4}{*}{Arquitectura}
-            & Backbone & ResNet-18 \\
-            & Preentrenamiento & ImageNet \\
-            & Clases de salida & 3 \\
-            & Parámetros totales & $\sim$11.2M \\
+            & Red base & ResNet-18 \\
+            & Conocimiento previo & ImageNet \\
+            & Categorías de salida & 3 \\
+            & Parámetros ajustables & $\sim$11.2 millones \\
         \midrule
-        \multirow{2}{*}{Regularización}
-            & Dropout & 0.3 \\
-            & Aumento de datos & Flip, rotación, afín \\
+        \multirow{2}{*}{Prevención de sobreajuste}
+            & Dropout & 30\% de neuronas \\
+            & Aumento de datos & Reflejo, rotación, escala \\
         \midrule
-        \multirow{5}{*}{Entrenamiento}
-            & Épocas & 50 (con parada temprana) \\
-            & Tamaño de lote & 32 \\
-            & Tasa de aprendizaje & $1 \times 10^{-4}$ \\
+        \multirow{4}{*}{Entrenamiento}
+            & Épocas máximas & 50 \\
+            & Imágenes por lote & 32 \\
+            & Compensación de desbalance & Pesos por categoría \\
             & Optimizador & Adam \\
-            & Pesos de clase & Habilitados \\
         \midrule
-        \multirow{2}{*}{Parada Temprana}
+        \multirow{2}{*}{Parada temprana}
             & Paciencia & 10 épocas \\
-            & Métrica & F1-Score Macro \\
+            & Métrica monitoreada & F1-Score Macro \\
         \bottomrule
     \end{tabular}
 \end{table}
-
-% Referencias temporales para esta sección
-% \cite{deng2009imagenet} - Deng et al., ImageNet (CVPR 2009)
-% \cite{krizhevsky2012imagenet} - Krizhevsky et al., AlexNet (NIPS 2012)
-% \cite{simonyan2014very} - Simonyan & Zisserman, VGG (ICLR 2015)
-% \cite{he2016deep} - He et al., ResNet (CVPR 2016)
-% \cite{huang2017densely} - Huang et al., DenseNet (CVPR 2017)
-% \cite{sandler2018mobilenetv2} - Sandler et al., MobileNetV2 (CVPR 2018)
-% \cite{tan2019efficientnet} - Tan & Le, EfficientNet (ICML 2019)
-% \cite{rajpurkar2017chexnet} - Rajpurkar et al., CheXNet (arXiv 2017)
-% \cite{raghu2019transfusion} - Raghu et al., Transfusion (NeurIPS 2019)

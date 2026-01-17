@@ -1,0 +1,66 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{ayala2023synergizing}
+Ayala-Raggi, S.E., Picazo-Castillo, A.E., Barreto-Flores, A., Portillo-Robledo, J.F.: Synergizing chest x-ray image normalization and discriminative feature selection for efficient and automatic covid-19 recognition. In: Pattern Recognition. ACPR 2023. Lecture Notes in Computer Science, vol. 14407, pp. 224--238. Springer (2023). \doi{10.1007/978-3-031-47637-2_17}
+
+\bibitem{chowdhury2020can}
+Chowdhury, M.E., Rahman, T., Khandakar, A., Mazhar, R., Kadir, M.A., Mahbub, Z.B., Islam, K.R., Khan, M.S., Iqbal, A., Al~Emadi, N., et~al.: Can ai help in screening viral and covid-19 pneumonia? IEEE Access  \textbf{8},  132665--132676 (2020)
+
+\bibitem{delaunay1934sphere}
+Delaunay, B.: Sur la sph{\`e}re vide. Bulletin de l'Acad{\'e}mie des Sciences de l'URSS, Classe des Sciences Math{\'e}matiques et Naturelles  \textbf{6},  793--800 (1934)
+
+\bibitem{deng2009imagenet}
+Deng, J., Dong, W., Socher, R., Li, L.J., Li, K., Fei-Fei, L.: Imagenet: A large-scale hierarchical image database. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 248--255 (2009)
+
+\bibitem{feng2018wing}
+Feng, Z.H., Kittler, J., Awais, M., Huber, P., Wu, X.J.: Wing loss for robust facial landmark localisation with convolutional neural networks. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 2235--2245 (2018)
+
+\bibitem{gower1975generalized}
+Gower, J.C.: Generalized procrustes analysis. Psychometrika  \textbf{40}(1),  33--51 (1975)
+
+\bibitem{he2016deep}
+He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image recognition. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 770--778 (2016)
+
+\bibitem{hou2021coordinate}
+Hou, Q., Zhou, D., Feng, J.: Coordinate attention for efficient mobile network design. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 13713--13722 (2021)
+
+\bibitem{jaderberg2015spatial}
+Jaderberg, M., Simonyan, K., Zisserman, A., Kavukcuoglu, K.: Spatial transformer networks. In: Advances in neural information processing systems. vol.~28 (2015)
+
+\bibitem{loshchilov2019adamw}
+Loshchilov, I., Hutter, F.: Decoupled weight decay regularization. In: International Conference on Learning Representations (2019)
+
+\bibitem{narin2021automatic}
+Narin, A., Kaya, C., Pamuk, Z.: Automatic detection of coronavirus disease (covid-19) using x-ray images and deep convolutional neural networks. Pattern Analysis and Applications  \textbf{24}(3),  1207--1220 (2021)
+
+\bibitem{ozturk2020automated}
+{\"O}zturk, T., Talo, M., Yildirim, E.A., Baloglu, U.B., Yildirim, O., Acharya, U.R.: Automated detection of covid-19 cases using deep neural networks with x-ray images. Computers in Biology and Medicine  \textbf{121},  103792 (2020)
+
+\bibitem{picazo2024comparative}
+Picazo-Castillo, A.E., Ayala-Raggi, S.E., Altamirano-Robles, L., Barreto-Flores, A., Portillo-Robledo, J.F.: Comparative study of lung image representations for automated pneumonia recognition. International Journal of Combinatorial Optimization Problems and Informatics  \textbf{15}(5),  193--201 (2024). \doi{10.61467/2007.1558.2024.v15i5.578}
+
+\bibitem{rahman2021exploring}
+Rahman, T., Khandakar, A., Qiblawey, Y., Tahir, A., Kiranyaz, S., Kashem, S.B.A., Islam, M.T., Al~Maadeed, S., Zughaier, S.M., Khan, M.S., et~al.: Exploring the effect of image enhancement techniques on covid-19 detection using chest x-ray images. Computers in Biology and Medicine  \textbf{132},  104319 (2021)
+
+\bibitem{rajpurkar2017chexnet}
+Rajpurkar, P., Irvin, J., Zhu, K., Yang, B., Mehta, H., Duan, T., Ding, D., Bagul, A., Langlotz, C., Shpanskaya, K., et~al.: Chexnet: Radiologist-level pneumonia detection on chest x-rays with deep learning. arXiv preprint arXiv:1711.05225  (2017)
+
+\bibitem{wang2020covidnet}
+Wang, L., Lin, Z.Q., Wong, A.: Covid-net: A tailored deep convolutional neural network design for detection of covid-19 cases from chest x-ray images. Scientific Reports  \textbf{10}(1),  19549 (2020)
+
+\bibitem{wolberg1990digital}
+Wolberg, G.: Digital image warping. IEEE Computer Society Press, Los Alamitos, CA (1990)
+
+\bibitem{who2020chest}
+{World Health Organization}: Use of chest imaging in covid-19: a rapid advice guide. WHO Reference Number: WHO/2019-nCoV/Clinical/Radiology\_imaging/2020.1  (2020)
+
+\bibitem{wu2018group}
+Wu, Y., He, K.: Group normalization. In: Proceedings of the European conference on computer vision (ECCV). pp. 3--19 (2018)
+
+\bibitem{zech2018variable}
+Zech, J.R., Badgeley, M.A., Liu, M., Costa, A.B., Titano, J.J., Oermann, E.K.: Variable generalization performance of a deep learning model to detect pneumonia in chest radiographs: a cross-sectional study. PLoS medicine  \textbf{15}(11),  e1002683 (2018)
+
+\end{thebibliography}

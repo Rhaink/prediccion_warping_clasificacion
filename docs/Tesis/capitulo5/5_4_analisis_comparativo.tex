@@ -6,23 +6,23 @@
 \section{Análisis Comparativo y Validación de la Hipótesis}
 \label{sec:analisis_comparativo}
 
-Esta sección examina la evidencia que sustenta la hipótesis principal del trabajo: que la normalización geométrica mediante warping mejora el rendimiento de clasificación de enfermedades pulmonares. Se analizan los mecanismos por los cuales la normalización contribuye al rendimiento observado y se compara con resultados reportados en la literatura.
+Esta sección examina la evidencia que sustenta la hipótesis principal del trabajo: que la normalización geométrica mediante deformación mejora el rendimiento de clasificación de enfermedades pulmonares. Se analizan los mecanismos por los cuales la normalización contribuye al rendimiento observado y se compara con resultados reportados en la literatura.
 
 \subsection{Efectividad del Sistema Completo}
 \label{subsec:efectividad_sistema}
 
-El sistema propuesto, que integra predicción de landmarks, normalización geométrica y clasificación, alcanza los resultados presentados en la Tabla \ref{tab:resumen_sistema_completo}.
+El sistema propuesto, que integra predicción de puntos de referencia, normalización geométrica y clasificación, alcanza los resultados presentados en la Tabla \ref{tab:resumen_sistema_completo}.
 
 \begin{table}[htbp]
     \centering
-    \caption{Resumen del rendimiento del sistema completo basado en normalización geométrica.}
+    \caption{Resumen del rendimiento del sistema completo basado en normalización geométrica con preprocesamiento SAHS.}
     \label{tab:resumen_sistema_completo}
     \begin{tabular}{lcc}
         \toprule
         \textbf{Componente} & \textbf{Métrica} & \textbf{Valor} \\
         \midrule
-        \multirow{2}{*}{Predicción de landmarks}
-            & Error medio (ensemble + TTA) & 3.61 px \\
+        \multirow{2}{*}{Predicción de puntos de referencia}
+            & Error medio (ensamble + TTA) & 3.61 px \\
             & Mejora vs. mejor individual & 10.6\% \\
         \midrule
         \multirow{2}{*}{Normalización geométrica}
@@ -30,14 +30,14 @@ El sistema propuesto, que integra predicción de landmarks, normalización geom�
             & Fill rate medio & 47\% \\
         \midrule
         \multirow{3}{*}{Clasificación}
-            & Accuracy & 98.05\% \\
-            & F1-Macro & 97.12\% \\
-            & F1-Weighted & 98.04\% \\
+            & Exactitud & 98.10\% \\
+            & F1-Macro & 97.17\% \\
+            & F1-Ponderado & 98.09\% \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-La accuracy de 98.05\% y F1-Macro de 97.12\% demuestran que el sistema completo es efectivo para la clasificación de tres clases de patologías pulmonares, logrando una tasa de error de solo 1.95\% sobre el conjunto de prueba.
+La exactitud de 98.10\% y F1-Macro de 97.17\% demuestran que el sistema completo es efectivo para la clasificación de tres clases de patologías pulmonares, logrando una tasa de error de solo 1.90\% sobre el conjunto de prueba.
 
 \subsection{Mecanismos de Mejora por Normalización Geométrica}
 \label{subsec:mecanismos_mejora}
@@ -56,7 +56,7 @@ La normalización geométrica elimina variaciones de posición, escala y orienta
         \toprule
         \textbf{Tipo de variabilidad} & \textbf{Mecanismo de normalización} \\
         \midrule
-        Traslación & Alineación de landmarks predichos con forma canónica fija \\
+        Traslación & Alineación de landmarks predichos con forma estándar fija \\
         Escala & Normalización del tamaño de la silueta pulmonar a dimensiones consistentes \\
         Rotación & Corrección de inclinaciones del eje corporal del paciente \\
         Deformación local & Transformaciones afines por triángulos que corrigen variaciones anatómicas inter-paciente \\
@@ -66,9 +66,9 @@ La normalización geométrica elimina variaciones de posición, escala y orienta
 
 Al eliminar estas variaciones, el clasificador puede enfocarse en aprender patrones patológicos invariantes a la pose del paciente.
 
-\subsubsection{2. Selección Implícita de Características (Feature Selection)}
+\subsubsection{2. Selección Implícita de Características}
 
-El fill rate de 47\% indica que aproximadamente el 53\% de la imagen original (regiones periféricas, fondo, artefactos) se elimina durante el warping. Este proceso actúa como un mecanismo de \textit{selección implícita de características a nivel de imagen}, análogo a mecanismos de atención \cite{jaderberg2015spatial}.
+La tasa de cobertura de 47\% indica que aproximadamente el 53\% de la imagen original (regiones periféricas, fondo, artefactos) se elimina durante la normalización. Este proceso actúa como un mecanismo de \textit{selección implícita de características a nivel de imagen}, análogo a mecanismos de atención \cite{jaderberg2015spatial}.
 
 \begin{table}[htbp]
     \centering
@@ -78,7 +78,7 @@ El fill rate de 47\% indica que aproximadamente el 53\% de la imagen original (r
         \toprule
         \textbf{Región de imagen} & \textbf{Porcentaje} & \textbf{Información} \\
         \midrule
-        Región pulmonar (warped) & 47\% & Patrones patológicos relevantes \\
+        Región pulmonar (normalizada) & 47\% & Patrones patológicos relevantes \\
         Región periférica (eliminada) & 53\% & Fondo, artefactos, marcas \\
         \bottomrule
     \end{tabular}
@@ -88,7 +88,61 @@ La eliminación de información no discriminante reduce el espacio de caracterí
 
 \subsubsection{3. Regularización Implícita}
 
-La transformación geométrica introduce una forma de regularización al forzar al modelo a operar sobre una representación canónica estandarizada. Esta restricción puede actuar como un prior geométrico que guía el aprendizaje hacia soluciones más robustas.
+La transformación geométrica introduce una forma de regularización al forzar al modelo a operar sobre una representación estandarizada. Esta restricción puede actuar como un prior geométrico que guía el aprendizaje hacia soluciones más robustas.
+
+\subsection{Evidencia de Características Espurias en Imágenes Originales}
+\label{subsec:evidencia_espurias}
+
+El experimento de recorte proporciona evidencia directa de que las imágenes originales (sin ningún procesamiento, tal como provienen del dataset COVID-19 Radiography Database) permiten al modelo aprender características no relacionadas con patología pulmonar.
+
+\subsubsection{Diseño del Experimento}
+
+Se entrenó el mismo clasificador ResNet-18 con tres variantes de las imágenes, todas con preprocesamiento SAHS:
+
+\begin{enumerate}
+    \item \textbf{Original:} Imágenes sin modificación geométrica, incluyendo toda la información de la radiografía.
+    \item \textbf{Normalizado:} Imágenes alineadas geométricamente mediante el proceso de detección de puntos de referencia, restringidas a la región pulmonar.
+    \item \textbf{Recortado (12\%):} Imágenes originales con un recorte conservador de los bordes para eliminar únicamente las etiquetas hospitalarias típicamente ubicadas en las esquinas.
+\end{enumerate}
+
+\subsubsection{Resultados y Análisis}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparación de exactitud según configuración de preprocesamiento. El recorte del 12\% elimina únicamente los bordes con etiquetas hospitalarias.}
+    \label{tab:evidencia_espurias}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Configuración} & \textbf{Exactitud} & \textbf{Interpretación} \\
+        \midrule
+        Original + SAHS & 98.68\% & Inflada por características espurias \\
+        Normalizado + SAHS & 98.10\% & Basada en características pulmonares \\
+        Recortado (12\%) + SAHS & 95.36\% & Exactitud ``real'' sin artefactos \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+La caída de 3.32 puntos porcentuales entre Original (98.68\%) y Recortado (95.36\%) al eliminar \textbf{únicamente} las etiquetas de las esquinas demuestra que:
+
+\begin{enumerate}
+    \item \textbf{El modelo con imágenes originales utiliza las etiquetas como atajos:} La pérdida significativa de exactitud al recortar los bordes indica que el modelo dependía de estos artefactos para la clasificación.
+
+    \item \textbf{El 95.36\% representa la exactitud ``real'':} Este valor refleja la capacidad del modelo para clasificar basándose en información de la imagen central, sin acceso a artefactos periféricos.
+
+    \item \textbf{La normalización geométrica recupera el rendimiento:} El sistema propuesto (98.10\%) supera al recortado (95.36\%) en 2.74 puntos, demostrando que la alineación y enfoque en la región pulmonar permite aprender características patológicas genuinas que compensan la ausencia de artefactos.
+\end{enumerate}
+
+\subsubsection{Implicaciones}
+
+Este hallazgo tiene implicaciones importantes para la evaluación de sistemas de clasificación de radiografías:
+
+\begin{itemize}
+    \item \textbf{La exactitud más alta no implica mejor modelo:} Un modelo con mayor exactitud en imágenes originales puede estar explotando correlaciones espurias que no generalizarán a datos de otros hospitales con diferentes sistemas de etiquetado.
+
+    \item \textbf{Necesidad de validación rigurosa:} La comparación entre configuraciones (Original, Normalizado, Recortado) debería ser práctica estándar para evaluar si un clasificador aprende características genuinas.
+
+    \item \textbf{Ventaja de la normalización geométrica:} Además de estandarizar la pose anatómica, la normalización actúa como filtro que elimina acceso a información no diagnóstica.
+\end{itemize}
 
 \subsection{Comparación con Trabajos Relacionados}
 \label{subsec:comparacion_literatura}
@@ -101,9 +155,9 @@ La Tabla \ref{tab:comparacion_literatura} compara el rendimiento del sistema pro
     \label{tab:comparacion_literatura}
     \begin{tabular}{lcccc}
         \toprule
-        \textbf{Trabajo} & \textbf{Clases} & \textbf{Dataset} & \textbf{Arquitectura} & \textbf{Accuracy} \\
+        \textbf{Trabajo} & \textbf{Clases} & \textbf{Dataset} & \textbf{Arquitectura} & \textbf{Exactitud} \\
         \midrule
-        \textbf{Sistema propuesto} & 3 & 15,153 & ResNet-18 + Warping & \textbf{98.05\%} \\
+        \textbf{Sistema propuesto} & 3 & 15,153 & ResNet-18 + Normalización & \textbf{98.10\%} \\
         \midrule
         Chowdhury et al. \cite{chowdhury2020can} & 4 & 423 & VGG19 & 96.58\% \\
         Rahman et al. \cite{rahman2021exploring} & 3 & 3,616 & VGG16 & 93.94\% \\
@@ -117,40 +171,14 @@ La Tabla \ref{tab:comparacion_literatura} compara el rendimiento del sistema pro
     \footnotesize\textit{Nota: La comparación directa es limitada debido a diferencias en datasets, número de clases y protocolos de evaluación. Los trabajos citados son representativos del estado del arte en clasificación de COVID-19 en radiografías.}
 \end{table}
 
-El sistema propuesto alcanza rendimiento competitivo (98.05\%) con respecto a los trabajos reportados, destacando que:
+El sistema propuesto alcanza rendimiento competitivo (98.10\%) con respecto a los trabajos reportados, destacando que:
 \begin{itemize}
     \item Utiliza un dataset significativamente más grande (15,153 imágenes) que la mayoría de trabajos relacionados.
     \item Clasifica 3 clases (más difícil que clasificación binaria COVID/Normal).
     \item Emplea una arquitectura más ligera (ResNet-18, 11.2M parámetros) comparada con VGG16/19 o ResNet-50.
 \end{itemize}
 
-La contribución diferenciadora del presente trabajo reside en el \textbf{enfoque de normalización geométrica basado en landmarks}, no ampliamente explorado en la literatura de clasificación de COVID-19.
-
-\subsection{Evidencia de Experimentos Exploratorios}
-\label{subsec:evidencia_exploratoria}
-
-Durante el desarrollo del sistema, se realizaron experimentos exploratorios con configuraciones alternativas de warping. Aunque estos resultados están marcados como obsoletos en favor del método actual (\texttt{warped\_lung\_best}), proporcionan evidencia adicional sobre el potencial de la normalización geométrica.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Resultados de configuraciones exploratorias de warping. Estos experimentos validaron diferentes parámetros de normalización antes de converger al método actual.}
-    \label{tab:experimentos_exploratorios}
-    \begin{tabular}{lccc}
-        \toprule
-        \textbf{Configuración} & \textbf{Fill Rate} & \textbf{Accuracy} & \textbf{Estado} \\
-        \midrule
-        \texttt{warped\_lung\_best} (actual) & 47\% & 98.05\% & Validado \\
-        \texttt{warped\_96} (exploratorio) & 96\% & 99.10\% & Obsoleto \\
-        \texttt{warped\_99} (exploratorio) & 99\% & 98.73\% & Obsoleto \\
-        \texttt{warped\_47} (exploratorio) & 47\% & 98.02\% & Obsoleto \\
-        \bottomrule
-    \end{tabular}
-
-    \vspace{0.5em}
-    \footnotesize\textit{Nota: Las configuraciones exploratorias utilizaron diferentes estrategias de preprocesamiento (RGB+CLAHE en LAB space vs Grayscale+CLAHE) y parámetros de cobertura completa, resultando en diferentes fill rates. Estos experimentos no se consideran comparaciones directas válidas debido a diferencias metodológicas, pero ilustran la exploración del espacio de diseño.}
-\end{table}
-
-La configuración \texttt{warped\_96} alcanzó 99.10\% de accuracy, sugiriendo que con parámetros óptimos de cobertura completa, el método de normalización geométrica puede alcanzar rendimiento muy alto. Sin embargo, esta configuración fue descartada en favor del método actual (\texttt{warped\_lung\_best}) por razones de consistencia metodológica y reproducibilidad.
+La contribución diferenciadora del presente trabajo reside en el \textbf{enfoque de normalización geométrica basado en puntos de referencia}, no ampliamente explorado en la literatura de clasificación de COVID-19.
 
 \subsection{Limitaciones del Análisis Comparativo}
 \label{subsec:limitaciones_comparativo}
@@ -158,14 +186,12 @@ La configuración \texttt{warped\_96} alcanzó 99.10\% de accuracy, sugiriendo q
 Es importante reconocer las limitaciones del análisis comparativo presentado:
 
 \begin{enumerate}
-    \item \textbf{Ausencia de comparación controlada:} El presente trabajo no incluye una evaluación sistemática del mismo clasificador ResNet-18 entrenado sobre imágenes originales (sin warping) versus imágenes warped en el conjunto \texttt{warped\_lung\_best}. Esta comparación directa sería necesaria para cuantificar de manera rigurosa la contribución específica del warping al rendimiento de clasificación.
+    \item \textbf{Conjunto de datos único:} La evaluación se realizó exclusivamente sobre el COVID-19 Radiography Database. La generalización a otros conjuntos de datos requiere validación adicional.
 
-    \item \textbf{Experimentos exploratorios no comparables:} Los resultados de configuraciones alternativas (\texttt{warped\_96}, \texttt{warped\_99}, etc.) no constituyen comparaciones válidas con el método actual debido a diferencias en preprocesamiento y parámetros.
-
-    \item \textbf{Variabilidad entre trabajos de la literatura:} La comparación con trabajos relacionados está limitada por diferencias en datasets, protocolos de evaluación y definiciones de clases.
+    \item \textbf{Variabilidad entre trabajos de la literatura:} La comparación con trabajos relacionados está limitada por diferencias en conjuntos de datos, protocolos de evaluación y definiciones de clases.
 \end{enumerate}
 
-A pesar de estas limitaciones, la \textbf{efectividad demostrada del sistema completo} (98.05\% accuracy, 97.12\% F1-Macro) valida que el enfoque de normalización geométrica es viable y produce resultados competitivos. La hipótesis de que la normalización geométrica mejora la clasificación se sustenta en:
+A pesar de estas limitaciones, la \textbf{efectividad demostrada del sistema completo} (98.10\% de exactitud, 97.17\% de F1-Macro) valida que el enfoque de normalización geométrica es viable y produce resultados competitivos. La hipótesis de que la normalización geométrica mejora la clasificación se sustenta en:
 
 \begin{itemize}
     \item Los mecanismos teóricos de eliminación de variabilidad no patológica y selección de características.
@@ -176,21 +202,7 @@ A pesar de estas limitaciones, la \textbf{efectividad demostrada del sistema com
 \subsection{Interpretabilidad: Enfoque en Región Pulmonar}
 \label{subsec:interpretabilidad}
 
-Aunque el presente trabajo no incluye análisis de mapas de atención (Grad-CAM) o similar, el mecanismo de normalización geométrica proporciona una forma de interpretabilidad \textit{a priori}. La Figura \ref{fig:enfoque_region_pulmonar} ilustra cómo el warping enfoca el clasificador en la región pulmonar.
-
-\begin{figure}[htbp]
-    \centering
-    % [PENDIENTE: F5.10 - Enfoque en región pulmonar]
-    \fbox{\parbox{0.95\textwidth}{\centering\vspace{5cm}
-    [Figura F5.10: Comparación de regiones informativas]\\
-    Dos paneles lado a lado:\\
-    (a) Imagen original con overlay indicando región eliminada (gris) vs región preservada (color)\\
-    (b) Imagen warped mostrando únicamente la región pulmonar normalizada\\
-    Para 3 ejemplos (Normal, COVID-19, Viral Pneumonia)
-    \vspace{5cm}}}
-    \caption{Efecto de selección de región por normalización geométrica. (a) Las imágenes originales contienen regiones periféricas sin información diagnóstica (gris). (b) El proceso de warping elimina estas regiones, enfocando el clasificador en la silueta pulmonar normalizada. Este mecanismo actúa como una forma de atención geométrica explícita.}
-    \label{fig:enfoque_region_pulmonar}
-\end{figure}
+Aunque el presente trabajo no incluye análisis de mapas de atención (Grad-CAM) o similar, el mecanismo de normalización geométrica proporciona una forma de interpretabilidad \textit{a priori}: al restringir la entrada del clasificador a la región pulmonar normalizada, se garantiza que las características aprendidas provienen exclusivamente de esta zona diagnóstica.
 
 \subsection{Resumen del Análisis Comparativo}
 \label{subsec:resumen_comparativo}
@@ -198,21 +210,13 @@ Aunque el presente trabajo no incluye análisis de mapas de atención (Grad-CAM)
 El análisis comparativo presenta la siguiente evidencia respecto a la hipótesis de que la normalización geométrica mejora la clasificación:
 
 \begin{itemize}
-    \item \textbf{Efectividad demostrada:} El sistema completo basado en normalización geométrica alcanza 98.05\% de accuracy y 97.12\% de F1-Macro.
+    \item \textbf{Efectividad demostrada:} El sistema completo basado en normalización geométrica alcanza 98.10\% de exactitud y 97.17\% de F1-Macro.
 
-    \item \textbf{Mecanismos fundamentados:} La normalización contribuye mediante eliminación de variabilidad no patológica, selección implícita de características (fill rate 47\%), y regularización geométrica.
+    \item \textbf{Mecanismos fundamentados:} La normalización contribuye mediante eliminación de variabilidad no patológica, selección implícita de características (tasa de cobertura 47\%), y regularización geométrica.
 
     \item \textbf{Rendimiento competitivo:} Los resultados son comparables o superiores a trabajos relacionados en la literatura de clasificación de COVID-19.
 
-    \item \textbf{Limitación reconocida:} La ausencia de una comparación controlada original vs. warped en el conjunto actual limita la cuantificación precisa de la mejora atribuible específicamente al warping.
+    \item \textbf{Limitación reconocida:} La evaluación en un único conjunto de datos limita la generalización de los resultados a otros contextos hospitalarios.
 \end{itemize}
 
 La contribución principal del trabajo reside en la \textbf{demostración de viabilidad y efectividad} de un sistema completo basado en normalización geométrica automática mediante detección de landmarks, más que en la cuantificación absoluta de mejora respecto a métodos sin normalización.
-
-% Referencias temporales para esta sección
-% \cite{jaderberg2015spatial} - Jaderberg et al., Spatial Transformer Networks (NIPS 2015)
-% \cite{chowdhury2020can} - Chowdhury et al., Can AI help in screening Viral and COVID-19 pneumonia? (2020)
-% \cite{rahman2021exploring} - Rahman et al., Exploring the effect of image enhancement (2021)
-% \cite{ozturk2020automated} - Ozturk et al., Automated detection of COVID-19 (2020)
-% \cite{apostolopoulos2020covid} - Apostolopoulos & Mpesiana, Covid-19: automatic detection (2020)
-% \cite{narin2021automatic} - Narin et al., Automatic detection (2021)

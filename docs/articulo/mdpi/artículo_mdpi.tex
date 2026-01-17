@@ -1,0 +1,433 @@
+%  LaTeX support: latex@mdpi.com
+%=================================================================
+\documentclass[applsci,article,submit,pdftex,moreauthors]{Definitions/mdpi}
+
+%=================================================================
+% MDPI internal commands
+\firstpage{1}
+\makeatletter
+\setcounter{page}{\@firstpage}
+\makeatother
+\pubvolume{1}
+\issuenum{1}
+\articlenumber{0}
+\pubyear{2026}
+\copyrightyear{2026}
+\datereceived{ }
+\daterevised{ }
+\dateaccepted{ }
+\datepublished{ }
+
+%=================================================================
+% Title
+\Title{Geometric Normalization of Lung Region Through Landmark Prediction for Automatic Classification of Pneumonia and COVID-19}
+
+% Authors
+\Author{Rafael Alejandro Cruz Ovando $^{1}$, Salvador Eugenio Ayala Raggi $^{1,}$* and Aldrin Barreto Flores $^{1}$}
+
+% MDPI internal command: Authors, for metadata in PDF
+\AuthorNames{Rafael Alejandro Cruz Ovando, Salvador Eugenio Ayala Raggi and Aldrin Barreto Flores}
+
+% Affiliations
+\address{%
+$^{1}$ \quad Facultad de Ciencias de la Electr\'onica, Benem\'erita Universidad Aut\'onoma de Puebla, Puebla, M\'exico}
+
+% Corresponding author
+\corres{Correspondence: sayala@ece.buap.mx}
+
+%=================================================================
+% Abstract
+\abstract{This paper presents an automatic classification system for pulmonary diseases in chest X-rays based on geometric normalization. The proposed method consists of three main stages. \textbf{First stage:} ResNet-18 convolutional neural networks with coordinate attention mechanism are trained to predict 15 landmarks defining the lung contour, achieving a mean error of 3.61 pixels through an ensemble of four models with test-time augmentation. \textbf{Second stage:} the predicted coordinates are used to geometrically normalize each image through Generalized Procrustes Analysis (to obtain a standard lung shape), Delaunay triangulation (to build a deformation mesh), and piecewise affine transformation (warping), eliminating variations in position, scale, and orientation. \textbf{Third stage:} normalized images are classified into three categories (COVID-19, Viral Pneumonia, and Normal) using a ResNet-18 classifier with transfer learning and SAHS preprocessing. The system was evaluated on the COVID-19 Radiography Database with 15,153 images, achieving 98.10\% accuracy and 97.17\% F1-Macro. Controlled comparison between configurations demonstrates that geometric normalization achieves performance comparable to original images (0.58 percentage points difference), while simple border cropping without normalization produces inferior results. These results evidence that the proposed system learns genuine pathological features from the lung region.}
+
+% Keywords
+\keyword{Geometric normalization; Landmark prediction; COVID-19; Medical image classification; Deep learning}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+
+Pneumonia represents one of the leading causes of morbidity and mortality worldwide, being especially critical during the COVID-19 pandemic. Timely and accurate diagnosis of this disease is fundamental for proper patient treatment. Chest X-rays constitute a first-line diagnostic tool due to their wide availability, low cost, and rapid acquisition~\cite{who2020chest}. However, manual interpretation of these images requires specialized experience and is subject to inter-observer variability, which motivates the development of automatic classification methods.
+
+In recent years, deep learning-based methods have demonstrated great potential for automatic pneumonia detection in radiographs~\cite{rajpurkar2017chexnet,wang2020covidnet,chowdhury2020can}. These approaches use convolutional neural networks (CNNs) to extract discriminant features directly from images. However, their performance can be affected by variations in image acquisition, including differences in patient position, scale, and orientation, as well as artifacts from each radiographic equipment. This phenomenon, known as \textit{domain shift}~\cite{zech2018variable}, can compromise the generalization capability of models.
+
+\subsection{Related Work}
+
+Various works have addressed the variability problem in medical images through normalization and alignment techniques. Ayala-Raggi et al.~\cite{ayala2023synergizing} demonstrated that chest X-ray normalization, combined with discriminant feature selection, significantly improves automatic COVID-19 recognition. In their study presented at ACPR 2023, the authors showed that eliminating non-pathological variations allows classifiers to focus on intrinsic disease characteristics, resulting in higher diagnostic accuracy.
+
+Complementarily, Picazo-Castillo et al.~\cite{picazo2024comparative} conducted a comparative study of different lung image representations for automatic pneumonia recognition. Their results evidence that the way visual information is presented to the classifier has a significant impact on performance, highlighting the importance of adequately preprocessing images to facilitate learning of pathological patterns.
+
+Other works have explored the use of geometric transformations in medical images. Spatial Transformer Networks~\cite{jaderberg2015spatial} allow learning spatial transformations in an end-to-end manner, but require large amounts of data for training. In contrast, methods based on anatomical landmarks offer a more interpretable alternative and can work with smaller datasets, as they incorporate a priori knowledge about anatomy.
+
+\subsection{Proposal of the Present Work}
+
+In this work, we propose a geometric normalization method that goes beyond traditional rigid transformations (rotation, translation, scaling). The proposed system incorporates local deformations based on lung anatomy to transform each radiograph to a standard shape, eliminating not only global pose variations but also differences in thorax morphology between patients.
+
+The method is based on three main components. First, convolutional neural networks are used to automatically predict the coordinates of 15 landmarks defining the bilateral lung contour. Second, Generalized Procrustes Analysis~\cite{gower1975generalized} is applied to a set of manually annotated landmarks to determine a standard lung shape representative of the dataset. Third, Delaunay triangulation~\cite{delaunay1934sphere} is applied to build a triangle mesh over the landmarks, and piecewise affine warping~\cite{wolberg1990digital} is performed to deform each image to match its predicted landmarks with the standard shape. The resulting normalized images are used to train a ResNet-18 classifier~\cite{he2016deep} with transfer learning.
+
+This approach allows obtaining a standardized representation of the lung region where non-pathological variability (due to anatomical, position, or acquisition differences) has been minimized, allowing the classifier to focus on learning the intrinsic characteristics of each pathology.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Materials and Methods}
+
+\subsection{System Overview}
+
+From a high-level perspective, the proposed system can be understood as a ``black box'' that receives a chest X-ray as input and produces a diagnosis (Normal, COVID-19, or Viral Pneumonia) as output. Internally, the system executes three processing stages: (1) prediction of anatomical landmarks, (2) geometric normalization of the image, and (3) classification of the normalized image. This modular architecture allows each component to be trained and evaluated independently.
+
+Figure~\ref{fig:flujo} illustrates the complete processing flow. An input image first passes through the landmark prediction model, which generates 15 pairs of $(x,y)$ coordinates describing the lung contour. These coordinates, together with the pre-calculated standard shape, are used to perform the geometric transformation. The resulting image, where the lung region has been normalized to a standard shape, is finally processed by the classifier that emits the diagnosis.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=14 cm]{../Figuras/F4.2_pipeline_operacion.jpg}
+\caption{Operation flow of the proposed system. From left to right: (1) radiograph input (299$\times$299), (2) preprocessing with resizing, CLAHE, and normalization (224$\times$224$\times$3), (3) prediction of 15 coordinate pairs with 3.61 px error, (4) geometric normalization through warping (224$\times$224$\times$3), and (5) classification with ResNet-18 into three categories (COVID-19, Normal, Viral Pneumonia).}
+\label{fig:flujo}
+\end{figure}
+
+\subsection{Dataset}
+
+The public \textbf{COVID-19 Radiography Database}~\cite{chowdhury2020can,rahman2021exploring} was used, containing 15,153 posteroanterior radiographs organized into three categories: COVID-19 (3,616 images), Normal (10,192 images), and Viral Pneumonia (1,345 images). Original images (299$\times$299 pixels) were resized to 224$\times$224 pixels, standard format for ImageNet-pretrained models.
+
+For supervised training of the landmark prediction model, 15 landmarks were manually annotated on the lung contour of 957 images. Landmarks define control points on the bilateral lung silhouette, organized in a central vertical axis (5 points) and five symmetric left/right pairs (10 points). The dataset was split in a stratified manner into training (75\%), validation (15\%), and test (10\%).
+
+\subsection{Landmark Prediction Model Architecture}
+
+The prediction model is based on a ResNet-18~\cite{he2016deep} architecture pretrained on ImageNet~\cite{deng2009imagenet}. This transfer learning approach leverages visual features learned from millions of images (edges, textures, patterns) as a basis for the specific landmark localization task, which is particularly beneficial given the limited size of the annotated dataset.
+
+The architecture is structured in three main components (Figure~\ref{fig:arquitectura}):
+
+\begin{itemize}
+\item \textbf{Backbone:} ResNet-18 convolutional layers process the input image (224$\times$224$\times$3) producing a 7$\times$7$\times$512 feature map.
+\item \textbf{Coordinate Attention Module:} Inserted between the backbone and regression head, this mechanism~\cite{hou2021coordinate} captures positional dependencies along both spatial dimensions, crucial for precise localization tasks.
+\item \textbf{Regression Head:} Three fully connected layers (512$\rightarrow$512$\rightarrow$768$\rightarrow$30) with Group Normalization~\cite{wu2018group} and staggered dropout. The output is 30 normalized values in [0,1], corresponding to the $(x,y)$ coordinates of the 15 landmarks.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=14 cm]{../Figuras/F4.5_arquitectura_modelo.png}
+\caption{Landmark prediction model architecture. The input image (224$\times$224$\times$3) passes through the ResNet-18 backbone that produces a feature map (7$\times$7$\times$512), then through the Coordinate Attention module that maintains dimensions, and finally through the regression head that produces 30 values corresponding to the $(x,y)$ coordinates of the 15 landmarks.}
+\label{fig:arquitectura}
+\end{figure}
+
+\subsection{Landmark Model Training}
+
+Wing Loss~\cite{feng2018wing} was used as the loss function, specifically designed for landmark localization due to its adaptive behavior: logarithmic for small errors (fine refinement) and linear for large errors (stability):
+
+\begin{linenomath}
+\begin{equation}
+\mathcal{L}_{\mathrm{wing}}(e) =
+\begin{cases}
+\omega \ln\left(1 + \frac{|e|}{\epsilon}\right), & |e| < \omega \\
+|e| - C, & |e| \geq \omega
+\end{cases}
+\end{equation}
+\end{linenomath}
+
+with parameters $\omega = 10$ pixels, $\epsilon = 2$ pixels, and $C = \omega - \omega \ln(1 + \omega/\epsilon)$.
+
+Training was organized in two phases for stable adjustment. In the first phase (15 epochs), only the regression head was trained with learning rate $1 \times 10^{-3}$, keeping backbone and Coordinate Attention frozen. In the second phase (100 epochs maximum), all layers were trained with differentiated rates: $2 \times 10^{-5}$ for backbone and Coordinate Attention, and $2 \times 10^{-4}$ for the head.
+
+To improve precision, an \textbf{ensemble} of four identical models trained with different random seeds was implemented. During inference, \textbf{Test-Time Augmentation (TTA)} was applied through horizontal flipping, averaging original and reflected predictions.
+
+\subsection{Generalized Procrustes Analysis}
+
+Once the prediction model is trained, the next step is to determine a standard lung shape that serves as reference for normalization. For this, Generalized Procrustes Analysis (GPA)~\cite{gower1975generalized} was applied to the 957 manually annotated landmark configurations.
+
+GPA is an iterative algorithm that eliminates translation, scale, and rotation variations through three operations per configuration: (1) centering to origin, (2) scaling to unit norm, and (3) optimal rotation calculated by Singular Value Decomposition (SVD). The process repeats until convergence (tolerance $\tau = 10^{-8}$), producing a standard shape that represents the average lung morphology of the dataset (Figure~\ref{fig:gpa}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=12 cm]{../Figuras/F4.7_proceso_gpa.png}
+\caption{Generalized Procrustes Analysis process in four stages. (a) Original unaligned shapes showing high dispersion. (b) Centered and scaled configurations with blue points grouped around the mean (red). (c) Rotation-aligned configurations with higher concentration. (d) Final standard shape with the 15 labeled landmarks (L1--L15) defining the lung contour.}
+\label{fig:gpa}
+\end{figure}
+
+\subsection{Delaunay Triangulation and Warping}
+
+On the 15 landmarks of the standard shape, a Delaunay triangulation~\cite{delaunay1934sphere} was calculated, resulting in a mesh of 16 triangles covering the lung region (Figure~\ref{fig:triangulacion}). This mesh defines the correspondence between points of the original image and the standard shape.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=10 cm]{../Figuras/F4.8_triangulacion_delaunay.png}
+\caption{Delaunay triangulation on the standard shape. The 15 landmarks (L1--L15, red points) are connected by blue edges forming a mesh of 16 triangles. The central axis (L1, L9, L10, L11, L2) divides the lung silhouette, while symmetric pairs (L3/L4, L5/L6, L7/L8, L12/L13, L14/L15) define the bilateral contour.}
+\label{fig:triangulacion}
+\end{figure}
+
+For each pair of corresponding triangles (original image $\leftrightarrow$ standard shape), a unique affine transformation~\cite{wolberg1990digital} was calculated that maps the three vertices of the original triangle to their positions in the standard shape. The transformation preserves continuity at triangle edges and uses bilinear interpolation to smooth the resulting image.
+
+A key parameter, \texttt{margin\_scale} = 1.05, controls a slight radial expansion from the landmark centroid, ensuring relevant peripheral anatomical context is included. This process produces images where the lung region occupies approximately 47\% of the total area (Figure~\ref{fig:warping}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=13 cm]{../Figuras/F4.9_original_vs_warped.png}
+\caption{Examples of geometric normalization for the three categories. Top row: original radiographs of COVID-19, Normal, and Viral Pneumonia showing variations in size, position, and orientation. Bottom row: the same images after the warping process, where the lung region has been transformed to the standard shape, eliminating non-pathological variations and focusing analysis on the normalized lung silhouette.}
+\label{fig:warping}
+\end{figure}
+
+\subsection{Normalized Dataset Generation}
+
+Once the landmark model is trained and the standard shape calculated, the complete dataset of normalized images was generated. The ensemble model was used to infer landmarks in the 15,153 dataset images, and each image was transformed through the described warping process. This normalized dataset constitutes the input for training the final classifier.
+
+\subsection{Classification}
+
+For multiclass classification, a ResNet-18 architecture pretrained on ImageNet was used, replacing its final layer with a new fully connected layer with 3 outputs (COVID-19, Normal, Viral Pneumonia). Prior to classification, normalized images were processed with \textbf{SAHS (Statistical Asymmetrical Histogram Stretching)}, a contrast enhancement method specifically designed for radiographs.
+
+The dataset presents significant class imbalance (67\% Normal, 24\% COVID-19, 9\% Viral Pneumonia). To mitigate bias toward the majority class, weights inversely proportional to each class frequency were used in the Cross-Entropy loss function.
+
+Training employed data augmentation (horizontal flip, $\pm$10$^{\circ}$ rotations, slight affine transformations), AdamW optimizer~\cite{loshchilov2019adamw} with initial rate $1 \times 10^{-4}$, and early stopping based on validation set F1-Macro.
+
+\subsection{Evaluation Metrics}
+
+The following metrics were used to evaluate the system:
+
+\begin{itemize}
+\item \textbf{Landmark error:} Average Euclidean distance between predicted and annotated landmarks (in pixels).
+\item \textbf{Accuracy:} Proportion of correct classifications over the total.
+\item \textbf{F1-Macro:} Arithmetic mean of F1-Score of each class, giving equal weight to all regardless of frequency.
+\item \textbf{Precision and Recall:} Per category.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+
+This section presents experimental results organized in three fundamental aspects: (1) landmark localization precision, (2) effect of geometric normalization on classification, and (3) system robustness.
+
+\subsection{Landmark Localization Precision}
+
+The ensemble of four models with Test-Time Augmentation achieved a mean error of \textbf{3.61 pixels} on 224$\times$224 images, representing a 10.6\% improvement over the best individual model (4.04 pixels). This error equals 1.6\% of image size, sufficient precision for the geometric normalization process without introducing significant distortions.
+
+\begin{table}[H]
+\caption{Landmark detection precision. Error is measured in pixels on 224$\times$224 images.\label{tab:landmarks}}
+\begin{tabularx}{\textwidth}{XCCC}
+\toprule
+\textbf{Configuration} & \textbf{Mean Error} & \textbf{Median Error} & \textbf{Improvement}\\
+\midrule
+Best individual model & 4.04 px & --- & ---\\
+Ensemble (4 models) + TTA & 3.61 px & 3.07 px & 10.6\%\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Per-landmark analysis revealed a systematic pattern (Figure~\ref{fig:error_landmarks}): higher precision at central axis points (2.44--2.94 pixels) due to clear definition of the vertebral midline, and lower precision at upper corners (5.35--5.43 pixels) where lung boundaries are less sharp.
+
+By category, error was consistent: Normal (3.22 px), COVID-19 (3.93 px), Viral Pneumonia (4.11 px), demonstrating model robustness across different pathological presentations.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=14 cm]{../Figuras/F5.1_error_por_landmark.png}
+\caption{Prediction error analysis by landmark. (a) Bar chart showing mean error in pixels for each point L1--L15, with dashed line indicating global mean of 3.61 px. Landmarks L12 and L13 (upper corners) show highest error ($\sim$5.4 px), while L10 and L11 (central axis) are most precise ($\sim$2.5 px). (b) Heat map on standard shape where color represents mean error according to 2.5--5.0 px scale.}
+\label{fig:error_landmarks}
+\end{figure}
+
+\subsection{Effect of Normalization on Classification}
+
+The classifier trained on normalized images achieved the following results on the test set of 1,895 images:
+
+\begin{itemize}
+\item \textbf{Accuracy:} 98.10\% (1,859/1,895 correct)
+\item \textbf{F1-Macro:} 97.17\%
+\item \textbf{F1-Weighted:} 98.09\%
+\end{itemize}
+
+Table~\ref{tab:rendimiento_clase} presents performance by category. The Normal class obtains best performance (F1: 98.60\%) followed by COVID-19 (F1: 97.76\%) and Viral Pneumonia (F1: 95.15\%), the latter with lower performance due to its smaller representation in the dataset.
+
+\begin{table}[H]
+\caption{Classifier performance by category.\label{tab:rendimiento_clase}}
+\begin{tabularx}{\textwidth}{XCCCC}
+\toprule
+\textbf{Category} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Samples}\\
+\midrule
+COVID-19 & 99.09\% & 96.46\% & 97.76\% & 452\\
+Normal & 97.84\% & 99.37\% & 98.60\% & 1,274\\
+Viral Pneumonia & 97.52\% & 92.90\% & 95.15\% & 169\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+To specifically evaluate the effect of geometric normalization, a controlled comparison was performed between three preprocessing configurations, all using SAHS for contrast enhancement (Table~\ref{tab:comparacion}):
+
+\begin{table}[H]
+\caption{Preprocessing configuration comparison. All use SAHS.\label{tab:comparacion}}
+\begin{tabularx}{\textwidth}{XCCC}
+\toprule
+\textbf{Configuration} & \textbf{Accuracy} & \textbf{F1-Macro} & \textbf{Difference}\\
+\midrule
+Original + SAHS & 98.68\% & 97.75\% & ---\\
+\textbf{Warped + SAHS (proposed)} & \textbf{98.10\%} & \textbf{97.17\%} & $-$0.58 pp\\
+Cropped (12\%) + SAHS & 97.68\% & 96.66\% & $-$1.00 pp\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Results reveal important findings:
+
+\begin{enumerate}
+\item \textbf{Comparable performance:} The system with geometric normalization (Warped+SAHS) achieves accuracy only 0.58 percentage points below original images.
+\item \textbf{Possible spurious features:} Original images might be using hospital artifacts in borders (labels, markers) as ``shortcuts'' for classification.
+\item \textbf{Importance of normalization vs. simple cropping:} Border cropping without normalization (Cropped+SAHS) produces the worst result (97.68\%), 1 percentage point below originals, demonstrating that geometric normalization provides an effective mechanism to compensate for peripheral information loss.
+\end{enumerate}
+
+This suggests the proposed system learns genuine pathological features from the lung region, not border artifacts.
+
+\subsection{System Robustness}
+
+The confusion matrix (Figure~\ref{fig:matriz_confusion}) reveals specific error patterns. Main confusion occurs between Viral Pneumonia and Normal (12 cases, 7.1\% of Viral cases), followed by COVID-19 and Normal (16 cases, 3.5\% of COVID cases). Notably, no COVID-19 case was confused with Viral Pneumonia or vice versa, which is clinically relevant since they require different treatments.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=10 cm]{../Figuras/F5.7_matriz_confusion_sahs.png}
+\caption{Confusion matrix of Warped + SAHS classifier (Accuracy: 98.10\%, F1-Macro: 97.17\%). Diagonal shows correct classifications: COVID-19 (436 cases, 96.5\%), Normal (1,266 cases, 99.4\%), and Viral Pneumonia (157 cases, 92.9\%). Main errors are: 16 COVID-19 cases classified as Normal (3.5\%) and 12 Viral Pneumonia cases as Normal (7.1\%). Notably, there is no confusion between COVID-19 and Viral Pneumonia.}
+\label{fig:matriz_confusion}
+\end{figure}
+
+Model stability was evaluated through multiple random seeds, obtaining a standard deviation of $\pm$0.35 percentage points in accuracy, indicating high reproducibility of results.
+
+\subsection{Comparison with Literature}
+
+Table~\ref{tab:comparacion_literatura} compares the proposed system with related works. The system achieves competitive performance while using a significantly larger dataset (15,153 images), classifying 3 classes (more difficult than binary classification), and employing a lighter architecture (ResNet-18).
+
+\begin{table}[H]
+\caption{Comparison with related works in COVID-19 classification.\label{tab:comparacion_literatura}}
+\begin{tabularx}{\textwidth}{XCCCC}
+\toprule
+\textbf{Work} & \textbf{Classes} & \textbf{Dataset} & \textbf{Architecture} & \textbf{Accuracy}\\
+\midrule
+\textbf{Proposed system} & 3 & 15,153 & ResNet-18 + Warping & \textbf{98.10\%}\\
+\midrule
+Chowdhury et al.~\cite{chowdhury2020can} & 4 & 423 & VGG19 & 96.58\%\\
+Rahman et al.~\cite{rahman2021exploring} & 3 & 3,616 & VGG16 & 93.94\%\\
+Ozturk et al.~\cite{ozturk2020automated} & 2 & 1,127 & DarkCovidNet & 98.08\%\\
+Narin et al.~\cite{narin2021automatic} & 2 & 341 & ResNet-50 & 98.00\%\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion}
+
+The experimental results demonstrate the effectiveness of the proposed geometric normalization approach for COVID-19 and pneumonia classification. The controlled comparison between preprocessing configurations reveals that the system achieves performance comparable to original images while focusing exclusively on the lung region.
+
+The slight performance decrease (0.58 pp) when using normalized images suggests that original images may contain discriminative information outside the lung region, potentially including hospital-specific artifacts. This finding aligns with previous research on dataset bias in medical imaging~\cite{zech2018variable}, where models can learn spurious correlations rather than genuine pathological features.
+
+The superior performance of warped images over simply cropped images (97.68\% vs 98.10\%) demonstrates that geometric normalization provides an effective mechanism to preserve relevant information while removing pose variations. Simple cropping removes contextual information without compensating for anatomical variations, resulting in inferior performance.
+
+The landmark prediction system achieves sufficient precision (3.61 px, 1.6\% of image size) for effective geometric normalization. The systematic error pattern---higher precision at central axis landmarks and lower at upper corners---reflects the anatomical clarity of these regions in chest radiographs.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusions}
+
+This work presented a comprehensive pulmonary disease classification system based on geometric normalization through anatomical landmarks. Experimental results provide evidence on the effectiveness of the proposed approach.
+
+The controlled comparison between preprocessing configurations demonstrates that: (1) geometric normalization achieves performance comparable to original images (98.10\% vs 98.68\%), with a difference of only 0.58 percentage points; (2) simple border cropping without normalization produces inferior results (97.68\%), suggesting original images might benefit from border artifacts; and (3) the proposed system, by focusing analysis exclusively on the normalized lung region, learns genuine pathological features related to the disease.
+
+The main contributions of this work are: (1) a robust landmark prediction model achieving 3.61 pixels error through ensemble and TTA; (2) a complete geometric normalization system integrating GPA, Delaunay triangulation, and piecewise affine warping; (3) experimental evidence that geometric normalization enables learning genuine pathological features, not border artifacts; and (4) a reproducible methodology validated on a public dataset of 15,153 images.
+
+As future work directions, we propose: external validation on datasets from different institutions to verify generalization; binary classification exploring COVID-19 vs Normal performance; extension to more pathologies such as tuberculosis or cancer; and end-to-end integration exploring Spatial Transformer Networks for joint normalization and classification learning.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\vspace{6pt}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\authorcontributions{Conceptualization, R.A.C.O. and S.E.A.R.; methodology, R.A.C.O. and S.E.A.R.; software, R.A.C.O.; validation, R.A.C.O. and A.B.F.; formal analysis, R.A.C.O.; investigation, R.A.C.O.; resources, S.E.A.R.; data curation, R.A.C.O.; writing---original draft preparation, R.A.C.O.; writing---review and editing, S.E.A.R. and A.B.F.; visualization, R.A.C.O.; supervision, S.E.A.R. and A.B.F. All authors have read and agreed to the published version of the manuscript.}
+
+\funding{This research received no external funding.}
+
+\institutionalreview{Not applicable.}
+
+\informedconsent{Not applicable.}
+
+\dataavailability{The COVID-19 Radiography Database used in this study is publicly available at \url{https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database}.}
+
+\acknowledgments{The authors thank the creators of the COVID-19 Radiography Database for making their dataset publicly available.}
+
+\conflictsofinterest{The authors declare no conflicts of interest.}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\abbreviations{Abbreviations}{
+The following abbreviations are used in this manuscript:\\
+
+\noindent
+\begin{tabular}{@{}ll}
+CNN & Convolutional Neural Network\\
+GPA & Generalized Procrustes Analysis\\
+SAHS & Statistical Asymmetrical Histogram Stretching\\
+TTA & Test-Time Augmentation\\
+SVD & Singular Value Decomposition
+\end{tabular}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{adjustwidth}{-\extralength}{0cm}
+
+\reftitle{References}
+
+%=====================================
+% References - Internal bibliography
+%=====================================
+\begin{thebibliography}{999}
+
+\bibitem[WHO(2020)]{who2020chest}
+World Health Organization. Use of Chest Imaging in COVID-19: A Rapid Advice Guide; WHO: Geneva, Switzerland, 2020.
+
+\bibitem[Rajpurkar et al.(2017)]{rajpurkar2017chexnet}
+Rajpurkar, P.; Irvin, J.; Zhu, K.; Yang, B.; Mehta, H.; Duan, T.; Ding, D.; Bagul, A.; Langlotz, C.; Shpanskaya, K.; et al. CheXNet: Radiologist-level pneumonia detection on chest X-rays with deep learning. \textit{arXiv preprint} \textbf{2017}, arXiv:1711.05225.
+
+\bibitem[Wang et al.(2020)]{wang2020covidnet}
+Wang, L.; Lin, Z.Q.; Wong, A. COVID-Net: A tailored deep convolutional neural network design for detection of COVID-19 cases from chest X-ray images. \textit{Sci. Rep.} \textbf{2020}, \textit{10}, 19549.
+
+\bibitem[Chowdhury et al.(2020)]{chowdhury2020can}
+Chowdhury, M.E.H.; Rahman, T.; Khandakar, A.; Mazhar, R.; Kadir, M.A.; Mahbub, Z.B.; Islam, K.R.; Khan, M.S.; Iqbal, A.; Al Emadi, N.; et al. Can AI help in screening viral and COVID-19 pneumonia? \textit{IEEE Access} \textbf{2020}, \textit{8}, 132665--132676.
+
+\bibitem[Zech et al.(2018)]{zech2018variable}
+Zech, J.R.; Badgeley, M.A.; Liu, M.; Costa, A.B.; Titano, J.J.; Oermann, E.K. Variable generalization performance of a deep learning model to detect pneumonia in chest radiographs: A cross-sectional study. \textit{PLoS Med.} \textbf{2018}, \textit{15}, e1002683.
+
+\bibitem[Ayala-Raggi et al.(2023)]{ayala2023synergizing}
+Ayala-Raggi, S.E.; Picazo-Castillo, A.E.; Barreto-Flores, A.; Portillo-Robledo, J.F. Synergizing chest X-ray image normalization and discriminative feature selection for efficient and automatic COVID-19 recognition. In \textit{Pattern Recognition. ACPR 2023}; Lecture Notes in Computer Science; Springer: Cham, Switzerland, 2023; Volume 14407, pp. 224--238.
+
+\bibitem[Picazo-Castillo et al.(2024)]{picazo2024comparative}
+Picazo-Castillo, A.E.; Ayala-Raggi, S.E.; Altamirano-Robles, L.; Barreto-Flores, A.; Portillo-Robledo, J.F. Comparative study of lung image representations for automated pneumonia recognition. \textit{Int. J. Comb. Optim. Probl. Inform.} \textbf{2024}, \textit{15}, 193--201.
+
+\bibitem[Jaderberg et al.(2015)]{jaderberg2015spatial}
+Jaderberg, M.; Simonyan, K.; Zisserman, A.; Kavukcuoglu, K. Spatial transformer networks. \textit{Adv. Neural Inf. Process. Syst.} \textbf{2015}, \textit{28}, 2017--2025.
+
+\bibitem[Gower(1975)]{gower1975generalized}
+Gower, J.C. Generalized Procrustes analysis. \textit{Psychometrika} \textbf{1975}, \textit{40}, 33--51.
+
+\bibitem[Delaunay(1934)]{delaunay1934sphere}
+Delaunay, B. Sur la sph\`ere vide. \textit{Izv. Akad. Nauk SSSR} \textbf{1934}, \textit{7}, 793--800.
+
+\bibitem[Wolberg(1990)]{wolberg1990digital}
+Wolberg, G. \textit{Digital Image Warping}; IEEE Computer Society Press: Los Alamitos, CA, USA, 1990.
+
+\bibitem[He et al.(2016)]{he2016deep}
+He, K.; Zhang, X.; Ren, S.; Sun, J. Deep residual learning for image recognition. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Las Vegas, NV, USA, 27--30 June 2016; pp. 770--778.
+
+\bibitem[Deng et al.(2009)]{deng2009imagenet}
+Deng, J.; Dong, W.; Socher, R.; Li, L.J.; Li, K.; Fei-Fei, L. ImageNet: A large-scale hierarchical image database. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Miami, FL, USA, 20--25 June 2009; pp. 248--255.
+
+\bibitem[Hou et al.(2021)]{hou2021coordinate}
+Hou, Q.; Zhou, D.; Feng, J. Coordinate attention for efficient mobile network design. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), Nashville, TN, USA, 20--25 June 2021; pp. 13713--13722.
+
+\bibitem[Wu and He(2018)]{wu2018group}
+Wu, Y.; He, K. Group normalization. In Proceedings of the European Conference on Computer Vision (ECCV), Munich, Germany, 8--14 September 2018; pp. 3--19.
+
+\bibitem[Feng et al.(2018)]{feng2018wing}
+Feng, Z.H.; Kittler, J.; Awais, M.; Huber, P.; Wu, X.J. Wing loss for robust facial landmark localisation with convolutional neural networks. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Salt Lake City, UT, USA, 18--23 June 2018; pp. 2235--2245.
+
+\bibitem[Rahman et al.(2021)]{rahman2021exploring}
+Rahman, T.; Khandakar, A.; Qiblawey, Y.; Tahir, A.; Kiranyaz, S.; Kashem, S.B.A.; Islam, M.T.; Al Maadeed, S.; Zughaier, S.M.; Khan, M.S.; et al. Exploring the effect of image enhancement techniques on COVID-19 detection using chest X-ray images. \textit{Comput. Biol. Med.} \textbf{2021}, \textit{132}, 104319.
+
+\bibitem[Loshchilov and Hutter(2019)]{loshchilov2019adamw}
+Loshchilov, I.; Hutter, F. Decoupled weight decay regularization. In Proceedings of the International Conference on Learning Representations (ICLR), New Orleans, LA, USA, 6--9 May 2019.
+
+\bibitem[Ozturk et al.(2020)]{ozturk2020automated}
+\"Ozturk, T.; Talo, M.; Yildirim, E.A.; Baloglu, U.B.; Yildirim, O.; Acharya, U.R. Automated detection of COVID-19 cases using deep neural networks with X-ray images. \textit{Comput. Biol. Med.} \textbf{2020}, \textit{121}, 103792.
+
+\bibitem[Narin et al.(2021)]{narin2021automatic}
+Narin, A.; Kaya, C.; Pamuk, Z. Automatic detection of coronavirus disease (COVID-19) using X-ray images and deep convolutional neural networks. \textit{Pattern Anal. Appl.} \textbf{2021}, \textit{24}, 1207--1220.
+
+\end{thebibliography}
+
+\PublishersNote{}
+\end{adjustwidth}
+\end{document}

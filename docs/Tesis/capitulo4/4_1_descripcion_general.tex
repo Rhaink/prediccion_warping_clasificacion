@@ -6,19 +6,19 @@
 \chapter{Metodología}
 \label{cap:metodologia}
 
-Este capítulo presenta la metodología desarrollada para la normalización y alineación automática de radiografías de tórax, así como la clasificación de enfermedades pulmonares. Se describe el flujo de procesamiento completo del sistema, desde la adquisición de datos hasta la clasificación final, detallando cada componente y las decisiones de diseño tomadas.
+Este capítulo presenta la metodología desarrollada para la normalización y alineación automática de radiografías de tórax, así como la clasificación de enfermedades pulmonares. Se describe el flujo de procesamiento completo del sistema, desde la adquisición de datos hasta la clasificación final, detallando cada componente.
 
 \section{Descripción General del Sistema}
 \label{sec:descripcion_general}
 
-El desarrollo del sistema propuesto comprende dos fases: una fase de preparación, que incluye la anotación manual de landmarks anatómicos y el entrenamiento de los modelos, y una fase de operación, donde el sistema procesa nuevas radiografías de tórax. Durante la operación, las imágenes pasan por una secuencia de cuatro módulos: preprocesamiento, predicción de landmarks, normalización geométrica y clasificación. Los tres primeros módulos transforman la imagen de entrada a una representación geométricamente normalizada, mientras que el cuarto realiza la clasificación de diagnóstico. Este diseño modular permite evaluar la contribución de cada componente al rendimiento final del sistema.
+El desarrollo del sistema propuesto comprende dos fases: una fase de preparación, que incluye la anotación manual de puntos de referencia anatómicos y el entrenamiento de los modelos, y una fase de operación, donde el sistema procesa nuevas radiografías de tórax. Durante la operación, las imágenes pasan por una secuencia de cuatro módulos: preprocesamiento, predicción de puntos de referencia, normalización geométrica y clasificación. Los tres primeros módulos transforman la imagen de entrada a una representación geométricamente normalizada, mientras que el cuarto realiza la clasificación de diagnóstico. Este diseño modular permite evaluar la contribución de cada componente al rendimiento final del sistema.
 
 La Figura \ref{fig:fases_sistema} ilustra la relación entre ambas fases del sistema.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{Figures/F4.1_fases_sistema.png}
-    \caption{Estructura general del sistema en dos fases. La fase de preparación se ejecuta una única vez e incluye la anotación manual del conjunto de datos de entrenamiento, el entrenamiento de los modelos y el cálculo de la forma canónica mediante GPA. La fase de operación procesa cada imagen nueva a través de la secuencia de cuatro módulos.}
+    \includegraphics[width=0.88\textwidth]{Figures/F4.1_fases_sistema.jpg}
+    \caption{Estructura general del sistema en dos fases.}
     \label{fig:fases_sistema}
 \end{figure}
 
@@ -29,18 +29,18 @@ La Figura \ref{fig:flujo_general} presenta el diagrama de bloques del flujo de o
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{Figures/F4.2_pipeline_operacion.png}
-    \caption{Flujo de operación del sistema. Las radiografías de tórax se procesan mediante cuatro módulos: preprocesamiento con CLAHE, predicción de 15 landmarks anatómicos, normalización geométrica mediante warping afín por partes, y clasificación en tres categorías (COVID-19, Normal, Neumonía Viral).}
+    \includegraphics[width=0.95\textwidth]{Figures/F4.2_pipeline_operacion.jpg}
+    \caption{Flujo de operación del sistema. Las radiografías de tórax se procesan mediante cuatro módulos: preprocesamiento con CLAHE, predicción de 15 puntos de referencia anatómicos, normalización geométrica, y clasificación en tres categorías (COVID-19, Normal, Neumonía Viral).}
     \label{fig:flujo_general}
 \end{figure}
 
 \textbf{Módulo 1: Preprocesamiento.} Las imágenes de entrada se someten a un proceso de mejora de contraste mediante el algoritmo CLAHE (\textit{Contrast Limited Adaptive Histogram Equalization}) \cite{clahe1994}. Este paso normaliza las variaciones de contraste inherentes a diferentes equipos de adquisición radiográfica. Posteriormente, las imágenes se redimensionan a $224 \times 224$ píxeles para su procesamiento por la red neuronal.
 
-\textbf{Módulo 2: Predicción de Landmarks.} Un modelo basado en ResNet-18 \cite{he2016deep} con módulo de Coordinate Attention \cite{hou2021coordinate} predice las coordenadas de 15 puntos anatómicos que definen el contorno de la región pulmonar. Estos landmarks fueron definidos manualmente durante la fase de anotación del conjunto de datos y representan puntos característicos de la silueta pulmonar bilateral.
+\textbf{Módulo 2: Predicción de Landmarks.} Un modelo basado en ResNet-18 \cite{he2016deep} con módulo de Coordinate Attention \cite{hou2021coordinate} predice las coordenadas de 15 puntos anatómicos que definen el contorno de la región pulmonar. Estos puntos de referencia fueron definidos manualmente durante la fase de anotación del conjunto de datos y representan puntos característicos de la silueta pulmonar bilateral.
 
-\textbf{Módulo 3: Normalización Geométrica.} Utilizando los landmarks predichos, se aplica una transformación afín por partes (\textit{piecewise affine warping}) que alinea cada imagen a una forma canónica previamente calculada mediante Análisis Procrustes Generalizado (GPA) \cite{gower1975generalized}. Este proceso elimina variaciones geométricas entre pacientes, normalizando la posición, escala y orientación de la región pulmonar.
+\textbf{Módulo 3: Normalización Geométrica.} Utilizando los puntos de referencia predichos, se aplica una transformación afín por partes (\textit{piecewise affine deformation}) que alinea cada imagen a una forma estándar previamente calculada mediante Análisis de Procrustes Generalizado (GPA) \cite{gower1975generalized}. Este proceso elimina variaciones geométricas entre pacientes, normalizando la posición, escala y orientación de la región pulmonar.
 
-\textbf{Módulo 4: Clasificación.} Las imágenes normalizadas se procesan mediante una red neuronal convolucional para clasificarlas en una de tres categorías: COVID-19, Normal o Neumonía Viral. El módulo genera la predicción de clase junto con las probabilidades asociadas a cada categoría. Se evaluaron múltiples arquitecturas de clasificación, incluyendo ResNet-18, DenseNet-121 y EfficientNet-B0.
+\textbf{Módulo 4: Clasificación.} Las imágenes normalizadas se procesan mediante una red neuronal convolucional para clasificarlas en una de tres categorías: COVID-19, Normal o Neumonía Viral. El módulo genera la predicción de clase junto con las probabilidades asociadas a cada categoría.
 
 \subsection{Flujo de Datos}
 \label{subsec:flujo_datos}
@@ -56,9 +56,9 @@ El procesamiento de una imagen sigue el flujo ilustrado en la Tabla \ref{tab:flu
         \textbf{Etapa} & \textbf{Entrada} & \textbf{Salida} & \textbf{Dimensiones} \\
         \midrule
         Preprocesamiento & Imagen RGB/Grayscale & Imagen normalizada & $224 \times 224 \times 3$ \\
-        Predicción & Imagen normalizada & Coordenadas landmarks & $15 \times 2$ \\
-        Warping & Imagen + landmarks & Imagen warped & $224 \times 224 \times 3$ \\
-        Clasificación & Imagen warped & Vector probabilidades & $3$ \\
+        Predicción & Imagen normalizada & Coordenadas puntos de ref. & $15 \times 2$ \\
+        Normalización geométrica & Imagen + puntos de ref. & Imagen normalizada & $224 \times 224 \times 3$ \\
+        Clasificación & Imagen normalizada & Vector probabilidades & $3$ \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -69,20 +69,13 @@ El procesamiento de una imagen sigue el flujo ilustrado en la Tabla \ref{tab:flu
 El diseño modular del sistema ofrece varias ventajas:
 
 \begin{enumerate}
-    \item \textbf{Interpretabilidad:} Los landmarks predichos constituyen una representación intermedia que permite verificar visualmente la calidad del proceso de detección anatómica.
+    \item \textbf{Interpretabilidad:} Los puntos de referencia predichos constituyen una representación intermedia que permite verificar visualmente la calidad del proceso de detección de la región pulmonar.
 
     \item \textbf{Modularidad:} Cada componente puede entrenarse, evaluarse y mejorarse de forma independiente, facilitando el desarrollo iterativo del sistema.
 
     \item \textbf{Selección implícita de características:} La normalización geométrica actúa como un mecanismo de selección de características a nivel de imagen, eliminando información no discriminante (artefactos, marcas hospitalarias, variaciones de pose) y preservando únicamente la región pulmonar relevante para la clasificación \cite{jaderberg2015spatial}.
 
-    \item \textbf{Transferibilidad:} El modelo de landmarks puede reutilizarse para otras tareas de análisis pulmonar, mientras que el clasificador puede adaptarse a diferentes conjuntos de clases según los requerimientos de la aplicación.
+    \item \textbf{Transferibilidad:} El modelo de puntos de referencia puede reutilizarse para otras tareas de análisis pulmonar, mientras que el clasificador puede adaptarse a diferentes conjuntos de clases según los requerimientos de la aplicación.
 \end{enumerate}
 
-El enfoque propuesto se fundamenta en la hipótesis de que la normalización geométrica mejora la robustez y capacidad de generalización del clasificador al reducir la variabilidad no relacionada con la patología. Esta hipótesis se evalúa experimentalmente en el Capítulo \ref{cap:resultados}.
-
-% Referencias temporales para esta sección
-% \cite{clahe1994} - Pizer et al., CLAHE
-% \cite{he2016deep} - He et al., ResNet
-% \cite{hou2021coordinate} - Hou et al., Coordinate Attention
-% \cite{gower1975generalized} - Gower, GPA
-% \cite{jaderberg2015spatial} - Jaderberg et al., Spatial Transformer Networks
+El enfoque propuesto se fundamenta en la hipótesis de que la normalización y alineación mejora la capacidad de generalización del clasificador al reducir la variabilidad no relacionada con la patología. Esta hipótesis se evalúa experimentalmente en el Capítulo \ref{cap:resultados}.

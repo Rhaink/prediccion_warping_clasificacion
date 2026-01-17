@@ -1,0 +1,395 @@
+% =============================================================================
+% Artículo: Normalización Geométrica de Radiografías de Tórax
+% Versión 2 - Siguiendo guion aprobado por el asesor
+% Formato: LLNCS (Springer)
+% =============================================================================
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+
+% Para URLs en azul
+\usepackage{hyperref}
+\usepackage{color}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+\urlstyle{rm}
+
+\begin{document}
+
+\title{Normalización geométrica de la región pulmonar mediante predicción de landmarks para clasificación automática de neumonía y COVID-19}
+
+\author{Rafael Alejandro Cruz Ovando\inst{1}\and
+Salvador Eugenio Ayala Raggi\inst{1}\and
+Aldrin Barreto Flores\inst{1}}
+
+\authorrunning{R.A. Cruz Ovando et al.}
+
+\institute{Benemérita Universidad Autónoma de Puebla, Facultad de Ciencias de la Electrónica,
+Puebla, México\\
+\email{co223470443@alm.buap.mx}}
+
+\maketitle
+
+% =============================================================================
+% ABSTRACT
+% =============================================================================
+\begin{abstract}
+Este artículo presenta un sistema de clasificación automática de enfermedades pulmonares en radiografías de tórax basado en normalización geométrica. El método propuesto consta de tres etapas principales. \textbf{Primera etapa:} se entrenan redes neuronales convolucionales ResNet-18 con mecanismo de atención por coordenadas para predecir 15 puntos de referencia (landmarks) que definen el contorno pulmonar, logrando un error medio de 3.61 píxeles mediante un ensemble de cuatro modelos con aumento de datos en tiempo de prueba. \textbf{Segunda etapa:} las coordenadas predichas se utilizan para normalizar geométricamente cada imagen mediante Análisis Procrustes Generalizado (para obtener una forma pulmonar estándar), triangulación de Delaunay (para construir una malla de deformación) y transformación afín por partes (warping), eliminando variaciones de posición, escala y orientación. \textbf{Tercera etapa:} las imágenes normalizadas se clasifican en tres categorías (COVID-19, Neumonía Viral y Normal) mediante un clasificador ResNet-18 con aprendizaje por transferencia y preprocesamiento SAHS. El sistema fue evaluado sobre la base de datos COVID-19 Radiography Database con 15,153 imágenes, alcanzando una exactitud del 98.10\% y F1-Macro del 97.17\%. La comparación controlada entre configuraciones demuestra que la normalización geométrica permite obtener rendimiento comparable a las imágenes originales (diferencia de 0.58 puntos porcentuales), mientras que el simple recorte de bordes sin normalización produce resultados inferiores. Estos resultados evidencian que el sistema propuesto aprende características patológicas genuinas de la región pulmonar.
+
+\keywords{Normalización geométrica \and Predicción de landmarks \and COVID-19 \and Clasificación de imágenes médicas \and Aprendizaje profundo}
+\end{abstract}
+
+% =============================================================================
+% INTRODUCCIÓN
+% =============================================================================
+\section{Introducción}
+\label{sec:introduccion}
+
+La neumonía representa una de las principales causas de morbilidad y mortalidad a nivel mundial, siendo especialmente crítica durante la pandemia de COVID-19. El diagnóstico oportuno y preciso de esta enfermedad es fundamental para el tratamiento adecuado de los pacientes. Las radiografías de tórax constituyen una herramienta diagnóstica de primera línea debido a su amplia disponibilidad, bajo costo y rapidez de adquisición \cite{who2020chest}. Sin embargo, la interpretación manual de estas imágenes requiere experiencia especializada y está sujeta a variabilidad inter-observador, lo que motiva el desarrollo de métodos automáticos de clasificación.
+
+En años recientes, los métodos basados en aprendizaje profundo han demostrado gran potencial para la detección automática de neumonía en radiografías \cite{rajpurkar2017chexnet,wang2020covidnet,chowdhury2020can}. Estos enfoques utilizan redes neuronales convolucionales (CNNs) para extraer características discriminantes directamente de las imágenes. Sin embargo, su rendimiento puede verse afectado por variaciones en la adquisición de las imágenes, incluyendo diferencias de posición, escala y orientación del paciente, así como artefactos propios de cada equipo radiográfico. Este fenómeno, conocido como \textit{domain shift} \cite{zech2018variable}, puede comprometer la capacidad de generalización de los modelos.
+
+\subsection{Trabajo Relacionado}
+
+Diversos trabajos han abordado el problema de la variabilidad en imágenes médicas mediante técnicas de normalización y alineación. Ayala-Raggi et al. \cite{ayala2023synergizing} demostraron que la normalización de radiografías de tórax, combinada con selección de características discriminantes, mejora significativamente el reconocimiento automático de COVID-19. En su estudio presentado en ACPR 2023, los autores mostraron que eliminar variaciones no patológicas permite a los clasificadores enfocarse en las características intrínsecas de la enfermedad, resultando en mayor exactitud diagnóstica.
+
+De manera complementaria, Picazo-Castillo et al. \cite{picazo2024comparative} realizaron un estudio comparativo de diferentes representaciones de imágenes pulmonares para el reconocimiento automático de neumonía. Sus resultados evidencian que la forma en que se presenta la información visual al clasificador tiene un impacto significativo en el rendimiento, destacando la importancia de preprocesar adecuadamente las imágenes para facilitar el aprendizaje de patrones patológicos.
+
+Otros trabajos han explorado el uso de transformaciones geométricas en imágenes médicas. Las Spatial Transformer Networks \cite{jaderberg2015spatial} permiten aprender transformaciones espaciales de manera end-to-end, pero requieren grandes cantidades de datos para el entrenamiento. En contraste, los métodos basados en landmarks anatómicos ofrecen una alternativa más interpretable y pueden funcionar con conjuntos de datos más pequeños, ya que incorporan conocimiento a priori sobre la anatomía.
+
+\subsection{Propuesta del Presente Trabajo}
+
+En este trabajo proponemos un método de normalización geométrica que va más allá de las transformaciones rígidas tradicionales (rotación, traslación, escalado). El sistema propuesto incorpora deformaciones locales basadas en la anatomía pulmonar para transformar cada radiografía a una forma estándar, eliminando no solo variaciones de pose global sino también diferencias en la morfología del tórax entre pacientes.
+
+El método se fundamenta en tres componentes principales. Primero, se emplean redes neuronales convolucionales para predecir automáticamente las coordenadas de 15 puntos de referencia que definen el contorno pulmonar bilateral. Segundo, se utiliza el Análisis Procrustes Generalizado \cite{gower1975generalized} sobre un conjunto de landmarks anotados manualmente para determinar una forma estándar pulmonar representativa del dataset. Tercero, se aplica triangulación de Delaunay \cite{delaunay1934sphere} para construir una malla de triángulos sobre los landmarks, y se realiza una transformación afín por partes (piecewise affine warping) \cite{wolberg1990digital} que deforma cada imagen para hacer coincidir sus landmarks predichos con la forma estándar. Las imágenes normalizadas resultantes se utilizan para entrenar un clasificador ResNet-18 \cite{he2016deep} con aprendizaje por transferencia.
+
+Este enfoque permite obtener una representación estandarizada de la región pulmonar donde la variabilidad no patológica (debida a diferencias anatómicas, de posición o de adquisición) ha sido minimizada, permitiendo que el clasificador se enfoque en aprender las características intrínsecas de cada patología.
+
+\subsection{Organización del Artículo}
+
+El resto del artículo se organiza como sigue. La Sección \ref{sec:metodologia} describe detalladamente la metodología propuesta, incluyendo la arquitectura de las redes, el proceso de normalización geométrica y el entrenamiento del clasificador. La Sección \ref{sec:resultados} presenta los resultados experimentales, abordando la precisión de localización de landmarks, el efecto de la normalización en la clasificación, y la robustez del sistema. Finalmente, la Sección \ref{sec:conclusiones} presenta las conclusiones y direcciones de trabajo futuro.
+
+% =============================================================================
+% METODOLOGÍA
+% =============================================================================
+\section{Metodología}
+\label{sec:metodologia}
+
+\subsection{Vista General del Sistema}
+
+Desde una perspectiva de alto nivel, el sistema propuesto puede entenderse como una ``caja negra'' que recibe una radiografía de tórax como entrada y produce un diagnóstico (Normal, COVID-19 o Neumonía Viral) como salida. Internamente, el sistema ejecuta tres etapas de procesamiento: (1) predicción de puntos de referencia anatómicos, (2) normalización geométrica de la imagen, y (3) clasificación de la imagen normalizada. Esta arquitectura modular permite que cada componente sea entrenado y evaluado de manera independiente.
+
+La Figura \ref{fig:flujo} ilustra el flujo de procesamiento completo. Una imagen de entrada pasa primero por el modelo de predicción de landmarks, que genera 15 pares de coordenadas $(x,y)$ describiendo el contorno pulmonar. Estas coordenadas, junto con la forma estándar pre-calculada, se utilizan para realizar la transformación geométrica. La imagen resultante, donde la región pulmonar ha sido normalizada a una forma estándar, se procesa finalmente por el clasificador que emite el diagnóstico.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{Figuras/F4.2_pipeline_operacion.jpg}
+\caption{Flujo de operación del sistema propuesto. De izquierda a derecha: (1) entrada de radiografía (299×299), (2) preprocesamiento con redimensionado, CLAHE y normalización (224×224×3), (3) predicción de 15 pares de coordenadas con error de 3.61 px, (4) normalización geométrica mediante warping (224×224×3), y (5) clasificación con ResNet-18 en tres categorías (COVID-19, Normal, Neumonía Viral).}
+\label{fig:flujo}
+\end{figure}
+
+\subsection{Conjunto de Datos}
+
+Se utilizó la base de datos pública \textbf{COVID-19 Radiography Database} \cite{chowdhury2020can,rahman2021exploring}, que contiene 15,153 radiografías posteroanteriores organizadas en tres categorías: COVID-19 (3,616 imágenes), Normal (10,192 imágenes) y Neumonía Viral (1,345 imágenes). Las imágenes originales (299×299 píxeles) se redimensionaron a 224×224 píxeles, formato estándar para modelos preentrenados en ImageNet.
+
+Para el entrenamiento supervisado del modelo de predicción de landmarks, se anotaron manualmente 15 puntos de referencia en el contorno pulmonar de 957 imágenes. Los landmarks definen puntos de control sobre la silueta pulmonar bilateral, organizados en un eje central vertical (5 puntos) y cinco pares simétricos izquierdo/derecho (10 puntos). El conjunto de datos se dividió de manera estratificada en entrenamiento (75\%), validación (15\%) y prueba (10\%).
+
+\subsection{Arquitectura del Modelo de Predicción de Landmarks}
+
+El modelo de predicción se basa en una arquitectura ResNet-18 \cite{he2016deep} preentrenada en ImageNet \cite{deng2009imagenet}. Este enfoque de aprendizaje por transferencia aprovecha las características visuales aprendidas de millones de imágenes (bordes, texturas, patrones) como base para la tarea específica de localización de landmarks, lo cual es particularmente beneficioso dado el tamaño limitado del conjunto de datos anotado.
+
+La arquitectura se estructura en tres componentes principales (Figura \ref{fig:arquitectura}):
+
+\begin{itemize}
+    \item \textbf{Backbone:} Las capas convolucionales de ResNet-18 procesan la imagen de entrada (224×224×3) produciendo un mapa de características de 7×7×512.
+
+    \item \textbf{Módulo Coordinate Attention:} Insertado entre el backbone y la cabeza de regresión, este mecanismo \cite{hou2021coordinate} captura dependencias posicionales a lo largo de ambas dimensiones espaciales, crucial para tareas de localización precisa.
+
+    \item \textbf{Cabeza de regresión:} Tres capas completamente conectadas (512→512→768→30) con Group Normalization \cite{wu2018group} y dropout escalonado. La salida son 30 valores normalizados en [0,1], correspondientes a las coordenadas $(x,y)$ de los 15 landmarks.
+\end{itemize}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{Figuras/F4.5_arquitectura_modelo.png}
+\caption{Arquitectura del modelo de predicción de landmarks. La imagen de entrada (224×224×3) pasa por el backbone ResNet-18 que produce un mapa de características (7×7×512), luego por el módulo Coordinate Attention que mantiene las dimensiones, y finalmente por la cabeza de regresión que produce 30 valores correspondientes a las coordenadas $(x,y)$ de los 15 landmarks.}
+\label{fig:arquitectura}
+\end{figure}
+
+\subsection{Entrenamiento del Modelo de Landmarks}
+
+Se empleó Wing Loss \cite{feng2018wing} como función de pérdida, diseñada específicamente para localización de landmarks por su comportamiento adaptativo: logarítmico para errores pequeños (refinamiento fino) y lineal para errores grandes (estabilidad):
+
+\begin{equation}
+\mathcal{L}_{\mathrm{wing}}(e) =
+\begin{cases}
+\omega \ln\left(1 + \frac{|e|}{\epsilon}\right), & |e| < \omega \\
+|e| - C, & |e| \geq \omega
+\end{cases}
+\end{equation}
+
+con parámetros $\omega = 10$ píxeles, $\epsilon = 2$ píxeles, y $C = \omega - \omega \ln(1 + \omega/\epsilon)$.
+
+El entrenamiento se organizó en dos fases para un ajuste estable. En la primera fase (15 épocas), solo se entrenó la cabeza de regresión con tasa de aprendizaje $1 \times 10^{-3}$, manteniendo congelados el backbone y Coordinate Attention. En la segunda fase (100 épocas máximo), todas las capas se entrenaron con tasas diferenciadas: $2 \times 10^{-5}$ para backbone y Coordinate Attention, y $2 \times 10^{-4}$ para la cabeza.
+
+Para mejorar la precisión, se implementó un \textbf{ensemble} de cuatro modelos idénticos entrenados con diferentes semillas aleatorias. Durante la inferencia, se aplicó \textbf{Test-Time Augmentation (TTA)} mediante volteo horizontal, promediando las predicciones originales y reflejadas.
+
+\subsection{Análisis Procrustes Generalizado}
+
+Una vez entrenado el modelo de predicción, el siguiente paso es determinar una forma estándar pulmonar que sirva como referencia para la normalización. Para esto se aplicó el Análisis Procrustes Generalizado (GPA) \cite{gower1975generalized} sobre las 957 configuraciones de landmarks anotadas manualmente.
+
+El GPA es un algoritmo iterativo que elimina variaciones de traslación, escala y rotación mediante tres operaciones por configuración: (1) centrado al origen, (2) escalado a norma unitaria, y (3) rotación óptima calculada por Descomposición en Valores Singulares (SVD). El proceso se repite hasta convergencia (tolerancia $\tau = 10^{-8}$), produciendo una forma estándar que representa la morfología pulmonar promedio del dataset (Figura \ref{fig:gpa}).
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.85\textwidth]{Figuras/F4.7_proceso_gpa.png}
+\caption{Proceso de Análisis Procrustes Generalizado en cuatro etapas. (a) Formas originales sin alinear mostrando alta dispersión. (b) Configuraciones centradas y escaladas con puntos azules agrupados alrededor de la media (rojo). (c) Configuraciones alineadas por rotación con mayor concentración. (d) Forma estándar final con los 15 landmarks etiquetados (L1--L15) definiendo el contorno pulmonar.}
+\label{fig:gpa}
+\end{figure}
+
+\subsection{Triangulación de Delaunay y Warping}
+
+Sobre los 15 landmarks de la forma estándar, se calculó una triangulación de Delaunay \cite{delaunay1934sphere}, resultando en una malla de 16 triángulos que cubre la región pulmonar (Figura \ref{fig:triangulacion}). Esta malla define la correspondencia entre puntos de la imagen original y la forma estándar.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.75\textwidth]{Figuras/F4.8_triangulacion_delaunay.png}
+\caption{Triangulación de Delaunay sobre la forma estándar. Los 15 landmarks (L1--L15, puntos rojos) están conectados por aristas azules formando una malla de 16 triángulos. El eje central (L1, L9, L10, L11, L2) divide la silueta pulmonar, mientras los pares simétricos (L3/L4, L5/L6, L7/L8, L12/L13, L14/L15) definen el contorno bilateral.}
+\label{fig:triangulacion}
+\end{figure}
+
+Para cada par de triángulos correspondientes (imagen original $\leftrightarrow$ forma estándar), se calculó una transformación afín única \cite{wolberg1990digital} que mapea los tres vértices del triángulo original a sus posiciones en la forma estándar. La transformación preserva continuidad en los bordes triangulares y utiliza interpolación bilineal para suavizar la imagen resultante.
+
+Un parámetro clave, \texttt{margin\_scale} = 1.05, controla una leve expansión radial desde el centroide de los landmarks, asegurando que se incluya contexto anatómico periférico relevante. Este proceso produce imágenes donde la región pulmonar ocupa aproximadamente el 47\% del área total (Figura \ref{fig:warping}).
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{Figuras/F4.9_original_vs_warped.png}
+\caption{Ejemplos de normalización geométrica para las tres categorías. Fila superior: radiografías originales de COVID-19, Normal y Neumonía Viral mostrando variaciones de tamaño, posición y orientación. Fila inferior: las mismas imágenes después del proceso de warping, donde la región pulmonar ha sido transformada a la forma estándar, eliminando variaciones no patológicas y enfocando el análisis en la silueta pulmonar normalizada.}
+\label{fig:warping}
+\end{figure}
+
+\subsection{Generación del Dataset Normalizado}
+
+Una vez entrenado el modelo de landmarks y calculada la forma estándar, se procedió a generar el dataset completo de imágenes normalizadas. El modelo ensemble se utilizó para inferir los landmarks en las 15,153 imágenes del dataset, y cada imagen se transformó mediante el proceso de warping descrito. Este dataset normalizado constituye la entrada para el entrenamiento del clasificador final.
+
+\subsection{Clasificación}
+
+Para la clasificación multiclase se empleó una arquitectura ResNet-18 preentrenada en ImageNet, reemplazando su capa final por una nueva capa completamente conectada con 3 salidas (COVID-19, Normal, Neumonía Viral). Previo a la clasificación, las imágenes normalizadas se procesaron con \textbf{SAHS (Statistical Asymmetrical Histogram Stretching)}, un método de mejora de contraste diseñado específicamente para radiografías.
+
+El dataset presenta desbalance significativo de clases (67\% Normal, 24\% COVID-19, 9\% Neumonía Viral). Para mitigar el sesgo hacia la clase mayoritaria, se utilizaron pesos inversamente proporcionales a la frecuencia de cada clase en la función de pérdida Cross-Entropy.
+
+El entrenamiento empleó aumento de datos (volteo horizontal, rotaciones ±10°, transformaciones afines leves), optimizador AdamW \cite{loshchilov2019adamw} con tasa inicial $1 \times 10^{-4}$, y parada temprana basada en F1-Macro del conjunto de validación.
+
+\subsection{Métricas de Evaluación}
+
+Para evaluar el sistema se utilizaron las siguientes métricas:
+
+\begin{itemize}
+    \item \textbf{Error de landmarks:} Distancia euclidiana promedio entre landmarks predichos y anotados (en píxeles).
+    \item \textbf{Accuracy:} Proporción de clasificaciones correctas sobre el total.
+    \item \textbf{F1-Macro:} Promedio aritmético del F1-Score de cada clase, dando igual peso a todas independientemente de su frecuencia.
+    \item \textbf{Precisión y Sensibilidad:} Por categoría.
+\end{itemize}
+
+% =============================================================================
+% RESULTADOS
+% =============================================================================
+\section{Resultados}
+\label{sec:resultados}
+
+Esta sección presenta los resultados experimentales organizados en tres aspectos fundamentales: (1) precisión de localización de landmarks, (2) efecto de la normalización geométrica en la clasificación, y (3) robustez del sistema.
+
+\subsection{Precisión de Localización de Landmarks}
+
+El ensemble de cuatro modelos con Test-Time Augmentation alcanzó un error medio de \textbf{3.61 píxeles} en imágenes de 224×224 píxeles, lo que representa una mejora del 10.6\% respecto al mejor modelo individual (4.04 píxeles). Este error equivale al 1.6\% del tamaño de la imagen, precisión suficiente para el proceso de normalización geométrica sin introducir distorsiones significativas.
+
+\begin{table}[!h]
+\centering
+\caption{Precisión de detección de landmarks. El error se mide en píxeles sobre imágenes de 224×224.}
+\label{tab:landmarks}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Configuración} & \textbf{Error promedio} & \textbf{Error mediano} & \textbf{Mejora} \\
+\midrule
+Mejor modelo individual & 4.04 px & --- & --- \\
+Ensemble (4 modelos) + TTA & 3.61 px & 3.07 px & 10.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El análisis por landmark reveló un patrón sistemático (Figura \ref{fig:error_landmarks}): mayor precisión en puntos del eje central (2.44--2.94 píxeles) debido a la clara definición de la línea media vertebral, y menor precisión en esquinas superiores (5.35--5.43 píxeles) donde los límites pulmonares son menos nítidos.
+
+Por categoría, el error fue consistente: Normal (3.22 px), COVID-19 (3.93 px), Neumonía Viral (4.11 px), demostrando robustez del modelo ante diferentes presentaciones patológicas.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{Figuras/F5.1_error_por_landmark.png}
+\caption{Análisis del error de predicción por landmark. (a) Gráfica de barras mostrando el error medio en píxeles para cada punto L1--L15, con línea punteada indicando la media global de 3.61 px. Los landmarks L12 y L13 (esquinas superiores) presentan mayor error ($\sim$5.4 px), mientras L10 y L11 (eje central) son los más precisos ($\sim$2.5 px). (b) Mapa de calor sobre la forma estándar donde el color representa el error medio según la escala de 2.5--5.0 px.}
+\label{fig:error_landmarks}
+\end{figure}
+
+\subsection{Efecto de la Normalización en la Clasificación}
+
+El clasificador entrenado sobre imágenes normalizadas alcanzó los siguientes resultados en el conjunto de prueba de 1,895 imágenes:
+
+\begin{itemize}
+    \item \textbf{Accuracy:} 98.10\% (1,859/1,895 correctas)
+    \item \textbf{F1-Macro:} 97.17\%
+    \item \textbf{F1-Weighted:} 98.09\%
+\end{itemize}
+
+La Tabla \ref{tab:rendimiento_clase} presenta el rendimiento por categoría. La clase Normal obtiene el mejor rendimiento (F1: 98.60\%) seguida de COVID-19 (F1: 97.76\%) y Neumonía Viral (F1: 95.15\%), esta última con menor rendimiento debido a su menor representación en el dataset.
+
+\begin{table}[!h]
+\centering
+\caption{Rendimiento del clasificador por categoría.}
+\label{tab:rendimiento_clase}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Categoría} & \textbf{Precisión} & \textbf{Sensibilidad} & \textbf{F1-Score} & \textbf{Muestras} \\
+\midrule
+COVID-19 & 99.09\% & 96.46\% & 97.76\% & 452 \\
+Normal & 97.84\% & 99.37\% & 98.60\% & 1,274 \\
+Neumonía Viral & 97.52\% & 92.90\% & 95.15\% & 169 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Para evaluar específicamente el efecto de la normalización geométrica, se realizó una comparación controlada entre tres configuraciones de preprocesamiento, todas utilizando SAHS para mejora de contraste (Tabla \ref{tab:comparacion}):
+
+\begin{table}[!h]
+\centering
+\caption{Comparación de configuraciones de preprocesamiento. Todas utilizan SAHS.}
+\label{tab:comparacion}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Configuración} & \textbf{Accuracy} & \textbf{F1-Macro} & \textbf{Diferencia} \\
+\midrule
+Original + SAHS & 98.68\% & 97.75\% & --- \\
+\textbf{Warped + SAHS (propuesto)} & \textbf{98.10\%} & \textbf{97.17\%} & -0.58 pp \\
+Cropped (12\%) + SAHS & 97.68\% & 96.66\% & -1.00 pp \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Los resultados revelan hallazgos importantes:
+
+\begin{enumerate}
+    \item \textbf{Rendimiento comparable:} El sistema con normalización geométrica (Warped+SAHS) alcanza accuracy apenas 0.58 puntos porcentuales inferior a las imágenes originales.
+
+    \item \textbf{Posibles características espurias:} Las imágenes originales podrían estar utilizando artefactos hospitalarios en los bordes (etiquetas, marcadores) como ``atajos'' para la clasificación.
+
+    \item \textbf{Importancia de la normalización vs. simple recorte:} El recorte de bordes sin normalización (Cropped+SAHS) produce el peor resultado (97.68\%), 1 punto porcentual inferior a las originales, demostrando que la normalización geométrica proporciona un mecanismo efectivo para compensar la pérdida de información periférica.
+\end{enumerate}
+
+Esto sugiere que el sistema propuesto aprende características patológicas genuinas de la región pulmonar, no artefactos de los bordes.
+
+\subsection{Robustez del Sistema}
+
+La matriz de confusión (Figura \ref{fig:matriz_confusion}) revela patrones de error específicos. La confusión principal ocurre entre Neumonía Viral y Normal (12 casos, 7.1\% de casos Viral), seguida de COVID-19 y Normal (16 casos, 3.5\% de casos COVID). Notablemente, ningún caso de COVID-19 fue confundido con Neumonía Viral ni viceversa, lo cual es clínicamente relevante dado que requieren tratamientos diferentes.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.7\textwidth]{Figuras/F5.7_matriz_confusion_sahs.png}
+\caption{Matriz de confusión del clasificador Warped + SAHS (Accuracy: 98.10\%, F1-Macro: 97.17\%). La diagonal muestra las clasificaciones correctas: COVID-19 (436 casos, 96.5\%), Normal (1,266 casos, 99.4\%) y Neumonía Viral (157 casos, 92.9\%). Los errores principales son: 16 casos de COVID-19 clasificados como Normal (3.5\%) y 12 casos de Neumonía Viral como Normal (7.1\%). Notablemente, no hay confusión entre COVID-19 y Neumonía Viral.}
+\label{fig:matriz_confusion}
+\end{figure}
+
+La estabilidad del modelo fue evaluada mediante múltiples semillas aleatorias, obteniendo una desviación estándar de $\pm$0.35 puntos porcentuales en accuracy, indicando alta reproducibilidad de los resultados.
+
+\subsection{Comparación con la Literatura}
+
+La Tabla \ref{tab:comparacion_literatura} compara el sistema propuesto con trabajos relacionados. El sistema alcanza rendimiento competitivo destacando que utiliza un dataset significativamente más grande (15,153 imágenes), clasifica 3 clases (más difícil que clasificación binaria), y emplea una arquitectura más ligera (ResNet-18).
+
+\begin{table}[!h]
+\centering
+\caption{Comparación con trabajos relacionados en clasificación de COVID-19.}
+\label{tab:comparacion_literatura}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Trabajo} & \textbf{Clases} & \textbf{Dataset} & \textbf{Arquitectura} & \textbf{Accuracy} \\
+\midrule
+\textbf{Sistema propuesto} & 3 & 15,153 & ResNet-18 + Warping & \textbf{98.10\%} \\
+\midrule
+Chowdhury et al. \cite{chowdhury2020can} & 4 & 423 & VGG19 & 96.58\% \\
+Rahman et al. \cite{rahman2021exploring} & 3 & 3,616 & VGG16 & 93.94\% \\
+Ozturk et al. \cite{ozturk2020automated} & 2 & 1,127 & DarkCovidNet & 98.08\% \\
+Narin et al. \cite{narin2021automatic} & 2 & 341 & ResNet-50 & 98.00\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =============================================================================
+% CONCLUSIONES
+% =============================================================================
+\section{Conclusiones}
+\label{sec:conclusiones}
+
+Este trabajo presentó un sistema integral de clasificación de enfermedades pulmonares basado en normalización geométrica mediante landmarks anatómicos. Los resultados experimentales proporcionan evidencia sobre la efectividad del enfoque propuesto.
+
+\subsection{Evidencia de Mejora}
+
+La comparación controlada entre configuraciones de preprocesamiento demuestra que:
+
+\begin{itemize}
+    \item La normalización geométrica permite obtener rendimiento comparable a las imágenes originales (98.10\% vs 98.68\%), con una diferencia de solo 0.58 puntos porcentuales.
+
+    \item El simple recorte de bordes sin normalización produce resultados inferiores (97.68\%), lo que sugiere que las imágenes originales podrían beneficiarse de artefactos en los bordes.
+
+    \item El sistema propuesto, al enfocar el análisis exclusivamente en la región pulmonar normalizada, aprende características patológicas genuinas relacionadas con la enfermedad.
+\end{itemize}
+
+\subsection{Análisis de Métricas}
+
+El sistema completo alcanza métricas competitivas con el estado del arte:
+
+\begin{itemize}
+    \item \textbf{Accuracy:} 98.10\% sobre 1,895 imágenes de prueba
+    \item \textbf{F1-Macro:} 97.17\%, indicando rendimiento equilibrado entre clases
+    \item \textbf{Sensibilidad COVID-19:} 96.46\%, detectando correctamente la mayoría de casos
+    \item \textbf{Error de landmarks:} 3.61 píxeles, precisión suficiente para normalización efectiva
+\end{itemize}
+
+La matriz de confusión muestra que los errores principales ocurren entre categorías clínicamente relacionadas (Neumonía Viral/Normal, COVID-19/Normal), mientras que COVID-19 y Neumonía Viral nunca se confunden entre sí.
+
+\subsection{Contribuciones Principales}
+
+Las contribuciones de este trabajo son:
+
+\begin{enumerate}
+    \item Un modelo robusto de predicción de landmarks que alcanza 3.61 píxeles de error mediante ensemble y TTA.
+
+    \item Un sistema completo de normalización geométrica integrando GPA, triangulación de Delaunay y warping afín por partes.
+
+    \item Evidencia experimental de que la normalización geométrica permite aprender características patológicas genuinas, no artefactos de los bordes.
+
+    \item Una metodología reproducible validada sobre un dataset público de 15,153 imágenes.
+\end{enumerate}
+
+\subsection{Trabajo Futuro}
+
+Como direcciones de trabajo futuro se proponen:
+
+\begin{itemize}
+    \item \textbf{Validación externa:} Evaluar el sistema en datasets de diferentes instituciones para verificar generalización.
+
+    \item \textbf{Clasificación binaria:} Explorar el rendimiento en la tarea más común de detección COVID-19 vs Normal.
+
+    \item \textbf{Extensión a más patologías:} Incorporar otras enfermedades pulmonares como tuberculosis o cáncer.
+
+    \item \textbf{Integración end-to-end:} Explorar el uso de Spatial Transformer Networks para aprendizaje conjunto de normalización y clasificación.
+\end{itemize}
+
+% =============================================================================
+% BIBLIOGRAFÍA
+% =============================================================================
+\bibliographystyle{splncs04}
+\bibliography{references}
+
+\end{document}

@@ -6,96 +6,89 @@
 \section{Normalización Geométrica}
 \label{sec:normalizacion_geometrica}
 
-La normalización geométrica constituye el componente central del sistema propuesto, transformando las radiografías de tórax a una forma canónica que elimina variaciones de pose, escala y orientación entre pacientes. Esta sección describe el proceso completo de normalización, desde el cálculo de la forma de referencia mediante Análisis Procrustes Generalizado hasta la aplicación de transformaciones afines por partes.
+\paragraph{El problema de la variabilidad anatómica.}
+Las radiografías de tórax de diferentes pacientes presentan variaciones significativas: los pulmones pueden aparecer más arriba o más abajo en la imagen, ser más grandes o más pequeños, o estar ligeramente rotados dependiendo de la posición del paciente durante la adquisición. Estas diferencias geométricas, aunque irrelevantes para el diagnóstico médico, representan un desafío para los algoritmos de clasificación automática, ya que el modelo debe aprender a reconocer patologías independientemente de estas variaciones.
+
+\paragraph{La solución: normalización geométrica.}
+La normalización geométrica aborda este problema transformando todas las radiografías a una \textit{forma estándar}, donde los pulmones ocupan siempre la misma posición, tienen el mismo tamaño y la misma orientación. De esta manera, el clasificador puede concentrarse en detectar diferencias relevantes (como opacidades o consolidaciones) sin verse confundido por diferencias geométricas irrelevantes.
+
+El proceso de normalización se realiza en tres etapas principales:
+\begin{enumerate}
+    \item \textbf{Cálculo de la forma estándar:} Se determina una forma de referencia ``promedio'' a partir del conjunto de entrenamiento mediante Análisis Procrustes Generalizado.
+    \item \textbf{División de la imagen en regiones:} Se particiona la imagen en triángulos mediante triangulación de Delaunay.
+    \item \textbf{Transformación de cada región:} Se deforma cada triángulo para alinear los puntos de referencia de la imagen con los de la forma estándar.
+\end{enumerate}
 
 \subsection{Análisis Procrustes Generalizado}
 \label{subsec:gpa}
 
-El Análisis Procrustes Generalizado (GPA, por sus siglas en inglés) es una técnica estadística para alinear un conjunto de configuraciones de landmarks eliminando las diferencias debidas a traslación, escala y rotación \cite{gower1975generalized, dryden1998statistical}. El resultado es una \textit{forma canónica} o \textit{consenso de Procrustes} que representa la forma media del conjunto.
+\paragraph{Objetivo.}
+Para normalizar las radiografías, primero necesitamos definir una ``forma de referencia'' que represente la configuración típica de los pulmones. El Análisis Procrustes Generalizado (GPA) \cite{gower1975generalized, dryden1998statistical} es una técnica que permite calcular esta forma de referencia a partir de las 957 configuraciones de puntos de referencia anotadas en el conjunto de entrenamiento.
 
-\subsubsection{Formulación Matemática}
+\paragraph{Intuición del método.}
+El nombre ``Procrustes'' proviene del mito griego de un posadero que ajustaba a sus huéspedes a una cama de tamaño fijo, estirándolos o cortándolos según fuera necesario. De manera análoga, GPA ``ajusta'' cada configuración de landmarks eliminando tres tipos de diferencias que no afectan la forma intrínseca:
 
-Sea $\{\mathbf{X}_1, \mathbf{X}_2, \ldots, \mathbf{X}_n\}$ un conjunto de $n$ configuraciones de landmarks, donde cada $\mathbf{X}_i \in \mathbb{R}^{k \times 2}$ contiene las coordenadas $(x, y)$ de $k = 15$ landmarks. El objetivo de GPA es encontrar transformaciones que minimicen la distancia total entre las configuraciones alineadas.
+\begin{itemize}
+    \item \textbf{Posición:} Si una configuración está desplazada hacia la izquierda y otra hacia la derecha, se centran ambas en el mismo punto.
+    \item \textbf{Tamaño:} Si una configuración es más grande que otra, se escalan para que tengan el mismo tamaño.
+    \item \textbf{Orientación:} Si una configuración está ligeramente rotada, se rota para alinearla con las demás.
+\end{itemize}
 
-\textbf{Paso 1: Eliminación de traslación.} Cada configuración se centra en el origen sustrayendo su centroide:
+Una vez eliminadas estas diferencias, las configuraciones restantes reflejan únicamente variaciones en la \textit{forma} de los pulmones. El promedio de estas configuraciones alineadas constituye la \textit{forma estándar}.
 
-\begin{equation}
-    \bar{\mathbf{X}}_i = \mathbf{X}_i - \mathbf{1}_k \bar{\mathbf{x}}_i^T
-    \label{eq:centering}
-\end{equation}
+\subsubsection{Procedimiento de Alineación}
 
-\noindent donde $\bar{\mathbf{x}}_i = \frac{1}{k}\sum_{j=1}^{k} \mathbf{x}_{ij}$ es el centroide de la configuración $i$, y $\mathbf{1}_k$ es un vector de unos de dimensión $k$.
+El proceso de alineación se realiza en tres pasos:
 
-\textbf{Paso 2: Eliminación de escala.} Las configuraciones centradas se normalizan a norma unitaria (norma de Frobenius igual a 1):
+\textbf{Paso 1: Centrado (eliminación de posición).} Cada configuración de landmarks se desplaza para que su centro geométrico coincida con el origen de coordenadas. El centro se calcula como el promedio de las coordenadas de todos los puntos de referencia.
 
-\begin{equation}
-    \tilde{\mathbf{X}}_i = \frac{\bar{\mathbf{X}}_i}{\|\bar{\mathbf{X}}_i\|_F}
-    \label{eq:scaling}
-\end{equation}
+\textbf{Paso 2: Escalado (eliminación de tamaño).} Para que todas las configuraciones tengan el mismo ``tamaño'', se normalizan dividiendo por una medida de dispersión. Después de este paso, todas las configuraciones quedan con el mismo tamaño estándar, independientemente del tamaño original de los pulmones en la imagen.
 
-\noindent donde $\|\mathbf{A}\|_F = \sqrt{\sum_{j,l} a_{jl}^2}$ es la norma de Frobenius.
+\textbf{Paso 3: Rotación (eliminación de orientación).} Finalmente, se rota cada configuración para alinearla lo mejor posible con una forma de referencia. La rotación óptima es aquella que minimiza la distancia entre la configuración rotada y la referencia.
 
-\textbf{Paso 3: Eliminación de rotación.} Dada una forma de referencia $\mathbf{Y}$, se busca la matriz de rotación $\mathbf{R}_i$ que minimiza la distancia entre $\tilde{\mathbf{X}}_i$ y $\mathbf{Y}$:
+\subsubsection{Cálculo de la Rotación Óptima}
 
-\begin{equation}
-    \mathbf{R}_i^* = \arg\min_{\mathbf{R} \in SO(2)} \|\tilde{\mathbf{X}}_i \mathbf{R} - \mathbf{Y}\|_F^2
-    \label{eq:rotation_problem}
-\end{equation}
-
-\noindent donde $SO(2)$ denota el grupo de matrices de rotación ortogonales $2 \times 2$ con determinante $+1$.
-
-\subsubsection{Solución mediante Descomposición en Valores Singulares}
-
-La matriz de rotación óptima se obtiene mediante la descomposición en valores singulares (SVD) de la matriz de correlación cruzada \cite{schonemann1966generalized}:
-
-\begin{equation}
-    \mathbf{H}_i = \tilde{\mathbf{X}}_i^T \mathbf{Y} = \mathbf{U}_i \mathbf{\Sigma}_i \mathbf{V}_i^T
-    \label{eq:svd}
-\end{equation}
-
-La rotación óptima es entonces:
-
-\begin{equation}
-    \mathbf{R}_i^* = \mathbf{V}_i \mathbf{U}_i^T
-    \label{eq:optimal_rotation}
-\end{equation}
-
-Para garantizar una rotación propia (sin reflexión), se verifica que $\det(\mathbf{R}_i^*) = +1$. Si el determinante es $-1$, se corrige invirtiendo el signo de la última columna de $\mathbf{V}_i$ antes de calcular $\mathbf{R}_i^*$.
+El ángulo de rotación óptimo se calcula mediante una técnica de álgebra lineal llamada Descomposición en Valores Singulares (SVD) \cite{schonemann1966generalized}, que encuentra automáticamente la rotación que mejor alinea dos conjuntos de puntos. Esta técnica determina el ángulo exacto que minimiza la distancia entre los puntos de una configuración y los de la referencia, sin necesidad de probar múltiples ángulos por ensayo y error.
 
 \subsubsection{Algoritmo Iterativo}
 
-El GPA se implementa mediante un algoritmo iterativo que alterna entre alinear las formas con la referencia actual y actualizar la referencia como la media de las formas alineadas. El Algoritmo \ref{alg:gpa} presenta el pseudocódigo.
+Para alinear las configuraciones necesitamos una referencia, pero para calcular la referencia necesitamos que las configuraciones estén alineadas. GPA resuelve este dilema mediante un proceso iterativo:
+
+\begin{enumerate}
+    \item Se comienza con una referencia inicial (el promedio simple de las configuraciones centradas y escaladas).
+    \item Se alinean todas las configuraciones con esta referencia.
+    \item Se calcula una nueva referencia como el promedio de las configuraciones alineadas.
+    \item Se repite hasta que la referencia deje de cambiar significativamente.
+\end{enumerate}
+
+El Algoritmo \ref{alg:gpa} presenta el pseudocódigo formal.
 
 \begin{algorithm}[htbp]
 \caption{Análisis Procrustes Generalizado Iterativo}
 \label{alg:gpa}
 \begin{algorithmic}[1]
-\Require Conjunto de configuraciones $\{\mathbf{X}_1, \ldots, \mathbf{X}_n\}$, tolerancia $\tau$, máximo de iteraciones $T$
-\Ensure Forma canónica $\mathbf{C}$, formas alineadas $\{\hat{\mathbf{X}}_1, \ldots, \hat{\mathbf{X}}_n\}$
-\State \textbf{Inicialización:}
-\For{$i = 1$ \textbf{a} $n$}
-    \State Centrar: $\bar{\mathbf{X}}_i \leftarrow \mathbf{X}_i - \mathbf{1}_k \bar{\mathbf{x}}_i^T$
-    \State Escalar: $\tilde{\mathbf{X}}_i \leftarrow \bar{\mathbf{X}}_i / \|\bar{\mathbf{X}}_i\|_F$
+\Require Conjunto de $n$ configuraciones de puntos de referencia, tolerancia $\tau$, máximo de iteraciones $T$
+\Ensure Forma estándar, configuraciones alineadas
+\State \textbf{Preparación:}
+\For{cada configuración $i$ de 1 a $n$}
+    \State Centrar la configuración (mover su centro al origen)
+    \State Escalar la configuración (normalizar su tamaño)
 \EndFor
-\State Referencia inicial: $\mathbf{Y} \leftarrow \frac{1}{n}\sum_{i=1}^{n} \tilde{\mathbf{X}}_i$
-\State Normalizar referencia: $\mathbf{Y} \leftarrow \mathbf{Y} / \|\mathbf{Y}\|_F$
-\State \textbf{Iteración:}
-\For{$t = 1$ \textbf{a} $T$}
-    \For{$i = 1$ \textbf{a} $n$}
-        \State Calcular SVD: $\tilde{\mathbf{X}}_i^T \mathbf{Y} = \mathbf{U}_i \mathbf{\Sigma}_i \mathbf{V}_i^T$
-        \State Rotación óptima: $\mathbf{R}_i \leftarrow \mathbf{V}_i \mathbf{U}_i^T$
-        \State Alinear: $\hat{\mathbf{X}}_i \leftarrow \tilde{\mathbf{X}}_i \mathbf{R}_i$
+\State Calcular referencia inicial como el promedio de todas las configuraciones
+\State \textbf{Refinamiento iterativo:}
+\For{cada iteración $t$ de 1 a $T$}
+    \For{cada configuración $i$ de 1 a $n$}
+        \State Calcular el ángulo de rotación óptimo para alinear con la referencia
+        \State Rotar la configuración según el ángulo calculado
     \EndFor
-    \State Nueva referencia: $\mathbf{Y}_{new} \leftarrow \frac{1}{n}\sum_{i=1}^{n} \hat{\mathbf{X}}_i$
-    \State Normalizar: $\mathbf{Y}_{new} \leftarrow \mathbf{Y}_{new} / \|\mathbf{Y}_{new}\|_F$
-    \State Cambio: $\delta \leftarrow \|\mathbf{Y}_{new} - \mathbf{Y}\|_F$
-    \If{$\delta < \tau$}
-        \State \textbf{romper} \Comment{Convergencia alcanzada}
+    \State Calcular nueva referencia como el promedio de las configuraciones alineadas
+    \State Medir cuánto cambió la referencia respecto a la iteración anterior
+    \If{el cambio es menor que la tolerancia $\tau$}
+        \State Terminar (se alcanzó convergencia)
     \EndIf
-    \State $\mathbf{Y} \leftarrow \mathbf{Y}_{new}$
 \EndFor
-\State Forma canónica: $\mathbf{C} \leftarrow \mathbf{Y}$
-\State \Return $\mathbf{C}$, $\{\hat{\mathbf{X}}_1, \ldots, \hat{\mathbf{X}}_n\}$
+\State La forma estándar es la referencia final
+\State \Return forma estándar y configuraciones alineadas
 \end{algorithmic}
 \end{algorithm}
 
@@ -105,271 +98,133 @@ Los parámetros utilizados en la implementación son:
     \item Máximo de iteraciones: $T = 100$
 \end{itemize}
 
-En la práctica, el algoritmo converge típicamente en menos de 20 iteraciones para el conjunto de 957 configuraciones de landmarks anotadas.
+En la práctica, el algoritmo converge típicamente en menos de 20 iteraciones para el conjunto de 957 configuraciones de puntos de referencia anotadas.
 
 \subsubsection{Transformación a Coordenadas de Imagen}
 
-La forma canónica resultante del GPA está centrada en el origen con norma unitaria. Para utilizarla como destino del warping, se escala y traslada al sistema de coordenadas de la imagen:
+La forma estándar resultante del GPA está expresada en un sistema de coordenadas matemático (centrada en el origen, con norma unitaria). Para poder utilizarla en el proceso de deformación, es necesario transformarla al sistema de coordenadas de la imagen (donde las coordenadas van de 0 a 224 píxeles).
 
-\begin{equation}
-    \mathbf{C}_{img} = s \cdot \mathbf{C} + \mathbf{t}
-    \label{eq:canonical_to_image}
-\end{equation}
-
-\noindent donde el factor de escala $s$ y el vector de traslación $\mathbf{t}$ se calculan para que la forma canónica ocupe el área central de la imagen con un margen de padding del 10\%:
-
-\begin{align}
-    s &= \frac{(1 - 2p) \cdot W}{\max(\text{range}_x, \text{range}_y)} \\
-    \mathbf{t} &= \begin{pmatrix} W/2 \\ H/2 \end{pmatrix} - s \cdot \bar{\mathbf{c}}
-\end{align}
-
-\noindent donde $W = H = 224$ es el tamaño de imagen, $p = 0.1$ es el padding relativo, $\bar{\mathbf{c}}$ es el centroide de $\mathbf{C}$, y el rango de la forma canónica se define como:
-\begin{equation}
-    \text{range}_x = \max_i(x_i) - \min_i(x_i), \quad
-    \text{range}_y = \max_i(y_i) - \min_i(y_i)
-\end{equation}
-siendo $(x_i, y_i)$ las coordenadas del landmark $i$ en la forma canónica $\mathbf{C}$.
+Esta transformación simplemente escala y desplaza la forma estándar para que ocupe la región central de la imagen de $224 \times 224$ píxeles, dejando un margen del 10\% en los bordes.
 
 La Figura \ref{fig:gpa_proceso} ilustra el proceso de GPA aplicado al conjunto de landmarks.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{Figures/F4.7_proceso_gpa.png}
-    \caption{Proceso de Análisis Procrustes Generalizado. (a) Las 957 configuraciones de landmarks originales muestran variabilidad en posición, escala y orientación. (b) Después del centrado y escalado, las formas comparten origen y norma unitaria. (c) La alineación rotacional minimiza las diferencias residuales. (d) La forma canónica representa el consenso estadístico del conjunto.}
+    \caption{Proceso de Análisis Procrustes Generalizado. (a) Las 957 configuraciones de puntos de referencia originales muestran variabilidad en posición, escala y orientación. (b) Después del centrado y escalado, las formas comparten origen y norma unitaria. (c) La alineación rotacional minimiza las diferencias residuales. (d) La forma estándar representa el consenso estadístico del conjunto.}
     \label{fig:gpa_proceso}
 \end{figure}
 
 \subsection{Triangulación de Delaunay}
 \label{subsec:triangulacion_delaunay}
 
-Para aplicar transformaciones afines locales, es necesario particionar el dominio de la imagen en regiones. La triangulación de Delaunay \cite{delaunay1934sphere} proporciona una partición óptima que maximiza el ángulo mínimo de los triángulos, evitando triángulos degenerados que causarían artefactos en el warping.
+\paragraph{Necesidad de dividir la imagen.}
+El siguiente paso del proceso de normalización es deformar la imagen para que los puntos de referencia del paciente coincidan con los puntos de referencia de la forma estándar. Sin embargo, aplicar una única transformación global a toda la imagen no es suficiente: diferentes regiones de la imagen necesitan deformarse de manera diferente (por ejemplo, la parte superior de los pulmones puede necesitar comprimirse mientras que la parte inferior se expande).
 
-\subsubsection{Definición y Propiedades}
+La solución es dividir la imagen en regiones más pequeñas (triángulos) y transformar cada región de manera independiente. Esto permite deformaciones locales que preservan la estructura general de la anatomía.
 
-Dado un conjunto de puntos $P = \{p_1, p_2, \ldots, p_m\}$ en el plano, la triangulación de Delaunay $DT(P)$ es una triangulación tal que ningún punto de $P$ está dentro del circuncírculo de ningún triángulo. Esta propiedad, conocida como \textit{criterio del círculo vacío}, garantiza triángulos ``bien formados'' \cite{berg2008computational}.
+\paragraph{Por qué triángulos y no otra forma.}
+Los triángulos tienen una propiedad matemática conveniente: dados tres puntos en la imagen original y sus correspondientes tres puntos en la imagen destino, existe una única transformación lineal (llamada \textit{transformación afín}) que mapea exactamente un triángulo en el otro. Esto no ocurre con cuadriláteros u otras formas más complejas.
 
-Propiedades relevantes de la triangulación de Delaunay:
-\begin{enumerate}
-    \item \textbf{Maximización del ángulo mínimo:} Entre todas las triangulaciones posibles, la de Delaunay maximiza el ángulo más pequeño, produciendo triángulos lo más equiláteros posible.
-    \item \textbf{Unicidad:} Para puntos en posición general (sin cuatro puntos cocirculares), la triangulación es única.
-    \item \textbf{Eficiencia computacional:} Puede calcularse en tiempo $O(m \log m)$ mediante algoritmos como el de Fortune \cite{fortune1987sweepline}.
-\end{enumerate}
+\subsubsection{Triangulación de Delaunay}
+
+Existen muchas formas de conectar un conjunto de puntos para formar triángulos. La triangulación de Delaunay \cite{delaunay1934sphere} es un método que produce triángulos ``bien formados'', es decir, triángulos que tienden a ser lo más equiláteros posible, evitando triángulos muy alargados o ``delgados'' que podrían causar distorsiones visuales durante la deformación \cite{berg2008computational}.
 
 \subsubsection{Aplicación a los Landmarks}
 
-La triangulación se calcula sobre los landmarks de la forma canónica $\mathbf{C}_{img}$. Para 15 landmarks, la triangulación de Delaunay produce típicamente entre 20 y 25 triángulos, dependiendo de la disposición geométrica de los puntos.
+La triangulación se calcula una única vez sobre los puntos de referencia de la forma estándar. Para los 15 puntos de referencia del contorno pulmonar, la triangulación de Delaunay produce 16 triángulos que cubren la región de interés. Esta misma estructura de triángulos se utiliza para todas las imágenes, garantizando consistencia en el proceso de normalización.
 
-La Figura \ref{fig:triangulacion_delaunay} muestra la triangulación resultante sobre la forma canónica.
+La Figura \ref{fig:triangulacion_delaunay} muestra la triangulación resultante sobre la forma estándar.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{Figures/F4.8_triangulacion_delaunay.png}
-    \caption{Triangulación de Delaunay sobre los 15 landmarks de la forma canónica. Los triángulos definen las regiones donde se aplicarán transformaciones afines independientes durante el proceso de warping.}
+    \caption{Triangulación de Delaunay sobre los 15 puntos de referencia de la forma estándar. Los triángulos definen las regiones donde se aplicarán transformaciones afines independientes durante el proceso de deformación.}
     \label{fig:triangulacion_delaunay}
 \end{figure}
 
 \subsection{Transformación Afín por Partes}
 \label{subsec:warping_afin}
 
-La transformación afín por partes (\textit{piecewise affine warping}) utiliza la correspondencia entre triángulos en la imagen fuente y destino para deformar localmente la imagen, preservando líneas rectas dentro de cada triángulo \cite{wolberg1990digital}.
+\paragraph{El proceso de deformación.}
+La \textit{deformación} (deformación) es el proceso de ``estirar'' o ``comprimir'' partes de la imagen para que los puntos de referencia del paciente coincidan con los puntos de referencia de la forma estándar. Se denomina ``por partes'' porque cada triángulo se transforma de manera independiente \cite{wolberg1990digital}.
 
-\subsubsection{Transformación Afín de un Triángulo}
+\paragraph{Analogía visual.}
+Imaginemos la imagen impresa en una hoja de goma elástica, con los puntos de referencia marcados como puntos. El warping consiste en ``tirar'' de cada landmark hasta que coincida con su posición en la forma estándar. Los triángulos actúan como regiones que se estiran de manera uniforme: si un vértice del triángulo se mueve, toda la región triangular se deforma proporcionalmente.
 
-Dados un triángulo fuente con vértices $\{(x_1^s, y_1^s), (x_2^s, y_2^s), (x_3^s, y_3^s)\}$ y un triángulo destino con vértices $\{(x_1^d, y_1^d), (x_2^d, y_2^d), (x_3^d, y_3^d)\}$, la transformación afín que mapea el triángulo fuente al destino se representa mediante una matriz $\mathbf{M} \in \mathbb{R}^{2 \times 3}$:
+\subsubsection{Transformación de un Triángulo}
 
-\begin{equation}
-    \begin{pmatrix} x^d \\ y^d \end{pmatrix} = \mathbf{M} \begin{pmatrix} x^s \\ y^s \\ 1 \end{pmatrix} = \begin{pmatrix} a & b & c \\ d & e & f \end{pmatrix} \begin{pmatrix} x^s \\ y^s \\ 1 \end{pmatrix}
-    \label{eq:affine_transform}
-\end{equation}
+Para cada triángulo, se calcula una \textit{transformación afín}: una operación matemática que puede incluir traslación, rotación, escalado y sesgo, pero que preserva las líneas rectas y el paralelismo. La transformación se determina de forma única a partir de la correspondencia entre los tres vértices del triángulo en la imagen original y sus posiciones en la forma estándar. Esto significa que dados tres puntos de origen y tres puntos de destino, existe exactamente una transformación afín que mapea unos en otros.
 
-Los seis parámetros de la matriz se obtienen resolviendo el sistema de ecuaciones que mapea los tres vértices:
+\subsubsection{Proceso de Deformación}
 
-\begin{equation}
-    \begin{pmatrix}
-        x_1^s & y_1^s & 1 \\
-        x_2^s & y_2^s & 1 \\
-        x_3^s & y_3^s & 1
-    \end{pmatrix}
-    \begin{pmatrix} a & d \\ b & e \\ c & f \end{pmatrix}
-    =
-    \begin{pmatrix}
-        x_1^d & y_1^d \\
-        x_2^d & y_2^d \\
-        x_3^d & y_3^d
-    \end{pmatrix}
-    \label{eq:affine_system}
-\end{equation}
+El deformación completa procesa cada triángulo de la siguiente manera:
 
-Este sistema tiene solución única siempre que los tres vértices fuente no sean colineales (triángulo no degenerado).
+\begin{enumerate}
+    \item Se identifican los tres vértices del triángulo en la imagen original (landmarks predichos) y en la forma estándar.
+    \item Se calcula la matriz de transformación afín que mapea un triángulo en el otro.
+    \item Se aplica esta transformación a todos los píxeles dentro del triángulo.
+    \item Se repite para todos los triángulos de la triangulación.
+\end{enumerate}
 
-\subsubsection{Algoritmo de Warping}
-
-El proceso de warping se realiza iterando sobre cada triángulo de la triangulación y aplicando la transformación afín correspondiente. El Algoritmo \ref{alg:warping} describe el procedimiento.
+El Algoritmo \ref{alg:warping} presenta el pseudocódigo formal del proceso.
 
 \begin{algorithm}[htbp]
-\caption{Warping Afín por Partes}
+\caption{Deformación Afín por Partes}
 \label{alg:warping}
 \begin{algorithmic}[1]
-\Require Imagen fuente $I_s$, landmarks fuente $\mathbf{L}_s$, landmarks destino $\mathbf{L}_d$, triangulación $\mathcal{T}$
-\Ensure Imagen warpeada $I_d$
-\State Inicializar imagen destino: $I_d \leftarrow \mathbf{0}$
-\For{cada triángulo $T_k = (i, j, l) \in \mathcal{T}$}
-    \State Obtener vértices fuente: $\Delta_s \leftarrow (\mathbf{L}_s[i], \mathbf{L}_s[j], \mathbf{L}_s[l])$
-    \State Obtener vértices destino: $\Delta_d \leftarrow (\mathbf{L}_d[i], \mathbf{L}_d[j], \mathbf{L}_d[l])$
-    \If{$\text{area}(\Delta_s) < \epsilon$ \textbf{o} $\text{area}(\Delta_d) < \epsilon$}
-        \State \textbf{continuar} \Comment{Saltar triángulos degenerados}
+\Require Imagen original, landmarks de la imagen, puntos de referencia de la forma estándar, triangulación
+\Ensure Imagen normalizada
+\State Crear imagen destino vacía (todos los píxeles en negro)
+\For{cada triángulo en la triangulación}
+    \State Identificar los 3 vértices del triángulo en la imagen original
+    \State Identificar los 3 vértices correspondientes en la forma estándar
+    \If{el triángulo tiene área muy pequeña}
+        \State Saltar este triángulo (evitar divisiones por cero)
     \EndIf
-    \State Calcular bounding boxes: $B_s \leftarrow \text{bbox}(\Delta_s)$, $B_d \leftarrow \text{bbox}(\Delta_d)$
-    \State Ajustar triángulos a coordenadas locales
-    \State Calcular matriz afín: $\mathbf{M} \leftarrow \texttt{getAffineTransform}(\Delta_s^{local}, \Delta_d^{local})$
-    \State Warpear región: $P_d \leftarrow \texttt{warpAffine}(I_s[B_s], \mathbf{M})$
-    \State Crear máscara triangular: $M_k \leftarrow \texttt{fillConvexPoly}(\Delta_d^{local})$
-    \State Copiar con máscara: $I_d[B_d] \leftarrow I_d[B_d] \cdot (1 - M_k) + P_d \cdot M_k$
+    \State Calcular la transformación afín que mapea los vértices originales a los estándar
+    \State Aplicar la transformación a todos los píxeles dentro del triángulo
+    \State Copiar los píxeles transformados a la imagen destino
 \EndFor
-\State \Return $I_d$
+\State \Return imagen normalizada
 \end{algorithmic}
 \end{algorithm}
 
-La interpolación durante el warping se realiza mediante interpolación bilineal (\texttt{cv2.INTER\_LINEAR}), que proporciona un buen balance entre calidad visual y eficiencia computacional. Para el manejo de bordes, se utiliza reflexión (\texttt{cv2.BORDER\_REFLECT\_101}) para evitar artefactos en los límites de los triángulos.
+Durante el warping, los valores de los píxeles en posiciones intermedias se calculan mediante \textit{interpolación bilineal}, que promedia los valores de los píxeles vecinos para producir transiciones suaves. Esto evita que la imagen resultante tenga bordes dentados o discontinuidades visibles.
 
-\subsection{Estrategia de Cobertura Completa}
-\label{subsec:full_coverage}
-
-La triangulación de Delaunay sobre los 15 landmarks anatómicos cubre únicamente la región pulmonar central. Para garantizar que toda la imagen sea procesada sin dejar regiones negras (no warpeadas), se implementa una estrategia de \textit{cobertura completa} que extiende la triangulación hasta los bordes de la imagen.
-
-\subsubsection{Puntos de Borde Adicionales}
-
-Se agregan 8 puntos auxiliares a los 15 landmarks originales:
-\begin{itemize}
-    \item \textbf{4 esquinas de la imagen:} $(0, 0)$, $(W-1, 0)$, $(0, H-1)$, $(W-1, H-1)$
-    \item \textbf{4 puntos medios de los bordes:} $(W/2, 0)$, $(0, H/2)$, $(W-1, H/2)$, $(W/2, H-1)$
-\end{itemize}
-
-Estos puntos se mantienen fijos tanto en la configuración fuente como en la destino, lo que garantiza que:
-\begin{enumerate}
-    \item Los bordes de la imagen permanecen en su posición original.
-    \item La triangulación extendida cubre el 100\% del área de la imagen.
-    \item Las regiones periféricas (fuera de los pulmones) sufren deformación mínima.
-\end{enumerate}
-
-Con los 8 puntos adicionales, el conjunto extendido tiene 23 puntos, y la triangulación de Delaunay produce aproximadamente 35-40 triángulos.
-
-\subsubsection{Cálculo de la Tasa de Llenado}
-
-La \textit{tasa de llenado} cuantifica la proporción de la imagen warpeada que contiene información útil (píxeles no negros):
-
-\begin{equation}
-    \text{fill\_rate} = 1 - \frac{\sum_{i,j} \mathbb{1}[I_d(i,j) = 0]}{W \times H}
-    \label{eq:fill_rate}
-\end{equation}
-
-\noindent donde $\mathbb{1}[\cdot]$ es la función indicadora.
-
-Con los parámetros seleccionados (\texttt{margin\_scale}=1.05), el método produce una tasa de llenado (\textit{fill rate}) de aproximadamente 47\%, correspondiente a la región pulmonar sin el fondo circundante.
-
-La Figura \ref{fig:warping_comparison} muestra la comparación visual entre la imagen original y la imagen normalizada geométricamente mediante warping.
+La Figura \ref{fig:warping_comparison} muestra la comparación visual entre una radiografía original y su versión normalizada geométricamente.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\textwidth]{Figures/F4.9_original_vs_warped.png}
-    \caption{Comparación del proceso de warping. (a) Radiografía original con variabilidad de pose y escala. (b) Imagen normalizada geométricamente mediante warping, enfocándose en la región delimitada por los landmarks (margin\_scale=1.05, fill\_rate=47\%).}
+    \caption{Comparación del proceso de deformación. (a) Radiografía original con variabilidad de pose y escala. (b) Imagen normalizada geométricamente mediante warping, enfocándose en la región delimitada por los puntos de referencia.}
     \label{fig:warping_comparison}
-\end{figure}
-
-\subsection{Parámetro de Escala de Margen}
-\label{subsec:margin_scale}
-
-El parámetro \textit{margin\_scale} controla la expansión de los landmarks predichos desde su centroide antes de aplicar el warping. Este parámetro permite ajustar el área efectiva de la región pulmonar en la imagen normalizada.
-
-\subsubsection{Definición Matemática}
-
-Dado un conjunto de landmarks predichos $\mathbf{L}$ con centroide $\bar{\mathbf{l}}$, los landmarks escalados se calculan como:
-
-\begin{equation}
-    \mathbf{L}_{scaled} = \bar{\mathbf{l}} + \alpha \cdot (\mathbf{L} - \bar{\mathbf{l}})
-    \label{eq:margin_scale}
-\end{equation}
-
-\noindent donde $\alpha$ es el factor de escala de margen (\textit{margin\_scale}):
-\begin{itemize}
-    \item $\alpha = 1.0$: Sin expansión, los landmarks mantienen su posición original.
-    \item $\alpha > 1.0$: Expansión desde el centroide, incluyendo más contexto alrededor de la región pulmonar.
-    \item $\alpha < 1.0$: Contracción hacia el centroide (no utilizado en la práctica).
-\end{itemize}
-
-\subsubsection{Determinación del Valor Óptimo}
-
-El valor óptimo de margin\_scale se determinó experimentalmente mediante una búsqueda en grid sobre los valores $\{1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30\}$. El criterio de selección fue minimizar el error de warping, definido como la distancia euclidiana promedio entre los landmarks de la forma canónica y los landmarks predichos después de aplicar la transformación inversa.
-
-Los resultados indicaron que $\alpha = 1.05$ proporciona el mejor balance:
-\begin{itemize}
-    \item Expansión suficiente (5\%) para incluir la estructura pulmonar completa.
-    \item Sin sobre-expansión que cause artefactos de warping o incluya regiones irrelevantes.
-\end{itemize}
-
-La Tabla \ref{tab:margin_scale_optimo} resume los parámetros de warping utilizados.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Parámetros óptimos del proceso de normalización geométrica.}
-    \label{tab:margin_scale_optimo}
-    \begin{tabular}{llc}
-        \toprule
-        \textbf{Parámetro} & \textbf{Descripción} & \textbf{Valor} \\
-        \midrule
-        margin\_scale & Factor de expansión desde centroide & 1.05 \\
-        use\_full\_coverage & Agregar puntos de borde & Sí (8 puntos) \\
-        Interpolación & Método de interpolación & Bilineal \\
-        Manejo de bordes & Tratamiento de límites & Reflexión \\
-        Tamaño de salida & Dimensiones de imagen warpeada & $224 \times 224$ \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-La Figura \ref{fig:margin_scale_effect} ilustra el efecto de diferentes valores de margin\_scale.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{Figures/F4.10_margin_scale.png}
-    \caption{Efecto del parámetro margin\_scale en el resultado del warping. (a) Sin margen adicional, la región pulmonar puede quedar recortada. (b) Con el valor óptimo de 1.05, la estructura pulmonar se captura completamente. (c) Un margen excesivo incluye regiones periféricas irrelevantes.}
-    \label{fig:margin_scale_effect}
 \end{figure}
 
 \subsection{Proceso Completo de Normalización}
 \label{subsec:proceso_normalizacion}
 
-La Figura \ref{fig:proceso_normalizacion} presenta el diagrama de flujo del proceso completo de normalización geométrica, integrando todos los componentes descritos.
+Esta sección resume cómo se integran todos los componentes descritos anteriormente para normalizar una radiografía. La Figura \ref{fig:proceso_normalizacion} presenta el diagrama de flujo del proceso completo.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{Figures/F4.11_flujo_normalizacion.png}
-    \caption{Proceso completo de normalización geométrica. El sistema transforma una radiografía de entrada en una imagen geométricamente normalizada mediante la secuencia de predicción de landmarks, escalado, triangulación y warping afín por partes.}
+    \includegraphics[width=0.95\textwidth]{Figures/F4.11_flujo_normalizacion.jpg}
+    \caption{Proceso completo de normalización geométrica. El sistema transforma una radiografía de entrada en una imagen geométricamente normalizada mediante la secuencia de predicción de landmarks, forma estándar, triangulación y warping afín por partes.}
     \label{fig:proceso_normalizacion}
 \end{figure}
 
-El proceso completo para una imagen de entrada se resume en los siguientes pasos:
+\paragraph{Pasos del proceso.}
+Cuando llega una nueva radiografía para clasificar, el sistema ejecuta los siguientes pasos:
 
 \begin{enumerate}
-    \item \textbf{Predicción de landmarks:} El modelo ResNet-18 con Coordinate Attention predice las coordenadas de los 15 landmarks anatómicos.
+    \item \textbf{Predicción de landmarks:} El modelo de detección (descrito en la Sección \ref{sec:modelo_landmarks}) localiza los 15 puntos del contorno pulmonar en la radiografía de entrada.
 
-    \item \textbf{Escalado de landmarks:} Los landmarks predichos se escalan desde su centroide con factor $\alpha = 1.05$.
+    \item \textbf{Forma estándar:} Se utiliza la forma estándar pulmonar obtenida del GPA junto con los puntos de referencia predichos para establecer la correspondencia entre los puntos de la imagen y los puntos de referencia.
 
-    \item \textbf{Extensión con puntos de borde:} Se agregan 8 puntos auxiliares (4 esquinas + 4 puntos medios) para garantizar cobertura completa.
+    \item \textbf{Triangulación:} Se aplica la triangulación de Delaunay sobre los 15 puntos de referencia para definir los triángulos que conectan los puntos.
 
-    \item \textbf{Triangulación:} Se calcula la triangulación de Delaunay sobre los 23 puntos de la forma canónica extendida.
+    \item \textbf{Warping:} Cada triángulo de la imagen original se transforma para que sus vértices coincidan con los de la forma estándar.
 
-    \item \textbf{Warping por triángulos:} Para cada triángulo, se calcula la transformación afín y se aplica a la región correspondiente de la imagen.
-
-    \item \textbf{Imagen normalizada:} El resultado es una imagen de $224 \times 224$ píxeles donde la región pulmonar está alineada con la forma canónica.
+    \item \textbf{Resultado:} Se obtiene una imagen de $224 \times 224$ píxeles donde los pulmones tienen siempre la misma posición, tamaño y orientación.
 \end{enumerate}
 
-El tiempo de procesamiento para una imagen individual es de aproximadamente 15-20 milisegundos en CPU (Intel Core i7) o 3-5 milisegundos en GPU (NVIDIA RTX 3080), lo que permite su uso en aplicaciones de tiempo real.
-
-% Referencias temporales para esta sección
-% \cite{gower1975generalized} - Gower, J.C. (1975). Generalized Procrustes Analysis. Psychometrika.
-% \cite{dryden1998statistical} - Dryden, I.L. & Mardia, K.V. (1998). Statistical Shape Analysis. Wiley.
-% \cite{schonemann1966generalized} - Schönemann, P.H. (1966). Generalized solution of the orthogonal Procrustes problem.
-% \cite{delaunay1934sphere} - Delaunay, B. (1934). Sur la sphère vide.
-% \cite{berg2008computational} - de Berg et al. (2008). Computational Geometry. Springer.
-% \cite{fortune1987sweepline} - Fortune, S. (1987). A sweepline algorithm for Voronoi diagrams.
-% \cite{wolberg1990digital} - Wolberg, G. (1990). Digital Image Warping. IEEE Computer Society Press.

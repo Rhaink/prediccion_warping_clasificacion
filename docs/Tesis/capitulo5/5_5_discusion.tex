@@ -11,39 +11,117 @@ Esta sección interpreta los resultados experimentales presentados en las seccio
 \subsection{Interpretación de Resultados de Landmarks}
 \label{subsec:interpretacion_landmarks}
 
-El error medio de 3.61 píxeles del ensemble de landmarks representa el 1.6\% del tamaño de imagen ($224 \times 224$ píxeles). Este nivel de precisión es adecuado para la aplicación de warping, dado que:
+El error medio de 3.61 píxeles del ensamble de puntos de referencia representa el 1.6\% del tamaño de imagen ($224 \times 224$ píxeles). Este nivel de precisión es adecuado para la aplicación de deformación, dado que:
 
 \begin{enumerate}
     \item El error está por debajo del umbral perceptual: un error de 3.61 píxeles en una imagen de 224 píxeles equivale a un desplazamiento del 1.6\% de la dimensión de la imagen.
 
-    \item La mediana de 3.07 píxeles indica que el 50\% de las predicciones tienen error inferior a 3.1 píxeles, aproximadamente 1.4\% del tamaño de imagen.
+    \item La mediana de 3.07 píxeles indica que el 50\% de las predicciones tienen error menor o igual a 3.07 píxeles, aproximadamente 1.4\% del tamaño de imagen.
 
-    \item Los landmarks del eje central (L9, L10, L11) presentan alta precisión (2.44--2.94 px), proporcionando puntos de referencia estables para la alineación.
+    \item Los puntos de referencia del eje central (L9, L10, L11) presentan alta precisión (2.44--2.94 px), proporcionando puntos de referencia estables para la alineación.
 \end{enumerate}
 
-El error de landmarks es comparable o superior a trabajos relacionados en detección de puntos anatómicos en radiografías de tórax. Por ejemplo, Van Ginneken et al. \cite{ginneken2006active} reportan errores de 5--10 píxeles en imágenes de resolución similar para detección de campos pulmonares, mientras que nuestro sistema alcanza 3.61 píxeles con un método completamente automático.
+El error de puntos de referencia es comparable o superior a trabajos relacionados en detección de puntos anatómicos en radiografías de tórax. Por ejemplo, Van Ginneken et al. \cite{ginneken2006active} reportan errores de 5--10 píxeles en imágenes de resolución similar para detección de campos pulmonares, mientras que nuestro sistema alcanza 3.61 píxeles con un método completamente automático.
 
-\subsection{Validación de la Precisión Suficiente para Warping}
+\subsection{Validación de la Precisión Suficiente para Deformación}
 \label{subsec:precision_suficiente}
 
-Un error medio de 3.61 píxeles en imágenes de $224 \times 224$ representa el 1.6\% del tamaño de imagen. Este nivel de precisión es adecuado para el propósito de normalización geométrica, donde el objetivo no es localización sub-píxel, sino alineación consistente de estructuras anatómicas. La Tabla \ref{tab:tolerancia_warping} contextualiza este error.
+Un error medio de 3.61 píxeles en imágenes de $224 \times 224$ representa el 1.6\% del tamaño de imagen. Este nivel de precisión es adecuado para el propósito de normalización geométrica, donde el objetivo no es localización sub-píxel, sino alineación consistente de estructuras anatómicas. La Tabla \ref{tab:tolerancia_deformacion} contextualiza este error.
 
 \begin{table}[htbp]
     \centering
-    \caption{Interpretación del error de landmarks en el contexto de la aplicación de warping.}
-    \label{tab:tolerancia_warping}
+    \caption{Interpretación del error de puntos de referencia en el contexto de la aplicación de deformación.}
+    \label{tab:tolerancia_deformacion}
     \begin{tabular}{lcc}
         \toprule
         \textbf{Métrica} & \textbf{Valor} & \textbf{Interpretación} \\
         \midrule
         Error medio (px) & 3.61 & 1.6\% del tamaño de imagen (224 px) \\
         Error medio (mm) & $\sim$3--4 & Escala clínica (radiografías PA) \\
-        Suficiencia para warping & Sí & Error < 5 px en 75\% de landmarks \\
+        Suficiencia para deformación & Sí & Error < 5 px en 75\% de puntos de ref. \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-La precisión de 3.61 píxeles (1.6\% del tamaño de imagen) es suficiente para generar transformaciones de warping que preservan la estructura anatómica general sin introducir distorsiones significativas.
+La precisión de 3.61 píxeles (1.6\% del tamaño de imagen) es suficiente para generar transformaciones de normalización geométrica que preservan la estructura anatómica general sin introducir distorsiones significativas.
 
-% Referencias temporales para esta sección
-% [Se agregarán según sea necesario]
+\subsection{Interpretación del Experimento de Configuraciones}
+\label{subsec:interpretacion_configuraciones}
+
+El experimento comparativo de tres configuraciones (Original, Normalizado, Recortado) proporciona evidencia clave sobre el comportamiento de los clasificadores de radiografías de tórax.
+
+\subsubsection{Conexión entre los Tres Experimentos}
+
+Los resultados de las tres configuraciones se relacionan de la siguiente manera:
+
+\begin{enumerate}
+    \item \textbf{Original (98.68\%) vs. Recortado (95.36\%):} La diferencia de 3.32 puntos porcentuales revela que el modelo con imágenes sin procesar utiliza información de los bordes (etiquetas hospitalarias) para la clasificación. Esta información no está disponible en el conjunto recortado, causando la caída de rendimiento.
+
+    \item \textbf{Normalizado (98.10\%) vs. Recortado (95.36\%):} La diferencia de 2.74 puntos porcentuales demuestra que la normalización geométrica permite al modelo aprender características que compensan la ausencia de artefactos periféricos. El sistema propuesto recupera rendimiento mediante el enfoque en patrones pulmonares.
+
+    \item \textbf{Original (98.68\%) vs. Normalizado (98.10\%):} La diferencia de solo 0.58 puntos porcentuales indica que el sistema propuesto alcanza rendimiento competitivo sin acceso a características espurias.
+\end{enumerate}
+
+\subsubsection{Implicación sobre ``Exactitud Real''}
+
+Los resultados sugieren una interpretación sobre qué métricas reflejan la capacidad genuina de los modelos:
+
+\begin{itemize}
+    \item \textbf{98.68\% (Original):} Esta exactitud está \textit{inflada} por la contribución de artefactos hospitalarios. No refleja la capacidad del modelo para identificar patologías pulmonares, sino su capacidad para explotar correlaciones espurias presentes en el dataset.
+
+    \item \textbf{95.36\% (Recortado):} Este valor representa la exactitud ``real'' de un modelo entrenado con imágenes sin procesar cuando se le niega acceso a artefactos. Refleja qué tan bien el modelo aprendió características de la región central de la imagen.
+
+    \item \textbf{98.10\% (Normalizado):} Esta exactitud refleja la capacidad del modelo para clasificar basándose exclusivamente en la región pulmonar. Es la métrica más relevante clínicamente, ya que indica rendimiento basado en características patológicas genuinas.
+\end{itemize}
+
+\subsubsection{¿Por qué la Normalización Supera al Recorte?}
+
+La superioridad del sistema normalizado (98.10\%) sobre el recortado (95.36\%) se explica por tres factores:
+
+\begin{enumerate}
+    \item \textbf{Eliminación de variabilidad no patológica:} La normalización geométrica corrige variaciones de posición, escala y orientación que el modelo recortado debe aprender a ignorar.
+
+    \item \textbf{Enfoque en región diagnóstica:} La transformación centra la región pulmonar de manera consistente, mientras que el recorte simplemente elimina los bordes sin alinear el contenido restante.
+
+    \item \textbf{Regularización implícita:} La restricción a una forma estándar actúa como prior estructurado que facilita el aprendizaje de patrones patológicos.
+\end{enumerate}
+
+\subsection{Implicaciones para Sistemas de Clasificación}
+\label{subsec:implicaciones_sistemas}
+
+Los hallazgos tienen implicaciones importantes para el desarrollo y evaluación de sistemas de clasificación de imágenes médicas:
+
+\subsubsection{Sobre la Evaluación de Modelos}
+
+\begin{itemize}
+    \item \textbf{Métricas engañosas:} La exactitud reportada en imágenes sin procesar puede sobreestimar significativamente la capacidad real del modelo si este aprende características espurias.
+
+    \item \textbf{Necesidad de experimentos de ablación:} La comparación entre configuraciones (con/sin bordes, con/sin normalización) debería ser práctica estándar para validar que un clasificador aprende características genuinas.
+
+    \item \textbf{Generalización cuestionable:} Un modelo que depende de etiquetas hospitalarias específicas no generalizará a datos de otros centros con diferentes sistemas de etiquetado.
+\end{itemize}
+
+\subsubsection{Sobre el Diseño de Preprocesamiento}
+
+\begin{itemize}
+    \item \textbf{Normalización vs. recorte simple:} El recorte de bordes no es suficiente para eliminar características espurias; se requiere un preprocesamiento que enfoque activamente la región diagnóstica.
+
+    \item \textbf{Valor de la normalización geométrica:} Además de estandarizar la pose anatómica, la normalización actúa como mecanismo de selección de características que elimina acceso a información no diagnóstica.
+
+    \item \textbf{Interpretabilidad:} La transformación geométrica es explícita y verificable, permitiendo auditar qué información está disponible para el clasificador.
+\end{itemize}
+
+\subsection{Limitaciones de la Interpretación}
+\label{subsec:limitaciones_interpretacion}
+
+Es importante reconocer las limitaciones de las conclusiones presentadas:
+
+\begin{enumerate}
+    \item \textbf{Dataset específico:} Los hallazgos se basan en el COVID-19 Radiography Database. Otros datasets pueden tener diferentes tipos y distribuciones de artefactos.
+
+    \item \textbf{Tipo de artefactos:} El análisis asume que las etiquetas hospitalarias son el principal artefacto en los bordes. Otros artefactos (colimación, campos de radiación) también podrían contribuir.
+
+    \item \textbf{Ausencia de análisis de atención:} No se realizó análisis de mapas de activación (Grad-CAM) para confirmar visualmente qué regiones utilizan los modelos. Esta sería una validación adicional valiosa.
+\end{enumerate}
+
+A pesar de estas limitaciones, la evidencia cuantitativa del experimento de configuraciones proporciona una base sólida para las conclusiones presentadas.

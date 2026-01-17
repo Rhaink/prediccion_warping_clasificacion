@@ -1,0 +1,111 @@
+\relax 
+\providecommand\babel@aux[2]{}
+\@nameuse{bbl@beforestart}
+\catcode `"\active 
+\catcode `<\active 
+\catcode `>\active 
+\@nameuse{es@quoting}
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{who2020chest}
+\babel@aux{spanish}{}
+\@writefile{toc}{\contentsline {title}{Normalización geométrica de la región pulmonar mediante predicción de landmarks para clasificación automática de neumonía y COVID-19}{1}{chapter.1}\protected@file@percent }
+\@writefile{toc}{\authcount {3}}
+\@writefile{toc}{\contentsline {author}{Rafael Alejandro Cruz Ovando\and Salvador Eugenio Ayala Raggi\and Aldrin Barreto Flores}{1}{chapter.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introducción}{1}{section.1.1}\protected@file@percent }
+\newlabel{sec:introduccion}{{1}{1}{Introducción}{section.1.1}{}}
+\citation{rajpurkar2017chexnet,wang2020covidnet,chowdhury2020can}
+\citation{zech2018variable}
+\citation{ayala2023synergizing}
+\citation{picazo2024comparative}
+\citation{jaderberg2015spatial}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Trabajo Relacionado}{2}{subsection.1.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Propuesta del Presente Trabajo}{2}{subsection.1.1.2}\protected@file@percent }
+\citation{gower1975generalized}
+\citation{delaunay1934sphere}
+\citation{wolberg1990digital}
+\citation{he2016deep}
+\citation{chowdhury2020can,rahman2021exploring}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Organización del Artículo}{3}{subsection.1.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Metodología}{3}{section.1.2}\protected@file@percent }
+\newlabel{sec:metodologia}{{2}{3}{Metodología}{section.1.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Vista General del Sistema}{3}{subsection.1.2.1}\protected@file@percent }
+\citation{he2016deep}
+\citation{deng2009imagenet}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Flujo de operación del sistema propuesto. De izquierda a derecha: (1) entrada de radiografía (299×299), (2) preprocesamiento con redimensionado, CLAHE y normalización (224×224×3), (3) predicción de 15 pares de coordenadas con error de 3.61 px, (4) normalización geométrica mediante warping (224×224×3), y (5) clasificación con ResNet-18 en tres categorías (COVID-19, Normal, Neumonía Viral).}}{4}{figure.1.1}\protected@file@percent }
+\newlabel{fig:flujo}{{1}{4}{Flujo de operación del sistema propuesto. De izquierda a derecha: (1) entrada de radiografía (299×299), (2) preprocesamiento con redimensionado, CLAHE y normalización (224×224×3), (3) predicción de 15 pares de coordenadas con error de 3.61 px, (4) normalización geométrica mediante warping (224×224×3), y (5) clasificación con ResNet-18 en tres categorías (COVID-19, Normal, Neumonía Viral)}{figure.1.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Conjunto de Datos}{4}{subsection.1.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Arquitectura del Modelo de Predicción de Landmarks}{4}{subsection.1.2.3}\protected@file@percent }
+\citation{hou2021coordinate}
+\citation{wu2018group}
+\citation{feng2018wing}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Arquitectura del modelo de predicción de landmarks. La imagen de entrada (224×224×3) pasa por el backbone ResNet-18 que produce un mapa de características (7×7×512), luego por el módulo Coordinate Attention que mantiene las dimensiones, y finalmente por la cabeza de regresión que produce 30 valores correspondientes a las coordenadas $(x,y)$ de los 15 landmarks.}}{5}{figure.1.2}\protected@file@percent }
+\newlabel{fig:arquitectura}{{2}{5}{Arquitectura del modelo de predicción de landmarks. La imagen de entrada (224×224×3) pasa por el backbone ResNet-18 que produce un mapa de características (7×7×512), luego por el módulo Coordinate Attention que mantiene las dimensiones, y finalmente por la cabeza de regresión que produce 30 valores correspondientes a las coordenadas $(x,y)$ de los 15 landmarks}{figure.1.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Entrenamiento del Modelo de Landmarks}{5}{subsection.1.2.4}\protected@file@percent }
+\citation{gower1975generalized}
+\citation{delaunay1934sphere}
+\citation{wolberg1990digital}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Análisis Procrustes Generalizado}{6}{subsection.1.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Triangulación de Delaunay y Warping}{6}{subsection.1.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7}Generación del Dataset Normalizado}{6}{subsection.1.2.7}\protected@file@percent }
+\citation{loshchilov2019adamw}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Proceso de Análisis Procrustes Generalizado en cuatro etapas. (a) Formas originales sin alinear mostrando alta dispersión. (b) Configuraciones centradas y escaladas con puntos azules agrupados alrededor de la media (rojo). (c) Configuraciones alineadas por rotación con mayor concentración. (d) Forma estándar final con los 15 landmarks etiquetados (L1--L15) definiendo el contorno pulmonar.}}{7}{figure.1.3}\protected@file@percent }
+\newlabel{fig:gpa}{{3}{7}{Proceso de Análisis Procrustes Generalizado en cuatro etapas. (a) Formas originales sin alinear mostrando alta dispersión. (b) Configuraciones centradas y escaladas con puntos azules agrupados alrededor de la media (rojo). (c) Configuraciones alineadas por rotación con mayor concentración. (d) Forma estándar final con los 15 landmarks etiquetados (L1--L15) definiendo el contorno pulmonar}{figure.1.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8}Clasificación}{7}{subsection.1.2.8}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Triangulación de Delaunay sobre la forma estándar. Los 15 landmarks (L1--L15, puntos rojos) están conectados por aristas azules formando una malla de 16 triángulos. El eje central (L1, L9, L10, L11, L2) divide la silueta pulmonar, mientras los pares simétricos (L3/L4, L5/L6, L7/L8, L12/L13, L14/L15) definen el contorno bilateral.}}{8}{figure.1.4}\protected@file@percent }
+\newlabel{fig:triangulacion}{{4}{8}{Triangulación de Delaunay sobre la forma estándar. Los 15 landmarks (L1--L15, puntos rojos) están conectados por aristas azules formando una malla de 16 triángulos. El eje central (L1, L9, L10, L11, L2) divide la silueta pulmonar, mientras los pares simétricos (L3/L4, L5/L6, L7/L8, L12/L13, L14/L15) definen el contorno bilateral}{figure.1.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.9}Métricas de Evaluación}{8}{subsection.1.2.9}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Ejemplos de normalización geométrica para las tres categorías. Fila superior: radiografías originales de COVID-19, Normal y Neumonía Viral mostrando variaciones de tamaño, posición y orientación. Fila inferior: las mismas imágenes después del proceso de warping, donde la región pulmonar ha sido transformada a la forma estándar, eliminando variaciones no patológicas y enfocando el análisis en la silueta pulmonar normalizada.}}{9}{figure.1.5}\protected@file@percent }
+\newlabel{fig:warping}{{5}{9}{Ejemplos de normalización geométrica para las tres categorías. Fila superior: radiografías originales de COVID-19, Normal y Neumonía Viral mostrando variaciones de tamaño, posición y orientación. Fila inferior: las mismas imágenes después del proceso de warping, donde la región pulmonar ha sido transformada a la forma estándar, eliminando variaciones no patológicas y enfocando el análisis en la silueta pulmonar normalizada}{figure.1.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Resultados}{9}{section.1.3}\protected@file@percent }
+\newlabel{sec:resultados}{{3}{9}{Resultados}{section.1.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Precisión de Localización de Landmarks}{9}{subsection.1.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Precisión de detección de landmarks. El error se mide en píxeles sobre imágenes de 224×224.}}{10}{table.1.1}\protected@file@percent }
+\newlabel{tab:landmarks}{{1}{10}{Precisión de detección de landmarks. El error se mide en píxeles sobre imágenes de 224×224}{table.1.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Análisis del error de predicción por landmark. (a) Gráfica de barras mostrando el error medio en píxeles para cada punto L1--L15, con línea punteada indicando la media global de 3.61 px. Los landmarks L12 y L13 (esquinas superiores) presentan mayor error ($\sim $5.4 px), mientras L10 y L11 (eje central) son los más precisos ($\sim $2.5 px). (b) Mapa de calor sobre la forma estándar donde el color representa el error medio según la escala de 2.5--5.0 px.}}{10}{figure.1.6}\protected@file@percent }
+\newlabel{fig:error_landmarks}{{6}{10}{Análisis del error de predicción por landmark. (a) Gráfica de barras mostrando el error medio en píxeles para cada punto L1--L15, con línea punteada indicando la media global de 3.61 px. Los landmarks L12 y L13 (esquinas superiores) presentan mayor error ($\sim $5.4 px), mientras L10 y L11 (eje central) son los más precisos ($\sim $2.5 px). (b) Mapa de calor sobre la forma estándar donde el color representa el error medio según la escala de 2.5--5.0 px}{figure.1.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Efecto de la Normalización en la Clasificación}{10}{subsection.1.3.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Rendimiento del clasificador por categoría.}}{11}{table.1.2}\protected@file@percent }
+\newlabel{tab:rendimiento_clase}{{2}{11}{Rendimiento del clasificador por categoría}{table.1.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Comparación de configuraciones de preprocesamiento. Todas utilizan SAHS.}}{11}{table.1.3}\protected@file@percent }
+\newlabel{tab:comparacion}{{3}{11}{Comparación de configuraciones de preprocesamiento. Todas utilizan SAHS}{table.1.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Robustez del Sistema}{11}{subsection.1.3.3}\protected@file@percent }
+\citation{chowdhury2020can}
+\citation{rahman2021exploring}
+\citation{ozturk2020automated}
+\citation{narin2021automatic}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Matriz de confusión del clasificador Warped + SAHS (Accuracy: 98.10\%, F1-Macro: 97.17\%). La diagonal muestra las clasificaciones correctas: COVID-19 (436 casos, 96.5\%), Normal (1,266 casos, 99.4\%) y Neumonía Viral (157 casos, 92.9\%). Los errores principales son: 16 casos de COVID-19 clasificados como Normal (3.5\%) y 12 casos de Neumonía Viral como Normal (7.1\%). Notablemente, no hay confusión entre COVID-19 y Neumonía Viral.}}{12}{figure.1.7}\protected@file@percent }
+\newlabel{fig:matriz_confusion}{{7}{12}{Matriz de confusión del clasificador Warped + SAHS (Accuracy: 98.10\%, F1-Macro: 97.17\%). La diagonal muestra las clasificaciones correctas: COVID-19 (436 casos, 96.5\%), Normal (1,266 casos, 99.4\%) y Neumonía Viral (157 casos, 92.9\%). Los errores principales son: 16 casos de COVID-19 clasificados como Normal (3.5\%) y 12 casos de Neumonía Viral como Normal (7.1\%). Notablemente, no hay confusión entre COVID-19 y Neumonía Viral}{figure.1.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Comparación con la Literatura}{12}{subsection.1.3.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Comparación con trabajos relacionados en clasificación de COVID-19.}}{12}{table.1.4}\protected@file@percent }
+\newlabel{tab:comparacion_literatura}{{4}{12}{Comparación con trabajos relacionados en clasificación de COVID-19}{table.1.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusiones}{13}{section.1.4}\protected@file@percent }
+\newlabel{sec:conclusiones}{{4}{13}{Conclusiones}{section.1.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Evidencia de Mejora}{13}{subsection.1.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Análisis de Métricas}{13}{subsection.1.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Contribuciones Principales}{13}{subsection.1.4.3}\protected@file@percent }
+\bibstyle{splncs04}
+\bibdata{references}
+\bibcite{ayala2023synergizing}{1}
+\bibcite{chowdhury2020can}{2}
+\bibcite{delaunay1934sphere}{3}
+\bibcite{deng2009imagenet}{4}
+\bibcite{feng2018wing}{5}
+\bibcite{gower1975generalized}{6}
+\bibcite{he2016deep}{7}
+\bibcite{hou2021coordinate}{8}
+\bibcite{jaderberg2015spatial}{9}
+\bibcite{loshchilov2019adamw}{10}
+\bibcite{narin2021automatic}{11}
+\bibcite{ozturk2020automated}{12}
+\bibcite{picazo2024comparative}{13}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Trabajo Futuro}{14}{subsection.1.4.4}\protected@file@percent }
+\bibcite{rahman2021exploring}{14}
+\bibcite{rajpurkar2017chexnet}{15}
+\bibcite{wang2020covidnet}{16}
+\bibcite{wolberg1990digital}{17}
+\bibcite{who2020chest}{18}
+\bibcite{wu2018group}{19}
+\bibcite{zech2018variable}{20}
+\gdef \@abspage@last{15}

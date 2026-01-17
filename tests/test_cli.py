@@ -70,6 +70,13 @@ class TestCLIHelp:
         assert 'COVID-19 Landmark Detection' in result.stdout
         assert 'v' in result.stdout
 
+    def test_cross_validate_classifier_help(self):
+        """Comando cross-validate-classifier debe mostrar ayuda."""
+        result = runner.invoke(app, ['cross-validate-classifier', '--help'])
+        assert result.exit_code == 0
+        assert 'validacion cruzada' in result.stdout.lower()
+        assert '--folds' in result.stdout
+
 
 class TestCLIErrorHandling:
     """Tests para manejo de errores del CLI."""
@@ -166,16 +173,17 @@ class TestCLIImports:
         from src_v2.cli import app
         # Typer registra comandos en registered_commands
         # Los nombres pueden estar en el callback o ser None si no se especifico
-        # Verificamos que hay 19 comandos registrados:
+        # Verificamos que hay 24 comandos registrados:
         # train, evaluate, predict, warp, version, evaluate-ensemble,
         # classify, train-classifier, evaluate-classifier,
-        # cross-evaluate, evaluate-external, test-robustness,
+        # cross-validate-classifier, cross-evaluate, evaluate-external, test-robustness,
+        # apply-contrast-dataset, crop-dataset, generate-cropped-dataset,
         # compute-canonical, generate-dataset (Session 20),
         # compare-architectures (Session 22),
         # gradcam, analyze-errors (Session 23),
         # pfs-analysis, generate-lung-masks (Session 24),
         # optimize-margin (Session 25)
-        assert len(app.registered_commands) == 20
+        assert len(app.registered_commands) == 24
 
         # Verificar a traves de --help que los comandos existen
         result = runner.invoke(app, ['--help'])
@@ -188,6 +196,7 @@ class TestCLIImports:
         assert 'classify' in result.stdout
         assert 'train-classifier' in result.stdout
         assert 'evaluate-classifier' in result.stdout
+        assert 'cross-validate-classifier' in result.stdout
         # Nuevos comandos Session 18
         assert 'cross-evaluate' in result.stdout
         assert 'evaluate-external' in result.stdout

@@ -685,72 +685,84 @@ class DiagramFigureGenerator(BaseFigureGenerator):
         return self.save_figure(fig, "F4.2_pipeline_operacion.png", "cap4_metodologia")
 
     def generate_F4_5_arquitectura_modelo(self) -> Path:
-        """F4.5: Arquitectura ResNet-18 con cabeza de regresión."""
-        fig, ax = plt.subplots(figsize=(18, 7))
-        ax.set_xlim(0, 18)
-        ax.set_ylim(0, 7)
+        """F4.5: Arquitectura del modelo de predicción de landmarks.
+
+        Diseño minimalista para publicación científica:
+        - Solo componentes esenciales
+        - Texto grande y legible
+        - Sin información redundante (detalles en tablas/caption)
+        """
+        fig, ax = plt.subplots(figsize=(12, 4))
+        ax.set_xlim(0, 12)
+        ax.set_ylim(0, 4)
         ax.axis('off')
 
-        # Título
-        ax.text(9, 6.5, 'Arquitectura del Modelo de Predicción de Landmarks',
-               ha='center', fontsize=14, fontweight='bold')
+        # Paleta de colores profesional (tonos suaves)
+        colors = {
+            'input': '#B0BEC5',      # Gris claro
+            'backbone': '#90CAF9',   # Azul suave
+            'attention': '#80DEEA',  # Cian suave
+            'head': '#FFAB91',       # Naranja suave
+            'output': '#EF9A9A',     # Rojo suave
+            'border': '#37474F',     # Gris oscuro para bordes
+            'text': '#212121',       # Negro para texto
+            'dim': '#616161',        # Gris para dimensiones
+        }
 
-        y = 3.5
-        colors = ['#1976D2', '#388E3C', '#F57C00', '#7B1FA2', '#D32F2F']
+        def draw_block(x, y, w, h, label, color, sublabel=None, sublabel2=None):
+            """Dibuja un bloque con estilo de publicación científica."""
+            rect = plt.Rectangle((x - w/2, y - h/2), w, h,
+                                 facecolor=color, edgecolor=colors['border'],
+                                 linewidth=1.5, zorder=2)
+            ax.add_patch(rect)
+            ax.text(x, y, label, ha='center', va='center',
+                   fontsize=12, fontweight='bold', color=colors['text'], zorder=3)
+            if sublabel:
+                ax.text(x, y - h/2 - 0.2, sublabel, ha='center', va='top',
+                       fontsize=10, color=colors['dim'], style='italic')
+            if sublabel2:
+                ax.text(x, y - h/2 - 0.45, sublabel2, ha='center', va='top',
+                       fontsize=9, color=colors['dim'])
 
-        # Input
-        self._draw_box(ax, 1, y, 1.5, 2.5, 'Input\n\n224×224×3', '#455A64')
+        def draw_arrow(x1, x2, y):
+            """Dibuja flecha horizontal."""
+            ax.annotate('', xy=(x2, y), xytext=(x1, y),
+                       arrowprops=dict(arrowstyle='->', color=colors['border'],
+                                      lw=2, shrinkA=0, shrinkB=0))
 
-        # Conv inicial
-        self._draw_box(ax, 3.2, y, 1.3, 2, 'Conv\n7×7\n64', colors[0], fontsize=8)
+        # Posición vertical principal
+        y_main = 2.2
+        h_main = 1.5
 
-        # ResNet blocks - más espaciados
-        blocks = [
-            ('Layer1\n64→64\n×2', colors[0]),
-            ('Layer2\n64→128\n×2', colors[1]),
-            ('Layer3\n128→256\n×2', colors[2]),
-            ('Layer4\n256→512\n×2', colors[3]),
-        ]
+        # =====================================================================
+        # FLUJO PRINCIPAL - 4 bloques esenciales
+        # =====================================================================
 
-        x_pos = 5.2
-        for text, color in blocks:
-            self._draw_box(ax, x_pos, y, 1.5, 2.2, text, color, fontsize=8)
-            x_pos += 2.2
+        # 1. ENTRADA
+        draw_block(1.0, y_main, 1.5, h_main, 'Entrada', colors['input'], '224×224×3')
 
-        # Global Average Pooling - más separado
-        self._draw_box(ax, 13.5, y, 1.3, 1.5, 'GAP\n512×1', '#607D8B', fontsize=8)
+        draw_arrow(1.8, 2.4, y_main)
 
-        # Cabeza de regresión - en línea horizontal, sin superposición
-        self._draw_box(ax, 15.3, y, 1.3, 1, 'FC\n512→256', colors[4], fontsize=8)
-        self._draw_box(ax, 16.9, y, 1.3, 1, 'FC\n256→30', colors[4], fontsize=8)
+        # 2. BACKBONE ResNet-18
+        draw_block(3.8, y_main, 2.2, h_main, 'ResNet-18', colors['backbone'], '7×7×512')
 
-        # Output
-        ax.text(17.7, y, '→', ha='center', va='center', fontsize=14, fontweight='bold')
-        ax.text(18, y, '15×2', ha='left', va='center', fontsize=10, fontweight='bold')
+        draw_arrow(5.0, 5.6, y_main)
 
-        # Flechas entre bloques principales
-        self._draw_arrow(ax, 1.8, y, 2.5, y, 'black')  # Input -> Conv
-        self._draw_arrow(ax, 3.9, y, 4.4, y, 'black')  # Conv -> Layer1
+        # 3. COORDINATE ATTENTION
+        draw_block(7.0, y_main, 2.0, h_main, 'Coordinate\nAttention', colors['attention'], '7×7×512')
 
-        # Flechas entre layers
-        x_pos = 5.2
-        for i in range(3):
-            self._draw_arrow(ax, x_pos + 0.8, y, x_pos + 1.4, y, 'black')
-            x_pos += 2.2
+        draw_arrow(8.1, 8.7, y_main)
 
-        # Layer4 -> GAP
-        self._draw_arrow(ax, 12.4, y, 12.8, y, 'black')
+        # 4. CABEZA DE REGRESIÓN (incluye GAP implícitamente)
+        draw_block(10.0, y_main, 1.8, h_main, 'Cabeza de\nRegresión', colors['head'], '30', '(15 landmarks)')
 
-        # GAP -> FC1 -> FC2
-        self._draw_arrow(ax, 14.2, y, 14.6, y, 'black')
-        self._draw_arrow(ax, 16.0, y, 16.2, y, 'black')
+        draw_arrow(11.0, 11.5, y_main)
 
-        # Nota sobre entrenamiento
-        ax.text(9, 1, 'Entrenamiento en 2 fases: (1) Backbone congelado, lr=1e-3  (2) Fine-tuning completo, lr=2e-5',
-               ha='center', fontsize=9, style='italic',
-               bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
+        # 5. OUTPUT - solo el símbolo
+        ax.text(11.8, y_main, '(x, y)₁₅', ha='left', va='center',
+               fontsize=14, fontweight='bold', color=colors['text'])
 
-        plt.tight_layout()
+        plt.tight_layout(pad=0.3)
         return self.save_figure(fig, "F4.5_arquitectura_modelo.png", "cap4_metodologia")
 
     def generate_F4_11_flujo_normalizacion(self) -> Path:
@@ -1020,22 +1032,34 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         landmarks_px = np.array(canonical['canonical_shape_pixels'])
         landmarks_norm = np.array(canonical['canonical_shape_normalized'])
 
+        # Invertir Y para orientación correcta (pulmón con ápex arriba)
+        landmarks_norm_vis = landmarks_norm.copy()
+        landmarks_norm_vis[:, 1] = -landmarks_norm_vis[:, 1]
+
+        # Conexiones del contorno pulmonar (orden correcto para dibujar)
+        # Eje central: L1(0) -> L9(8) -> L10(9) -> L11(10) -> L2(1)
+        # Izquierda: L12(11) -> L3(2) -> L5(4) -> L7(6) -> L14(13)
+        # Derecha: L13(12) -> L4(3) -> L6(5) -> L8(7) -> L15(14)
+        contour_left = [11, 2, 4, 6, 13]  # L12, L3, L5, L7, L14
+        contour_right = [12, 3, 5, 7, 14]  # L13, L4, L6, L8, L15
+        central_axis = [0, 8, 9, 10, 1]  # L1, L9, L10, L11, L2
+
         # Panel 1: Formas sin alinear (simulado)
         ax = axes[0, 0]
         np.random.seed(42)
         n_samples = 30
         for i in range(n_samples):
-            # Simular variación
-            noise = np.random.normal(0, 0.03, landmarks_norm.shape)
-            rotation = np.random.uniform(-0.2, 0.2)
-            scale = np.random.uniform(0.8, 1.2)
+            noise = np.random.normal(0, 0.03, landmarks_norm_vis.shape)
+            rotation = np.random.uniform(-0.3, 0.3)
+            scale = np.random.uniform(0.7, 1.3)
+            translation = np.random.uniform(-0.1, 0.1, 2)
 
             rot_matrix = np.array([
                 [np.cos(rotation), -np.sin(rotation)],
                 [np.sin(rotation), np.cos(rotation)]
             ])
 
-            varied = (landmarks_norm + noise) @ rot_matrix * scale
+            varied = (landmarks_norm_vis + noise) @ rot_matrix * scale + translation
             ax.scatter(varied[:, 0], varied[:, 1], c='gray', s=15, alpha=0.3)
 
         ax.set_title('a) Formas originales (sin alinear)', fontsize=self.config.font_size_title)
@@ -1045,11 +1069,11 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         # Panel 2: Después de centrar y escalar
         ax = axes[0, 1]
         for i in range(n_samples):
-            noise = np.random.normal(0, 0.02, landmarks_norm.shape)
-            varied = landmarks_norm + noise
+            noise = np.random.normal(0, 0.02, landmarks_norm_vis.shape)
+            varied = landmarks_norm_vis + noise
             ax.scatter(varied[:, 0], varied[:, 1], c='blue', s=15, alpha=0.3)
 
-        ax.scatter(landmarks_norm[:, 0], landmarks_norm[:, 1],
+        ax.scatter(landmarks_norm_vis[:, 0], landmarks_norm_vis[:, 1],
                   c=self.config.colors['covid'], s=80, zorder=5, label='Media')
         ax.set_title('b) Centradas y escaladas', fontsize=self.config.font_size_title)
         ax.set_aspect('equal')
@@ -1059,33 +1083,57 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         # Panel 3: Después de rotar (alineadas)
         ax = axes[1, 0]
         for i in range(n_samples):
-            noise = np.random.normal(0, 0.01, landmarks_norm.shape)
-            varied = landmarks_norm + noise
+            noise = np.random.normal(0, 0.008, landmarks_norm_vis.shape)
+            varied = landmarks_norm_vis + noise
             ax.scatter(varied[:, 0], varied[:, 1], c='green', s=15, alpha=0.4)
 
-        ax.scatter(landmarks_norm[:, 0], landmarks_norm[:, 1],
+        ax.scatter(landmarks_norm_vis[:, 0], landmarks_norm_vis[:, 1],
                   c=self.config.colors['covid'], s=80, zorder=5)
         ax.set_title('c) Alineadas por rotación', fontsize=self.config.font_size_title)
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
 
-        # Panel 4: Convergencia
+        # Panel 4: Forma Canónica Final con contorno conectado
         ax = axes[1, 1]
-        convergence = canonical.get('convergence', {})
-        n_iter = convergence.get('n_iterations', 10)
 
-        # Simular curva de convergencia
-        iterations = np.arange(n_iter)
-        distances = 0.1 * np.exp(-0.5 * iterations) + 0.01
+        # Dibujar contorno izquierdo
+        left_pts = landmarks_norm_vis[contour_left]
+        ax.plot(left_pts[:, 0], left_pts[:, 1], 'b-', linewidth=2, alpha=0.8)
 
-        ax.plot(iterations, distances, 'b-', linewidth=2, marker='o', markersize=4)
-        ax.axhline(y=distances[-1], color='g', linestyle='--', alpha=0.5,
-                  label=f'Convergencia: {distances[-1]:.4f}')
-        ax.set_xlabel('Iteración', fontsize=self.config.font_size_label)
-        ax.set_ylabel('Distancia promedio al consenso', fontsize=self.config.font_size_label)
-        ax.set_title('d) Convergencia del GPA', fontsize=self.config.font_size_title)
+        # Dibujar contorno derecho
+        right_pts = landmarks_norm_vis[contour_right]
+        ax.plot(right_pts[:, 0], right_pts[:, 1], 'b-', linewidth=2, alpha=0.8)
+
+        # Dibujar eje central
+        central_pts = landmarks_norm_vis[central_axis]
+        ax.plot(central_pts[:, 0], central_pts[:, 1], 'g--', linewidth=1.5, alpha=0.6)
+
+        # Conectar parte superior (L12-L1-L13)
+        top_pts = landmarks_norm_vis[[11, 0, 12]]
+        ax.plot(top_pts[:, 0], top_pts[:, 1], 'b-', linewidth=2, alpha=0.8)
+
+        # Conectar parte inferior (L14-L2-L15)
+        bottom_pts = landmarks_norm_vis[[13, 1, 14]]
+        ax.plot(bottom_pts[:, 0], bottom_pts[:, 1], 'b-', linewidth=2, alpha=0.8)
+
+        # Dibujar los 15 landmarks
+        ax.scatter(landmarks_norm_vis[:, 0], landmarks_norm_vis[:, 1],
+                  c=self.config.colors['covid'], s=100, zorder=5, edgecolors='white', linewidth=1.5)
+
+        # Etiquetar landmarks
+        labels = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8',
+                  'L9', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15']
+        for i, (x, y) in enumerate(landmarks_norm_vis):
+            offset_x = 0.02 if x < 0 else -0.02
+            ha = 'right' if x < 0 else 'left'
+            ax.annotate(labels[i], (x, y), xytext=(x + offset_x, y),
+                       fontsize=8, ha=ha, va='center', color='#333333')
+
+        ax.set_title('d) Forma Canónica Final', fontsize=self.config.font_size_title)
+        ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
-        ax.legend(loc='upper right')
+        ax.set_xlabel('Coordenada X (normalizada)', fontsize=self.config.font_size_label)
+        ax.set_ylabel('Coordenada Y (normalizada)', fontsize=self.config.font_size_label)
 
         plt.suptitle('Análisis Procrustes Generalizado (GPA)',
                     fontsize=self.config.font_size_title + 2, y=1.02)
@@ -1094,13 +1142,10 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
 
     def generate_F4_8_triangulacion_delaunay(self) -> Path:
         """F4.8: Triangulación de Delaunay."""
-        fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
 
         canonical = self.data.get_canonical_shape()
         landmarks_px = np.array(canonical['canonical_shape_pixels'])
-
-        # Panel 1: Landmarks con triangulación
-        ax = axes[0]
 
         # Calcular triangulación
         tri = Delaunay(landmarks_px)
@@ -1117,34 +1162,40 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         ax.scatter(landmarks_px[:, 0], landmarks_px[:, 1],
                   c=self.config.colors['covid'], s=100, zorder=5)
 
+        # Offsets personalizados para evitar superposición con líneas
+        # Formato: (offset_x, offset_y, ha, va) - ha/va para alineación del texto
+        label_offsets = {
+            1: (12, -14, 'left', 'bottom'),     # L1 - arriba centro, etiqueta arriba-derecha
+            2: (0, 18, 'center', 'top'),        # L2 - abajo centro, etiqueta abajo
+            3: (-14, 0, 'right', 'center'),     # L3 - izquierda
+            4: (14, 0, 'left', 'center'),       # L4 - derecha
+            5: (-14, 0, 'right', 'center'),     # L5 - izquierda
+            6: (14, 0, 'left', 'center'),       # L6 - derecha
+            7: (-14, 0, 'right', 'center'),     # L7 - izquierda
+            8: (14, 0, 'left', 'center'),       # L8 - derecha
+            9: (-18, 0, 'right', 'center'),     # L9 - centro, etiqueta izquierda
+            10: (18, 0, 'left', 'center'),      # L10 - centro, etiqueta derecha
+            11: (18, 0, 'left', 'center'),      # L11 - centro, etiqueta derecha
+            12: (-14, -14, 'right', 'bottom'),  # L12 - arriba izq, etiqueta arriba-izquierda
+            13: (14, -14, 'left', 'bottom'),    # L13 - arriba der, etiqueta arriba-derecha
+            14: (-14, 0, 'right', 'center'),    # L14 - abajo izq, etiqueta izquierda
+            15: (14, 0, 'left', 'center'),      # L15 - abajo der, etiqueta derecha
+        }
+
         for i, (x, y) in enumerate(landmarks_px):
-            ax.annotate(f'L{i+1}', (x, y), xytext=(6, 6), textcoords='offset points',
-                       fontsize=8, fontweight='bold')
+            idx = i + 1
+            ox, oy, ha, va = label_offsets.get(idx, (8, 0, 'left', 'center'))
+            ax.annotate(f'L{idx}', (x, y), xytext=(ox, oy), textcoords='offset points',
+                       fontsize=9, fontweight='bold', ha=ha, va=va,
+                       bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
+                                edgecolor='none', alpha=1.0))
 
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('a) Triangulación de Delaunay\nsobre forma canónica',
+        ax.set_title('Triangulación de Delaunay sobre forma canónica',
                     fontsize=self.config.font_size_title)
         ax.grid(True, alpha=0.3)
-
-        # Panel 2: Explicación del warping
-        ax = axes[1]
-        ax.text(0.5, 0.85, 'Transformación Afín por Triángulo',
-                ha='center', fontsize=12, fontweight='bold')
-
-        ax.text(0.5, 0.7, 'Para cada triángulo:', ha='center', fontsize=10)
-        ax.text(0.5, 0.55, '1. Calcular matriz de transformación afín', ha='center', fontsize=9)
-        ax.text(0.5, 0.45, '2. Mapear píxeles del triángulo fuente al destino', ha='center', fontsize=9)
-        ax.text(0.5, 0.35, '3. Interpolar valores de intensidad', ha='center', fontsize=9)
-
-        ax.text(0.5, 0.2, f'Triángulos: {len(tri.simplices)}',
-                ha='center', fontsize=10, color=self.config.colors['secondary'])
-
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.axis('off')
-        ax.set_title('b) Proceso de warping', fontsize=self.config.font_size_title)
 
         plt.tight_layout()
         return self.save_figure(fig, "F4.8_triangulacion_delaunay.png", "cap4_metodologia")
@@ -1233,32 +1284,42 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         predictions = self.data.get_predictions()
         canonical = self.data.get_canonical_shape()
         canonical_px = np.array(canonical['canonical_shape_pixels'])
+        tri = Delaunay(canonical_px)
+        triangles = tri.simplices
 
         # Seleccionar una imagen de ejemplo
-        samples = self.data.get_sample_images(n_per_class=1)
-        if samples.get('Normal'):
-            img_path = samples['Normal'][0]
+        categories = predictions['categories']
+        normal_indices = np.where(categories == 'Normal')[0]
+        if len(normal_indices) > 0:
+            idx = normal_indices[0]
+            landmarks_pred = predictions['landmarks'][idx]  # Escala 224x224
+            img_rel_path = predictions['image_paths'][idx]
+
+            dataset_dir = self.data.project_root / "data" / "dataset" / "COVID-19_Radiography_Dataset"
+            img_path = dataset_dir / img_rel_path
             img = self.data.load_image(img_path)
 
             # Panel 1: Imagen original con triangulación
             ax = axes[0]
             ax.imshow(img, cmap='gray')
 
-            # Simular landmarks predichos (escalar canónico)
-            scale = img.shape[0] / 224
-            landmarks_pred = canonical_px * scale
+            # Escalar landmarks predichos al tamaño real de la imagen
+            scale_x = img.shape[1] / 224
+            scale_y = img.shape[0] / 224
+            landmarks_scaled = landmarks_pred.copy()
+            landmarks_scaled[:, 0] *= scale_x
+            landmarks_scaled[:, 1] *= scale_y
 
             # Triangulación
-            tri = Delaunay(landmarks_pred)
-            for simplex in tri.simplices:
-                triangle = landmarks_pred[simplex]
+            for simplex in triangles:
+                triangle = landmarks_scaled[simplex]
                 polygon = plt.Polygon(triangle, fill=False,
                                      edgecolor=self.config.colors['secondary'],
                                      linewidth=1, alpha=0.7)
                 ax.add_patch(polygon)
 
-            ax.scatter(landmarks_pred[:, 0], landmarks_pred[:, 1],
-                      c=self.config.colors['landmark_pred'], s=50, zorder=5)
+            ax.scatter(landmarks_scaled[:, 0], landmarks_scaled[:, 1],
+                       c=self.config.colors['landmark_pred'], s=50, zorder=5)
 
             ax.set_title('a) Triangulación sobre imagen original',
                         fontsize=self.config.font_size_title)
@@ -1267,8 +1328,7 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         # Panel 2: Forma canónica con triangulación
         ax = axes[1]
 
-        tri = Delaunay(canonical_px)
-        for simplex in tri.simplices:
+        for simplex in triangles:
             triangle = canonical_px[simplex]
             polygon = plt.Polygon(triangle, fill=False,
                                  edgecolor=self.config.colors['normal'],
@@ -1281,8 +1341,8 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('b) Triangulación destino (canónica)',
-                    fontsize=self.config.font_size_title)
+        ax.set_title('b) Triangulación destino (forma estándar pulmonar)',
+                     fontsize=self.config.font_size_title)
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
@@ -1300,37 +1360,42 @@ class WarpingVisualizationGenerator(BaseFigureGenerator):
         """F4.9: Comparación original vs warped."""
         fig, axes = plt.subplots(2, 3, figsize=(14, 10))
 
-        classes = ['COVID', 'Normal', 'Viral_Pneumonia']
+        # Mapeo de clases: warped_dir -> original_dir
+        class_mapping = {
+            'COVID': 'COVID',
+            'Normal': 'Normal',
+            'Viral_Pneumonia': 'Viral Pneumonia'
+        }
 
-        for col, class_name in enumerate(classes):
-            # Obtener imágenes originales y warped
-            samples_orig = self.data.get_sample_images(n_per_class=1)
+        dataset_dir = self.data.project_root / "data" / "dataset" / "COVID-19_Radiography_Dataset"
+
+        for col, (warp_class, orig_class) in enumerate(class_mapping.items()):
+            # Obtener UNA imagen warped
             samples_warp = self.data.get_warped_images(n_per_class=1)
 
-            # Original
-            ax = axes[0, col]
-            if class_name in ['COVID', 'Normal']:
-                orig_class = class_name
-            else:
-                orig_class = 'Viral Pneumonia'
-
-            if samples_orig.get(orig_class):
-                img_orig = self.data.load_image(samples_orig[orig_class][0])
-                ax.imshow(img_orig, cmap='gray')
-
-            label = self.config.labels_es.get(class_name.lower().replace('_', ' '), class_name)
-            ax.set_title(f'{label}\n(Original)', fontsize=self.config.font_size_title)
-            ax.axis('off')
-
-            # Warped
-            ax = axes[1, col]
-            warp_class = class_name if class_name != 'Viral Pneumonia' else 'Viral_Pneumonia'
             if samples_warp.get(warp_class):
-                img_warp = self.data.load_image(samples_warp[warp_class][0])
-                ax.imshow(img_warp, cmap='gray')
+                warped_path = samples_warp[warp_class][0]
 
-            ax.set_title(f'{label}\n(Normalizado)', fontsize=self.config.font_size_title)
-            ax.axis('off')
+                # Derivar nombre original: COVID-1000_warped.png -> COVID-1000.png
+                original_name = warped_path.name.replace('_warped', '')
+                original_path = dataset_dir / orig_class / "images" / original_name
+
+                # Mostrar imagen original
+                ax = axes[0, col]
+                if original_path.exists():
+                    img_orig = self.data.load_image(original_path)
+                    ax.imshow(img_orig, cmap='gray')
+
+                label = self.config.labels_es.get(warp_class.lower().replace('_', ' '), warp_class)
+                ax.set_title(f'{label}\n(Original)', fontsize=self.config.font_size_title)
+                ax.axis('off')
+
+                # Mostrar imagen warped (la misma radiografía normalizada)
+                ax = axes[1, col]
+                img_warp = self.data.load_image(warped_path)
+                ax.imshow(img_warp, cmap='gray')
+                ax.set_title(f'{label}\n(Normalizado)', fontsize=self.config.font_size_title)
+                ax.axis('off')
 
         # Etiquetas de fila
         axes[0, 0].text(-0.15, 0.5, 'Original', transform=axes[0, 0].transAxes,
@@ -1610,7 +1675,7 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
 
     def generate_F5_1_error_por_landmark(self) -> Path:
         """F5.1: Error por landmark."""
-        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
         gt = self.data.get_ground_truth()
         per_landmark = gt['per_landmark_errors']['values_best_20260111']
@@ -1620,59 +1685,97 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
         landmarks = [f'L{i}' for i in range(1, 16)]
         errors = [per_landmark[f'L{i}'] for i in range(1, 16)]
 
-        colors = []
-        for i in range(15):
-            if i in [0, 8, 9, 10, 1]:  # Central
-                colors.append(self.config.colors['covid'])
-            elif i in [2, 4, 6, 11, 13]:  # Left
-                colors.append(self.config.colors['normal'])
-            else:  # Right
-                colors.append(self.config.colors['viral'])
-
-        bars = ax.bar(landmarks, errors, color=colors, alpha=0.8, edgecolor='white')
+        ax.bar(
+            landmarks,
+            errors,
+            color=self.config.colors['secondary'],
+            alpha=0.85,
+            edgecolor=self.config.colors['axis'],
+            linewidth=0.5
+        )
 
         # Línea de media
         mean_error = np.mean(errors)
-        ax.axhline(y=mean_error, color='black', linestyle='--', linewidth=1.5,
-                  label=f'Media: {mean_error:.2f} px')
+        ax.axhline(y=mean_error, color=self.config.colors['axis'], linestyle='--', linewidth=1.2,
+                   label=f'Media = {mean_error:.2f} px')
 
-        ax.set_xlabel('Landmark', fontsize=self.config.font_size_label)
-        ax.set_ylabel('Error (píxeles)', fontsize=self.config.font_size_label)
-        ax.set_title('a) Error de predicción por landmark', fontsize=self.config.font_size_title)
-        ax.legend(loc='upper right')
-        ax.grid(True, alpha=0.3, axis='y')
+        ax.set_xlabel('Punto de referencia', fontsize=self.config.font_size_label)
+        ax.set_ylabel('Error medio (px)', fontsize=self.config.font_size_label)
+        ax.set_title('a) Error medio por punto de referencia', fontsize=self.config.font_size_title)
+        ax.set_axisbelow(True)
+        ax.grid(True, alpha=0.25, axis='y', linestyle='--', linewidth=0.6)
+        ax.set_ylim(0, max(errors) * 1.15)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.legend(loc='upper left', frameon=False, fontsize=self.config.font_size_title, handlelength=2.5)
 
         # Panel 2: Mapa de calor sobre silueta
         ax = axes[1]
         canonical = self.data.get_canonical_shape()
         landmarks_px = np.array(canonical['canonical_shape_pixels'])
 
-        # Normalizar errores para colormap
-        errors_norm = np.array(errors)
-        errors_norm = (errors_norm - errors_norm.min()) / (errors_norm.max() - errors_norm.min())
+        # Alinear visualmente el eje L1-L2 para una presentación más estable
+        axis_vec = landmarks_px[1] - landmarks_px[0]
+        theta_axis = np.arctan2(axis_vec[0], axis_vec[1])
+        top_vec = landmarks_px[12] - landmarks_px[11]
+        theta_top = np.arctan2(top_vec[1], top_vec[0])
+        theta = (theta_axis - theta_top) / 2.0
+        if abs(theta) > 1e-6:
+            centroid = landmarks_px.mean(axis=0)
+            rotation = np.array([
+                [np.cos(theta), -np.sin(theta)],
+                [np.sin(theta),  np.cos(theta)]
+            ])
+            landmarks_vis = (landmarks_px - centroid) @ rotation.T + centroid
+        else:
+            landmarks_vis = landmarks_px
+        axis_center_x = (landmarks_vis[0, 0] + landmarks_vis[1, 0]) / 2.0
+        landmarks_vis[:, 0] += (112.0 - axis_center_x)
 
-        # Colormap
-        cmap = plt.cm.RdYlGn_r
+        contour_left = [0, 11, 2, 4, 6, 13, 1]
+        contour_right = [0, 12, 3, 5, 7, 14, 1]
+        central_axis = [0, 8, 9, 10, 1]
+        ax.plot(landmarks_vis[contour_left, 0], landmarks_vis[contour_left, 1],
+                color=self.config.colors['grid'], linewidth=0.9)
+        ax.plot(landmarks_vis[contour_right, 0], landmarks_vis[contour_right, 1],
+                color=self.config.colors['grid'], linewidth=0.9)
+        ax.plot(landmarks_vis[central_axis, 0], landmarks_vis[central_axis, 1],
+                color=self.config.colors['grid'], linewidth=0.9, linestyle='--')
 
-        scatter = ax.scatter(landmarks_px[:, 0], landmarks_px[:, 1],
-                           c=errors, s=200, cmap=cmap,
-                           edgecolors='white', linewidths=2,
-                           vmin=min(errors), vmax=max(errors))
+        # Colormap perceptual uniforme
+        cmap = plt.cm.viridis
+
+        scatter = ax.scatter(landmarks_vis[:, 0], landmarks_vis[:, 1],
+                             c=errors, s=140, cmap=cmap,
+                             edgecolors='white', linewidths=1.2,
+                             vmin=min(errors), vmax=max(errors))
 
         # Etiquetas
-        for i, (x, y) in enumerate(landmarks_px):
-            ax.annotate(f'L{i+1}', (x, y), xytext=(10, 0), textcoords='offset points',
-                       fontsize=8, fontweight='bold')
+        for i, (x, y) in enumerate(landmarks_vis):
+            ax.annotate(
+                f'L{i+1}',
+                (x, y),
+                xytext=(6, 0),
+                textcoords='offset points',
+                fontsize=self.config.font_size_annotation,
+                fontweight='bold',
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=0.2)
+            )
 
         # Colorbar
-        cbar = plt.colorbar(scatter, ax=ax)
-        cbar.set_label('Error (px)', fontsize=self.config.font_size_label)
+        cbar = plt.colorbar(scatter, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label('Error medio (px)', fontsize=self.config.font_size_label)
 
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('b) Mapa de error sobre forma canónica', fontsize=self.config.font_size_title)
-        ax.grid(True, alpha=0.3)
+        ax.set_title('b) Mapa de error sobre forma estándar', fontsize=self.config.font_size_title)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_color(self.config.colors['grid'])
+            spine.set_linewidth(0.8)
 
         plt.tight_layout()
         return self.save_figure(fig, "F5.1_error_por_landmark.png", "cap5_resultados")
@@ -1762,6 +1865,39 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
 
 class ClassificationResultsGenerator(BaseFigureGenerator):
     """Generador de figuras de resultados de clasificación."""
+
+    def _find_common_sample_triplet(
+        self,
+        root: Path,
+        split: str,
+        class_name: str,
+        preferred_base: Optional[str] = None,
+    ) -> Optional[Tuple[Path, Path, Path]]:
+        """Encontrar un trío (original, warped, cropped) con el mismo caso base."""
+        orig_dir = root / "outputs" / "original" / "sessionXX_sahs" / split / class_name
+        warped_dir = root / "outputs" / "warped_lung_sahs" / split / class_name
+        cropped_dir = root / "outputs" / "cropped_lung_12_sahs" / split / class_name
+
+        if not orig_dir.exists() or not warped_dir.exists() or not cropped_dir.exists():
+            return None
+
+        def base_name(path: Path) -> str:
+            stem = path.stem
+            return stem.rsplit("_", 1)[0] if "_" in stem else stem
+
+        orig_map = {base_name(p): p for p in orig_dir.glob("*.png")}
+        warped_map = {base_name(p): p for p in warped_dir.glob("*.png")}
+        cropped_map = {base_name(p): p for p in cropped_dir.glob("*.png")}
+
+        if preferred_base and preferred_base in orig_map and preferred_base in warped_map and preferred_base in cropped_map:
+            return orig_map[preferred_base], warped_map[preferred_base], cropped_map[preferred_base]
+
+        common = sorted(set(orig_map) & set(warped_map) & set(cropped_map))
+        if not common:
+            return None
+
+        base = common[len(common) // 2]
+        return orig_map[base], warped_map[base], cropped_map[base]
 
     def generate_F5_7_matriz_confusion(self) -> Path:
         """F5.7: Matriz de confusión."""
@@ -1946,6 +2082,52 @@ class ClassificationResultsGenerator(BaseFigureGenerator):
         plt.tight_layout()
         return self.save_figure(fig, "F5.9_casos_mal_clasificados.png", "cap5_resultados")
 
+    def generate_F5_11_comparacion_preprocesamiento_sahs(self) -> Path:
+        """F5.11: Comparación visual de preprocesamiento con SAHS."""
+        fig, axes = plt.subplots(3, 3, figsize=(10, 9))
+
+        classes = ['COVID', 'Normal', 'Viral_Pneumonia']
+        split = "test"
+        column_titles = ['Original + SAHS', 'Warped + SAHS', 'Cropped 12% + SAHS']
+
+        preferred_bases = {
+            'COVID': 'COVID-2796',
+        }
+
+        for row, class_name in enumerate(classes):
+            triplet = self._find_common_sample_triplet(
+                self.data.project_root,
+                split,
+                class_name,
+                preferred_base=preferred_bases.get(class_name),
+            )
+            if triplet is None:
+                for col in range(3):
+                    ax = axes[row, col]
+                    ax.text(0.5, 0.5, 'Imagen no disponible', ha='center', va='center',
+                            transform=ax.transAxes, fontsize=self.config.font_size_label)
+                    ax.axis('off')
+                continue
+
+            images = [self.data.load_image(path) for path in triplet]
+
+            for col, img in enumerate(images):
+                ax = axes[row, col]
+                ax.imshow(img, cmap='gray', vmin=0, vmax=255)
+                ax.axis('off')
+                if row == 0:
+                    ax.set_title(column_titles[col], fontsize=self.config.font_size_title)
+
+            label_key = class_name.lower().replace('_', ' ')
+            label_overrides = {'viral pneumonia': 'Neumonía Viral'}
+            row_label = label_overrides.get(label_key, self.config.labels_es.get(label_key, class_name))
+            axes[row, 0].text(-0.12, 0.5, row_label, transform=axes[row, 0].transAxes,
+                              rotation=90, va='center', ha='center',
+                              fontsize=self.config.font_size_label, fontweight='bold')
+
+        plt.tight_layout()
+        return self.save_figure(fig, "F5.11_comparacion_preprocesamiento_sahs.png", "cap5_resultados")
+
 
 # =============================================================================
 # GENERADOR DE FIGURAS DE INTERPRETABILIDAD
@@ -2057,6 +2239,7 @@ class ThesisFigureGenerator:
             'F5.8': ('classification', 'generate_F5_8_curvas_aprendizaje'),
             'F5.9': ('classification', 'generate_F5_9_casos_mal_clasificados'),
             'F5.10': ('interpretability', 'generate_F5_10_regiones_informativas'),
+            'F5.11': ('classification', 'generate_F5_11_comparacion_preprocesamiento_sahs'),
         }
 
     def check_data_availability(self) -> Dict[str, bool]:

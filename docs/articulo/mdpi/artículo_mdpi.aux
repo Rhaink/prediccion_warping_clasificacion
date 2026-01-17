@@ -1,0 +1,111 @@
+\relax 
+\providecommand*\new@tpo@label[2]{}
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\bibstyle{Definitions/mdpi}
+\citation{who2020chest}
+\citation{rajpurkar2017chexnet,wang2020covidnet,chowdhury2020can}
+\citation{zech2018variable}
+\newmarginnote{note.1.1}{{1}{10945661sp}}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{ayala2023synergizing}
+\citation{picazo2024comparative}
+\citation{jaderberg2015spatial}
+\citation{gower1975generalized}
+\citation{delaunay1934sphere}
+\citation{wolberg1990digital}
+\citation{he2016deep}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Related Work}{2}{subsection.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Proposal of the Present Work}{2}{subsection.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Materials and Methods}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}System Overview}{2}{subsection.2.1}\protected@file@percent }
+\citation{chowdhury2020can,rahman2021exploring}
+\citation{he2016deep}
+\citation{deng2009imagenet}
+\citation{hou2021coordinate}
+\citation{wu2018group}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Operation flow of the proposed system. From left to right: (1) radiograph input (299$\times $299), (2) preprocessing with resizing, CLAHE, and normalization (224$\times $224$\times $3), (3) prediction of 15 coordinate pairs with 3.61 px error, (4) geometric normalization through warping (224$\times $224$\times $3), and (5) classification with ResNet-18 into three categories (COVID-19, Normal, Viral Pneumonia).}}{3}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:flujo}{{1}{3}{Operation flow of the proposed system. From left to right: (1) radiograph input (299$\times $299), (2) preprocessing with resizing, CLAHE, and normalization (224$\times $224$\times $3), (3) prediction of 15 coordinate pairs with 3.61 px error, (4) geometric normalization through warping (224$\times $224$\times $3), and (5) classification with ResNet-18 into three categories (COVID-19, Normal, Viral Pneumonia)}{figure.caption.1}{}}
+\newlabel{fig:flujo@cref}{{[figure][1][]1}{[1][3][]3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Dataset}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Landmark Prediction Model Architecture}{3}{subsection.2.3}\protected@file@percent }
+\citation{feng2018wing}
+\citation{gower1975generalized}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Landmark prediction model architecture. The input image (224$\times $224$\times $3) passes through the ResNet-18 backbone that produces a feature map (7$\times $7$\times $512), then through the Coordinate Attention module that maintains dimensions, and finally through the regression head that produces 30 values corresponding to the $(x,y)$ coordinates of the 15 landmarks.}}{4}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:arquitectura}{{2}{4}{Landmark prediction model architecture. The input image (224$\times $224$\times $3) passes through the ResNet-18 backbone that produces a feature map (7$\times $7$\times $512), then through the Coordinate Attention module that maintains dimensions, and finally through the regression head that produces 30 values corresponding to the $(x,y)$ coordinates of the 15 landmarks}{figure.caption.2}{}}
+\newlabel{fig:arquitectura@cref}{{[figure][2][]2}{[1][4][]4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Landmark Model Training}{4}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Generalized Procrustes Analysis}{4}{subsection.2.5}\protected@file@percent }
+\citation{delaunay1934sphere}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Generalized Procrustes Analysis process in four stages. (a) Original unaligned shapes showing high dispersion. (b) Centered and scaled configurations with blue points grouped around the mean (red). (c) Rotation-aligned configurations with higher concentration. (d) Final standard shape with the 15 labeled landmarks (L1--L15) defining the lung contour.}}{5}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:gpa}{{3}{5}{Generalized Procrustes Analysis process in four stages. (a) Original unaligned shapes showing high dispersion. (b) Centered and scaled configurations with blue points grouped around the mean (red). (c) Rotation-aligned configurations with higher concentration. (d) Final standard shape with the 15 labeled landmarks (L1--L15) defining the lung contour}{figure.caption.3}{}}
+\newlabel{fig:gpa@cref}{{[figure][3][]3}{[1][4][]5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Delaunay Triangulation and Warping}{5}{subsection.2.6}\protected@file@percent }
+\citation{wolberg1990digital}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Delaunay triangulation on the standard shape. The 15 landmarks (L1--L15, red points) are connected by blue edges forming a mesh of 16 triangles. The central axis (L1, L9, L10, L11, L2) divides the lung silhouette, while symmetric pairs (L3/L4, L5/L6, L7/L8, L12/L13, L14/L15) define the bilateral contour.}}{6}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:triangulacion}{{4}{6}{Delaunay triangulation on the standard shape. The 15 landmarks (L1--L15, red points) are connected by blue edges forming a mesh of 16 triangles. The central axis (L1, L9, L10, L11, L2) divides the lung silhouette, while symmetric pairs (L3/L4, L5/L6, L7/L8, L12/L13, L14/L15) define the bilateral contour}{figure.caption.4}{}}
+\newlabel{fig:triangulacion@cref}{{[figure][4][]4}{[1][5][]6}}
+\citation{loshchilov2019adamw}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Examples of geometric normalization for the three categories. Top row: original radiographs of COVID-19, Normal, and Viral Pneumonia showing variations in size, position, and orientation. Bottom row: the same images after the warping process, where the lung region has been transformed to the standard shape, eliminating non-pathological variations and focusing analysis on the normalized lung silhouette.}}{7}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:warping}{{5}{7}{Examples of geometric normalization for the three categories. Top row: original radiographs of COVID-19, Normal, and Viral Pneumonia showing variations in size, position, and orientation. Bottom row: the same images after the warping process, where the lung region has been transformed to the standard shape, eliminating non-pathological variations and focusing analysis on the normalized lung silhouette}{figure.caption.5}{}}
+\newlabel{fig:warping@cref}{{[figure][5][]5}{[1][6][]7}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7}Normalized Dataset Generation}{7}{subsection.2.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8}Classification}{7}{subsection.2.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.9}Evaluation Metrics}{7}{subsection.2.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Results}{8}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Landmark Localization Precision}{8}{subsection.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Landmark detection precision. Error is measured in pixels on 224$\times $224 images.}}{8}{table.caption.6}\protected@file@percent }
+\newlabel{tab:landmarks}{{1}{8}{Landmark detection precision. Error is measured in pixels on 224$\times $224 images}{table.caption.6}{}}
+\newlabel{tab:landmarks@cref}{{[table][1][]1}{[1][8][]8}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Prediction error analysis by landmark. (a) Bar chart showing mean error in pixels for each point L1--L15, with dashed line indicating global mean of 3.61 px. Landmarks L12 and L13 (upper corners) show highest error ($\sim $5.4 px), while L10 and L11 (central axis) are most precise ($\sim $2.5 px). (b) Heat map on standard shape where color represents mean error according to 2.5--5.0 px scale.}}{8}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:error_landmarks}{{6}{8}{Prediction error analysis by landmark. (a) Bar chart showing mean error in pixels for each point L1--L15, with dashed line indicating global mean of 3.61 px. Landmarks L12 and L13 (upper corners) show highest error ($\sim $5.4 px), while L10 and L11 (central axis) are most precise ($\sim $2.5 px). (b) Heat map on standard shape where color represents mean error according to 2.5--5.0 px scale}{figure.caption.7}{}}
+\newlabel{fig:error_landmarks@cref}{{[figure][6][]6}{[1][8][]8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Effect of Normalization on Classification}{8}{subsection.3.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Classifier performance by category.}}{9}{table.caption.8}\protected@file@percent }
+\newlabel{tab:rendimiento_clase}{{2}{9}{Classifier performance by category}{table.caption.8}{}}
+\newlabel{tab:rendimiento_clase@cref}{{[table][2][]2}{[1][9][]9}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Preprocessing configuration comparison. All use SAHS.}}{9}{table.caption.9}\protected@file@percent }
+\newlabel{tab:comparacion}{{3}{9}{Preprocessing configuration comparison. All use SAHS}{table.caption.9}{}}
+\newlabel{tab:comparacion@cref}{{[table][3][]3}{[1][9][]9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}System Robustness}{9}{subsection.3.3}\protected@file@percent }
+\citation{chowdhury2020can}
+\citation{rahman2021exploring}
+\citation{ozturk2020automated}
+\citation{narin2021automatic}
+\citation{zech2018variable}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Confusion matrix of Warped + SAHS classifier (Accuracy: 98.10\%, F1-Macro: 97.17\%). Diagonal shows correct classifications: COVID-19 (436 cases, 96.5\%), Normal (1,266 cases, 99.4\%), and Viral Pneumonia (157 cases, 92.9\%). Main errors are: 16 COVID-19 cases classified as Normal (3.5\%) and 12 Viral Pneumonia cases as Normal (7.1\%). Notably, there is no confusion between COVID-19 and Viral Pneumonia.}}{10}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:matriz_confusion}{{7}{10}{Confusion matrix of Warped + SAHS classifier (Accuracy: 98.10\%, F1-Macro: 97.17\%). Diagonal shows correct classifications: COVID-19 (436 cases, 96.5\%), Normal (1,266 cases, 99.4\%), and Viral Pneumonia (157 cases, 92.9\%). Main errors are: 16 COVID-19 cases classified as Normal (3.5\%) and 12 Viral Pneumonia cases as Normal (7.1\%). Notably, there is no confusion between COVID-19 and Viral Pneumonia}{figure.caption.10}{}}
+\newlabel{fig:matriz_confusion@cref}{{[figure][7][]7}{[1][9][]10}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Comparison with Literature}{10}{subsection.3.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Comparison with related works in COVID-19 classification.}}{10}{table.caption.11}\protected@file@percent }
+\newlabel{tab:comparacion_literatura}{{4}{10}{Comparison with related works in COVID-19 classification}{table.caption.11}{}}
+\newlabel{tab:comparacion_literatura@cref}{{[table][4][]4}{[1][10][]10}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Discussion}{10}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusions}{11}{section.5}\protected@file@percent }
+\bibcite{who2020chest}{{1}{2020}{{WHO}}{{}}}
+\bibcite{rajpurkar2017chexnet}{{2}{2017}{{Rajpurkar et al.}}{{}}}
+\bibcite{wang2020covidnet}{{3}{2020}{{Wang et al.}}{{}}}
+\bibcite{chowdhury2020can}{{4}{2020}{{Chowdhury et al.}}{{}}}
+\bibcite{zech2018variable}{{5}{2018}{{Zech et al.}}{{}}}
+\bibcite{ayala2023synergizing}{{6}{2023}{{Ayala-Raggi et al.}}{{}}}
+\bibcite{picazo2024comparative}{{7}{2024}{{Picazo-Castillo et al.}}{{}}}
+\bibcite{jaderberg2015spatial}{{8}{2015}{{Jaderberg et al.}}{{}}}
+\bibcite{gower1975generalized}{{9}{1975}{{Gower}}{{}}}
+\bibcite{delaunay1934sphere}{{10}{1934}{{Delaunay}}{{}}}
+\bibcite{wolberg1990digital}{{11}{1990}{{Wolberg}}{{}}}
+\bibcite{he2016deep}{{12}{2016}{{He et al.}}{{}}}
+\bibcite{deng2009imagenet}{{13}{2009}{{Deng et al.}}{{}}}
+\bibcite{hou2021coordinate}{{14}{2021}{{Hou et al.}}{{}}}
+\bibcite{wu2018group}{{15}{2018}{{Wu and He}}{{}}}
+\bibcite{feng2018wing}{{16}{2018}{{Feng et al.}}{{}}}
+\bibcite{rahman2021exploring}{{17}{2021}{{Rahman et al.}}{{}}}
+\bibcite{loshchilov2019adamw}{{18}{2019}{{Loshchilov and Hutter}}{{}}}
+\bibcite{ozturk2020automated}{{19}{2020}{{Ozturk et al.}}{{}}}
+\bibcite{narin2021automatic}{{20}{2021}{{Narin et al.}}{{}}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}References}{12}{section.6}\protected@file@percent }
+\newlabel{LastPage}{{5}{12}{Conclusions}{page.12}{}}
+\gdef\lastpage@lastpage{12}
+\gdef\lastpage@lastpageHy{12}
+\gdef \@abspage@last{12}

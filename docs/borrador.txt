@@ -1,0 +1,75 @@
+Abstract 
+
+En el abstract quiero que se describa resumidamente todo el proceso de la metodología donde hice: 
+
+    La predicción de coordenadas. 
+
+    Luego el proceso de Warping. 
+
+    Luego la clasificación. 
+
+    Y mostrar de forma básica las estadísticas de los resultados. 
+
+Introducción 
+
+La importancia de métodos automáticos para reconocimiento de neumonía, hablar de es muy importante contar con algoritmos que tengas un accuracy alto y Robusto, la importancia de diagnosticar bien la neumonía, después empezar a hablar del trabajo relaciona, de trabajos que han detectado neumonía así nadamas, describir trabajos que se han dedicado a detectar neumonía, de preferencia recientes, citar trabajos al menos dos donde se vea que alinear las imágenes produce un mejor resultado en detectar algo aunque no sea neumonía, uno de ellos debe ser de ángel del artículo que publicó en Japón ángel, hablar de que en ese trabajo se pudo demostrar que alinear las imágenes nos da mejores resultados en el accuracy, necesitamos dos, si se pueden más, otro ejemplo de ángel también el que publico en el IJCOPI, aun así buscar uno más, ahora si ya hable del trabajo relacionado, ahora si empiezo a hablar en un resumen de lo que representa el trabajo, en este trabajos vamos a representar un método de alineación más fuerte, forma estándar no estándar pulmonar, arreglar eso, que no solo conste en rotar, trasladar o escalar si no también propones deformar la región pulmonar para hacerla coincidir o que adapte una forma estándar pulmonar, un párrafo de secciones del paper. 
+ 
+En la introducción voy a explicar más a detalle el proceso de: 
+
+    Usar redes convolucionales para predecir coordenadas con regresión. 
+
+    Normalizar y alinear con el método general de Procrustes. 
+
+    Utilizar el resultado para encontrar una forma estándar pulmonar de la forma de los pulmones en mi dataset. 
+
+    Luego usar las coordenadas más la forma estándar pulmonar para crear una malla con el método de triangulación de Delaunay generando una malla de triángulos. 
+
+    Luego se aplica una transformación afín triángulo por triángulo y se lleva la información de cada triángulo a la nueva forma estándar pulmonar. 
+
+    Y esas nuevas imágenes se introducen en un clasificador ResNet-18, pero todo resumido. 
+
+Metodología 
+
+Aquí deseo describir todo el proceso a detalle: 
+
+    Arquitectura de la red: Aquí debo explicar bien cómo desarrollé mi arquitectura de mi red convolucional ResNet-18, cómo es que la dividí en dos partes. 
+
+    Pre-entrenamiento: Una donde usamos una parte pre-entrenada; existe algo que se llama ImageNet que es como una distribución de características aprendidas con miles de millones de imágenes de objetos cotidianos. Es como meterle a mi red convolucional mapas de características que describen ya por ejemplo patrones de bordes, líneas, etc., aprendido de imágenes como naranjas, coches, perros, etc. Esto nos beneficia porque de una base sólida usada en múltiples papers obtenemos características que ya no tenemos que entrenar, lo cual sería un problema con tan pocas imágenes que tenemos en el dataset etiquetado manualmente. 
+
+    , FormaRegresión: Luego cómo usamos una segunda parte que es una cabeza de regresión, en la cual se usan esas características pre-entrenadas para encontrar más fácilmente los mapas de características que describen la región alrededor de la coordenada de cada una de las imágenes de entrenamiento. 
+
+Iniciar de caja negra hacia más técnico, pensar que debe ser explicado para personas no técnicas, el sistema visto desde una vista general y vas desglosando 
+
+    Predicción: Luego de este proceso se obtiene un modelo al cual si se le entrega una imagen de radiografía de tórax te puede predecir 15 pares de coordenadas que describen el contorno pulmonar. 
+
+    Procrustes: Luego debo describir cómo uso el algoritmo general de Procrustes para eliminar las variaciones de pose de mi dataset y obtener una forma estándar pulmonar de la forma pulmonar de mi dataset. (algoritmo para determinar el layout estandar) 
+
+    Triangulación: Con esa forma estándar pulmonar y las landmarks ahora debo describir cómo las uso para generar una malla de triángulos rectángulos usando el algoritmo de triangulación de Delaunay. 
+
+    Warping (Transformación): Una vez tenemos la malla, implementamos una transformación afín que nos permite llevar la información contenida (los valores de las intensidades de cada pixel) a la forma estándar pulmonar triángulo por triángulo, evitando pérdida de información y obteniendo una nueva descripción de la región pulmonar pero sin las variaciones de pose, ahora solo tenemos la información de las variaciones intrínsecas de la forma pulmonar. 
+
+    Generación de Dataset: Aquí debo explicar que ahora usando el modelo de predicción y la forma estándar pulmonar, se infieren 15 mil imágenes del dataset y así creamos un dataset grande para el clasificador. 
+
+    Clasificación: Con estas nuevas 15 mil imágenes warpeadas o alineadas, se entrena un clasificador. Aquí debo describir cómo diseñé la arquitectura de mi red neuronal ResNet-18 para clasificación y cómo se realizó la clasificación y el entrenamiento. (no hablar de tantas cifras se pone normalmente en resultados, verlo mas como conjuntos de datos)  
+
+    Inferencia y Métricas: Luego describir el proceso de inferencia donde metemos las imágenes de prueba y nos da un resultado de sano o enfermo y luego describir cómo apliqué las métricas para analizar el rendimiento y calidad de mi modelo entrenado.  
+
+Resultados 
+
+Aquí deseo desarrollar cómo se llevó a cabo la evaluación del sistema propuesto, debo explicar cómo se realizaron los experimentos enfocándonos en tres puntos: 
+
+    El primero por la precisión del modelo para localizar los puntos del contorno pulmonar. 
+
+    El segundo punto es la mejora en la clasificación de enfermedades gracias a la normalización geométrica. 
+
+    Y como tercero la capacidad del sistema para funcionar de manera robusta con otro dataset. 
+
+Conclusiones 
+
+Aquí quiero describir que encontramos evidencia contundentes de que: 
+
+    Alinear y normalizar las imágenes sí nos dan una mejora en la clasificación de imágenes. 
+
+    Y esto se comprueba al analizar las métricas como el accuracy, f1 score, precisión, recall, etc. del dataset warpeado contra el mismo dataset sin aplicar warping., agregar matriz confusión. Y validación cruzada. 
+
+ 

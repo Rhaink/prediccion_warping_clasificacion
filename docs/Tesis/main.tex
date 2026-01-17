@@ -5,6 +5,7 @@
 \usepackage{float}
 \usepackage{booktabs}
 \usepackage{tabularx}
+\usepackage{longtable}
 \usepackage{multirow}
 \usepackage{array}
 \usepackage{enumitem}
@@ -18,6 +19,16 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{nameref}
+\usepackage{titlesec}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes, calc}
+
+% Ajuste de espaciado para títulos de capítulos
+% \titlespacing*{<command>}{<left>}{<before-sep>}{<after-sep>}
+% before-sep: Espacio antes del título. Por defecto es ~50pt. Aquí lo reducimos.
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{0pt}{1pt}
 
 % Configuración de bibliografía - Estilo IEEE
 \usepackage[numbers]{natbib}
@@ -57,7 +68,13 @@
 % ============================================================================
 % PORTADA ORIGINAL (BUAP)
 % ============================================================================
-\input{title-page}
+\input{portada/title-page}
+
+% ============================================================================
+% OBJETIVOS
+% ============================================================================
+\newpage
+\input{objetivos/0-Objetivos}
 
 % ============================================================================
 % TABLA DE CONTENIDO
@@ -66,10 +83,16 @@
 \tableofcontents
 
 % ============================================================================
-% OBJETIVOS
+% CAPÍTULO 1: INTRODUCCIÓN
 % ============================================================================
 \newpage
-\input{0-Objetivos}
+\input{capitulo1/1_introduccion}
+
+% ============================================================================
+% CAPÍTULO 2: MARCO TEÓRICO
+% ============================================================================
+\newpage
+\input{capitulo2/2_marco_teorico_v2}
 
 % ============================================================================
 % CAPÍTULO 4: METODOLOGÍA
@@ -95,18 +118,42 @@
 \newpage
 \input{capitulo4/4_5_clasificacion}
 
-% Sección 4.6: Protocolo de Evaluación Experimental
+% Sección 4.6: Protocolo de Inferencia y Evaluación
 \newpage
-\input{capitulo4/4_6_protocolo_evaluacion}
+\input{capitulo4/4_6_inferencia_metricas}
+
+% ============================================================================
+% CAPÍTULO 5: RESULTADOS
+% ============================================================================
+\newpage
+
+% Sección 5.1: Detección de Puntos de Referencia (incluye \chapter{Resultados})
+\input{capitulo5/5_1_resultados_landmarks}
+
+% Sección 5.2: Normalización Geométrica
+\newpage
+\input{capitulo5/5_2_forma_canonica}
+
+% Sección 5.3: Clasificación de Enfermedades Pulmonares
+\newpage
+\input{capitulo5/5_3_resultados_clasificacion}
+
+% ============================================================================
+% CAPÍTULO 6: CONCLUSIONES Y TRABAJOS FUTUROS
+% ============================================================================
+\newpage
+\input{capitulo6/6_conclusiones}
 
 % ============================================================================
 % CAPÍTULOS PENDIENTES:
-% - Capítulo 1: Introducción
-% - Capítulo 2: Marco Teórico
 % - Capítulo 3: Estado del Arte
-% - Capítulo 5: Resultados
-% - Capítulo 6: Conclusiones
 % ============================================================================
+
+% ============================================================================
+% GLOSARIO
+% ============================================================================
+\newpage
+\input{glosario}
 
 % ============================================================================
 % BIBLIOGRAFÍA
