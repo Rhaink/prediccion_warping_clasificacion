@@ -132,7 +132,7 @@ La Tabla \ref{tab:coord_attention_params} presenta los componentes y parámetros
 \subsubsection{Cabeza de Regresión}
 
 \paragraph{Propósito.}
-Mientras que el extractor de características (ResNet-18) procesa la imagen y el módulo de atención identifica las regiones relevantes, la cabeza de regresión tiene la tarea final: convertir toda esta información en las 30 coordenadas numéricas que representan la posición de los 15 landmarks (cada landmark tiene una coordenada $x$ y una coordenada $y$).
+Mientras que el extractor de características (ResNet-18) procesa la imagen y el módulo de atención identifica las regiones relevantes, la cabeza de regresión tiene la tarea final: convertir toda esta información en las 30 coordenadas numéricas que representan la posición de los 15 puntos de referencia (cada punto de referencia tiene una coordenada $x$ y una coordenada $y$).
 
 \paragraph{Arquitectura.}
 La cabeza de regresión procesa la información a través de varias etapas:
@@ -188,7 +188,7 @@ El número total de parámetros del modelo completo es aproximadamente 11.9 mill
 \label{subsec:funcion_perdida}
 
 \paragraph{Concepto de función de pérdida.}
-Durante el entrenamiento, el modelo necesita una forma de medir qué tan lejos están sus predicciones de las posiciones reales de los landmarks. Esta medida se denomina \textit{función de pérdida}: un valor numérico que indica qué tan ``equivocado'' está el modelo. El objetivo del entrenamiento es ajustar los parámetros del modelo para minimizar este valor.
+Durante el entrenamiento, el modelo necesita una forma de medir qué tan lejos están sus predicciones de las posiciones reales de los puntos de referencia. Esta medida se denomina \textit{función de pérdida}: un valor numérico que indica qué tan ``equivocado'' está el modelo. El objetivo del entrenamiento es ajustar los parámetros del modelo para minimizar este valor.
 
 \paragraph{Limitaciones de las funciones tradicionales.}
 Las funciones de pérdida más comunes son el error absoluto (L1) y el error cuadrático (L2). Sin embargo, ambas presentan limitaciones para la localización precisa de puntos de referencia:
@@ -334,9 +334,9 @@ Con solo 957 imágenes anotadas, existe el riesgo de que el modelo memorice cara
 Las transformaciones aplicadas son:
 
 \begin{enumerate}
-    \item \textbf{Reflejo horizontal} (probabilidad 50\%): Simula variaciones en la orientación del paciente. Al reflejar la imagen, los landmarks del lado izquierdo pasan a estar en el derecho y viceversa, por lo que se intercambian los pares simétricos (L3$\leftrightarrow$L4, L5$\leftrightarrow$L6, L7$\leftrightarrow$L8, L12$\leftrightarrow$L13, L14$\leftrightarrow$L15).
+    \item \textbf{Reflejo horizontal} (probabilidad 50\%): Simula variaciones en la orientación del paciente. Al reflejar la imagen, los puntos de referencia del lado izquierdo pasan a estar en el derecho y viceversa, por lo que se intercambian los pares simétricos (L3$\leftrightarrow$L4, L5$\leftrightarrow$L6, L7$\leftrightarrow$L8, L12$\leftrightarrow$L13, L14$\leftrightarrow$L15).
 
-    \item \textbf{Rotación aleatoria} ($\pm$10 grados): Simula pequeñas variaciones en la posición del paciente durante la adquisición de la radiografía. Las coordenadas de los landmarks se transforman aplicando la misma rotación para mantener la correspondencia.
+    \item \textbf{Rotación aleatoria} ($\pm$10 grados): Simula pequeñas variaciones en la posición del paciente durante la adquisición de la radiografía. Las coordenadas de los puntos de referencia se transforman aplicando la misma rotación para mantener la correspondencia.
 \end{enumerate}
 
 Estas transformaciones son \textit{conservadoras}: se limitan a variaciones que podrían ocurrir naturalmente en la adquisición de radiografías, evitando distorsiones que produzcan imágenes anatómicamente irrealistas.
@@ -407,10 +407,10 @@ Se entrenaron cuatro modelos utilizando la configuración descrita en las seccio
     \label{eq:ensemble_average}
 \end{equation}
 
-\noindent donde $\hat{\mathbf{L}}_k$ representa las coordenadas predichas por el modelo $k$. Este promedio tiene el efecto de cancelar errores individuales: si un modelo predice un landmark 2 píxeles a la izquierda de su posición real y otro lo predice 2 píxeles a la derecha, el promedio estará muy cerca de la posición correcta.
+\noindent donde $\hat{\mathbf{L}}_k$ representa las coordenadas predichas por el modelo $k$. Este promedio tiene el efecto de cancelar errores individuales: si un modelo predice un punto de referencia 2 píxeles a la izquierda de su posición real y otro lo predice 2 píxeles a la derecha, el promedio estará muy cerca de la posición correcta.
 
 \subsubsection{Aumento en Tiempo de Prueba (TTA)}
 
 Además del ensemble, se aplica una técnica complementaria llamada \textit{Aumento en Tiempo de Prueba} (TTA). Durante la inferencia (es decir, cuando el modelo ya está entrenado y se usa para predecir), cada imagen se procesa dos veces: en su orientación original y reflejada horizontalmente. Las predicciones de ambas versiones se promedian (intercambiando los puntos de referencia simétricos en la versión reflejada para que correspondan correctamente).
 
-Esta técnica aprovecha la simetría anatómica del tórax: si el modelo predice correctamente un landmark en la imagen original pero comete un pequeño error en la reflejada (o viceversa), el promedio reduce ese error. TTA no requiere entrenamiento adicional y se aplica únicamente durante la inferencia.
+Esta técnica aprovecha la simetría anatómica del tórax: si el modelo predice correctamente un punto de referencia en la imagen original pero comete un pequeño error en la reflejada (o viceversa), el promedio reduce ese error. TTA no requiere entrenamiento adicional y se aplica únicamente durante la inferencia.

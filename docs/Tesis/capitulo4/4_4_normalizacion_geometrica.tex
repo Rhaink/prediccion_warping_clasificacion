@@ -26,7 +26,7 @@ El proceso de normalización se realiza en tres etapas principales:
 Para normalizar las radiografías, primero necesitamos definir una ``forma de referencia'' que represente la configuración típica de los pulmones. El Análisis Procrustes Generalizado (GPA) \cite{gower1975generalized, dryden1998statistical} es una técnica que permite calcular esta forma de referencia a partir de las 957 configuraciones de puntos de referencia anotadas en el conjunto de entrenamiento.
 
 \paragraph{Intuición del método.}
-El nombre ``Procrustes'' proviene del mito griego de un posadero que ajustaba a sus huéspedes a una cama de tamaño fijo, estirándolos o cortándolos según fuera necesario. De manera análoga, GPA ``ajusta'' cada configuración de landmarks eliminando tres tipos de diferencias que no afectan la forma intrínseca:
+El nombre ``Procrustes'' proviene del mito griego de un posadero que ajustaba a sus huéspedes a una cama de tamaño fijo, estirándolos o cortándolos según fuera necesario. De manera análoga, GPA ``ajusta'' cada configuración de puntos de referencia eliminando tres tipos de diferencias que no afectan la forma intrínseca:
 
 \begin{itemize}
     \item \textbf{Posición:} Si una configuración está desplazada hacia la izquierda y otra hacia la derecha, se centran ambas en el mismo punto.

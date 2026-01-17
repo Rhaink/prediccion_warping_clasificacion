@@ -55,7 +55,7 @@ El procesamiento de una imagen sigue el flujo ilustrado en la Tabla \ref{tab:flu
         \toprule
         \textbf{Etapa} & \textbf{Entrada} & \textbf{Salida} & \textbf{Dimensiones} \\
         \midrule
-        Preprocesamiento & Imagen RGB/Grayscale & Imagen normalizada & $224 \times 224 \times 3$ \\
+        Preprocesamiento & Imagen & Imagen normalizada & $224 \times 224 \times 3$ \\
         Predicción & Imagen normalizada & Coordenadas puntos de ref. & $15 \times 2$ \\
         Normalización geométrica & Imagen + puntos de ref. & Imagen normalizada & $224 \times 224 \times 3$ \\
         Clasificación & Imagen normalizada & Vector probabilidades & $3$ \\

@@ -67,6 +67,10 @@ Arquitectura propuesta en ResNet que permite que la información fluya directame
 \\
 Borde que delimita la silueta de la región pulmonar en una radiografía de tórax. En este trabajo se representa mediante 15 puntos de referencia anatómicos distribuidos sobre el contorno.
 
+\textbf{Convolución}
+\\
+Operación matemática fundamental en redes neuronales convolucionales que aplica un kernel sobre la imagen de entrada mediante producto punto deslizante, extrayendo características locales como bordes, texturas y patrones. Preserva las relaciones espaciales entre píxeles vecinos.
+
 \textbf{Coordinate Attention}
 \\
 Mecanismo de atención diseñado para tareas de localización que preserva información espacial procesando de forma separada las dimensiones horizontal y vertical, generando mapas de atención direccionales. Integrado en el modelo de puntos de referencia para preservar información posicional.
@@ -78,6 +82,14 @@ Enfermedad infecciosa causada por el virus SARS-CoV-2, caracterizada en radiogra
 \textbf{COVID-19 Radiography Database}
 \\
 Conjunto de datos público de 15,153 radiografías posteroanterior de tórax organizadas en tres categorías (COVID-19: 3,616; Normal: 10,192; Neumonía Viral: 1,345), desarrollado por Qatar University y colaboradores.
+
+\textbf{Cosine Annealing}
+\\
+Esquema de ajuste de tasa de aprendizaje que varía el valor siguiendo una función cosenoidal, disminuyendo gradualmente desde un valor máximo hasta un mínimo, permitiendo exploración amplia inicial y refinamiento fino posterior. Utilizado para optimizar la convergencia del entrenamiento.
+
+\textbf{CSV} (\textit{Comma-Separated Values} / Valores Separados por Comas)
+\\
+Formato de archivo de texto plano que almacena datos tabulares donde cada línea representa una fila y los valores de las columnas están separados por comas. Utilizado en este trabajo para almacenar las anotaciones manuales de coordenadas de puntos de referencia anatómicos (archivo \texttt{coordenadas\_maestro.csv} con 957 radiografías anotadas).
 
 % =============================================================================
 \section*{D}
@@ -110,6 +122,10 @@ Transformación de intensidades que redistribuye los valores de píxeles para ut
 \textbf{Eje central}
 \\
 Línea vertical que conecta los puntos de referencia L1 (superior) → L9 → L10 → L11 → L2 (inferior), representando la línea media del tórax a lo largo de la columna vertebral, utilizada como referencia para la estructura de landmarks.
+
+\textbf{Escala de grises} (\textit{Grayscale})
+\\
+Representación de imágenes digitales donde cada píxel codifica únicamente intensidad luminosa (1 canal), sin información de color, con valores típicamente en el rango 0-255. Las radiografías de tórax son naturalmente imágenes en escala de grises que se replican a 3 canales para compatibilidad con redes preentrenadas.
 
 \textbf{Ensamble} (\textit{Ensemble})
 \\
@@ -191,7 +207,11 @@ Operación de reducción que calcula el promedio de cada canal de característic
 \\
 Método estadístico para alinear múltiples configuraciones de puntos eliminando diferencias de traslación, escala y rotación mediante un proceso iterativo que calcula una forma promedio por centrado, normalización y rotación óptima (SVD).
 \\
-\textit{Parámetros}: tolerancia τ = $10^{-8}$, máximo 100 iteraciones.
+\textit{Parámetros}: tolerancia $\tau = 10^{-8}$, máximo 100 iteraciones.
+
+\textbf{GPU} (\textit{Graphics Processing Unit} / Unidad de Procesamiento Gráfico)
+\\
+Procesador especializado diseñado originalmente para renderizado gráfico, utilizado en aprendizaje profundo por su capacidad de realizar miles de operaciones matemáticas en paralelo, acelerando significativamente el entrenamiento e inferencia de redes neuronales.
 
 \textbf{Gradiente}
 \\
@@ -234,12 +254,24 @@ Método de interpolación que estima el valor de un píxel en una posición no e
 Fenómeno donde las distribuciones de las activaciones internas de una red neuronal cambian constantemente durante el entrenamiento a medida que se actualizan los pesos, dificultando la convergencia. Mitigado por Batch Normalization.
 
 % =============================================================================
+\section*{K}
+% =============================================================================
+
+\textbf{Kernel} (Núcleo convolucional / Filtro)
+\\
+Matriz de pesos pequeña (típicamente 3×3, 5×5 o 7×7) que se desliza sobre la imagen de entrada durante la operación de convolución, realizando producto punto en cada posición para extraer características específicas. Cada kernel aprende a detectar patrones particulares como bordes, texturas o formas.
+
+% =============================================================================
 \section*{L}
 % =============================================================================
 
 \textbf{Landmarks} (Puntos de referencia anatómicos)
 \\
 Coordenadas específicas que representan estructuras anatómicas de interés. En este trabajo, 15 puntos definen el contorno pulmonar: eje central (L1, L9, L10, L11, L2), contorno izquierdo (L12, L3, L5, L7, L14) y contorno derecho (L13, L4, L6, L8, L15).
+
+\textbf{Logits}
+\\
+Valores numéricos crudos en la capa de salida de una red neuronal antes de aplicar la función de activación softmax. Representan los puntajes no normalizados para cada clase, que posteriormente se convierten en probabilidades mediante softmax.
 
 % =============================================================================
 \section*{M}
@@ -289,6 +321,10 @@ Proceso de transformación de imágenes a una configuración espacial estándar 
 \section*{O}
 % =============================================================================
 
+\textbf{OpenCV} (\textit{Open Source Computer Vision Library})
+\\
+Biblioteca de código abierto especializada en visión por computadora y procesamiento de imágenes, que proporciona implementaciones eficientes de algoritmos para transformaciones geométricas, mejora de contraste, detección de características y manipulación de imágenes. Utilizada en el preprocesamiento y warping de radiografías.
+
 \textbf{Optimizador Adam}
 \\
 Algoritmo de optimización que adapta la tasa de aprendizaje para cada parámetro combinando momento y estimación de segundo momento de los gradientes. Utilizado en este trabajo con parámetros por defecto ($\beta_1=0.9$, $\beta_2=0.999$).
@@ -305,6 +341,22 @@ Puntos de referencia bilateralmente simétricos que corresponden a posiciones eq
 \\
 Mecanismo de regularización que detiene el entrenamiento cuando el rendimiento en el conjunto de validación deja de mejorar durante un número de épocas consecutivas (paciencia), evitando sobreajuste y conservando el modelo con mejor rendimiento.
 
+\textbf{Padding} (Relleno)
+\\
+Técnica que agrega píxeles adicionales (típicamente con valor cero) en los bordes de la imagen o mapa de características antes de aplicar convolución, permitiendo preservar las dimensiones espaciales originales y evitar pérdida de información en los bordes.
+
+\textbf{Píxel}
+\\
+Unidad básica de una imagen digital, representando un punto con valores de intensidad (escala de grises) o color (RGB). El término proviene de "picture element" (elemento de imagen).
+
+\textbf{PNG} (\textit{Portable Network Graphics})
+\\
+Formato de archivo de imagen sin pérdida que soporta compresión, transparencia y profundidad de color de hasta 48 bits. Ampliamente utilizado para almacenar radiografías digitales y visualizaciones de resultados por su calidad sin degradación y compatibilidad universal.
+
+\textbf{Planificador} (\textit{Learning Rate Scheduler})
+\\
+Mecanismo que ajusta dinámicamente la tasa de aprendizaje durante el entrenamiento según una estrategia predefinida (Cosine Annealing, Step Decay, etc.), optimizando la convergencia y mejorando el rendimiento final del modelo.
+
 \textbf{Pooling} (Agrupamiento)
 \\
 Operación de reducción espacial que disminuye la dimensionalidad de mapas de características preservando información relevante. Tipos: Max Pooling (selecciona máximo), Average Pooling (calcula promedio).
@@ -318,6 +370,10 @@ Métrica que mide, de todas las predicciones positivas para una clase, qué prop
 Conjunto de transformaciones aplicadas a las imágenes antes del procesamiento principal (mejora de contraste, redimensionamiento, normalización) para estandarizar la entrada y mejorar la efectividad del modelo.
 
 \textbf{Puntos de referencia} $\rightarrow$ Ver \textit{Landmarks}
+
+\textbf{PyTorch}
+\\
+Framework de código abierto para aprendizaje profundo desarrollado por Meta AI, que proporciona estructuras de datos tensoriales con aceleración por GPU, diferenciación automática y herramientas para construcción, entrenamiento y evaluación de redes neuronales. Utilizado como base de implementación en este trabajo.
 
 % =============================================================================
 \section*{R}
@@ -335,6 +391,10 @@ Proyección radiográfica donde el haz de rayos X atraviesa el cuerpo del pacien
 \\
 Área de la radiografía que contiene el tejido pulmonar, delimitada por el contorno pulmonar definido mediante los 15 landmarks en este trabajo.
 
+\textbf{Reflejo horizontal} (\textit{Horizontal Flip})
+\\
+Transformación de imagen que invierte la imagen a lo largo del eje vertical, utilizada como técnica de aumento de datos y en Test-Time Augmentation. Requiere intercambio de pares simétricos de landmarks para mantener consistencia anatómica.
+
 \textbf{Regularización}
 \\
 Conjunto de técnicas para prevenir sobreajuste y mejorar generalización, incluyendo dropout, aumento de datos, parada temprana y penalizaciones sobre parámetros.
@@ -351,9 +411,17 @@ Familia de arquitecturas de redes neuronales profundas que utilizan conexiones r
 \\
 Variante de ResNet con 18 capas (11.2 millones de parámetros), utilizada en este trabajo como extractor de características para landmarks y como clasificador de enfermedades pulmonares debido a su balance entre capacidad y eficiencia.
 
+\textbf{RGB} (\textit{Red, Green, Blue})
+\\
+Modelo de representación de color que codifica cada píxel mediante tres canales (Rojo, Verde, Azul). Las radiografías de tórax son imágenes en escala de grises (un canal) que se replican a 3 canales para compatibilidad con redes preentrenadas en ImageNet.
+
 \textbf{Rotación óptima}
 \\
 Transformación de rotación que minimiza la distancia entre dos configuraciones de puntos, calculada mediante descomposición en valores singulares (SVD). Utilizada en GPA para el paso de alineación rotacional.
+
+\textbf{RT-PCR} (\textit{Reverse Transcription Polymerase Chain Reaction})
+\\
+Reacción en Cadena de la Polimerasa con Transcripción Inversa. Prueba molecular de laboratorio considerada el estándar de oro para diagnóstico de COVID-19, que detecta material genético viral (ARN) mediante amplificación. Las radiografías de tórax complementan este diagnóstico proporcionando evaluación de severidad pulmonar.
 
 % =============================================================================
 \section*{S}
@@ -386,6 +454,14 @@ Fenómeno donde un modelo aprende demasiado bien los ejemplos de entrenamiento, 
 \textbf{Softmax}
 \\
 Función que transforma valores numéricos en probabilidades que suman 1, utilizada en la capa de salida del clasificador para convertir logits en distribución de probabilidad sobre las tres clases.
+
+\textbf{Stride} (Paso)
+\\
+Parámetro que define el desplazamiento del kernel durante la operación de convolución o pooling. Un stride de 1 aplica la operación en cada posición, mientras que stride de 2 reduce las dimensiones espaciales a la mitad, funcionando como mecanismo de reducción de resolución.
+
+\textbf{Subajuste} (\textit{Underfitting})
+\\
+Fenómeno donde un modelo es demasiado simple o no se entrena suficientemente, resultando en incapacidad para capturar patrones relevantes tanto en datos de entrenamiento como de prueba. Indica necesidad de mayor capacidad del modelo o más épocas de entrenamiento.
 
 \textbf{SVD} (\textit{Singular Value Decomposition} / Descomposición en Valores Singulares)
 \\
@@ -474,6 +550,10 @@ donde $\omega = 10$ píxeles, $\epsilon = 2$ píxeles, $C = \omega - \omega \ln(
 \bottomrule
 \endfoot
 
+AdamW & \textit{Adam with Weight Decay} \\
+      & Optimizador Adam con Decaimiento de Pesos \\
+\addlinespace
+
 CLAHE & \textit{Contrast Limited Adaptive Histogram Equalization} \\
       & Ecualización Adaptativa de Histograma con Límite de Contraste \\
 \addlinespace
@@ -484,6 +564,10 @@ CNN & \textit{Convolutional Neural Network} \\
 
 COVID-19 & \textit{Coronavirus Disease 2019} \\
          & Enfermedad por Coronavirus 2019 \\
+\addlinespace
+
+CSV & \textit{Comma-Separated Values} \\
+    & Valores Separados por Comas \\
 \addlinespace
 
 FC & \textit{Fully Connected} \\
@@ -500,6 +584,10 @@ GPA & \textit{Generalized Procrustes Analysis} \\
     & Análisis Procrustes Generalizado \\
 \addlinespace
 
+GPU & \textit{Graphics Processing Unit} \\
+    & Unidad de Procesamiento Gráfico \\
+\addlinespace
+
 L1 & \textit{L1 Loss} / Error Absoluto Medio \\
 \addlinespace
 
@@ -509,8 +597,27 @@ L2 & \textit{L2 Loss} / Error Cuadrático Medio \\
 PA & Posteroanterior \\
 \addlinespace
 
+PNG & \textit{Portable Network Graphics} \\
+    & Formato de imagen sin pérdida \\
+\addlinespace
+
+OpenCV & \textit{Open Source Computer Vision Library} \\
+        & Biblioteca de Visión por Computadora de Código Abierto \\
+\addlinespace
+
 ReLU & \textit{Rectified Linear Unit} \\
      & Unidad Lineal Rectificada \\
+\addlinespace
+
+RGB & \textit{Red, Green, Blue} \\
+    & Modelo de color Rojo, Verde, Azul \\
+\addlinespace
+
+RT-PCR & \textit{Reverse Transcription Polymerase Chain Reaction} \\
+       & Reacción en Cadena de la Polimerasa con Transcripción Inversa \\
+\addlinespace
+
+PyTorch & Framework de aprendizaje profundo de código abierto \\
 \addlinespace
 
 SAHS & \textit{Statistical Asymmetrical Histogram Stretching} \\

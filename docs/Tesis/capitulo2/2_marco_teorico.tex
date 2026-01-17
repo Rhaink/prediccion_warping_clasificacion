@@ -432,7 +432,7 @@ naturales (animales, objetos, escenas), no aporta conocimiento transferible a
 im\'agenes m\'edicas en escala de grises. Sin embargo, estudios emp\'iricos
 demuestran lo contrario \cite{yosinski2014transferable,raghu2019transfusion}.
 
-\textbf{Jerarqu\'ia de features en CNNs:}
+\textbf{Jerarqu\'ia de caracter\'isticas en CNNs:}
 
 \begin{itemize}
     \item \textbf{Capas iniciales (Conv1-2):} Aprenden detectores universales de
@@ -443,7 +443,7 @@ demuestran lo contrario \cite{yosinski2014transferable,raghu2019transfusion}.
     y patrones geom\'etricos (curvas, esquinas, formas sim\'etricas). Estas
     representaciones son parcialmente transferibles entre dominios.
 
-    \item \textbf{Capas profundas (Conv5):} Aprenden features espec\'ificas de la
+    \item \textbf{Capas profundas (Conv5):} Aprenden caracter\'isticas espec\'ificas de la
     tarea (partes de objetos, conceptos sem\'anticos). Estas requieren adaptaci\'on
     al dominio objetivo.
 \end{itemize}
@@ -452,7 +452,7 @@ demuestran lo contrario \cite{yosinski2014transferable,raghu2019transfusion}.
 
 \begin{itemize}
     \item \textbf{Yosinski et al.} (NIPS 2014) \cite{yosinski2014transferable}:
-    Demostraron que features de capas iniciales son gen\'ericas y transferibles,
+    Demostraron que caracter\'isticas de capas iniciales son gen\'ericas y transferibles,
     mientras que capas profundas son espec\'ificas del conjunto de datos.
 
     \item \textbf{Raghu et al.} (NeurIPS 2019) \cite{raghu2019transfusion}:
@@ -491,7 +491,7 @@ y se entrena \'unicamente el head de regresi\'on:
 \end{itemize}
 
 \textbf{Objetivo:} Permitir que el head se adapte a la tarea de regresi\'on
-(predecir 30 coordenadas) utilizando features fijas del extractor de caracter\'isticas. Al finalizar
+(predecir 30 coordenadas) utilizando caracter\'isticas fijas del extractor de caracter\'isticas. Al finalizar
 esta fase, el head produce predicciones razonables que generan gradientes
 informativos.
 
@@ -534,8 +534,8 @@ exploraci\'on inicial con LR alto y refinamiento final con LR bajo.
 \subsubsection{Trade-off: Congelar vs Descongelar}
 
 \begin{itemize}
-    \item \textbf{Congelar todo:} El modelo se vuelve un extractor de features
-    fijo. Puede sufrir \textit{underfitting} si las features de ImageNet no son
+    \item \textbf{Congelar todo:} El modelo se vuelve un extractor de caracter\'isticas
+    fijo. Puede sufrir \textit{subajuste} si las caracter\'isticas de ImageNet no son
     suficientemente adaptadas a radiograf\'ias.
 
     \item \textbf{Descongelar todo desde inicio:} El modelo tiene m\'axima
@@ -606,7 +606,7 @@ AlexNet \cite{krizhevsky2012imagenet} & 61M & 8 & 56.5\% & Hist\'oricamente rele
 VGG16 \cite{simonyan2014very} & 138M & 16 & 71.5\% & Arquitectura simple \\
 ResNet-18 \cite{he2016deep} & 11.2M & 18 & 69.8\% & Balance eficiencia/capacidad \\
 ResNet-50 \cite{he2016deep} & 25.6M & 50 & 76.1\% & Mayor capacidad \\
-DenseNet-121 \cite{huang2017densely} & 8.0M & 121 & 74.4\% & Eficiente, reutiliza features \\
+DenseNet-121 \cite{huang2017densely} & 8.0M & 121 & 74.4\% & Eficiente, reutiliza caracter\'isticas \\
 MobileNetV2 \cite{sandler2018mobilenetv2} & 3.5M & Variable & 71.8\% & Dispositivos m\'oviles \\
 EfficientNet-B0 \cite{tan2019efficientnet} & 5.3M & Variable & 77.1\% & Escalado compuesto \\
 \hline
