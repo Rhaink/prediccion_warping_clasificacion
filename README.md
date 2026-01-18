@@ -10,6 +10,7 @@ clasificador en warped con **~98% accuracy** (ver `docs/EXPERIMENTS.md`).
 
 ## Estructura rapida del repo
 - `src_v2/`: CLI principal y modulos (data, models, training, processing).
+- `src_v2/gui/`: **Interfaz gráfica Gradio para demostración** (nuevo).
 - `configs/`: JSON con defaults (landmarks, ensemble, warping, classifier).
 - `scripts/`: automatizaciones y wrappers.
 - `docs/`: guias de reproduccion y reportes.
@@ -61,7 +62,22 @@ python -m src_v2 evaluate-classifier \
   --data-dir outputs/warped_lung_best/session_warping --split test
 ```
 
+## Interfaz Gráfica (Demo)
+Lanzar interfaz web Gradio para demostración interactiva:
+```bash
+pip install gradio>=4.0.0
+python scripts/run_demo.py
+```
+La interfaz se abrirá en `http://localhost:7860` con:
+- Visualización completa del pipeline (4 etapas)
+- GradCAM para explicabilidad
+- Métricas validadas en pantalla
+- Exportación a PDF
+
+Ver documentación completa: `src_v2/gui/README.md`
+
 ## Documentos clave
+- **GUI de demostración**: `src_v2/gui/README.md` (nuevo)
 - Flujo completo (detalle): `docs/REPRO_FULL_PIPELINE.md`
 - Landmarks ensemble 3.61: `docs/REPRO_ENSEMBLE_3_71.md`
 - Warping quickstart: `docs/QUICKSTART_WARPING.md`
