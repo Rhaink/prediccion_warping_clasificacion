@@ -48,9 +48,24 @@ El proceso de alineación se realiza en tres pasos:
 
 \subsubsection{Cálculo de la Rotación Óptima}
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.19_rotacion_optima_svd.png}
+    \caption{Esquema del cálculo de la rotación óptima mediante SVD. A partir de dos configuraciones centradas y escaladas, se construye la matriz de correlación, se aplica la descomposición SVD y se obtiene la rotación que alinea la configuración con la referencia.}
+    \label{fig:rotacion_optima_svd}
+\end{figure}
+
 El ángulo de rotación óptimo se calcula mediante una técnica de álgebra lineal llamada Descomposición en Valores Singulares (SVD) \cite{schonemann1966generalized}, que encuentra automáticamente la rotación que mejor alinea dos conjuntos de puntos. Esta técnica determina el ángulo exacto que minimiza la distancia entre los puntos de una configuración y los de la referencia, sin necesidad de probar múltiples ángulos por ensayo y error.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.80\textwidth]{Figures/F4.7_proceso_gpa.png}
+    \caption{Proceso de Análisis Procrustes Generalizado. (a) Las 957 configuraciones de puntos de referencia originales muestran variabilidad en posición, escala y orientación. (b) Después del centrado y escalado, las formas comparten origen y norma unitaria. (c) La alineación rotacional minimiza las diferencias residuales. (d) La forma estándar representa el consenso estadístico del conjunto.}
+    \label{fig:gpa_proceso}
+\end{figure}
+
 \subsubsection{Algoritmo Iterativo}
+
 
 Para alinear las configuraciones necesitamos una referencia, pero para calcular la referencia necesitamos que las configuraciones estén alineadas. GPA resuelve este dilema mediante un proceso iterativo:
 
@@ -108,12 +123,6 @@ Esta transformación simplemente escala y desplaza la forma estándar para que o
 
 La Figura \ref{fig:gpa_proceso} ilustra el proceso de GPA aplicado al conjunto de landmarks.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.95\textwidth]{Figures/F4.7_proceso_gpa.png}
-    \caption{Proceso de Análisis Procrustes Generalizado. (a) Las 957 configuraciones de puntos de referencia originales muestran variabilidad en posición, escala y orientación. (b) Después del centrado y escalado, las formas comparten origen y norma unitaria. (c) La alineación rotacional minimiza las diferencias residuales. (d) La forma estándar representa el consenso estadístico del conjunto.}
-    \label{fig:gpa_proceso}
-\end{figure}
 
 \subsection{Triangulación de Delaunay}
 \label{subsec:triangulacion_delaunay}
@@ -122,6 +131,13 @@ La Figura \ref{fig:gpa_proceso} ilustra el proceso de GPA aplicado al conjunto d
 El siguiente paso del proceso de normalización es deformar la imagen para que los puntos de referencia del paciente coincidan con los puntos de referencia de la forma estándar. Sin embargo, aplicar una única transformación global a toda la imagen no es suficiente: diferentes regiones de la imagen necesitan deformarse de manera diferente (por ejemplo, la parte superior de los pulmones puede necesitar comprimirse mientras que la parte inferior se expande).
 
 La solución es dividir la imagen en regiones más pequeñas (triángulos) y transformar cada región de manera independiente. Esto permite deformaciones locales que preservan la estructura general de la anatomía.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.60\textwidth]{Figures/F4.8_triangulacion_delaunay.png}
+    \caption{Triangulación de Delaunay sobre los 15 puntos de referencia de la forma estándar. Los triángulos definen las regiones donde se aplicarán transformaciones afines independientes durante el proceso de deformación.}
+    \label{fig:triangulacion_delaunay}
+\end{figure}
 
 \paragraph{Por qué triángulos y no otra forma.}
 Los triángulos tienen una propiedad matemática conveniente: dados tres puntos en la imagen original y sus correspondientes tres puntos en la imagen destino, existe una única transformación lineal (llamada \textit{transformación afín}) que mapea exactamente un triángulo en el otro. Esto no ocurre con cuadriláteros u otras formas más complejas.
@@ -136,29 +152,39 @@ La triangulación se calcula una única vez sobre los puntos de referencia de la
 
 La Figura \ref{fig:triangulacion_delaunay} muestra la triangulación resultante sobre la forma estándar.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Figures/F4.8_triangulacion_delaunay.png}
-    \caption{Triangulación de Delaunay sobre los 15 puntos de referencia de la forma estándar. Los triángulos definen las regiones donde se aplicarán transformaciones afines independientes durante el proceso de deformación.}
-    \label{fig:triangulacion_delaunay}
-\end{figure}
-
 \subsection{Transformación Afín por Partes}
 \label{subsec:warping_afin}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Figures/F4.9_original_vs_warped.png}
+    \caption{Comparación de radiografías originales y normalizadas por clase. Columnas: COVID-19, Normal y Neumonía viral. Filas: Original (arriba) y Normalizado (abajo). La normalización geométrica mediante deformación afín por partes alinea la región pulmonar con la forma estándar y reduce variabilidad de pose y escala.}
+    \label{fig:warping_comparison}
+\end{figure}
 
 \paragraph{El proceso de deformación.}
 La \textit{deformación} (deformación) es el proceso de ``estirar'' o ``comprimir'' partes de la imagen para que los puntos de referencia del paciente coincidan con los puntos de referencia de la forma estándar. Se denomina ``por partes'' porque cada triángulo se transforma de manera independiente \cite{wolberg1990digital}.
 
 \paragraph{Analogía visual.}
-Imaginemos la imagen impresa en una hoja de goma elástica, con los puntos de referencia marcados como puntos. El warping consiste en ``tirar'' de cada landmark hasta que coincida con su posición en la forma estándar. Los triángulos actúan como regiones que se estiran de manera uniforme: si un vértice del triángulo se mueve, toda la región triangular se deforma proporcionalmente.
+Imaginemos la imagen impresa en una hoja de goma elástica, con los puntos de referencia marcados como puntos. La deformación consiste en ``tirar'' de cada landmark hasta que coincida con su posición en la forma estándar. Los triángulos actúan como regiones que se estiran de manera uniforme: si un vértice del triángulo se mueve, toda la región triangular se deforma proporcionalmente.
+
+La Figura \ref{fig:warping_comparison} muestra la comparación visual entre una radiografía original y su versión normalizada geométricamente.
+
 
 \subsubsection{Transformación de un Triángulo}
 
 Para cada triángulo, se calcula una \textit{transformación afín}: una operación matemática que puede incluir traslación, rotación, escalado y sesgo, pero que preserva las líneas rectas y el paralelismo. La transformación se determina de forma única a partir de la correspondencia entre los tres vértices del triángulo en la imagen original y sus posiciones en la forma estándar. Esto significa que dados tres puntos de origen y tres puntos de destino, existe exactamente una transformación afín que mapea unos en otros.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.22_transformacion_triangulo.png}
+    \caption{Esquema de la transformación afín de un triángulo. A partir de los vértices en la imagen original y sus correspondencias en la forma estándar, se calcula la matriz afín y se aplica a los píxeles del triángulo para obtener la región alineada.}
+    \label{fig:transformacion_triangulo}
+\end{figure}
+
 \subsubsection{Proceso de Deformación}
 
-El deformación completa procesa cada triángulo de la siguiente manera:
+La deformación completa procesa cada triángulo de la siguiente manera:
 
 \begin{enumerate}
     \item Se identifican los tres vértices del triángulo en la imagen original (landmarks predichos) y en la forma estándar.
@@ -190,16 +216,7 @@ El Algoritmo \ref{alg:warping} presenta el pseudocódigo formal del proceso.
 \end{algorithmic}
 \end{algorithm}
 
-Durante el warping, los valores de los píxeles en posiciones intermedias se calculan mediante \textit{interpolación bilineal}, que promedia los valores de los píxeles vecinos para producir transiciones suaves. Esto evita que la imagen resultante tenga bordes dentados o discontinuidades visibles.
-
-La Figura \ref{fig:warping_comparison} muestra la comparación visual entre una radiografía original y su versión normalizada geométricamente.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{Figures/F4.9_original_vs_warped.png}
-    \caption{Comparación del proceso de deformación. (a) Radiografía original con variabilidad de pose y escala. (b) Imagen normalizada geométricamente mediante warping, enfocándose en la región delimitada por los puntos de referencia.}
-    \label{fig:warping_comparison}
-\end{figure}
+Durante la deformación, los valores de los píxeles en posiciones intermedias se calculan mediante \textit{interpolación bilineal}, que promedia los valores de los píxeles vecinos para producir transiciones suaves. Esto evita que la imagen resultante tenga bordes dentados o discontinuidades visibles.
 
 \subsection{Proceso Completo de Normalización}
 \label{subsec:proceso_normalizacion}
@@ -208,8 +225,8 @@ Esta sección resume cómo se integran todos los componentes descritos anteriorm
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{Figures/F4.11_flujo_normalizacion.jpg}
-    \caption{Proceso completo de normalización geométrica. El sistema transforma una radiografía de entrada en una imagen geométricamente normalizada mediante la secuencia de predicción de landmarks, forma estándar, triangulación y warping afín por partes.}
+    \includegraphics[width=0.8\textwidth]{Figures/F4.11_flujo_normalizacion.png}
+    \caption{Proceso completo de normalización geométrica. El sistema transforma una radiografía de entrada en una imagen geométricamente normalizada mediante la secuencia de predicción de puntos de referencia, forma estándar, triangulación y deformación afín por partes.}
     \label{fig:proceso_normalizacion}
 \end{figure}
 
@@ -223,8 +240,7 @@ Cuando llega una nueva radiografía para clasificar, el sistema ejecuta los sigu
 
     \item \textbf{Triangulación:} Se aplica la triangulación de Delaunay sobre los 15 puntos de referencia para definir los triángulos que conectan los puntos.
 
-    \item \textbf{Warping:} Cada triángulo de la imagen original se transforma para que sus vértices coincidan con los de la forma estándar.
+    \item \textbf{Deformación:} Cada triángulo de la imagen original se transforma para que sus vértices coincidan con los de la forma estándar.
 
     \item \textbf{Resultado:} Se obtiene una imagen de $224 \times 224$ píxeles donde los pulmones tienen siempre la misma posición, tamaño y orientación.
 \end{enumerate}
-

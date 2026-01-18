@@ -1,0 +1,358 @@
+% =============================================================================
+% CAPITULO 3: ESTADO DEL ARTE
+% =============================================================================
+
+\chapter{Estado del Arte}
+\label{cap:estado_arte}
+
+Este capítulo presenta una revisión sistemática y crítica de la literatura relevante al problema de detección de COVID-19 mediante normalización geométrica de radiografías de tórax. La revisión se estructura en torno a los componentes principales del flujo de trabajo (\textit{pipeline}) propuesto: aprendizaje profundo para diagnóstico médico, detección de COVID-19, localización de puntos de referencia anatómicos, normalización geométrica, mecanismos de atención, y preprocesamiento de contraste. El análisis identifica gaps en la literatura actual y posiciona las contribuciones de este trabajo en el contexto del estado del arte.
+
+\section{Aprendizaje Profundo para Diagnóstico Médico por Imágenes}
+\label{sec:dl_diagnostico_medico}
+
+El aprendizaje profundo ha transformado el campo del análisis de imágenes médicas en la última década. Litjens et al. \cite{litjens2017survey} presentaron una revisión sistemática fundamental que analizó más de 300 trabajos sobre aprendizaje profundo en imágenes médicas, documentando la adopción masiva de redes neuronales convolucionales (\textit{Convolutional Neural Networks}, CNN) para tareas de clasificación, detección, segmentación y registro. Este trabajo seminal identificó desafíos persistentes que continúan siendo relevantes: la escasez de datos anotados, el desbalance de clases, la necesidad de interpretabilidad, y la dificultad de generalización a datos de distribuciones diferentes.
+
+\subsection{Evolución de Arquitecturas CNN}
+
+La evolución de arquitecturas CNN para diagnóstico médico ha seguido una trayectoria de creciente sofisticación. AlexNet \cite{krizhevsky2012imagenet} demostró la viabilidad del aprendizaje profundo en ImageNet, inspirando su adopción en imágenes médicas. VGGNet \cite{simonyan2014very} introdujo bloques convolucionales profundos, mientras que ResNet \cite{he2016deep} resolvió el problema de degradación mediante conexiones residuales, permitiendo redes de centenares de capas. DenseNet \cite{huang2017densely} extendió esta idea con conexiones densas entre todas las capas, mejorando la propagación de gradientes y la reutilización de características. EfficientNet \cite{tan2019efficientnet} optimizó el escalamiento de redes mediante búsqueda de arquitectura neural, logrando mejor compromiso entre exactitud y eficiencia computacional.
+
+\subsection{Transfer Learning desde ImageNet}
+
+El aprendizaje por transferencia (\textit{transfer learning}) desde ImageNet \cite{deng2009imagenet} se ha convertido en práctica estándar en imágenes médicas debido a la escasez de conjuntos de datos anotados de gran escala. Yosinski et al. \cite{yosinski2014transferable} demostraron que las capas iniciales de CNNs aprenden características genéricas (bordes, texturas) transferibles a dominios diferentes, mientras que capas profundas aprenden características específicas del dominio. Sin embargo, Raghu et al. \cite{raghu2019transfusion} cuestionaron esta práctica en imágenes médicas, mostrando que el beneficio de preentrenamiento en ImageNet es menor cuando se dispone de conjuntos de datos médicos de tamaño moderado (>10,000 imágenes), sugiriendo que la inicialización aleatoria con suficientes datos puede ser competitiva.
+
+A pesar de esta controversia, el aprendizaje por transferencia continúa siendo ampliamente adoptado en el contexto de conjuntos de datos pequeños o altamente desbalanceados, como es el caso de muchos conjuntos de datos de COVID-19.
+
+\subsection{Casos de Éxito en Medical AI}
+
+Trabajos seminales han demostrado que sistemas basados en aprendizaje profundo pueden alcanzar o superar desempeño de expertos humanos en tareas específicas. Esteva et al. \cite{esteva2017dermatologist} desarrollaron un clasificador de cáncer de piel entrenado en 129,450 imágenes que alcanzó desempeño comparable a 21 dermatólogos certificados en la clasificación de melanomas malignos vs nevus benignos y carcinomas malignos vs queratosis seborreicas benignas. Rajpurkar et al. \cite{rajpurkar2017chexnet} presentaron CheXNet, un modelo basado en DenseNet-121 que excedió el desempeño promedio de radiólogos en la detección de neumonía en radiografías de tórax, entrenado en el conjunto de datos ChestX-ray14 con 112,120 imágenes frontales.
+
+Estos trabajos demostraron la viabilidad de sistemas de apoyo al diagnóstico basados en CNNs, pero también revelaron limitaciones importantes: dependencia en conjuntos de datos de gran escala, dificultad de generalización a hospitales externos (desplazamiento de dominio, \textit{domain shift}), y la tendencia de modelos a explotar factores de confusión como marcadores metálicos o artefactos de adquisición (\textit{shortcut learning}) \cite{geirhos2020shortcut}.
+
+\subsection{Desafíos Persistentes}
+
+A pesar de los avances significativos, persisten desafíos fundamentales en la aplicación de aprendizaje profundo a diagnóstico médico:
+
+\begin{itemize}
+\item \textbf{Data scarcity}: La obtención de conjuntos de datos médicos anotados de gran escala requiere inversión significativa de tiempo de expertos clínicos. La mayoría de conjuntos de datos públicos contienen entre 1,000 y 50,000 imágenes, órdenes de magnitud menores que ImageNet (14 millones de imágenes).
+
+\item \textbf{Class imbalance}: Enfermedades raras o condiciones patológicas específicas resultan en conjuntos de datos altamente desbalanceados, donde clases minoritarias pueden representar <1\% del total. Técnicas de aumento de datos (\textit{aumento de datos}), resampling y funciones de pérdida ponderadas parcialmente mitigan este problema.
+
+\item \textbf{Interpretabilidad}: Modelos aprendizaje profundo operan como ``cajas negras'', dificultando la comprensión de decisiones clínicas. Técnicas de visualización como Grad-CAM, saliency maps y attention mechanisms proporcionan interpretabilidad parcial, pero la confianza clínica en sistemas automatizados continúa siendo un desafío.
+
+\item \textbf{Variabilidad extrínseca}: Diferencias en protocolos de adquisición, equipamiento, poblaciones de pacientes y prácticas institucionales introducen variabilidad que afecta la generalización de modelos. Este trabajo aborda específicamente la variabilidad geométrica mediante normalización espacial.
+\end{itemize}
+
+\section{Detección de COVID-19 mediante Aprendizaje Profundo}
+\label{sec:covid19_detection}
+
+La pandemia de COVID-19 aceleró la investigación en sistemas automatizados de detección basados en radiografías de tórax. Esta sección revisa trabajos representativos, analiza sus resultados cuantitativos, e identifica limitaciones comunes.
+
+\subsection{Datasets Públicos para COVID-19}
+
+La disponibilidad de conjuntos de datos públicos fue crucial para el desarrollo rápido de sistemas de detección. El COVID-19 Radiography Database \cite{chowdhury2020can}, utilizado en este trabajo, contiene 21,165 radiografías de tórax distribuidas en cuatro clases: 10,192 casos normales, 3,616 casos COVID-19 positivos, 6,012 casos de opacidad pulmonar (infección pulmonar no-COVID), y 1,345 casos de neumonía viral. Las imágenes, en formato PNG de resolución 299$\times$299 píxeles, fueron recopiladas de múltiples fuentes públicas incluyendo RSNA, Kaggle, y repositorios GitHub, lo que introduce heterogeneidad en protocolos de adquisición.
+
+Otros conjuntos de datos prominentes incluyen COVIDx \cite{wang2020covidnet}, que contiene 13,975 radiografías de 13,870 pacientes, y BIMCV-COVID19, un conjunto de datos español con metadata clínica detallada. La fragmentación de conjuntos de datos y la falta de estandarización en protocolos de anotación dificultan la comparación directa de resultados.
+
+\subsection{Arquitecturas Específicas para COVID-19}
+
+Wang et al. \cite{wang2020covidnet} desarrollaron COVID-Net, una arquitectura CNN diseñada específicamente para detección de COVID-19 mediante principios de design humano-en-el-loop. El modelo alcanzó 93.3\% de exactitud en clasificación de tres clases (COVID-19, neumonía viral, normal) en el conjunto de datos COVIDx. La arquitectura incorpora módulos de expansión-compresión que permiten aprendizaje eficiente de representaciones discriminativas, pero requiere un proceso de diseño manual que puede no generalizar a otros dominios.
+
+Rajpurkar et al. \cite{rajpurkar2017chexnet} demostraron que CheXNet, basado en DenseNet-121 preentrenado en ImageNet, excede el desempeño de radiólogos en detección de neumonía en el conjunto de datos ChestX-ray14. Aunque este trabajo predató la pandemia de COVID-19, estableció una línea base importante para clasificación de patologías pulmonares en radiografías de tórax, demostrando que arquitecturas estándar con transfer learning pueden alcanzar desempeño de nivel experto cuando se dispone de conjuntos de datos de gran escala (112,120 imágenes).
+
+Trabajos recientes han explorado arquitecturas más ligeras y eficientes. Un estudio de 2023 reportó que ResNet-18 combinado con deep Random Vector Functional Link network (dRVFL) alcanzó 97.56\% de exactitud, superando métodos previos con arquitectura significativamente más compacta. Este resultado es particularmente relevante para este trabajo, que también utiliza ResNet-18 como extractor de características, demostrando que arquitecturas ligeras pueden ser competitivas con modelos más pesados cuando se combinan con técnicas de normalización y ensamble apropiadas.
+
+\subsection{Análisis Comparativo de Resultados}
+
+La Tabla \ref{tab:covid19_detection_comparison} presenta una comparación cuantitativa de métodos representativos de detección de COVID-19. Los resultados muestran alta variabilidad en desempeño (exactitud de 93.3\% a 98.6\%), atribuible a diferencias en conjuntos de datos, protocolos de evaluación, y técnicas de preprocesamiento.
+
+\input{capitulo3/tabla_3_1_covid19_detection}
+
+Varios patrones emergen del análisis comparativo:
+
+\begin{enumerate}
+\item \textbf{Arquitecturas profundas vs ligeras}: DenseNet-121 y DenseNet-201 consistentemente alcanzan alta exactitud (97-98\%), pero a costo de mayor complejidad computacional. ResNet-18, con 11.7 millones de parámetros (vs 20 millones de DenseNet-121), alcanza desempeño competitivo cuando se combina con técnicas adecuadas de entrenamiento y preprocesamiento.
+
+\item \textbf{Transfer learning}: La mayoría de trabajos utilizan preentrenamiento en ImageNet, sugiriendo que features genéricas de bajo nivel (bordes, texturas) son relevantes para clasificación de radiografías, a pesar de la diferencia sustancial entre fotografías naturales y imágenes médicas.
+
+\item \textbf{Variabilidad en conjuntos de datos}: Comparaciones directas son difíciles debido a diferencias en tamaño de conjunto de datos, distribución de clases, y protocolos de partición train/val/test. Algunos trabajos reportan exactitud en conjuntos de datos propietarios, limitando reproducibilidad.
+\end{enumerate}
+
+Este trabajo alcanza 98.10\% de exactitud utilizando ResNet-18 en imágenes normalizadas geométricamente, con F1-macro de 97.17\% y F1-weighted de 98.09\%. El desempeño es competitivo con el estado del arte, sugiriendo que normalización geométrica puede ser una estrategia complementaria efectiva a arquitecturas más complejas.
+
+\subsection{Limitaciones Identificadas}
+
+A pesar de resultados prometedores, la literatura sobre COVID-19 detection presenta limitaciones sistemáticas:
+
+\begin{itemize}
+\item \textbf{Evaluación en un solo conjunto de datos}: La mayoría de trabajos evalúan en un único conjunto de datos público, sin validación en datos externos de otros hospitales. Zech et al. \cite{zech2018variable} demostraron que modelos de detección de neumonía entrenados en un hospital pueden exhibir desempeño dramáticamente reducido (hasta 45\% degradación) en conjuntos de datos de otros hospitales, debido a desplazamiento de dominio y explotación de factores de confusión institucionales.
+
+\item \textbf{Falta de análisis de robustez}: Pocos trabajos evalúan robustez ante perturbaciones comunes como compresión JPEG, blur, variaciones de contraste, o cambios en posicionamiento del paciente. Esta omisión es problemática dado que condiciones clínicas reales introducen variabilidad en calidad de imagen.
+
+\item \textbf{Métricas incompletas}: Muchos trabajos reportan únicamente exactitud global, omitiendo sensitivity, specificity, y F1-score por clase, métricas más relevantes en contextos médicos donde costos de falsos positivos y falsos negativos son asimétricos.
+
+\item \textbf{Shortcut learning no abordado}: Geirhos et al. \cite{geirhos2020shortcut} documentaron que CNNs tienden a explotar correlaciones espurias (marcadores metálicos, artefactos de equipo, propiedades del hospital) en lugar de características patológicas intrínsecas. La normalización geométrica propuesta en este trabajo mitiga parcialmente este problema al estandarizar la región pulmonar, reduciendo variabilidad extrínseca.
+\end{itemize}
+
+El análisis del estado del arte revela una oportunidad clara: desarrollar métodos que no solo alcancen alta exactitud en conjuntos de datos de entrenamiento, sino que también demuestren robustez ante variabilidad extrínseca y generalización a datos de distribuciones diferentes.
+
+\section{Detección de Puntos de Referencia Anatómicos}
+\label{sec:landmark_detection}
+
+La detección automática de puntos de referencia anatómicos (\textit{anatomical landmarks}) es fundamental para múltiples tareas en análisis de imágenes médicas, incluyendo registro, segmentación, diagnóstico y, en este trabajo, normalización geométrica. Esta sección revisa métodos de detección de puntos de referencia, analiza funciones de pérdida especializadas, y discute la escasez de trabajos en radiografías de tórax.
+
+\subsection{Métodos Tradicionales vs Deep Learning}
+
+Los métodos tradicionales de detección de landmarks se basaban en modelos estadísticos de forma. Cootes et al. \cite{cootes1995active} introdujeron Modelos de Forma Activa (\textit{Active Shape Models}, ASM), que aprenden patrones de variabilidad de forma a partir de un conjunto de entrenamiento anotado manualmente. Los ASM emplean un proceso iterativo de refinamiento análogo a Active Contour Models (Snakes), ajustando una forma modelo a una imagen mediante búsqueda local de características. Aunque los ASM fueron ampliamente adoptados en segmentación médica, requieren inicialización cercana a la solución y son sensibles a variaciones significativas de apariencia.
+
+El aprendizaje profundo ha reemplazado en gran medida a métodos tradicionales debido a su capacidad de aprender representaciones discriminativas de características visuales de forma de extremo a extremo (\textit{de extremo a extremo}). Los métodos basados en CNN para detección de landmarks se pueden categorizar en dos enfoques principales: \textit{coordinate regression} y \textit{heatmap regression}.
+
+\subsection{Coordinate Regression vs Heatmap Regression}
+
+\textbf{Coordinate regression} formula la tarea como un problema de regresión que predice directamente las coordenadas $(x, y)$ de cada landmark. Este enfoque es conceptualmente simple y permite entrenamiento de extremo a extremo, pero enfrenta desafíos significativos: el mapeo de características de imagen a coordenadas numéricas es altamente no lineal, y la naturaleza no acotada de las coordenadas dificulta la convergencia. Además, coordinate regression carece de generalización espacial, donde errores pequeños en features pueden resultar en desplazamientos grandes en coordenadas predichas.
+
+\textbf{Heatmap regression} representa cada landmark como un mapa de probabilidad espacial, típicamente modelado como una distribución Gaussiana centrada en la ubicación verdadera. La red predice un heatmap 2D para cada landmark, y la ubicación final se obtiene mediante búsqueda del máximo (argmax) o soft-argmax diferenciable. Heatmap regression presenta ventajas importantes: la representación probabilística suaviza el espacio objetivo facilitando convergencia, permite explotar características locales de forma más efectiva, y proporciona generalización espacial donde la red aprende a activar regiones cercanas al landmark verdadero.
+
+La literatura indica que heatmap regression generalmente supera a coordinate regression en exactitud, especialmente cuando se dispone de conjuntos de datos pequeños. Sin embargo, heatmap regression introduce sobrecarga computacional (predecir mapas 2D completos vs coordenadas directas) y requiere post-procesamiento para extraer ubicaciones finales. Este trabajo utiliza coordinate regression debido a su simplicidad, eficiencia computacional, y adecuación para el flujo de trabajo propuesto donde se requieren coordenadas explícitas para transformaciones geométricas subsecuentes.
+
+\subsection{Funciones de Pérdida Especializadas}
+
+La elección de función de pérdida es crítica para el desempeño de modelos de regresión de landmarks. Feng et al. \cite{feng2018wing} propusieron Wing Loss, una función de pérdida diseñada específicamente para localización robusta de landmarks faciales. Wing Loss aborda la limitación de L1 y L2 loss: L1 loss trata errores pequeños y grandes de forma uniforme, mientras que L2 loss penaliza excesivamente outliers. Wing Loss amplifica el impacto de errores pequeños y medianos (cruciales para localización precisa) mediante una transición suave de L1 loss a una función logarítmica modificada en el rango $(-w, w)$, donde $w$ es un hiperparámetro que controla el ancho de la región de transición. La formulación matemática permite ajustar la sensibilidad a errores pequeños sin magnificar outliers, resultando en convergencia más estable.
+
+Wang et al. \cite{wang2019adaptivewing} extendieron Wing Loss con Adaptive Wing Loss para heatmap regression, introduciendo ponderación adaptativa según el tipo de píxel (foreground vs background). Adaptive Wing Loss combina la función Wing con un Weighted Loss Map que asigna mayor peso a píxeles de foreground y background difíciles, permitiendo que el entrenamiento se enfoque en regiones críticas para localización de landmarks. Este trabajo superó el estado del arte en benchmarks de face alignment (COFW, 300W, WFLW), demostrando que funciones de pérdida adaptativas mejoran significativamente la precisión de localización.
+
+Este trabajo adopta Wing Loss para coordinate regression de landmarks pulmonares, aprovechando su capacidad de amplificar errores pequeños sin introducir inestabilidad por outliers. La elección se justifica empíricamente: el error de ensamble con Wing Loss alcanza 3.61 píxeles (1.14\% NME), comparable a trabajos de facial landmarks y superior a métodos línea base con L2 loss.
+
+\subsection{Aplicaciones en Radiografías Médicas}
+
+Yeh et al. \cite{yeh2021deep} demostraron que aprendizaje profundo puede detectar automáticamente landmarks en radiografías laterales de columna vertebral completa con error promedio de 2.3 mm, permitiendo análisis de alineación para diagnóstico de escoliosis y otras deformidades espinales. El método utiliza heatmap regression con U-Net como arquitectura base, explotando la naturaleza localizada de vértebras en radiografías. El trabajo demostró viabilidad clínica comparando resultados contra anotaciones de expertos, encontrando concordancia alta (error estándar mild to moderate) suficiente para aplicaciones de screening.
+
+Otros trabajos han abordado landmark detection en imágenes de cerebro (2.96 mm de error) y próstata (3.34 mm de error) utilizando arquitecturas CNN de dos etapas con limited training data, demostrando que métodos basados en aprendizaje profundo pueden generalizar a tareas donde la anotación manual es costosa.
+
+\subsection{Brecha Identificada: Landmarks en Chest X-rays}
+
+La revisión de la literatura revela una \textbf{escasez significativa de trabajos sobre detección de landmarks anatómicos en radiografías de tórax}, particularmente en el contexto de clasificación de COVID-19 y neumonía. La mayoría de trabajos se enfocan en facial landmarks (face alignment), landmarks ortopédicos (columna, extremidades), o landmarks en imágenes 3D (cerebro, próstata). Esta brecha es sorprendente dado que el tórax presenta desafíos únicos: alta variabilidad anatómica inter-paciente, deformación pulmonar dependiente de fase respiratoria, y presencia de patologías que alteran la forma pulmonar.
+
+La Tabla \ref{tab:landmark_detection_comparison} presenta una comparación cuantitativa de métodos de detección de puntos de referencia. Este trabajo contribuye al cerrar la brecha identificada, proponiendo un método de detección de 15 puntos de referencia de contorno pulmonar con error de 3.61 píxeles (1.14\% NME), comparable al estado del arte en puntos de referencia faciales (Feng: 1.47\% NME) y aplicado a una tarea significativamente más desafiante debido a variabilidad anatómica y patológica en radiografías de tórax.
+
+\input{capitulo3/tabla_3_2_landmark_detection}
+
+El uso de ensamble de 4 modelos con Aumento en Tiempo de Prueba (\textit{Test-Time Augmentation}, TTA) y corrección de simetría bilateral reduce el error de 4.04 px (mejor modelo individual) a 3.61 px, demostrando que técnicas de ensamble son efectivas para mejorar precisión de localización en contextos médicos donde errores pequeños son críticos para aplicaciones downstream como normalización geométrica.
+
+\section{Normalización Geométrica en Imágenes Médicas}
+\label{sec:normalizacion_geometrica_estado_arte}
+
+La normalización geométrica busca reducir variabilidad extrínseca en imágenes mediante transformaciones espaciales que estandarizan la pose, orientación, y escala de estructuras anatómicas. Esta sección revisa métodos de transformación espacial, desde transformaciones globales hasta deformaciones locales, y analiza su aplicación a clasificación de imágenes médicas.
+
+\subsection{Spatial Transformer Networks}
+
+Jaderberg et al. \cite{jaderberg2015spatial} introdujeron Redes de Transformación Espacial (\textit{Spatial Transformer Networks}, STN), un módulo diferenciable que permite a redes neuronales aprender transformaciones espaciales de forma de extremo a extremo sin supervisión adicional. Una STN consiste en tres componentes: (1) una \textit{localization network} que predice parámetros de transformación a partir de features de entrada, (2) un \textit{grid generator} que construye un grid de coordenadas en la imagen de salida correspondientes a la imagen de entrada, y (3) un \textit{sampler} que interpola valores de píxeles usando bilinear sampling diferenciable.
+
+Las STN permiten que modelos aprendan invarianza a transformaciones geométricas (traslación, rotación, escala, affine, perspective) de forma automática, mejorando robustez a variaciones de pose sin aumentar datos manualmente. Sin embargo, las STN presentan una \textbf{limitación fundamental}: las transformaciones aprendidas son \textit{globales}, aplicando la misma transformación afín o perspectiva a toda la imagen. Esta suposición es restrictiva para estructuras anatómicas deformables como pulmones, donde diferentes regiones pueden requerir deformaciones locales distintas.
+
+\subsection{Extensiones de STN en Medical Imaging}
+
+Rocha et al. \cite{rocha2024stern} desarrollaron STERN (\textit{Spatial Transformer Enhanced by Attention}), que combina STN con mecanismos de atención para detección de anomalías en radiografías de tórax. STERN emplea múltiples STNs en cascada, cada uno enfocándose en regiones espaciales diferentes mediante \textit{attention gates}, permitiendo normalización jerárquica de la imagen. El método alcanzó mejora de +2.1\% AUC sobre línea base en el conjunto de datos ChestX-ray14, demostrando que alineación espacial aprendida mejora detección de patologías. Sin embargo, STERN continúa limitado a transformaciones afines globales por región, sin capacidad de deformación local dentro de cada región.
+
+\subsection{Piecewise Affine Warping}
+
+La deformación afín por partes (piecewise affine warping) supera la limitación de transformaciones globales permitiendo \textbf{deformaciones locales adaptativas}. El método divide la imagen en regiones mediante triangulación de Delaunay de landmarks de control, y aplica una transformación afín independiente a cada triángulo. Esta aproximación ofrece mayor flexibilidad que transformaciones globales, preservando continuidad en fronteras de triángulos mientras permite que diferentes regiones se deformen independientemente.
+
+El fundamento matemático de piecewise affine warping fue establecido por Wolberg \cite{wolberg1990digital} en el contexto de digital image warping. Para cada triángulo en la malla de origen, se calcula una transformación afín que mapea sus vértices a las posiciones correspondientes en la malla destino. Píxeles dentro del triángulo se transforman usando coordenadas baricéntricas \cite{berg2008computational}, asegurando interpolación suave. El método ha sido ampliamente utilizado en face morphing, facial expression transfer, y remote sensing para geometric correction de imágenes VHR (Very High Resolution).
+
+\subsection{Aplicación a Clasificación: Brecha en la Literatura}
+
+A pesar de su uso extenso en computer vision, la aplicación de piecewise affine warping a \textbf{clasificación de imágenes médicas es escasa}. La literatura se concentra en:
+
+\begin{itemize}
+\item \textbf{Registro de imágenes}: Alineación de imágenes multi-modales (MRI-CT, PET-CT) para fusión o análisis longitudinal.
+\item \textbf{Segmentación}: Deformación de atlas anatómicos para propagación de labels.
+\item \textbf{Face alignment}: Normalización de poses faciales para reconocimiento.
+\end{itemize}
+
+El uso de piecewise affine warping como \textit{paso de preprocesamiento} para mejorar clasificación mediante normalización de variabilidad geométrica es un enfoque \textbf{poco explorado}, representando una brecha clara en la literatura.
+
+\subsection{Trabajos del Grupo de Investigación}
+
+Trabajos previos del grupo de investigación han explorado normalización de radiografías de tórax con enfoques complementarios. Picazo-Castillo et al. \cite{picazo2024comparative} presentaron un estudio comparativo de representaciones de imágenes pulmonares, demostrando que diferentes estrategias de normalización espacial (\textit{cropping} inteligente, redimensionamiento adaptativo) afectan la capacidad de generalización de CNNs. Ayala-Raggi et al. \cite{ayala2023synergizing} propusieron integración de normalización de radiografías de tórax con selección discriminativa de características basada en PCA, logrando mejora de aproximadamente 1.5\% en exactitud para clasificación de COVID-19. Estos trabajos establecieron que reducción de variabilidad extrínseca mediante normalización espacial es una estrategia viable para mejorar el desempeño de clasificadores.
+
+\subsection{Contribución de Este Trabajo}
+
+Este trabajo extiende trabajos previos al proponer un flujo de trabajo completo que integra: (1) detección automática de landmarks anatómicos de contorno pulmonar, (2) cálculo de forma canónica mediante Análisis de Procrustes Generalizado (\textit{Generalized Procrustes Analysis}, GPA), (3) normalización geométrica mediante deformación afín por partes basada en triangulación de Delaunay, y (4) clasificación en imágenes normalizadas. La Tabla \ref{tab:geometric_normalization_comparison} posiciona este trabajo en el contexto de métodos de normalización geométrica para clasificación.
+
+\input{capitulo3/tabla_3_3_normalizacion_geometrica}
+
+El enfoque propuesto alcanza 98.10\% de exactitud en el conjunto de datos COVID-19 Radiography, con 98.60\% $\pm$ 0.26\% en validación cruzada de 5 folds. Aunque la exactitud es ligeramente inferior a la línea base sin normalización (98.68\% en imágenes originales), el experimento de recorte al 12\% (descrito en Resultados) demuestra que la línea base explota artefactos extrapulmonares (exactitud cae a 95.36\%), mientras que la normalización geométrica alcanza 98.10\% usando exclusivamente la región pulmonar, sugiriendo que la normalización captura características genuinamente diagnósticas.
+
+\section{Mecanismos de Atención en Clasificación de Imágenes Médicas}
+\label{sec:mecanismos_atencion}
+
+Los mecanismos de atención permiten que redes neuronales enfoquen recursos computacionales en regiones o canales informativos, mejorando discriminación de características relevantes para la tarea. Esta sección revisa mecanismos de atención clave y su aplicación en imágenes médicas.
+
+\subsection{Attention Mechanisms Clásicos}
+
+Guo et al. \cite{guo2022attention} presentaron una revisión exhaustiva que categoriza attention mechanisms según su enfoque: channel attention, spatial attention, temporal attention, y branch attention. Los mecanismos se pueden aplicar en diferentes etapas del procesamiento: pre-processing attention (selección de regiones de interés), intra-processing attention (modulación de features intermedios), y post-processing attention (refinamiento de predicciones).
+
+\subsubsection{Squeeze-and-Excitation Networks}
+
+Hu et al. \cite{hu2018squeeze} introdujeron Squeeze-and-Excitation (SE) blocks, que modelan interdependencias entre canales mediante dos operaciones: \textit{squeeze} agrega información espacial de cada canal mediante global average pooling, produciendo un descriptor de canal; \textit{excitation} aplica una transformación no lineal (dos capas fully-connected con activación ReLU y sigmoid) para aprender ponderaciones adaptativas por canal. SE blocks recalibran feature maps multiplicando cada canal por su peso aprendido, amplificando canales informativos y suprimiendo canales irrelevantes.
+
+SE-Net ganó la competencia ILSVRC 2017 con top-5 error de 2.251\%, demostrando que recalibración de canales mejora discriminación sin sobrecarga computacional significativa. En imágenes médicas, SE blocks han sido adoptados ampliamente en arquitecturas de segmentación (U-Net + SE) y clasificación de patologías, explotando su capacidad de enfatizar características patológicas específicas.
+
+\subsubsection{Convolutional Block Attention Module}
+
+Woo et al. \cite{woo2018cbam} propusieron Módulo de Atención de Bloque Convolucional (\textit{Convolutional Block Attention Module}, CBAM), que combina channel attention y spatial attention de forma secuencial. CBAM primero aplica channel attention (similar a SE block) para determinar \textit{qué} características son importantes, luego aplica spatial attention para determinar \textit{dónde} enfocar. La spatial attention se computa agregando información de canales mediante max pooling y average pooling, concatenando los resultados, y aplicando una convolución 7$\times$7 seguida de sigmoid para producir un mapa de atención espacial.
+
+CBAM demostró mejoras consistentes en ImageNet-1K, MS COCO detection, y VOC 2007 detection, validando que atención dual (canal + espacial) captura complementariedades entre ``qué'' y ``dónde'' atender. En imágenes médicas, CBAM ha sido utilizado para segmentación de lesiones, detección de nódulos pulmonares, y clasificación de patologías, donde localización precisa de regiones anormales es crítica.
+
+\subsection{Coordinate Attention}
+
+Hou et al. \cite{hou2021coordinate} introdujeron Coordinate Attention, diseñado específicamente para \textbf{tareas de localización} en redes móviles eficientes. A diferencia de channel attention que agrega información espacial mediante agrupación global (\textit{global pooling}) perdiendo información posicional, Coordinate Attention factoriza channel attention en dos procesos 1D que codifican información direccional a lo largo de ejes horizontal y vertical.
+
+El mecanismo opera en tres etapas: (1) \textit{coordinate information embedding} aplica pooling 1D a lo largo de altura y ancho separadamente, generando dos feature maps 1D que capturan dependencias de largo alcance en direcciones ortogonales; (2) \textit{coordinate attention generation} concatena los embeddings, aplica transformación convolucional compartida, y split en dos branches que generan attention maps para altura y ancho mediante sigmoid; (3) \textit{coordinate attention multiplication} multiplica el feature map de entrada por los attention maps direccionales, recalibrando features de forma position-aware.
+
+Coordinate Attention supera SE-Net y CBAM en tareas de object detection y semantic segmentation, demostrando que preservación de información posicional es crucial para localización precisa. En el contexto de este trabajo, Coordinate Attention fue seleccionado para el modelo de landmarks porque la tarea requiere localización precisa de puntos anatómicos distribuidos espacialmente. El mecanismo permite que la red capture dependencias entre landmarks (e.g., simetría bilateral entre pulmón izquierdo y derecho) mediante atención direccional, mejorando consistencia de predicciones.
+
+\subsection{Vision Transformers}
+
+Dosovitskiy et al. \cite{dosovitskiy2020image} introdujeron Transformadores de Visión (\textit{Vision Transformers}, ViT), que aplican arquitecturas transformer (originalmente diseñadas para NLP) a image recognition. ViT divide la imagen en parches (\textit{patches}) de 16$\times$16 píxeles, proyecta cada parche a una incrustación (\textit{embedding}), y procesa la secuencia de incrustaciones mediante multi-head self-attention. Self-attention permite que cada parche atienda a todos los demás parches, capturando dependencias de largo alcance sin restricción de campo receptivo local como en CNN.
+
+ViT alcanzó estado del arte en ImageNet cuando se preentrenó en conjuntos de datos masivos (JFT-300M con 300 millones de imágenes), pero requiere significativamente más datos que CNN para converger. En imágenes médicas, ViT ha mostrado resultados prometedores en clasificación de patologías, segmentación de órganos, y detección de lesiones, frecuentemente superando CNN cuando se combina con transfer learning desde preentrenamiento en ImageNet o conjuntos de datos médicos grandes.
+
+Sin embargo, la aplicación de ViT en conjuntos de datos médicos pequeños (típicamente <50,000 imágenes) es desafiante debido a la necesidad de grandes cantidades de datos para aprender representaciones robustas sin inductive biases de CNNs (locality, translation equivariance). Trabajos recientes híbridos combinan CNNs con transformers, explotando inductive biases de CNNs en capas tempranas y capacidad de atención global de transformers en capas profundas.
+
+\section{Mejora de Contraste y Preprocesamiento}
+\label{sec:mejora_contraste}
+
+El preprocesamiento de contraste es crítico en imágenes médicas para resaltar estructuras anatómicas y patológicas, compensando variaciones en protocolos de adquisición. Esta sección revisa métodos de mejora de contraste, enfocándose en CLAHE y su aplicación a radiografías de tórax.
+
+\subsection{Contrast Limited Adaptive Histogram Equalization}
+
+Pizer et al. \cite{pizer1987adaptive} introdujeron Adaptive Histogram Equalization (AHE), que divide la imagen en tiles y aplica histogram equalization localmente a cada tile. AHE mejora contraste local más efectivamente que histogram equalization global, pero tiende a sobre-amplificar ruido en regiones homogéneas. Zuiderveld \cite{clahe1994} propuso Ecualización Adaptativa de Histograma con Limitación de Contraste (\textit{Contrast Limited Adaptive Histogram Equalization}, CLAHE), que introduce un límite de clip para restringir amplificación de contraste, previniendo over-enhancement de ruido.
+
+CLAHE opera mediante los siguientes pasos: (1) la imagen se divide en tiles no solapados (típicamente 8$\times$8 o 4$\times$4), (2) para cada tile se calcula el histograma de intensidades, (3) se limita el histograma mediante clip limit (píxeles que exceden el límite se redistribuyen uniformemente), (4) se aplica histogram equalization al histograma clipped, y (5) se interpolan bilinealmente resultados entre tiles adyacentes para eliminar artefactos de frontera.
+
+CLAHE ha sido ampliamente adoptado en imágenes médicas debido a su efectividad en resaltar detalles locales sin introducir artefactos severos. En radiografías de tórax, CLAHE mejora visibilidad de opacidades en vidrio esmerilado, consolidaciones, y infiltrados intersticiales característicos de neumonía y COVID-19.
+
+\subsection{Aplicación a COVID-19 Detection}
+
+Rahman et al. \cite{rahman2021exploring} exploraron el efecto de técnicas de mejora de imagen (incluyendo CLAHE, ecualización de histograma, corrección gamma, y \textit{unsharp masking}) en detección de COVID-19 usando radiografías de tórax. El estudio encontró que CLAHE con \textit{clip limit} de 2.0 y \textit{tile size} de 8$\times$8 proporcionó la mejor mejora en exactitud de clasificación, aumentando la capacidad de CNNs de discriminar entre COVID-19, Neumonía Viral, y casos normales.
+
+Trabajos recientes han propuesto variantes optimizadas de CLAHE. Un estudio de 2025 introdujo BO-CLAHE (\textit{Bayesian Optimization CLAHE}) para radiografías de tórax neonatales, que optimiza automáticamente \textit{clip limit} y \textit{tile size} mediante búsqueda Bayesiana. Otro trabajo demostró que CLAHE combinado con optimización metaheurística de corrección gamma mejora detectabilidad de lesiones pulmonares en radiografías.
+
+Este trabajo utiliza CLAHE con clip limit de 2.0 y tile size de \textbf{4$\times$4} para el preprocesamiento de imágenes originales previo a la detección de puntos de referencia, basado en validación experimental que mostró que tile size menor (4 vs 8) mejora el desempeño de landmark detection. La elección de tile size influye en el compromiso entre mejora de contraste local y preservación de estructura global: tile size pequeño enfatiza detalles finos pero puede introducir artefactos de bloque; tile size grande preserva estructura pero reduce adaptabilidad local.
+
+\section{Robustez y Generalización}
+\label{sec:robustez_generalizacion}
+
+La robustez ante perturbaciones y la generalización a datos de distribuciones diferentes son desafíos fundamentales en IA médica. Esta sección revisa literatura sobre desplazamiento de dominio (\textit{domain shift}), métodos de ensamble, y aumento en tiempo de prueba (\textit{test-time augmentation}).
+
+\subsection{Desplazamiento de Dominio en Imágenes Médicas}
+
+Zech et al. \cite{zech2018variable} realizaron un estudio seminal sobre desplazamiento de dominio en detección de neumonía en radiografías de tórax, evaluando el desempeño de CNNs entrenados en un hospital (NIH Clinical Center con 112,120 radiografías) en dos hospitales externos (Mount Sinai Hospital y Indiana University Network). El estudio reveló hallazgos alarmantes: en 3 de 5 comparaciones, el desempeño en datos externos fue \textbf{significativamente inferior} al desempeño en datos del hospital de entrenamiento. Más preocupante, las CNNs fueron capaces de detectar el hospital de origen de una radiografía con 99.95\% de exactitud, demostrando que los modelos explotaban factores de confusión institucionales (marcadores, protocolos de adquisición, propiedades del equipo) en lugar de características patológicas intrínsecas.
+
+Este fenómeno, conocido como \textit{shortcut learning} \cite{geirhos2020shortcut}, representa una amenaza fundamental a la confiabilidad clínica de sistemas de IA médica. Geirhos et al. documentaron que CNNs tienden a explotar correlaciones espurias que son predictivas en el conjunto de datos de entrenamiento pero no generalizan a distribuciones diferentes. En imágenes médicas, shortcuts comunes incluyen: artefactos de marca de agua, orientación de paciente (supine vs upright), edad demográfica visible en textura ósea, y características del hospital (equipamiento, calibración).
+
+\subsection{Estrategias de Mitigación de Desplazamiento de Dominio}
+
+La literatura propone múltiples estrategias para mitigar el desplazamiento de dominio:
+
+\begin{itemize}
+\item \textbf{Domain adaptation}: Técnicas de ajuste fino (\textit{fine-tuning}), adversarial training, o feature alignment que adaptan un modelo entrenado en dominio fuente a dominio objetivo con labels limitados o sin labels.
+
+\item \textbf{Domain generalization}: Métodos que aprenden representaciones invariantes a dominio durante entrenamiento, sin acceso a datos del dominio objetivo. Técnicas incluyen aumento de datos agresiva, meta-learning, y aprendizaje de features causales en lugar de correlacionales.
+
+\item \textbf{Normalización geométrica}: Reducción de variabilidad extrínseca (pose, orientación, escala) mediante transformaciones espaciales, facilitando que modelos aprendan características intrínsecas relacionadas con patología. Este es el enfoque central de este trabajo.
+\end{itemize}
+
+Surveys recientes sobre domain generalization en imágenes médicas identifican que aumento de datos, normalización de protocolos de adquisición, y ensamble de modelos entrenados en distribuciones diversas son estrategias efectivas para mejorar generalización.
+
+\subsection{Métodos de Ensamble}
+
+Dietterich \cite{dietterich2000ensemble} estableció fundamentos teóricos de ensamble learning, demostrando que combinación de múltiples modelos (aprendices débiles) puede reducir variance, bias, y sobreajuste. En IA médica, ensambles han demostrado mejoras consistentes en robustez y exactitud. Un estudio de 2024 sobre diagnóstico de Alzheimer mediante ensamble de CNNs alcanzó accuracies de 98.57\%, 96.37\%, y 94.22\% en diferentes grupos de clasificación, superando modelos individuales por márgenes significativos.
+
+Este trabajo emplea ensamble de 4 modelos de landmarks entrenados con diferentes semillas aleatorias (123, 321, 111, 666), promediando sus predicciones. El ensamble reduce error de 4.04 px (mejor modelo individual, seed 456) a 3.61 px, demostrando que diversidad introducida por inicialización aleatoria diferente es suficiente para mejorar robustez en este contexto.
+
+\subsection{Test-Time Augmentation}
+
+Test-Time Augmentation (TTA) genera múltiples versiones transformadas de una imagen de test, predice usando el modelo en cada versión, y promedia las predicciones para obtener resultado final. Moshkov et al. \cite{moshkov2020testtime} demostraron que TTA con transformaciones simples (rotación, flipping horizontal/vertical) mejora significativamente exactitud de segmentación de células en microscopia, aún cuando el modelo ya fue entrenado con aumento de datos.
+
+En tareas de regresión de landmarks con estructura simétrica, TTA requiere cuidado adicional. Este trabajo aplica TTA con horizontal flip y \textbf{corrección de simetría bilateral}: después de flip horizontal, las predicciones de landmarks izquierdos y derechos se intercambian (L3$\leftrightarrow$L4, L5$\leftrightarrow$L6, etc.) antes de promediar con predicciones de imagen original. Esta corrección asegura que TTA explota simetría anatómica en lugar de introducir error por promediar landmarks no correspondientes.
+
+
+\section{Síntesis y Posicionamiento del Trabajo}
+\label{sec:sintesis_posicionamiento}
+
+Esta sección sintetiza hallazgos de la revisión de literatura, identifica brechas específicas, y posiciona las contribuciones de este trabajo en el contexto del estado del arte.
+
+\subsection{Brechas Identificadas en la Literatura}
+
+El análisis sistemático de la literatura revela tres brechas principales que motivan y justifican este trabajo:
+
+\subsubsection{Brecha 1: Escasez de Piecewise Affine Warping para Clasificación}
+
+Piecewise affine warping es ampliamente utilizado en face alignment, morphing, y remote sensing para geometric correction, pero su aplicación a \textbf{clasificación de imágenes médicas como paso de preprocesamiento} es escasa. La mayoría de trabajos sobre normalización geométrica en imágenes médicas utilizan:
+
+\begin{itemize}
+\item Transformaciones \textit{rígidas} (traslación, rotación): Adecuadas para órganos rígidos (huesos) pero restrictivas para tejidos deformables.
+\item Transformaciones \textit{afines globales}: STN y variantes aplican una transformación afín a toda la imagen, sin capacidad de deformación local.
+\item Transformaciones \textit{no paramétricas} (optical flow, B-splines): Extremadamente flexibles pero propensas a sobreajuste y difíciles de regularizar.
+\end{itemize}
+
+Piecewise affine warping ocupa un punto intermedio en el espectro flexibilidad-regularización: más flexible que transformaciones globales pero más estructurado que deformaciones no paramétricas. Este trabajo es, según conocimiento del autor, uno de los primeros en aplicar piecewise affine warping basado en landmarks anatómicos automáticamente detectados para normalización previa a clasificación de COVID-19.
+
+\subsubsection{Brecha 2: Landmark Detection en Chest X-rays para Normalización}
+
+Mientras que la detección de puntos de referencia ha sido extensivamente estudiada en imágenes faciales, radiografías de columna vertebral y resonancia magnética cerebral, existe \textbf{escasa literatura sobre detección de puntos de referencia anatómicos en radiografías de tórax}, particularmente para definición de contornos pulmonares en contexto de clasificación de neumonía/COVID-19. Los trabajos existentes se enfocan en segmentación semántica completa de pulmones (máscaras densas) en lugar de puntos de referencia dispersos que capturen forma global.
+
+Este trabajo propone un conjunto de 15 landmarks que definen contorno pulmonar bilateral: eje central (L1, L9, L10, L11, L2), contorno izquierdo (L12, L3, L5, L7, L14), y contorno derecho (L13, L4, L6, L8, L15). La selección de landmarks equilibra parsimonia (suficientes para capturar variabilidad de forma) con factibilidad (anotación manual razonable). El error de 3.61 px (1.14\% NME) es comparable a estado del arte en facial landmarks, demostrando viabilidad técnica.
+
+\subsubsection{Brecha 3: Flujo de Trabajo de Extremo a Extremo: Landmark Detection + GPA + Deformación + Clasificación}
+
+No se identificaron trabajos que integren (1) detección automática de landmarks anatómicos, (2) análisis de forma estadístico (GPA) para computar forma canónica, (3) normalización geométrica mediante deformación afín por partes, y (4) clasificación en imágenes normalizadas en un flujo de trabajo coherente de extremo a extremo. Trabajos previos del grupo (Picazo-Castillo, Ayala-Raggi) exploraron normalización mediante cropping inteligente y PCA, pero no utilizaron landmarks explícitos ni deformaciones locales.
+
+Este trabajo contribuye un flujo de trabajo completo que aborda normalización geométrica de forma fundamentada, utilizando análisis de forma estadístico (Análisis de Procrustes Generalizado, GPA) \cite{gower1975generalized,dryden2016statistical} para definir objetivo de normalización (forma canónica consenso) y deformación afín por partes para transformar cada imagen a dicha forma, reduciendo variabilidad de pose mientras se preserva información de textura local.
+
+\subsection{Posicionamiento Cuantitativo}
+
+Las Tablas \ref{tab:covid19_detection_comparison}, \ref{tab:landmark_detection_comparison}, y \ref{tab:geometric_normalization_comparison} posicionan cuantitativamente este trabajo:
+
+\begin{itemize}
+\item \textbf{Clasificación de COVID-19}: 98.10\% de exactitud, competitivo con el estado del arte (DenseNet121: 98.0\%, RegNetX032: 98.6\%). El desempeño es ligeramente inferior a algunos trabajos recientes pero alcanzado con arquitectura significativamente más ligera (ResNet-18: 11.7M parámetros) y con validación cruzada que demuestra estabilidad del enfoque (98.60\% $\pm$ 0.26\%, discutido en Capítulo de Resultados).
+
+\item \textbf{Landmark detection}: 3.61 px (1.14\% NME) con ensamble + TTA, comparable a Feng et al. (1.47\% NME) en facial landmarks y superior considerando la mayor dificultad de chest X-rays con variabilidad patológica y anatómica. Mejor modelo individual: 4.04 px (1.28\% NME).
+
+\item \textbf{Normalización geométrica}: Primer trabajo (según conocimiento del autor) en aplicar GPA + deformación afín por partes para clasificación de COVID-19. Comparación directa es difícil debido a escasez de trabajos similares, pero validación cruzada (98.60\% $\pm$ 0.26\%) y experimentos comparativos demuestran efectividad del enfoque.
+\end{itemize}
+
+\subsection{Contribuciones Específicas}
+
+En el contexto del estado del arte revisado, las contribuciones principales de este trabajo son:
+
+\begin{enumerate}
+\item \textbf{Método de normalización geométrica local}: Deformación afín por partes basada en landmarks para clasificación de chest X-rays, abordando brecha de transformaciones globales restrictivas.
+
+\item \textbf{Pipeline de extremo a extremo}: Integración de landmark detection (ResNet-18 + Coordinate Attention + Wing Loss), GPA para forma canónica, deformación afín por partes (Delaunay triangulation), y clasificación (ResNet-18), demostrando viabilidad de enfoque principled basado en análisis de forma.
+
+\item \textbf{Conjunto de 15 landmarks pulmonares}: Definición y anotación manual de landmarks de contorno pulmonar bilateral, con error de ensamble de 3.61 px (1.14\% NME) comparable a facial landmarks.
+
+\item \textbf{Validación experimental rigurosa}: Cross-validation de 5-folds (98.60\% $\pm$ 0.26\%) y evaluación en conjunto de prueba independiente, demostrando estabilidad del sistema propuesto.
+
+\item \textbf{Validación experimental exhaustiva}: Cross-validation de 5-folds, comparación de tres configuraciones (imágenes originales, normalizadas y recortadas con SAHS), y análisis de casos mal clasificados, demostrando rigor metodológico.
+\end{enumerate}
+
+\subsection{Limitaciones y Direcciones Futuras}
+
+El estado del arte revisado también sugiere limitaciones del enfoque propuesto y direcciones para investigación futura:
+
+\begin{itemize}
+\item \textbf{Dependencia en calidad de landmarks}: La normalización geométrica depende críticamente de la precisión de landmark detection. Errores de localización se propagan a la deformación, introduciendo distorsiones. Mejora futura podría explorar refinamiento iterativo o detección multi-escala.
+
+\item \textbf{Forma canónica única}: GPA computa una forma canónica consenso global. Un enfoque más sofisticado podría aprender formas canónicas por clase (COVID-19, Normal, Neumonía Viral), adaptando normalización a patología.
+
+\item \textbf{Desplazamiento de dominio no resuelto}: Normalización geométrica reduce variabilidad de pose pero no aborda el desplazamiento de dominio institucional (equipamiento, marcadores, demografía). Adaptación de dominio (\textit{domain adaptation}) o aprendizaje federado (\textit{federated learning}) son complementos necesarios para despliegue clínico.
+
+\item \textbf{Interpretabilidad limitada}: Aunque la deformación facilita comparación visual entre imágenes normalizadas, no proporciona explicaciones causales de predicciones. Integración con técnicas de explainable AI (Grad-CAM, attention maps) es una dirección prometedora.
+\end{itemize}
+
+En conclusión, este trabajo contribuye al estado del arte mediante un enfoque novel de normalización geométrica local para clasificación de COVID-19, abordando brechas identificadas en la literatura y demostrando viabilidad y efectividad mediante validación experimental exhaustiva. Las contribuciones específicas posicionan el trabajo como un avance en la integración de análisis de forma estadístico con aprendizaje profundo para diagnóstico médico automatizado.
+

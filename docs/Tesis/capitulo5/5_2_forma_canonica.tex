@@ -11,30 +11,31 @@ Una vez detectados los puntos de referencia, el sistema transforma cada radiogra
 \subsection{Forma Estándar de Referencia}
 \label{subsec:forma_canonica_resultante}
 
-La forma estándar se calculó mediante Análisis Procrustes Generalizado (GPA), un método estadístico que promedia la posición de los puntos de referencia de 957 radiografías anotadas manualmente. Este proceso elimina diferencias de posición, escala y rotación, obteniendo una configuración ``típica'' de los pulmones que sirve como plantilla de destino para todas las imágenes.
-
-La Figura \ref{fig:forma_canonica} muestra la forma estándar resultante, que sirve como referencia para normalizar todas las radiografías.
-
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.98\textwidth]{Figures/F5.3_forma_canonica.png}
+    \includegraphics[width=0.65\textwidth]{Figures/F5.3_forma_canonica.png}
     \caption{Forma estándar pulmonar de referencia obtenida mediante Análisis Procrustes Generalizado. Se muestra la configuración promedio de los 15 puntos de referencia calculada a partir de 957 radiografías anotadas manualmente. El eje central (línea roja discontinua) conecta los puntos L1 → L9 → L10 → L11 → L2 a lo largo de la columna vertebral. Los contornos izquierdo (azul) y derecho (verde) definen las siluetas de ambos pulmones, formando un patrón geométrico cerrado. Esta forma estándar sirve como plantilla de destino para la normalización geométrica de todas las radiografías del conjunto de datos.}
     \label{fig:forma_canonica}
 \end{figure}
 
+La forma estándar se calculó mediante Análisis Procrustes Generalizado (GPA), un método estadístico que promedia la posición de los puntos de referencia de 957 radiografías anotadas manualmente. Este proceso elimina diferencias de posición, escala y rotación, obteniendo una configuración ``típica'' de los pulmones que sirve como plantilla de destino para todas las imágenes.
+
+La Figura \ref{fig:forma_canonica} muestra la forma estándar resultante, que sirve como referencia para normalizar todas las radiografías.
+
+
 \subsection{División en Triángulos para Transformación}
 \label{subsec:triangulacion_delaunay_resultados}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.93\textwidth]{Figures/F5.4_triangulacion_resultados.png}
+    \caption{Triangulación de Delaunay para la normalización geométrica. (a) 16 triángulos generados sobre una radiografía original utilizando los 15 puntos de referencia detectados automáticamente. (b) Triangulación correspondiente sobre la forma estándar pulmonar. Cada triángulo de la imagen original se transforma independientemente mediante una transformación afín para alinearse con su triángulo correspondiente en la forma estándar, permitiendo normalizar la geometría pulmonar de manera precisa.}
+    \label{fig:triangulacion_resultados}
+\end{figure}
 
 La región pulmonar se divide en 16 triángulos mediante triangulación de Delaunay, un método geométrico que conecta los 15 puntos de referencia formando triángulos que no se superponen. Cada triángulo se transforma independientemente mediante una transformación afín (rotación, escala y traslación), permitiendo ajustar diferentes zonas del pulmón con precisión y adaptarse a deformaciones locales.
 
 La Figura \ref{fig:triangulacion_resultados} muestra cómo se aplica esta división tanto a la imagen original como a la forma estándar de destino.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.95\textwidth]{Figures/F5.4_triangulacion_resultados.png}
-    \caption{Triangulación de Delaunay para la normalización geométrica. (a) 16 triángulos generados sobre una radiografía original utilizando los 15 puntos de referencia detectados automáticamente. (b) Triangulación correspondiente sobre la forma estándar pulmonar. Cada triángulo de la imagen original se transforma independientemente mediante una transformación afín para alinearse con su triángulo correspondiente en la forma estándar, permitiendo normalizar la geometría pulmonar de manera precisa.}
-    \label{fig:triangulacion_resultados}
-\end{figure}
 
 \subsection{Ejemplos de Normalización}
 \label{subsec:ejemplos_warping}
@@ -43,7 +44,7 @@ La Figura \ref{fig:ejemplos_warping} presenta ejemplos del resultado de la norma
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{Figures/F5.6_ejemplos_warping.png}
+    \includegraphics[width=0.90\textwidth]{Figures/F5.6_ejemplos_warping.png}
     \caption{Ejemplos de imágenes normalizadas geométricamente y procesadas con SAHS por categoría. Cada fila muestra cuatro ejemplos del conjunto de prueba de una categoría (COVID-19, Normal, Neumonía Viral). Las imágenes resultantes presentan la región pulmonar alineada de forma consistente con contraste mejorado, eliminando las variaciones de posición y orientación del paciente original mientras se preservan las características patológicas relevantes. Este preprocesamiento combinado (normalización geométrica + SAHS) es el utilizado en el sistema de clasificación final que alcanza 98.10\% de precisión.}
     \label{fig:ejemplos_warping}
 \end{figure}

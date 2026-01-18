@@ -31,13 +31,13 @@ def plot_confusion_matrix(
         accuracy: Accuracy del modelo
         f1_macro: F1-Score macro del modelo
     """
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(12, 9))
 
     # Calcular porcentajes
     cm_percent = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
 
     # Crear heatmap
-    sns.heatmap(
+    heatmap = sns.heatmap(
         cm_percent,
         annot=False,
         fmt='.1f',
@@ -47,6 +47,9 @@ def plot_confusion_matrix(
         vmin=0,
         vmax=100
     )
+    cbar = heatmap.collections[0].colorbar
+    cbar.set_label('Porcentaje (%)', fontsize=14, fontweight='bold')
+    cbar.ax.tick_params(labelsize=12)
 
     # Anotar con valores absolutos y porcentajes
     for i in range(len(class_names)):
@@ -72,16 +75,16 @@ def plot_confusion_matrix(
                 j + 0.5, i + 0.5, text,
                 ha='center', va='center',
                 color=text_color,
-                fontsize=12,
+                fontsize=14,
                 weight=weight
             )
 
     # Configurar ejes
-    ax.set_xlabel('Predicción', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Categoría Real', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Predicción', fontsize=16, fontweight='bold')
+    ax.set_ylabel('Categoría Real', fontsize=16, fontweight='bold')
     ax.set_title(
         f'{title}\nAccuracy: {accuracy:.2f}% | F1-Macro: {f1_macro:.2f}%',
-        fontsize=16,
+        fontsize=18,
         fontweight='bold',
         pad=20
     )
@@ -89,6 +92,7 @@ def plot_confusion_matrix(
     # Etiquetas de las clases
     ax.set_xticklabels(class_names, rotation=0, ha='center')
     ax.set_yticklabels(class_names, rotation=0)
+    ax.tick_params(axis='both', labelsize=14)
 
     # Ajustar layout
     plt.tight_layout()
@@ -139,7 +143,7 @@ def main():
     plot_confusion_matrix(
         cm=cm,
         class_names=display_names,
-        title="Matriz de Confusión - Clasificador Warped + SAHS",
+        title="Matriz de Confusión - Clasificador Normalizado + SAHS",
         output_path=output_path,
         accuracy=accuracy,
         f1_macro=f1_macro
@@ -153,7 +157,7 @@ def main():
     # Cargar resultados de las 3 configuraciones
     configs = {
         "Original + SAHS": base_dir / "outputs/classifier_original_sahs/results.json",
-        "Warped + SAHS": base_dir / "outputs/classifier_warped_sahs_masked/results.json",
+        "Normalizado + SAHS": base_dir / "outputs/classifier_warped_sahs_masked/results.json",
         "Cropped + SAHS": base_dir / "outputs/classifier_cropped_12_sahs/results.json",
     }
 

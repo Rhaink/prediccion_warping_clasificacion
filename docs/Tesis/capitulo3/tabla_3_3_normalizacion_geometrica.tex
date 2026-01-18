@@ -1,0 +1,50 @@
+% Tabla 3.3: Comparación de métodos de normalización geométrica para clasificación
+% Uso: \input{capitulo3/tabla_3_3_normalizacion_geometrica}
+
+\begin{table}[htbp]
+\centering
+\begin{threeparttable}
+\caption{Comparación de métodos de normalización geométrica aplicados a clasificación de imágenes médicas}
+\label{tab:geometric_normalization_comparison}
+\small
+\begin{tabular}{@{}lllcc@{}}
+\toprule
+\textbf{Trabajo} & \textbf{Método} & \textbf{Conjunto de datos} & \textbf{Mejora} & \textbf{Transformación} \\
+ & & & \textbf{Exact. (\%)} & \textbf{Tipo} \\
+\midrule
+Jaderberg et al. (2015) \cite{jaderberg2015spatial} & STN & MNIST, etc. & Variable & Affine global \\
+Rocha et al. (2024) \cite{rocha2024stern} & STERN & ChestX-ray14 & +2.1\tnote{a} & STN + Attention \\
+\midrule
+\multicolumn{5}{c}{\textit{Trabajos del grupo de investigación}} \\
+\midrule
+Picazo-Castillo (2024) \cite{picazo2024comparative} & Normalización + & Neumonía & -- & Representaciones \\
+ et al. & Feature selection & (chest X-rays) & & comparativas \\
+Ayala-Raggi (2023) \cite{ayala2023synergizing} & Normalización + & COVID-19 & +1.5\tnote{b} & Cropping + \\
+ et al. & PCA features & (chest X-rays) & & PCA \\
+\midrule
+\multicolumn{5}{c}{\textit{Deformación afín por partes para clasificación: Brecha en literatura}} \\
+\midrule
+\textbf{Este trabajo (2026)} & \textbf{GPA + Deformación} & \textbf{COVID-19} & \textbf{98.10} & \textbf{Piecewise affine} \\
+ & \textbf{afín por partes} & \textbf{Radiography} & \textbf{(norm.)\tnote{c}} & \textbf{(local)} \\
+\cmidrule{4-4}
+ & & & 98.68\tnote{d} & 15 landmarks + \\
+ & & & (orig.) & Delaunay \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] Mejora de +2.1\% en AUC (\textit{Area Under Curve}), no exactitud directa
+\item[b] Mejora estimada de +1.5\% aproximadamente (reportada sin números exactos en el paper)
+\item[c] Exactitud en imágenes normalizadas geométricamente: 98.10\%
+\item[d] Exactitud en imágenes originales (sin normalización): 98.68\%
+\item norm. = Imágenes normalizadas geométricamente, orig. = Imágenes originales
+\item Validación cruzada (5-fold): 98.60\% $\pm$ 0.26\%
+\item STN = Red de Transformación Espacial (\textit{Spatial Transformer Network}), GPA = Análisis de Procrustes Generalizado (\textit{Generalized Procrustes Analysis})
+\item[--] No reportado cuantitativamente en el trabajo original
+\item \textbf{Brecha identificada:} Escasa literatura sobre deformación afín por partes aplicada a clasificación médica
+\item \textbf{Compromiso observado:} Normalización reduce exactitud absoluta (-0.58\%) pero aprende características genuinas sin artefactos hospitalarios
+\item \textit{Fill rate}: 47\% (conservador, preserva valores originales) vs 96-99\% con técnicas de relleno
+\item \textit{Margin scale} óptimo: 1.05 (5\% expansión desde centroide de puntos de referencia)
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

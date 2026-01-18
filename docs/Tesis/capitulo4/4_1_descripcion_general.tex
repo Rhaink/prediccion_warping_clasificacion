@@ -13,19 +13,17 @@ Este capítulo presenta la metodología desarrollada para la normalización y al
 
 El desarrollo del sistema propuesto comprende dos fases: una fase de preparación, que incluye la anotación manual de puntos de referencia anatómicos y el entrenamiento de los modelos, y una fase de operación, donde el sistema procesa nuevas radiografías de tórax. Durante la operación, las imágenes pasan por una secuencia de cuatro módulos: preprocesamiento, predicción de puntos de referencia, normalización geométrica y clasificación. Los tres primeros módulos transforman la imagen de entrada a una representación geométricamente normalizada, mientras que el cuarto realiza la clasificación de diagnóstico. Este diseño modular permite evaluar la contribución de cada componente al rendimiento final del sistema.
 
-La Figura \ref{fig:fases_sistema} ilustra la relación entre ambas fases del sistema.
-
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.88\textwidth]{Figures/F4.1_fases_sistema.jpg}
+    \includegraphics[width=0.78\textwidth]{Figures/F4.1_fases_sistema.jpg}
     \caption{Estructura general del sistema en dos fases.}
     \label{fig:fases_sistema}
 \end{figure}
 
+La Figura \ref{fig:fases_sistema} ilustra la relación entre ambas fases del sistema.
+
 \subsection{Arquitectura del Sistema}
 \label{subsec:arquitectura_sistema}
-
-La Figura \ref{fig:flujo_general} presenta el diagrama de bloques del flujo de operación. El sistema se compone de cuatro módulos que procesan secuencialmente las imágenes de entrada.
 
 \begin{figure}[htbp]
     \centering
@@ -34,9 +32,10 @@ La Figura \ref{fig:flujo_general} presenta el diagrama de bloques del flujo de o
     \label{fig:flujo_general}
 \end{figure}
 
+
 \textbf{Módulo 1: Preprocesamiento.} Las imágenes de entrada se someten a un proceso de mejora de contraste mediante el algoritmo CLAHE (\textit{Contrast Limited Adaptive Histogram Equalization}) \cite{clahe1994}. Este paso normaliza las variaciones de contraste inherentes a diferentes equipos de adquisición radiográfica. Posteriormente, las imágenes se redimensionan a $224 \times 224$ píxeles para su procesamiento por la red neuronal.
 
-\textbf{Módulo 2: Predicción de Landmarks.} Un modelo basado en ResNet-18 \cite{he2016deep} con módulo de Coordinate Attention \cite{hou2021coordinate} predice las coordenadas de 15 puntos anatómicos que definen el contorno de la región pulmonar. Estos puntos de referencia fueron definidos manualmente durante la fase de anotación del conjunto de datos y representan puntos característicos de la silueta pulmonar bilateral.
+\textbf{Módulo 2: Predicción de Puntos de Referencia.} Un modelo basado en ResNet-18 \cite{he2016deep} con módulo de Coordinate Attention \cite{hou2021coordinate} predice las coordenadas de 15 puntos anatómicos que definen el contorno de la región pulmonar. Estos puntos de referencia fueron definidos manualmente durante la fase de anotación del conjunto de datos y representan puntos característicos de la silueta pulmonar bilateral.
 
 \textbf{Módulo 3: Normalización Geométrica.} Utilizando los puntos de referencia predichos, se aplica una transformación afín por partes (\textit{piecewise affine deformation}) que alinea cada imagen a una forma estándar previamente calculada mediante Análisis de Procrustes Generalizado (GPA) \cite{gower1975generalized}. Este proceso elimina variaciones geométricas entre pacientes, normalizando la posición, escala y orientación de la región pulmonar.
 
@@ -45,7 +44,14 @@ La Figura \ref{fig:flujo_general} presenta el diagrama de bloques del flujo de o
 \subsection{Flujo de Datos}
 \label{subsec:flujo_datos}
 
-El procesamiento de una imagen sigue el flujo ilustrado en la Tabla \ref{tab:flujo_datos}. Cada etapa transforma los datos de entrada en una representación apropiada para la siguiente etapa del proceso.
+El procesamiento de una imagen sigue el flujo ilustrado en la Figura \ref{fig:flujo_datos} y en la Tabla \ref{tab:flujo_datos}. Cada etapa transforma los datos de entrada en una representación apropiada para la siguiente etapa del proceso.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.23_flujo_datos.png}
+    \caption{Flujo de datos del sistema con entradas, salidas y dimensiones por etapa.}
+    \label{fig:flujo_datos}
+\end{figure}
 
 \begin{table}[htbp]
     \centering
@@ -65,6 +71,13 @@ El procesamiento de una imagen sigue el flujo ilustrado en la Tabla \ref{tab:flu
 
 \subsection{Justificación del Diseño Modular}
 \label{subsec:justificacion_diseno_modular}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Figures/F4.20_diseno_modular_justificacion.png}
+    \caption{Diagrama del diseño modular y sus beneficios. Se muestran los cuatro módulos del sistema y cómo su separación contribuye a la interpretabilidad, modularidad, selección implícita de características y transferibilidad.}
+    \label{fig:diseno_modular_justificacion}
+\end{figure}
 
 El diseño modular del sistema ofrece varias ventajas:
 

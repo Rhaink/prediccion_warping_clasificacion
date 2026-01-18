@@ -32,7 +32,7 @@ La Tabla \ref{tab:resultados_ensemble_landmarks} presenta los resultados de dete
     \end{tabular}
 \end{table}
 
-El sistema combinado alcanza un error promedio de \textbf{3.61 píxeles}, lo que representa una mejora del 10.6\% respecto al mejor modelo individual. En una imagen de 224 píxeles, este error equivale al 1.6\% del tamaño de la imagen. El error mediano de 3.07 píxeles indica que la mitad de las predicciones tienen un error menor o igual a este valor.
+El sistema combinado alcanza un error promedio de \textbf{3.61 píxeles}, lo que representa una mejora del 10.6\% respecto al mejor modelo individual. En una imagen de 224$\times$224 píxeles, este error equivale al 1.14\% de la diagonal de la imagen (\textit{Normalized Mean Error}, NME). El error mediano de 3.07 píxeles indica que la mitad de las predicciones tienen un error menor o igual a este valor.
 
 \subsection{Precisión por Punto de Referencia}
 \label{subsec:error_por_landmark}
@@ -53,11 +53,11 @@ La Figura \ref{fig:ejemplos_prediccion} presenta ejemplos de detección automát
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.98\textwidth]{Figures/F5.2_ejemplos_prediccion.png}
-    \caption{Ejemplos de predicción automática de puntos de referencia sobre imágenes reales. Cada fila muestra dos ejemplos de una categoría diagnóstica (Normal, COVID-19, Neumonía Viral). Los puntos indican las predicciones del sistema. El modelo mantiene precisión consistente independientemente del tipo de patología presente.}
+    \caption{Ejemplos de predicción automática de puntos de referencia sobre imágenes reales. Cada fila muestra dos ejemplos de una categoría diagnóstica (Normal, COVID-19, Neumonía Viral). Las cruces indican las predicciones del sistema. El modelo mantiene precisión consistente independientemente del tipo de patología presente.}
     \label{fig:ejemplos_prediccion}
 \end{figure}
 
 \subsection{Resumen}
 \label{subsec:resumen_landmarks}
 
-El sistema de detección de puntos de referencia alcanza una precisión de 3.61 píxeles en promedio, equivalente al 1.6\% del tamaño de la imagen. Esta precisión es suficiente para el proceso de normalización geométrica, ya que permite alinear correctamente la región pulmonar sin introducir distorsiones significativas.
+El sistema de detección de puntos de referencia alcanza una precisión de 3.61 píxeles en promedio, equivalente al 1.14\% NME (error normalizado por la diagonal de la imagen). Esta precisión es suficiente para el proceso de normalización geométrica, ya que permite alinear correctamente la región pulmonar sin introducir distorsiones significativas.

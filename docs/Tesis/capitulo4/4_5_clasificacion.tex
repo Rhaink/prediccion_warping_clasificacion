@@ -10,8 +10,23 @@ Una vez que las imágenes han sido normalizadas geométricamente mediante el pro
 
 Esta sección describe los componentes principales del módulo de clasificación: el preprocesamiento de contraste aplicado a las imágenes, la arquitectura de red neuronal seleccionada, la estrategia para aprovechar conocimiento previo de otras tareas (aprendizaje por transferencia), y la configuración del proceso de entrenamiento.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.14_flujo_clasificacion.png}
+    \caption{Diagrama general del módulo de clasificación. Se muestra el flujo de inferencia desde la imagen normalizada hasta la predicción final, y los componentes usados solo durante entrenamiento (aumento de datos, pesos por clase y entropía cruzada).}
+    \label{fig:flujo_clasificacion}
+\end{figure}
+
 \subsection{Preprocesamiento de Contraste}
 \label{subsec:preprocesamiento_contraste}
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/F4.13_warped_sahs.png}
+    \caption{Efecto del preprocesamiento SAHS sobre imágenes normalizadas geométricamente. Cada fila muestra una categoría diagnóstica diferente (COVID-19, Normal, Neumonía Viral). Las columnas muestran: (a) imagen después de la normalización geométrica, histograma original, (b) imagen con SAHS aplicado, e histograma resultante. Se observa cómo SAHS redistribuye las intensidades mejorando el contraste sin amplificar artefactos.}
+    \label{fig:warped_sahs}
+\end{figure}
 
 Antes de la clasificación, las imágenes normalizadas geométricamente requieren un ajuste de contraste para optimizar la visibilidad de las estructuras pulmonares. Como se describe en la Sección \ref{sec:sahs}, las radiografías de tórax presentan histogramas de intensidad marcadamente asimétricos, lo que hace que técnicas convencionales como CLAHE presenten limitaciones: amplificación de ruido en áreas suaves y alteración de regiones brillantes indicativas de infiltrados pulmonares.
 
@@ -28,13 +43,6 @@ La elección de SAHS sobre otras técnicas se fundamenta en:
 \end{itemize}
 
 La Figura \ref{fig:warped_sahs} muestra el efecto de aplicar SAHS a imágenes normalizadas geométricamente de las tres categorías diagnósticas.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{Figures/F4.13_warped_sahs.png}
-    \caption{Efecto del preprocesamiento SAHS sobre imágenes normalizadas geométricamente. Cada fila muestra una categoría diagnóstica diferente (COVID-19, Normal, Neumonía Viral). Las columnas muestran: (a) imagen después del warping, histograma original, (b) imagen con SAHS aplicado, e histograma resultante. Se observa cómo SAHS redistribuye las intensidades mejorando el contraste sin amplificar artefactos.}
-    \label{fig:warped_sahs}
-\end{figure}
 
 \subsection{Arquitectura del Clasificador}
 \label{subsec:arquitectura_clasificador}
@@ -61,6 +69,13 @@ La selección de ResNet-18 se fundamenta en las siguientes características:
 \label{subsec:transfer_learning_clasificacion}
 
 El aprendizaje por transferencia es una técnica que permite aprovechar el conocimiento que una red neuronal ha adquirido en una tarea para aplicarlo a otra diferente. En este caso, se utiliza una red previamente entrenada para reconocer miles de objetos cotidianos (ImageNet) y se adapta para clasificar radiografías de tórax. Esta estrategia es especialmente efectiva cuando se dispone de conjuntos de datos relativamente pequeños, como es común en aplicaciones médicas \cite{raghu2019transfusion}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.18_transfer_learning_clasificador.png}
+    \caption{Esquema del aprendizaje por transferencia en el clasificador. Se reutiliza el backbone ResNet-18 preentrenado, se reemplaza la capa final por tres salidas y se realiza ajuste fino completo para adaptar el modelo al diagnóstico de COVID-19, Normal y Neumonía Viral.}
+    \label{fig:transfer_learning_clasificador}
+\end{figure}
 
 \subsubsection{Adaptación de la Arquitectura}
 

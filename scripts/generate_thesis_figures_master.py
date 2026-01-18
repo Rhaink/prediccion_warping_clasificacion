@@ -34,22 +34,24 @@ Fecha: 2026-01-14
 """
 
 import argparse
+import csv
 import json
 import logging
 import sys
-from dataclasses import dataclass, field, asdict
+import warnings
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Callable
-import warnings
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import cv2
 import matplotlib
 matplotlib.use('Agg')  # Backend no interactivo
-import matplotlib.pyplot as plt
+from matplotlib.collections import PatchCollection
+from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
+import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from scipy.spatial import Delaunay
@@ -224,6 +226,35 @@ class DataManager:
         """Obtener datos de GROUND_TRUTH.json."""
         path = self.project_root / "GROUND_TRUTH.json"
         return self.load_json(path)
+
+    def get_landmark_ground_truth(self) -> Dict[str, np.ndarray]:
+        """Obtener landmarks GT desde coordenadas_maestro.csv."""
+        path = self.project_root / "data" / "coordenadas" / "coordenadas_maestro.csv"
+        key = self._cache_key(path)
+        if key not in self._cache:
+            if not path.exists():
+                raise FileNotFoundError(f"No se encontró CSV de coordenadas: {path}")
+
+            gt_by_name: Dict[str, np.ndarray] = {}
+            with path.open('r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if not row or len(row) < 31:
+                        continue
+                    try:
+                        coords = np.array([float(v) for v in row[1:31]], dtype=np.float32)
+                    except ValueError:
+                        continue
+                    image_name = row[-1].strip()
+                    if not image_name:
+                        continue
+                    gt_by_name[Path(image_name).stem] = coords.reshape(15, 2)
+
+            if not gt_by_name:
+                logger.warning("CSV de coordenadas sin entradas válidas: %s", path)
+            self._cache[key] = gt_by_name
+
+        return self._cache[key]
 
     def get_classifier_results(self) -> Dict:
         """Obtener resultados del clasificador."""
@@ -1129,7 +1160,7 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
             ax.annotate(labels[i], (x, y), xytext=(x + offset_x, y),
                        fontsize=8, ha=ha, va='center', color='#333333')
 
-        ax.set_title('d) Forma Canónica Final', fontsize=self.config.font_size_title)
+        ax.set_title('d) Forma Estándar Final', fontsize=self.config.font_size_title)
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
         ax.set_xlabel('Coordenada X (normalizada)', fontsize=self.config.font_size_label)
@@ -1193,7 +1224,7 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('Triangulación de Delaunay sobre forma canónica',
+        ax.set_title('Triangulación de Delaunay sobre forma Estándar',
                     fontsize=self.config.font_size_title)
         ax.grid(True, alpha=0.3)
 
@@ -1549,10 +1580,24 @@ class WarpingVisualizationGenerator(BaseFigureGenerator):
 
             # Etiqueta de fila
             label = self.config.labels_es.get(class_name.lower(), class_name)
-            color = self.config.get_class_color(class_name)
-            axes[row, 0].text(-0.15, 0.5, label, transform=axes[row, 0].transAxes,
-                            fontsize=11, fontweight='bold', rotation=90, va='center',
-                            color=color)
+            axes[row, 0].text(
+                -0.22,
+                0.5,
+                label,
+                transform=axes[row, 0].transAxes,
+                fontsize=self.config.font_size_title + 6,
+                fontweight='bold',
+                rotation=90,
+                va='center',
+                ha='center',
+                color='black',
+                bbox={
+                    'facecolor': 'white',
+                    'edgecolor': 'none',
+                    'linewidth': 0,
+                    'boxstyle': 'round,pad=0.2',
+                },
+            )
 
         plt.suptitle('Ejemplos de imágenes normalizadas por clase',
                     fontsize=self.config.font_size_title + 2, y=1.02)
@@ -1570,6 +1615,12 @@ class TrainingVisualizationGenerator(BaseFigureGenerator):
     def generate_F4_6_wing_loss(self) -> Path:
         """F4.6: Gráfica de Wing Loss."""
         fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Tamanos locales para mejorar legibilidad en articulos
+        title_size = self.config.font_size_title + 4
+        label_size = self.config.font_size_label + 3
+        tick_size = self.config.font_size_tick + 3
+        legend_size = self.config.font_size_legend + 2
 
         # Parámetros de Wing Loss
         w = 10.0
@@ -1602,27 +1653,23 @@ class TrainingVisualizationGenerator(BaseFigureGenerator):
         ax.axvline(x=w, color='gray', linestyle=':', alpha=0.5)
         ax.fill_betweenx([0, 25], -w, w, alpha=0.1, color='blue', label='Región no lineal')
 
-        ax.set_xlabel('Error (píxeles)', fontsize=self.config.font_size_label)
-        ax.set_ylabel('Pérdida', fontsize=self.config.font_size_label)
+        ax.set_xlabel('Error (píxeles)', fontsize=label_size)
+        ax.set_ylabel('Pérdida', fontsize=label_size)
         ax.set_title('Wing Loss: Comportamiento adaptativo para errores pequeños',
-                    fontsize=self.config.font_size_title)
-        ax.legend(loc='upper right', fontsize=self.config.font_size_legend)
+                    fontsize=title_size)
+        ax.legend(loc='upper right', fontsize=legend_size)
         ax.grid(True, alpha=0.3)
+        ax.tick_params(axis='both', labelsize=tick_size)
         ax.set_xlim(-20, 20)
         ax.set_ylim(0, 25)
-
-        # Anotación
-        ax.annotate('Mayor sensibilidad\na errores pequeños',
-                   xy=(0, 0), xytext=(5, 8),
-                   fontsize=self.config.font_size_annotation,
-                   arrowprops=dict(arrowstyle='->', color='gray', alpha=0.7))
 
         plt.tight_layout()
         return self.save_figure(fig, "F4.6_wing_loss_grafica.png", "cap4_metodologia")
 
     def generate_F4_12_aumento_datos(self) -> Path:
         """F4.12: Ejemplos de aumento de datos."""
-        fig, axes = plt.subplots(2, 4, figsize=(14, 7))
+        fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+        title_size = self.config.font_size_title + 6
 
         samples = self.data.get_sample_images(n_per_class=1)
         if samples.get('Normal'):
@@ -1650,11 +1697,9 @@ class TrainingVisualizationGenerator(BaseFigureGenerator):
                     aug_img = cv2.resize(aug_img, (224, 224))
 
                 ax.imshow(aug_img, cmap='gray')
-                ax.set_title(title, fontsize=self.config.font_size_title)
+                ax.set_title(title, fontsize=title_size)
                 ax.axis('off')
 
-        plt.suptitle('Técnicas de aumento de datos para entrenamiento',
-                    fontsize=self.config.font_size_title + 2, y=1.02)
         plt.tight_layout()
         return self.save_figure(fig, "F4.12_aumento_datos.png", "cap4_metodologia")
 
@@ -1676,6 +1721,13 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
     def generate_F5_1_error_por_landmark(self) -> Path:
         """F5.1: Error por landmark."""
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+        # Tamaños locales para mejorar legibilidad en artículo
+        title_size = self.config.font_size_title + 4
+        label_size = self.config.font_size_label + 3
+        tick_size = self.config.font_size_tick + 3
+        legend_size = self.config.font_size_legend + 3
+        annotation_size = self.config.font_size_annotation + 3
 
         gt = self.data.get_ground_truth()
         per_landmark = gt['per_landmark_errors']['values_best_20260111']
@@ -1699,15 +1751,16 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
         ax.axhline(y=mean_error, color=self.config.colors['axis'], linestyle='--', linewidth=1.2,
                    label=f'Media = {mean_error:.2f} px')
 
-        ax.set_xlabel('Punto de referencia', fontsize=self.config.font_size_label)
-        ax.set_ylabel('Error medio (px)', fontsize=self.config.font_size_label)
-        ax.set_title('a) Error medio por punto de referencia', fontsize=self.config.font_size_title)
+        ax.set_xlabel('Punto de referencia', fontsize=label_size)
+        ax.set_ylabel('Error medio (px)', fontsize=label_size)
+        ax.set_title('a) Error medio por punto de referencia', fontsize=title_size)
         ax.set_axisbelow(True)
         ax.grid(True, alpha=0.25, axis='y', linestyle='--', linewidth=0.6)
         ax.set_ylim(0, max(errors) * 1.15)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.legend(loc='upper left', frameon=False, fontsize=self.config.font_size_title, handlelength=2.5)
+        ax.legend(loc='upper left', frameon=False, fontsize=legend_size, handlelength=2.5)
+        ax.tick_params(axis='both', labelsize=tick_size)
 
         # Panel 2: Mapa de calor sobre silueta
         ax = axes[1]
@@ -1757,19 +1810,20 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
                 (x, y),
                 xytext=(6, 0),
                 textcoords='offset points',
-                fontsize=self.config.font_size_annotation,
+                fontsize=annotation_size,
                 fontweight='bold',
                 bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=0.2)
             )
 
         # Colorbar
         cbar = plt.colorbar(scatter, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label('Error medio (px)', fontsize=self.config.font_size_label)
+        cbar.set_label('Error medio (px)', fontsize=label_size)
+        cbar.ax.tick_params(labelsize=tick_size)
 
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('b) Mapa de error sobre forma estándar', fontsize=self.config.font_size_title)
+        ax.set_title('b) Mapa de error sobre forma estándar', fontsize=title_size)
         ax.set_xticks([])
         ax.set_yticks([])
         for spine in ax.spines.values():
@@ -1781,81 +1835,180 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
         return self.save_figure(fig, "F5.1_error_por_landmark.png", "cap5_resultados")
 
     def generate_F5_2_ejemplos_prediccion(self) -> Path:
-        """F5.2: Ejemplos de predicción de landmarks (predicciones reales del ensemble)."""
-        fig, axes = plt.subplots(2, 3, figsize=(14, 10))
+        """F5.2: Ejemplos de predicción con GT vs predicción del ensemble."""
+        examples_per_class = 3
+        classes = ["COVID", "Normal", "Viral_Pneumonia"]
+        class_labels = {
+            "COVID": "COVID-19",
+            "Normal": "Normal",
+            "Viral_Pneumonia": "Neumonía viral",
+        }
 
-        classes = ['COVID', 'Normal', 'Viral_Pneumonia']
+        fig, axes = plt.subplots(
+            examples_per_class,
+            len(classes),
+            figsize=(12.5, 11),
+        )
+        axes = np.atleast_2d(axes)
+
         predictions = self.data.get_predictions()
-        dataset_dir = self.data.project_root / "data" / "dataset" / "COVID-19_Radiography_Dataset"
+        gt_by_name = self.data.get_landmark_ground_truth()
+        dataset_dir = (
+            self.data.project_root
+            / "data"
+            / "dataset"
+            / "COVID-19_Radiography_Dataset"
+        )
 
-        # Central/Left/Right indices para colorear
-        central_idx = [0, 8, 9, 10, 1]
-        left_idx = [2, 4, 6, 11, 13]
-        right_idx = [3, 5, 7, 12, 14]
+        def normalize_value(value: Any) -> str:
+            if isinstance(value, bytes):
+                return value.decode("utf-8")
+            return str(value)
+
+        def resolve_gt_name(idx: int) -> Optional[str]:
+            image_name = Path(normalize_value(predictions["image_names"][idx])).stem
+            if image_name in gt_by_name:
+                return image_name
+            image_path = Path(normalize_value(predictions["image_paths"][idx])).stem
+            if image_path in gt_by_name:
+                return image_path
+            return None
+
+        def scale_pred_to_image(landmarks: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+            scaled = landmarks.astype(np.float32, copy=True)
+            scale_x = shape[1] / 224
+            scale_y = shape[0] / 224
+            scaled[:, 0] *= scale_x
+            scaled[:, 1] *= scale_y
+            return scaled
+
+        def scale_gt_to_image(landmarks: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+            scaled = landmarks.astype(np.float32, copy=True)
+            gt_max = float(scaled.max()) if scaled.size else 0.0
+            if gt_max <= 1.5:
+                scaled[:, 0] *= shape[1]
+                scaled[:, 1] *= shape[0]
+            elif gt_max <= 224 and max(shape) > 224:
+                scaled[:, 0] *= shape[1] / 224
+                scaled[:, 1] *= shape[0] / 224
+            return scaled
+
+        def mean_landmark_error(pred_px: np.ndarray, gt_px: np.ndarray) -> float:
+            return float(np.mean(np.linalg.norm(pred_px - gt_px, axis=1)))
+
+        gt_color = self.config.colors["landmark_gt"]
+        pred_color = self.config.colors["landmark_pred"]
+        gt_size = self.config.marker_size * 0.9
+        pred_size = self.config.marker_size * 0.7
+        marker_linewidth = 1.4
 
         for col, class_name in enumerate(classes):
-            cat_indices = np.where(predictions['categories'] == class_name)[0]
+            cat_indices = np.where(predictions["categories"] == class_name)[0]
+            scored_entries: List[Tuple[float, int, str]] = []
 
-            if len(cat_indices) > 0:
-                # Fila 1: Ejemplo 1 (anatomía típica)
-                idx = cat_indices[0]
-                landmarks = predictions['landmarks'][idx]
-                img_rel_path = predictions['image_paths'][idx]
+            for idx in cat_indices:
+                image_name = resolve_gt_name(idx)
+                if image_name:
+                    img_rel_path = normalize_value(predictions["image_paths"][idx])
+                    img_path = dataset_dir / img_rel_path
+                    if not img_path.exists():
+                        continue
+                    img = self.data.load_image(img_path)
+                    pred_px = scale_pred_to_image(predictions["landmarks"][idx], img.shape)
+                    gt_px = scale_gt_to_image(gt_by_name[image_name], img.shape)
+                    error = mean_landmark_error(pred_px, gt_px)
+                    scored_entries.append((error, idx, image_name))
+
+            if not scored_entries:
+                logger.warning("Sin GT disponible para la clase: %s", class_name)
+                for row in range(examples_per_class):
+                    axes[row, col].axis("off")
+                continue
+
+            scored_entries.sort(key=lambda x: x[0])
+            selected_entries = scored_entries[:examples_per_class]
+
+            if len(selected_entries) < examples_per_class:
+                logger.warning(
+                    "Clase %s: solo %d ejemplos con GT disponibles",
+                    class_name,
+                    len(selected_entries),
+                )
+
+            for row in range(examples_per_class):
+                ax = axes[row, col]
+                if row >= len(selected_entries):
+                    ax.axis("off")
+                    continue
+
+                _, idx, image_name = selected_entries[row]
+                img_rel_path = normalize_value(predictions["image_paths"][idx])
                 img = self.data.load_image(dataset_dir / img_rel_path)
 
-                ax = axes[0, col]
-                ax.imshow(img, cmap='gray')
+                landmarks_pred = scale_pred_to_image(predictions["landmarks"][idx], img.shape)
+                landmarks_gt = scale_gt_to_image(gt_by_name[image_name], img.shape)
 
-                # Escalar landmarks
-                scale = img.shape[0] / 224
-                landmarks_scaled = landmarks * scale
+                ax.imshow(img, cmap="gray")
+                ax.scatter(
+                    landmarks_gt[:, 0],
+                    landmarks_gt[:, 1],
+                    s=gt_size,
+                    marker="o",
+                    facecolors="none",
+                    edgecolors=gt_color,
+                    linewidths=marker_linewidth,
+                    alpha=0.95,
+                    zorder=3,
+                )
+                ax.scatter(
+                    landmarks_pred[:, 0],
+                    landmarks_pred[:, 1],
+                    s=pred_size,
+                    marker="x",
+                    c=pred_color,
+                    linewidths=marker_linewidth,
+                    alpha=0.95,
+                    zorder=4,
+                )
+                ax.axis("off")
+                if row == 0:
+                    ax.set_title(
+                        class_labels.get(class_name, class_name),
+                        fontsize=self.config.font_size_title,
+                        pad=8,
+                    )
 
-                # Plotear landmarks predichos por grupo
-                ax.scatter(landmarks_scaled[central_idx, 0], landmarks_scaled[central_idx, 1],
-                          c=self.config.colors['covid'], s=50, marker='o', label='Eje', alpha=0.9)
-                ax.scatter(landmarks_scaled[left_idx, 0], landmarks_scaled[left_idx, 1],
-                          c=self.config.colors['normal'], s=50, marker='o', label='Izq', alpha=0.9)
-                ax.scatter(landmarks_scaled[right_idx, 0], landmarks_scaled[right_idx, 1],
-                          c=self.config.colors['viral'], s=50, marker='o', label='Der', alpha=0.9)
-
-                # Conectar eje central
-                ax.plot(landmarks_scaled[central_idx, 0], landmarks_scaled[central_idx, 1],
-                       'k-', linewidth=1, alpha=0.5)
-
-                label = self.config.labels_es.get(class_name.lower().replace('_', ' '), class_name)
-                ax.set_title(f'{label}\n(Ejemplo 1)', fontsize=self.config.font_size_title)
-                ax.axis('off')
-                if col == 0:
-                    ax.legend(loc='lower right', fontsize=self.config.font_size_legend)
-
-                # Fila 2: Ejemplo 2 (diferente anatomía)
-                idx2 = cat_indices[min(50, len(cat_indices)-1)]  # Otro ejemplo
-                landmarks2 = predictions['landmarks'][idx2]
-                img_rel_path2 = predictions['image_paths'][idx2]
-                img2 = self.data.load_image(dataset_dir / img_rel_path2)
-
-                ax = axes[1, col]
-                ax.imshow(img2, cmap='gray')
-
-                scale2 = img2.shape[0] / 224
-                landmarks_scaled2 = landmarks2 * scale2
-
-                ax.scatter(landmarks_scaled2[central_idx, 0], landmarks_scaled2[central_idx, 1],
-                          c=self.config.colors['covid'], s=50, marker='o', alpha=0.9)
-                ax.scatter(landmarks_scaled2[left_idx, 0], landmarks_scaled2[left_idx, 1],
-                          c=self.config.colors['normal'], s=50, marker='o', alpha=0.9)
-                ax.scatter(landmarks_scaled2[right_idx, 0], landmarks_scaled2[right_idx, 1],
-                          c=self.config.colors['viral'], s=50, marker='o', alpha=0.9)
-
-                ax.plot(landmarks_scaled2[central_idx, 0], landmarks_scaled2[central_idx, 1],
-                       'k-', linewidth=1, alpha=0.5)
-
-                ax.set_title(f'{label}\n(Ejemplo 2)', fontsize=self.config.font_size_title)
-                ax.axis('off')
-
-        plt.suptitle('Ejemplos de predicción de landmarks (Ensemble con TTA)',
-                    fontsize=self.config.font_size_title + 2, y=1.02)
-        plt.tight_layout()
+        legend_handles = [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                linestyle="None",
+                markerfacecolor="none",
+                markeredgecolor=gt_color,
+                markeredgewidth=marker_linewidth,
+                markersize=7,
+                label="Ground truth",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="x",
+                linestyle="None",
+                color=pred_color,
+                markeredgewidth=marker_linewidth,
+                markersize=7,
+                label="Predicción",
+            ),
+        ]
+        fig.tight_layout(rect=(0.02, 0.06, 0.98, 0.94))
+        fig.legend(
+            handles=legend_handles,
+            loc="lower center",
+            ncol=2,
+            frameon=False,
+            bbox_to_anchor=(0.5, 0.02),
+        )
         return self.save_figure(fig, "F5.2_ejemplos_prediccion.png", "cap5_resultados")
 
 
@@ -2068,8 +2221,7 @@ class ClassificationResultsGenerator(BaseFigureGenerator):
                         img = self.data.load_image(samples[true_class][0])
                         ax.imshow(img, cmap='gray')
 
-                    ax.set_title(f'{title}\nConf: {np.random.uniform(0.55, 0.85):.0%}',
-                                fontsize=self.config.font_size_title)
+                    ax.set_title(title, fontsize=self.config.font_size_title)
 
                 ax.axis('off')
                 idx += 1
@@ -2088,7 +2240,7 @@ class ClassificationResultsGenerator(BaseFigureGenerator):
 
         classes = ['COVID', 'Normal', 'Viral_Pneumonia']
         split = "test"
-        column_titles = ['Original + SAHS', 'Warped + SAHS', 'Cropped 12% + SAHS']
+        column_titles = ['Original + SAHS', 'Normalizada + SAHS', 'Recortada 12% + SAHS']
 
         preferred_bases = {
             'COVID': 'COVID-2796',

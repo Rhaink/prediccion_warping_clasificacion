@@ -188,7 +188,7 @@ Los resultados del trabajo tienen las siguientes implicaciones para aplicaciones
 El enfoque de normalización geométrica tiene implicaciones más amplias para el análisis de imágenes médicas:
 
 \begin{enumerate}
-    \item \textbf{Transferibilidad a otras modalidades:} El enfoque de detección de landmarks + warping puede aplicarse a otras modalidades de imagen médica donde la alineación anatómica es relevante (e.g., resonancia magnética cerebral, mamografía).
+    \item \textbf{Transferibilidad a otras modalidades:} El enfoque de detección de landmarks + deformación afín por partes puede aplicarse a otras modalidades de imagen médica donde la alineación anatómica es relevante (e.g., resonancia magnética cerebral, mamografía).
 
     \item \textbf{Complemento a arquitecturas modernas:} La normalización geométrica puede combinarse con arquitecturas más avanzadas (Vision Transformers, EfficientNet) como etapa de preprocesamiento, potencialmente mejorando su rendimiento.
 
@@ -297,7 +297,7 @@ Con base en los resultados y limitaciones identificadas, se proponen las siguien
 
     \item \textbf{Puntos de referencia anatómicos específicos:} Rediseñar el sistema de puntos de referencia para corresponder a estructuras anatómicas precisas (ápex pulmonar, ángulo cardiofrénico, cúpula diafragmática), mejorando la interpretabilidad.
 
-    \item \textbf{Aprendizaje end-to-end:} Explorar un enfoque end-to-end donde la detección de puntos de referencia y la clasificación se entrenan conjuntamente, permitiendo que el gradiente de clasificación optimice la detección de puntos de referencia.
+    \item \textbf{Aprendizaje extremo a extremo:} Explorar un enfoque extremo a extremo donde la detección de puntos de referencia y la clasificación se entrenan conjuntamente, permitiendo que el gradiente de clasificación optimice la detección de puntos de referencia.
 
     \item \textbf{Spatial Transformer Networks:} Investigar el uso de Spatial Transformer Networks \cite{jaderberg2015spatial} para aprender transformaciones geométricas de manera diferenciable, eliminando la necesidad de puntos de referencia explícitos.
 

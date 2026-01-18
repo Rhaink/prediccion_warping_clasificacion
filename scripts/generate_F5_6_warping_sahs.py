@@ -52,10 +52,19 @@ def generate_warping_examples_figure(
         'Normal': 'Normal',
         'Viral_Pneumonia': 'Neumonía Viral',
     }
-    colors = {
-        'COVID': '#e74c3c',
-        'Normal': '#27ae60',
-        'Viral_Pneumonia': '#3498db',
+    label_style = {
+        "fontsize": 16,
+        "fontweight": "bold",
+        "rotation": 90,
+        "va": "center",
+        "ha": "center",
+        "color": "black",
+        "bbox": {
+            "facecolor": "white",
+            "edgecolor": "none",
+            "linewidth": 0,
+            "boxstyle": "round,pad=0.2",
+        },
     }
 
     # Crear figura (3 filas x 4 columnas)
@@ -99,26 +108,13 @@ def generate_warping_examples_figure(
 
         # Etiqueta de fila (clase)
         label = labels_es.get(class_name, class_name)
-        color = colors.get(class_name, 'black')
-
         # Posicionar etiqueta a la izquierda de la primera imagen
         axes[row, 0].text(
-            -0.15, 0.5,
+            -0.22, 0.5,
             label,
             transform=axes[row, 0].transAxes,
-            fontsize=11,
-            fontweight='bold',
-            rotation=90,
-            va='center',
-            color=color,
+            **label_style,
         )
-
-    # Título general
-    plt.suptitle(
-        'Ejemplos de imágenes normalizadas con SAHS por clase',
-        fontsize=14,
-        y=0.98,
-    )
 
     plt.tight_layout()
 

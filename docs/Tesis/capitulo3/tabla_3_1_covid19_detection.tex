@@ -1,0 +1,42 @@
+% Tabla 3.1: Comparación de métodos de detección de COVID-19 en radiografías de tórax
+% Uso: \input{capitulo3/tabla_3_1_covid19_detection}
+
+\begin{table}[htbp]
+\centering
+\begin{threeparttable}
+\caption{Comparación de métodos de aprendizaje profundo para detección de COVID-19 en radiografías de tórax}
+\label{tab:covid19_detection_comparison}
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}lllcc@{}}
+\toprule
+\textbf{Trabajo} & \textbf{Arquitectura} & \textbf{Conjunto de datos} & \textbf{Exact.} & \textbf{Sens. COVID-19} \\
+ & & & \textbf{(\%)} & \textbf{(\%)} \\
+\midrule
+Wang et al. (2020) \cite{wang2020covidnet} & COVID-Net & COVIDx (13,975) & 93.3 & -- \\
+Rajpurkar et al. (2017)\tnote{a} & DenseNet-121 & ChestX-ray14 (112k) & \multicolumn{2}{c}{F1 nivel radiólogo} \\
+\midrule
+\multicolumn{5}{c}{\textit{Métodos recientes (2023-2024)}} \\
+\midrule
+CovC-ReDRNet (2023) & ResNet-18 + dRVFL & COVID-19 Radiography & 97.56 & 94.94 \\
+RegNetX032 (2023) & RegNetX032 & Chest X-ray & 98.6 & 98.0 \\
+VGG19 Transfer (2024) & VGG19 & Chest X-ray & 95.0 & 96.0 \\
+DenseNet121 (2024) & DenseNet-121 & X-ray + CT & 98.0 & -- \\
+DenseNet201 (Comp.) & DenseNet-201 & Chest X-ray & 97.11 & 97.54 \\
+\midrule
+\textbf{Este trabajo (2026)} & \textbf{ResNet-18 (warped)} & \textbf{COVID-19 Radiography (21,165)} & \textbf{98.10} & \textbf{96.46}\tnote{b} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\scriptsize
+\item[a] Rajpurkar et al. (2017): Pre-COVID, detección de neumonía general (no específica COVID-19)
+\item[b] Sensibilidad (\textit{recall}) para clase COVID-19; métricas completas por clase en Capítulo 5
+\item[c] Este trabajo integra normalización geométrica mediante GPA + deformación afín por partes basada en landmarks automáticos, alcanzando rendimiento competitivo (98.10\%) sin explotar artefactos extrapulmonares (ver Capítulo 5 para análisis de características espurias)
+\item[--] No reportado en el trabajo original
+\item Exact. = Exactitud (\textit{Accuracy}), Sens. COVID-19 = Sensibilidad (\textit{Sensitivity}) para clase COVID-19
+\item dRVFL = \textit{deep Random Vector Function Link network}
+\item F1-macro: 97.17\%, F1-weighted: 98.09\% (validación cruzada 5-fold: 98.60\% $\pm$ 0.26\%)
+\item Conjunto de datos COVID-19 Radiography Database: 10,192 Normal + 3,616 COVID-19 + 1,345 Neumonía Viral (21,165 muestras utilizadas). El conjunto de datos original incluye 6,012 casos de Lung Opacity que fueron excluidos del análisis por no corresponder a las tres categorías diagnósticas del estudio
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

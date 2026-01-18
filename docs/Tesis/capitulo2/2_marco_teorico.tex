@@ -1,1488 +1,640 @@
-% =============================================================================
-% CAPITULO 2: MARCO TEORICO
-% =============================================================================
+% Marco Teórico - Versión 2 (reescrito desde cero)
+% Criterio: Solo incluir lo que se entiende, ecuaciones mínimas, preferir diagramas
 
-\chapter{Marco Te\'orico}
-\label{cap:marco_teorico}
+\chapter{Marco Teórico}
+\label{chap:marco_teorico}
 
-Este cap\'itulo presenta los fundamentos f\'isicos, matem\'aticos y
-computacionales que sustentan el sistema propuesto para el an\'alisis de
-radiograf\'ias de t\'orax. Se desarrollan los principios de formaci\'on de imagen
-radiogr\'afica, la representaci\'on anat\'omica mediante puntos de referencia, el
-preprocesamiento radiom\'etrico (incluyendo SAHS, un m\'etodo propio ya
-publicado), los conceptos de CNNs y transferencia de aprendizaje, las
-m\'etricas de atenci\'on y normalizaci\'on de caracter\'isticas, el an\'alisis de
-forma con GPA y la deformaci\'on af\'in por partes, as\'i como las bases de la
-clasificaci\'on y sus m\'etricas. Las decisiones experimentales y la
-configuraci\'on final de los modelos se describen en el cap\'itulo de
-metodolog\'ia.
+%==============================================================================
+\section{Representación anatómica mediante puntos de referencia}
+\label{sec:landmarks}
+%==============================================================================
 
-\section{Radiograf\'ias de t\'orax y formaci\'on de imagen}
-\label{sec:radiografia_torax}
+En el análisis de imágenes médicas, los \textit{puntos de referencia} son coordenadas específicas que representan estructuras anatómicas de interés. En este trabajo, se utilizan 15 puntos de referencia para definir el contorno pulmonar en radiografías de tórax.
 
-La radiograf\'ia de t\'orax es una modalidad de imagen m\'edica de uso extendido
-por su bajo costo y disponibilidad cl\'inica. Permite visualizar estructuras
-anat\'omicas como pulmones, mediastino y caja tor\'acica, y se utiliza como
-apoyo en el diagn\'ostico de patolog\'ias respiratorias \cite{bushberg2011essential,who2020chest}.
+La distribución de los puntos de referencia sigue una estructura lógica:
+\begin{itemize}
+    \item \textbf{Eje central} (5 puntos): L1, L9, L10, L11, L2, que representan la línea media del tórax, desde el ápice hasta la base.
+    \item \textbf{Contorno del pulmón izquierdo} (5 puntos): L12, L3, L5, L7, L14.
+    \item \textbf{Contorno del pulmón derecho} (5 puntos): L13, L4, L6, L8, L15.
+\end{itemize}
 
-Desde el punto de vista f\'isico, la formaci\'on de la imagen est\'a gobernada por
-la atenuaci\'on diferencial de los rayos X, asociada principalmente al efecto
-fotoel\'ectrico y a la dispersi\'on Compton. La intensidad transmitida obedece la
-ley de Beer--Lambert \cite{bushberg2011essential}:
+Debido a la simetría bilateral del tórax, existen 5 pares de puntos de referencia simétricos: (L3, L4), (L5, L6), (L7, L8), (L12, L13) y (L14, L15). Esta propiedad es aprovechada durante el entrenamiento y la evaluación del modelo.
 
+Matemáticamente, el conjunto de puntos de referencia de una imagen se representa como un vector:
 \begin{equation}
-I(x) = I_0 \exp\left(-\int_0^x \mu(s)\, ds\right),
-\label{eq:beer_lambert}
+    \mathbf{L} = [x_1, y_1, x_2, y_2, \ldots, x_{15}, y_{15}]^\top \in \mathbb{R}^{30}
+    \label{eq:landmark_vector}
 \end{equation}
 
-donde $I_0$ es la intensidad incidente y $\mu(s)$ es el coeficiente de
-atenuaci\'on lineal del tejido. Esta relaci\'on explica los contrastes entre
-regiones aireadas, tejido blando y hueso observados en las radiograf\'ias.
+donde $(x_i, y_i)$ son las coordenadas del $i$-ésimo punto de referencia. Este vector de 30 valores es la salida que predice el modelo de detección de puntos de referencia.
 
-En el dominio digital, una imagen se modela como una funci\'on bidimensional
-$f(x,y): \mathbb{R}^2 \rightarrow \mathbb{R}$ que asocia a cada punto del plano
-un nivel de intensidad \cite{gonzalez2018digital}. La digitalizaci\'on requiere
-muestreo espacial y cuantizaci\'on de amplitud:
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Figures/F4.3_landmarks_15.png}
+    \caption{Representación de los 15 puntos de referencia anatómicos. Izquierda: puntos de referencia etiquetados sobre una radiografía de tórax. Derecha: esquema de la distribución espacial de los puntos de referencia, donde el eje central (rojo) define la línea media y los puntos laterales delimitan los contornos pulmonares izquierdo (azul) y derecho (naranja).}
+    \label{fig:landmarks_15}
+\end{figure}
 
-\begin{equation}
-f[m,n] = f(x_m, y_n), \quad m=0,\dots,M-1,\; n=0,\dots,N-1,
-\label{eq:imagen_discreta}
-\end{equation}
+%==============================================================================
+\section{Preprocesamiento: CLAHE}
+\label{sec:clahe}
+%==============================================================================
 
-\begin{equation}
-f[m,n] \in \{0,1,\dots,2^B-1\},
-\label{eq:cuantizacion}
-\end{equation}
+Las radiografías de tórax suelen presentar bajo contraste, lo que dificulta la visualización de estructuras anatómicas como los bordes pulmonares. Para mejorar el contraste se utiliza \textbf{CLAHE} (Contrast Limited Adaptive Histogram Equalization).
 
-con $B$ bits de cuantizaci\'on. De forma equivalente, una imagen en escala de
-grises puede representarse como una matriz $\mathbf{I} \in
-\mathbb{R}^{M \times N}$, lo que habilita operaciones matem\'aticas como
-convoluciones y transformaciones geom\'etricas \cite{gonzalez2018digital}.
-
-\section{Representaci\'on anat\'omica mediante puntos de referencia}
-\label{sec:puntos_referencia}
-
-La representaci\'on anat\'omica basada en puntos de referencia es una estrategia cl\'asica
-en an\'alisis de forma, pues permite describir estructuras complejas mediante
-un conjunto finito de puntos con significado geom\'etrico
-\cite{cootes1995active,dryden2016statistical,bookstein1997shape}. En este
-trabajo, el contorno pulmonar se modela con $n=15$ puntos de referencia
-$\{\mathbf{l}_i\}_{i=1}^n$, con $\mathbf{l}_i = (x_i, y_i)^\top$. La
-representaci\'on vectorizada es:
-
-\begin{equation}
-\mathbf{L} = [x_1, y_1, \dots, x_{15}, y_{15}]^\top \in \mathbb{R}^{30}.
-\label{eq:landmark_vector}
-\end{equation}
-
-Se define un eje central entre $L_1$ y $L_2$:
-
-\begin{equation}
-\mathbf{p}(t) = \mathbf{l}_1 + t(\mathbf{l}_2 - \mathbf{l}_1), \quad t \in [0, 1],
-\label{eq:axis_param}
-\end{equation}
-
-donde los puntos de referencia centrales se ubican en $t=\{0.25, 0.50, 0.75\}$, lo cual
-refuerza una estructura geom\'etrica consistente. Adem\'as, se consideran pares
-bilaterales sim\'etricos $(L_3,L_4)$, $(L_5,L_6)$, $(L_7,L_8)$, $(L_{12},L_{13})$
-y $(L_{14},L_{15})$.
-
-Para normalizar coordenadas a $[0,1]$, se utiliza el tama\~no real de la
-imagen $(W, H)$:
-
-\begin{equation}
-\tilde{\mathbf{l}}_i =
-\left(\frac{x_i}{W}, \frac{y_i}{H}\right)^\top.
-\label{eq:landmark_norm}
-\end{equation}
-
-Esta definici\'on permite compatibilizar im\'agenes de diferentes resoluciones
-con el tama\~no de entrada requerido por las redes convolucionales.
-
-\section{Preprocesamiento y normalizaci\'on radiom\'etrica}
-\label{sec:preprocesamiento}
-
-En tareas de visi\'on por computadora es habitual estandarizar la resoluci\'on y
-la escala de intensidades para mejorar estabilidad num\'erica y compatibilidad
-con modelos preentrenados. Una normalizaci\'on por canal se expresa como
-\cite{deng2009imagenet}:
-
-\begin{equation}
-\mathbf{x}_{\text{norm}} = \frac{\mathbf{x}/255 - \bm{\mu}}{\bm{\sigma}},
-\label{eq:imagenet_norm}
-\end{equation}
-
-con $\bm{\mu}=(0.485,0.456,0.406)$ y $\bm{\sigma}=(0.229,0.224,0.225)$. En
-im\'agenes en escala de grises, el canal de intensidad se replica a tres
-canales para mantener compatibilidad con modelos preentrenados.
-
-Para mejorar contraste local se utiliza CLAHE (Contrast Limited Adaptive
-Histogram Equalization) \cite{pizer1987adaptive,clahe1994}. Sea una imagen
-$I(x,y)$ cuantizada en $L$ niveles. CLAHE divide la imagen en regiones locales
-$\{\Omega_k\}$ y calcula el histograma local:
-
-\begin{equation}
-h_k(i) = \sum_{(x,y)\in\Omega_k} \delta(I(x,y) = i),
-\label{eq:local_hist}
-\end{equation}
-
-aplicando un l\'imite de recorte $T$ para controlar la amplificaci\'on de ruido:
-
-\begin{equation}
-\tilde{h}_k(i) =
-\begin{cases}
-T, & \text{si } h_k(i) > T, \\
-h_k(i), & \text{en otro caso}.
-\end{cases}
-\label{eq:clip_hist}
-\end{equation}
-
-La transformaci\'on se obtiene mediante la CDF local y una interpolaci\'on
-bilineal entre regiones adyacentes, preservando continuidad de intensidades.
-
-\subsection{Estiramiento Estad\'istico Asim\'etrico de Histograma (SAHS)}
-\label{subsec:sahs}
-
-Las radiograf\'ias de t\'orax presentan histogramas de intensidad marcadamente
-asim\'etricos, con tendencia hacia tonos oscuros debido a regiones pulmonares
-llenas de aire. Esta caracter\'istica hace que t\'ecnicas convencionales como la
-HE o CLAHE presenten limitaciones en RX. El m\'etodo SAHS (\textit{Statistical
-Asymmetrical Histogram Stretching}) fue propuesto por los autores y publicado
-previamente \cite{cruz2025sahs}, y se adopta en esta tesis como estrategia de
-realce de contraste.
-
-Dada una imagen $I(x,y)$ en escala de grises, el algoritmo opera como sigue:
+A diferencia de la ecualización de histograma tradicional, que aplica una transformación global a toda la imagen, CLAHE opera de forma \textit{local}:
 
 \begin{enumerate}
-    \item \textbf{C\'alculo de la media:} Se obtiene la intensidad media $\mu$:
-    \begin{equation}
-    \mu = \frac{1}{N} \sum_{x,y} I(x,y),
-    \label{eq:sahs_mean}
-    \end{equation}
-    donde $N$ es el n\'umero total de p\'ixeles.
-
-    \item \textbf{Separaci\'on de grupos:} Los p\'ixeles se dividen en dos
-    conjuntos:
-    \begin{align}
-    A &= \{I(x,y) \mid I(x,y) > \mu\}, \label{eq:sahs_above} \\
-    B &= \{I(x,y) \mid I(x,y) \leq \mu\}. \label{eq:sahs_below}
-    \end{align}
-
-    \item \textbf{Desviaciones asim\'etricas:} Se calculan desviaciones
-    independientes para cada grupo:
-    \begin{align}
-    \sigma_+ &= \sqrt{\frac{1}{|A|} \sum_{a \in A} (a - \mu)^2}, \label{eq:sahs_std_plus} \\
-    \sigma_- &= \sqrt{\frac{1}{|B|} \sum_{b \in B} (b - \mu)^2}. \label{eq:sahs_std_minus}
-    \end{align}
-
-    \item \textbf{L\'imites de estiramiento:} Se definen l\'imites asim\'etricos
-    con factores reportados en la publicaci\'on original:
-    \begin{align}
-    I_{\max} &= \mu + 2.5 \cdot \sigma_+, \label{eq:sahs_max} \\
-    I_{\min} &= \mu - 2.0 \cdot \sigma_-. \label{eq:sahs_min}
-    \end{align}
-
-    \item \textbf{Mapeo de intensidades:} Se aplica la transformaci\'on lineal
-    al rango $[0, 255]$:
-    \begin{equation}
-    I'(x,y) = \text{clip}\left( \frac{255 \cdot (I(x,y) - I_{\min})}{I_{\max} - I_{\min}}, 0, 255 \right).
-    \label{eq:sahs_mapping}
-    \end{equation}
+    \item \textbf{División en regiones}: La imagen se divide en pequeñas regiones rectangulares llamadas \textit{tiles} (por ejemplo, una cuadrícula de 4$\times$4 o 8$\times$8).
+    \item \textbf{Ecualización local}: Se calcula y ecualiza el histograma de cada tile de forma independiente, mejorando el contraste en cada región según su contenido.
+    \item \textbf{Límite de contraste}: Para evitar amplificar el ruido en regiones homogéneas, se aplica un límite (\textit{clip limit}) que recorta los picos del histograma y redistribuye esos valores.
+    \item \textbf{Interpolación}: Para evitar bordes artificiales entre tiles, los valores de los píxeles cercanos a los bordes se interpolan suavemente entre las regiones adyacentes.
 \end{enumerate}
 
-Los factores 2.5 y 2.0 corresponden a la configuraci\'on reportada en
-\cite{cruz2025sahs}; la parametrizaci\'on empleada en esta tesis se detalla en
-la metodolog\'ia.
-
-\subsection{Comparaci\'on CLAHE vs SAHS}
-\label{subsec:clahe_vs_sahs}
-
-Tanto CLAHE como SAHS buscan mejorar el contraste de im\'agenes, pero operan con
-principios distintos. Esta secci\'on compara ambos m\'etodos y justifica su uso
-diferenciado en el pipeline de procesamiento.
-
-\subsubsection{Diferencias fundamentales}
-
-\begin{table}[h]
-\centering
-\small
-\begin{tabular}{p{3cm}p{5cm}p{5cm}}
-\hline
-\textbf{Caracter\'istica} & \textbf{CLAHE} & \textbf{SAHS} \\
-\hline
-\textbf{Tipo} & Local (tile-based) & Global (whole-image) \\
-\textbf{Complejidad} & $O(N \times T)$ donde $T$ es el n\'umero de tiles & $O(N)$ \\
-\textbf{Par\'ametros} & \texttt{clip\_limit}, \texttt{tile\_size} & Factores asim\'etricos (2.5, 2.0) \\
-\textbf{Ventaja principal} & Contraste local adaptativo, destaca detalles en regiones uniformes & Preserva distribuci\'on asim\'etrica del histograma \\
-\textbf{Limitaci\'on} & Amplifica ruido en regiones homog\'eneas; puede sobre-ecualizar & No mejora contraste local; opera globalmente \\
-\textbf{Aplicaci\'on en este trabajo} & Entrenamiento de puntos de referencia (realza estructuras anat\'omicas) & Post-deformaci\'on para clasificaci\'on (normaliza distribuciones entre muestras) \\
-\hline
-\end{tabular}
-\caption{Comparaci\'on entre CLAHE y SAHS para realce de contraste en radiograf\'ias.}
-\label{tab:clahe_vs_sahs}
-\end{table}
-
-\subsubsection{An\'alisis de histogramas de radiograf\'ias de t\'orax}
-
-Las radiograf\'ias de t\'orax presentan una distribuci\'on de intensidades
-caracter\'istica:
-
-\begin{itemize}
-    \item \textbf{Pico en tonos oscuros:} Regiones pulmonares aireadas (bajo
-    coeficiente de atenuaci\'on) generan intensidades altas en el detector,
-    correspondientes a tonos oscuros en la imagen.
-
-    \item \textbf{Cola hacia tonos claros:} Mediastino, caja tor\'acica y tejido
-    blando aten\'uan m\'as los rayos X, generando tonos m\'as claros.
-
-    \item \textbf{Distribuci\'on asim\'etrica:} La concentraci\'on de p\'ixeles en
-    tonos oscuros y la cola extendida hacia tonos claros resulta en una distribuci\'on
-    no uniforme caracter\'istica de las radiograf\'ias de t\'orax.
-\end{itemize}
-
-\textbf{Efecto de CLAHE:} Al ecualizar el histograma local, CLAHE tiende a
-distribuir uniformemente las intensidades en cada tile, perdiendo parcialmente la
-estructura de distribuci\'on original. Esto mejora contraste local pero puede
-crear artefactos en fronteras de tiles.
-
-\textbf{Efecto de SAHS:} Al estirar el histograma preservando sus estad\'isticas
-asim\'etricas (desviaciones $\sigma_+$ y $\sigma_-$ separadas), SAHS mantiene
-la relaci\'on natural entre regiones pulmonares (oscuras) y mediastino/caja
-tor\'acica (claras).
-
-% [PENDIENTE: Figura 2.Z - Comparaci\'on de histogramas]
-% Panel con 3 subplots:
-% (a) Histograma original (asim\'etrico, pico a la izquierda)
-% (b) Despu\'es de CLAHE (m\'as uniforme, pico reducido)
-% (c) Despu\'es de SAHS (asim\'etrico preservado, rango expandido)
-
-\subsubsection{¿Cu\'ando usar CLAHE vs SAHS?}
-
-\textbf{CLAHE es preferible cuando:}
-\begin{itemize}
-    \item Se requiere resaltar detalles locales (texturas, bordes finos)
-    \item Las regiones de inter\'es son peque\~nas comparadas con la imagen completa
-    \item La imagen tiene variaciones de iluminaci\'on espacialmente heterog\'eneas
-\end{itemize}
-
-En este trabajo, CLAHE se utiliza durante el \textbf{entrenamiento del modelo de
-puntos de referencia} porque mejora la visibilidad de estructuras anat\'omicas sutiles
-(contornos pulmonares, diafragma), facilitando la localizaci\'on precisa.
-
-\textbf{SAHS es preferible cuando:}
-\begin{itemize}
-    \item Se requiere normalizar la distribuci\'on entre m\'ultiples im\'agenes
-    \item Se desea preservar la relaci\'on relativa entre regiones anat\'omicas
-    \item El objetivo es clasificaci\'on (no localizaci\'on) y se necesita
-    consistencia entre muestras
-\end{itemize}
-
-En este trabajo, SAHS se aplica \textbf{post-deformaci\'on para el clasificador} porque
-normaliza la distribuci\'on de intensidades de las im\'agenes deformadas (que tienen
-regiones negras debido a la transformaci\'on geom\'etrica), sin alterar la
-estructura asim\'etrica natural de las radiograf\'ias.
-
-\textbf{Validaci\'on experimental:} El uso combinado de CLAHE (entrenamiento de
-puntos de referencia) y SAHS (clasificaci\'on post-deformaci\'on) fue validado emp\'iricamente,
-con resultados detallados en el Cap\'itulo 5.
-
-\section{Aumento de datos geom\'etrico y fotom\'etrica}
-\label{sec:augmentacion}
-
-El aumento de datos incrementa la variabilidad efectiva del conjunto de
-entrenamiento \cite{perez2017effectiveness}. Para el modelo de puntos de referencia se
-aplican transformaciones geom\'etricas que deben propagarse a las coordenadas:
-
-\textbf{Flip horizontal.} Para una coordenada normalizada
-$\tilde{\mathbf{l}}_i=(x_i, y_i)$:
-
-\begin{equation}
-x_i' = 1 - x_i, \quad y_i' = y_i,
-\label{eq:flip}
-\end{equation}
-
-seguido del intercambio de pares bilaterales sim\'etricos para preservar la
-sem\'antica anat\'omica.
-
-\textbf{Rotaci\'on.} La imagen se rota un \'angulo $\theta$ alrededor del centro
-$\mathbf{c}=(0.5,0.5)$. Las coordenadas se actualizan con la transformaci\'on
-inversa:
-
-\begin{equation}
-\mathbf{l}' = \mathbf{R}(-\theta)(\mathbf{l}-\mathbf{c}) + \mathbf{c}, \quad
-\mathbf{R}(\theta)=
-\begin{bmatrix}
-\cos\theta & -\sin\theta \\
-\sin\theta & \cos\theta
-\end{bmatrix}.
-\label{eq:rotation}
-\end{equation}
-
-Se emplean adem\'as cambios de brillo y contraste, modelados de forma general
-como $\mathbf{x}'=\alpha\mathbf{x}+\beta$, manteniendo los puntos de referencia intactos.
-
-\subsection{Justificaci\'on de transformaciones seleccionadas}
-
-La elecci\'on de transformaciones de aumento de datos debe balancear dos objetivos:
-(1) incrementar variabilidad para mejorar generalizaci\'on, y (2) preservar
-realismo anat\'omico para evitar introducir patrones artificiales. Esta secci\'on
-justifica las transformaciones utilizadas y excluidas.
-
-\textbf{Principio de dise\~no:} Solo se aplican transformaciones que preservan
-la validez anat\'omica de la imagen. Una radiograf\'ia augmentada debe ser
-indistinguible de una radiograf\'ia real adquirida bajo condiciones ligeramente
-distintas.
-
-\subsubsection{Transformaciones incluidas}
-
-\begin{itemize}
-    \item \textbf{Flip horizontal ($p=0.5$):} Refleja simetr\'ia bilateral del
-    t\'orax. Anatomicamente v\'alido: un pulmón izquierdo reflejado es equivalente
-    a un pulmón derecho de otro paciente. Requiere intercambio de pares sim\'etricos
-    de puntos de referencia.
-
-    \item \textbf{Rotaci\'on ($\theta \in [-10^\circ, +10^\circ]$):} Simula
-    variaciones en posicionamiento del paciente durante adquisici\'on. Rotaciones
-    moderadas son comunes en pr\'actica cl\'inica debido a postura del paciente o
-    \'angulo del detector.
-
-    \item \textbf{Traslaci\'on ($\pm 5\%$ en $x$ y $y$, solo clasificador):}
-    Simula descentrado del paciente en la imagen. No se aplica durante entrenamiento
-    de puntos de referencia (requerir\'ia ajuste de coordenadas).
-
-    \item \textbf{Escala ($\times [0.95, 1.05]$, solo clasificador):} Simula
-    variaciones de distancia foco-detector. Rango limitado para evitar distorsi\'on
-    excesiva.
-
-    \item \textbf{Cambios de brillo y contraste ($\alpha \in [0.9, 1.1]$, $\beta \in [-10, +10]$):}
-    Simula variaciones de exposici\'on radiogr\'afica (kVp, mAs). No afecta
-    puntos de referencia pues operan sobre geometr\'ia, no intensidad.
-\end{itemize}
-
-\subsubsection{Transformaciones excluidas}
-
-\begin{itemize}
-    \item \textbf{Rotaci\'on $> 15^\circ$:} Anat\'omicamente implausible. Un
-    paciente no puede estar tan inclinado durante adquisici\'on anteroposterior
-    (AP) o posteroanterior (PA).
-
-    \item \textbf{Shear/Perspectiva:} La geometr\'ia de proyecci\'on radiogr\'afica
-    es fija (rayos paralelos o divergentes con \'angulo constante). Shear
-    introducir\'ia distorsi\'on no f\'isica.
-
-    \item \textbf{Elastic deformation:} Alteraría la anatom\'ia pulmonar (forma de
-    l\'obulos, posici\'on de vasos). Podr\'ia generar patolog\'ias artificiales.
-
-    \item \textbf{Cutout/CoarseDropout:} Eliminaci\'on aleatoria de regiones
-    rectangulares. Problem\'atico para puntos de referencia (podr\'ia ocultar punto anat\'omico)
-    y para clasificaci\'on (podr\'ia eliminar signos patol\'ogicos como
-    infiltrados).
-\end{itemize}
-
-\textbf{Trade-off variabilidad vs realismo:}
-\begin{itemize}
-    \item \textbf{Aumento de datos agresivo:} M\'axima variabilidad, pero riesgo de
-    introducir im\'agenes anat\'omicamente imposibles que confunden al modelo.
-
-    \item \textbf{Aumento de datos conservador:} Realismo anat\'omico preservado,
-    pero menor variabilidad, lo que podr\'ia llevar a sobreajuste.
-
-    \item \textbf{Enfoque adoptado:} Transformaciones moderadas que reflejan
-    variabilidad cl\'inica real, validadas emp\'iricamente en el Cap\'itulo 5.
-\end{itemize}
-
-\section{Redes neuronales convolucionales, transfer learning y estrategias de entrenamiento}
-\label{sec:cnn_transfer}
-
-\subsection{Fundamentos de redes convolucionales}
-
-Las CNNs realizan convoluciones discretas sobre la imagen
-\cite{lecun1998gradient}:
-
-\begin{equation}
-Y[i,j] = \sum_{m=0}^{M-1}\sum_{n=0}^{N-1} X[i+m, j+n] \, W[m,n] + b.
-\label{eq:conv}
-\end{equation}
-
-El extractor de caracter\'isticas principal para regresi\'on de puntos de referencia es ResNet-18
-\cite{he2016deep}, cuya conexi\'on residual mitiga el problema de desvanecimiento
-de gradiente en redes profundas:
-
-\begin{equation}
-\mathbf{y} = \mathcal{F}(\mathbf{x}, \{W_i\}) + \mathbf{x}.
-\label{eq:residual}
-\end{equation}
-
-La conexi\'on residual permite que el gradiente fluya directamente a trav\'es de
-la suma, facilitando la optimizaci\'on de redes con 18+ capas. ResNet-18 tiene
-11.2 millones de par\'ametros y alcanza $\sim$70\% exactitud top-1 en ImageNet.
-
-\subsection{Transfer learning: fundamentos y justificaci\'on}
-
-Transfer learning consiste en reutilizar pesos preentrenados de un modelo
-entrenado en una tarea fuente (usualmente ImageNet) para inicializar un modelo
-destinado a una tarea objetivo (en este caso, an\'alisis de radiograf\'ias de
-t\'orax). Esta estrategia es especialmente valiosa cuando el conjunto de datos objetivo es
-peque\~no (< 1,000 im\'agenes anotadas).
-
-\subsubsection{¿Por qu\'e ImageNet ayuda con radiograf\'ias m\'edicas?}
-
-Un error conceptual com\'un es asumir que ImageNet, compuesto por im\'agenes
-naturales (animales, objetos, escenas), no aporta conocimiento transferible a
-im\'agenes m\'edicas en escala de grises. Sin embargo, estudios emp\'iricos
-demuestran lo contrario \cite{yosinski2014transferable,raghu2019transfusion}.
-
-\textbf{Jerarqu\'ia de caracter\'isticas en CNNs:}
-
-\begin{itemize}
-    \item \textbf{Capas iniciales (Conv1-2):} Aprenden detectores universales de
-    bordes, gradientes y texturas b\'asicas. Estos patrones son independientes del
-    dominio (naturales vs m\'edicas) y transferibles.
-
-    \item \textbf{Capas intermedias (Conv3-4):} Aprenden combinaciones de texturas
-    y patrones geom\'etricos (curvas, esquinas, formas sim\'etricas). Estas
-    representaciones son parcialmente transferibles entre dominios.
-
-    \item \textbf{Capas profundas (Conv5):} Aprenden caracter\'isticas espec\'ificas de la
-    tarea (partes de objetos, conceptos sem\'anticos). Estas requieren adaptaci\'on
-    al dominio objetivo.
-\end{itemize}
-
-\textbf{Evidencia emp\'irica:}
-
-\begin{itemize}
-    \item \textbf{Yosinski et al.} (NIPS 2014) \cite{yosinski2014transferable}:
-    Demostraron que caracter\'isticas de capas iniciales son gen\'ericas y transferibles,
-    mientras que capas profundas son espec\'ificas del conjunto de datos.
-
-    \item \textbf{Raghu et al.} (NeurIPS 2019) \cite{raghu2019transfusion}:
-    Analizaron transfer learning en im\'agenes m\'edicas, concluyendo que pesos
-    preentrenados en ImageNet aceleran convergencia y mejoran generalizaci\'on,
-    especialmente con conjuntos de datos peque\~nos.
-\end{itemize}
-
-\textbf{Aplicaci\'on a este trabajo:} Con solo 957 im\'agenes anotadas con
-puntos de referencia, entrenar ResNet-18 desde cero llevar\'ia a sobreajuste. Transfer
-learning desde ImageNet provee una inicializaci\'on robusta que captura patrones
-visuales generales, requiriendo menos datos para adaptarse a radiograf\'ias de t\'orax.
-
-\subsection{Estrategia Two-phase Training}
-
-La estrategia de entrenamiento en dos fases es fundamental para aprovechar
-efectivamente los pesos preentrenados sin destruir el conocimiento adquirido en
-ImageNet.
-
-\textbf{Motivaci\'on:} Al adaptar un modelo preentrenado a una nueva tarea, la
-cabeza de regresi\'on (head) se inicializa aleatoriamente, mientras que el
-extractor de caracter\'isticas contiene pesos preentrenados. Si se entrenan ambos simult\'aneamente
-desde el inicio, los gradientes ruidosos provenientes del head aleatorio
-contaminar\'ian y degradar\'ian los pesos del extractor de caracter\'isticas.
-
-\subsubsection{Fase 1: Entrenamiento de la cabeza con extractor de caracter\'isticas congelado}
-
-En la primera fase, se congela el extractor de caracter\'isticas completo (todas las capas convolucionales)
-y se entrena \'unicamente el head de regresi\'on:
-
-\begin{itemize}
-    \item \textbf{Extractor:} Pesos congelados (no se actualizan)
-    \item \textbf{Head:} Inicializaci\'on aleatoria, entrenamiento activo
-    \item \textbf{Learning rate:} $1 \times 10^{-3}$
-    \item \textbf{Duraci\'on:} 15 \'epocas
-\end{itemize}
-
-\textbf{Objetivo:} Permitir que el head se adapte a la tarea de regresi\'on
-(predecir 30 coordenadas) utilizando caracter\'isticas fijas del extractor de caracter\'isticas. Al finalizar
-esta fase, el head produce predicciones razonables que generan gradientes
-informativos.
-
-\subsubsection{Fase 2: Fine-tuning completo con tasas diferenciadas}
-
-En la segunda fase, se descongela el extractor de caracter\'isticas y se entrena el modelo completo con
-tasas de aprendizaje diferenciadas (\textit{differential learning rates}):
-
-\begin{itemize}
-    \item \textbf{Extractor:} $\text{LR}_{\text{extractor de caracter\'isticas}} = 2 \times 10^{-5}$
-    (10× menor que head)
-    \item \textbf{Head:} $\text{LR}_{\text{head}} = 2 \times 10^{-4}$
-    \item \textbf{Duraci\'on:} Hasta 100 \'epocas con early stopping
-    \item \textbf{Scheduler:} Cosine Annealing con $\text{LR}_{\text{min}} = 1 \times 10^{-6}$
-\end{itemize}
-
-\textbf{Justificaci\'on de tasas diferenciadas:}
-
-\begin{itemize}
-    \item \textbf{Extractor bajo LR:} Los pesos preentrenados ya capturan patrones
-    visuales \'utiles. Una tasa de aprendizaje baja permite ajustes sutiles sin
-    destruir este conocimiento.
-
-    \item \textbf{Head alto LR:} El head a\'un necesita adaptarse r\'apidamente a
-    la tarea espec\'ifica de puntos de referencia anat\'omicos. Una tasa 10× mayor permite
-    esta adaptaci\'on sin afectar demasiado al extractor de caracter\'isticas.
-\end{itemize}
-
-\textbf{Cosine Annealing:} El scheduler decrementa suavemente el learning rate
-siguiendo una funci\'on coseno \cite{loshchilov2016sgdr}:
-
-\begin{equation}
-\text{LR}_t = \text{LR}_{\text{min}} + \frac{1}{2}(\text{LR}_{\text{max}} - \text{LR}_{\text{min}})\left(1 + \cos\left(\frac{t}{T}\pi\right)\right),
-\label{eq:cosine_annealing}
-\end{equation}
-
-donde $t$ es la \'epoca actual y $T$ es el total de \'epocas. Esto permite
-exploraci\'on inicial con LR alto y refinamiento final con LR bajo.
-
-\subsubsection{Trade-off: Congelar vs Descongelar}
-
-\begin{itemize}
-    \item \textbf{Congelar todo:} El modelo se vuelve un extractor de caracter\'isticas
-    fijo. Puede sufrir \textit{subajuste} si las caracter\'isticas de ImageNet no son
-    suficientemente adaptadas a radiograf\'ias.
-
-    \item \textbf{Descongelar todo desde inicio:} El modelo tiene m\'axima
-    flexibilidad, pero corre riesgo de \textit{sobreajuste} al destruir
-    conocimiento preentrenado con gradientes ruidosos.
-
-    \item \textbf{Two-phase con LR diferenciadas:} Balance \'optimo que preserva
-    conocimiento general mientras se adapta al dominio m\'edico.
-\end{itemize}
-
-\subsection{Dropout como regularizaci\'on}
-
-Dropout \cite{srivastava2014dropout} es una t\'ecnica de regularizaci\'on que
-desactiva aleatoriamente neuronas durante el entrenamiento con probabilidad $p$:
-
-\begin{equation}
-\mathbf{y} = \frac{1}{1-p} \cdot \mathbf{m} \odot \mathbf{x}, \quad
-m_i \sim \text{Bernoulli}(1-p),
-\label{eq:dropout}
-\end{equation}
-
-donde $\odot$ denota producto elemento-wise y el factor $1/(1-p)$ asegura que el
-valor esperado se mantenga constante.
-
-\textbf{Efecto:} Dropout previene co-adaptaci\'on de neuronas, obligando a la red
-a aprender representaciones redundantes y robustas. Es equivalente a entrenar un
-ensamble impl\'icito de redes con arquitecturas reducidas.
-
-\textbf{Aplicaci\'on en este trabajo:}
-
-\begin{itemize}
-    \item \textbf{Head de puntos de referencia:} Dropout($p=0.5$) en la primera capa fully
-    connected, Dropout($p=0.3$) en la segunda.
-    \item \textbf{Clasificador:} Dropout($p=0.3$) en las capas fully connected.
-\end{itemize}
-
-La tasa m\'as alta ($p=0.5$) en el head de puntos de referencia refleja el conjunto de datos peque\~no
-(957 im\'agenes), requiriendo mayor regularizaci\'on.
-
-\subsection{Early Stopping}
-
-Early stopping detiene el entrenamiento cuando la m\'etrica de validaci\'on deja
-de mejorar, previniendo sobreajuste:
-
-\begin{itemize}
-    \item \textbf{Puntos de referencia Fase 1:} Paciencia de 5 \'epocas (m\'etrica: error
-    en px)
-    \item \textbf{Puntos de referencia Fase 2:} Paciencia de 15 \'epocas
-    \item \textbf{Clasificador:} Paciencia de 10 \'epocas (m\'etrica: F1-Macro)
-\end{itemize}
-
-Se guarda el checkpoint con mejor m\'etrica de validaci\'on, no el \'ultimo.
-
-\subsection{Arquitecturas consideradas para clasificaci\'on}
-
-Para la tarea de clasificaci\'on de radiograf\'ias se consideran arquitecturas
-con distinto perfil de capacidad, profundidad y eficiencia computacional. La
-Tabla~\ref{tab:arquitecturas} compara las principales arquitecturas evaluadas.
-
-\begin{table}[h]
-\centering
-\small
-\begin{tabular}{lcccc}
-\hline
-\textbf{Arquitectura} & \textbf{Par\'ametros} & \textbf{Depth} & \textbf{Top-1 ImageNet} & \textbf{Ventaja principal} \\
-\hline
-AlexNet \cite{krizhevsky2012imagenet} & 61M & 8 & 56.5\% & Hist\'oricamente relevante \\
-VGG16 \cite{simonyan2014very} & 138M & 16 & 71.5\% & Arquitectura simple \\
-ResNet-18 \cite{he2016deep} & 11.2M & 18 & 69.8\% & Balance eficiencia/capacidad \\
-ResNet-50 \cite{he2016deep} & 25.6M & 50 & 76.1\% & Mayor capacidad \\
-DenseNet-121 \cite{huang2017densely} & 8.0M & 121 & 74.4\% & Eficiente, reutiliza caracter\'isticas \\
-MobileNetV2 \cite{sandler2018mobilenetv2} & 3.5M & Variable & 71.8\% & Dispositivos m\'oviles \\
-EfficientNet-B0 \cite{tan2019efficientnet} & 5.3M & Variable & 77.1\% & Escalado compuesto \\
-\hline
-\end{tabular}
-\caption{Comparaci\'on de arquitecturas CNN consideradas para clasificaci\'on. Par\'ametros en millones (M), depth indica n\'umero de capas con pesos entrenables.}
-\label{tab:arquitecturas}
-\end{table}
-
-\subsubsection{Criterios de selecci\'on para este proyecto}
-
-La elecci\'on de arquitectura debe considerar:
+El resultado es una imagen con contraste mejorado de forma uniforme, donde las estructuras pulmonares (bordes, texturas, opacidades) son más visibles para el modelo de detección de puntos de referencia.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Figures/F4.4_clahe_comparacion.png}
+    \caption{Efecto de CLAHE sobre una radiografía de tórax. (a) Imagen original con bajo contraste. (b) Imagen procesada con CLAHE usando tamaño de tile 4×4. (c) Imagen procesada con CLAHE usando tamaño de tile 8×8. El tamaño de tile menor produce una mejora de contraste más localizada.}
+    \label{fig:clahe_comparacion}
+\end{figure}
+
+%==============================================================================
+\section{Preprocesamiento: SAHS}
+\label{sec:sahs}
+%==============================================================================
+
+Las radiografías de tórax presentan histogramas de intensidad marcadamente asimétricos, con tendencia hacia tonos oscuros debido a las regiones pulmonares llenas de aire. Esta característica hace que técnicas convencionales como CLAHE presenten limitaciones. El método \textbf{SAHS} (Statistical Asymmetrical Histogram Stretching) fue desarrollado específicamente para abordar esta asimetría \cite{cruz2025sahs}.
+
+A diferencia de CLAHE que opera de forma local, SAHS realiza un estiramiento global del histograma pero con límites asimétricos que respetan la distribución natural de la imagen:
 
 \begin{enumerate}
-    \item \textbf{Tama\~no del conjunto de datos:} Con 3,616 im\'agenes de entrenamiento
-    (tras deformaci\'on), arquitecturas muy profundas (ResNet-50+) corren riesgo de
-    sobreajuste. Arquitecturas moderadas (10-20M par\'ametros) son preferibles.
+    \item \textbf{Cálculo de la media}: Se obtiene la intensidad media $\mu$ de todos los píxeles de la imagen.
 
-    \item \textbf{Complejidad de la tarea:} Clasificaci\'on 3-clases (COVID-19,
-    Normal, Viral Pneumonia) no requiere capacidad representacional extrema como
-    ImageNet-1000.
-
-    \item \textbf{Transfer learning efectivo:} La arquitectura debe tener pesos
-    preentrenados de alta calidad en ImageNet. ResNet-18, ResNet-50, DenseNet-121
-    y EfficientNet cumplen este criterio.
-
-    \item \textbf{Eficiencia computacional:} Tiempo de entrenamiento y memoria GPU.
-    Arquitecturas como VGG (138M par\'ametros) son prohibitivamente lentas para
-    experimentaci\'on iterativa.
-\end{enumerate}
-
-\subsubsection{Justificaci\'on de ResNet-18}
-
-ResNet-18 es la arquitectura seleccionada para el clasificador final por:
-
-\begin{itemize}
-    \item \textbf{Balance \'optimo:} 11.2M par\'ametros proveen capacidad suficiente
-    sin sobreajuste excesivo en conjunto de datos de tama\~no moderado.
-
-    \item \textbf{Conexiones residuales:} Mitigan desvanecimiento de gradiente,
-    permitiendo entrenamiento efectivo de 18 capas.
-
-    \item \textbf{Transfer learning probado:} Pesos preentrenados en ImageNet
-    ampliamente utilizados en dominios m\'edicos \cite{raghu2019transfusion}.
-
-    \item \textbf{Eficiencia:} Entrenamiento r\'apido ($\sim$2-3 min/\'epoca en GPU
-    NVIDIA RTX 3090) permite experimentaci\'on iterativa.
-
-    \item \textbf{Arquitectura est\'andar:} Ampliamente estudiada, con implementaciones
-    optimizadas en PyTorch y TensorFlow.
-\end{itemize}
-
-\textbf{Arquitecturas alternativas evaluadas:} DenseNet-121, EfficientNet-B0 y
-ResNet-50 fueron entrenadas comparativamente, con resultados reportados en el
-Cap\'itulo 5. ResNet-18 logra el mejor trade-off precisi\'on/eficiencia para
-esta tarea espec\'ifica.
-
-\section{Mecanismos de atenci\'on y normalizaci\'on de caracter\'isticas}
-\label{sec:attention_norm}
-
-Los mecanismos de atenci\'on permiten que las redes neuronales enfoquen su
-capacidad representacional en regiones o canales informativos, mejorando el
-rendimiento sin incrementar sustancialmente la complejidad computacional. En el
-contexto de visi\'on por computadora, distintas formulaciones de atenci\'on han
-demostrado efectividad en tareas como clasificaci\'on, detecci\'on y localizaci\'on
-de objetos \cite{hu2018squeeze,woo2018cbam,hou2021coordinate}. Esta secci\'on
-describe los fundamentos de atenci\'on en CNNs y las t\'ecnicas empleadas en
-este trabajo.
-
-\subsection{Clasificaci\'on de mecanismos de atenci\'on}
-
-Los mecanismos de atenci\'on en CNNs pueden clasificarse seg\'un la dimensi\'on
-sobre la cual operan:
-
-\begin{itemize}
-    \item \textbf{Atenci\'on de canal (\textit{channel attention}):} Modela las
-    interdependencias entre canales de caracter\'isticas, permitiendo a la red
-    recalibrar las respuestas de cada canal. Ejemplos incluyen Squeeze-and-Excitation
-    (SE) \cite{hu2018squeeze}.
-
-    \item \textbf{Atenci\'on espacial (\textit{spatial attention}):} Enfoca
-    regiones espec\'ificas del mapa de caracter\'isticas, destacando ubicaciones
-    relevantes para la tarea. CBAM \cite{woo2018cbam} combina atenci\'on de canal
-    y espacial secuencialmente.
-
-    \item \textbf{Auto-atenci\'on (\textit{self-attention}):} Modela dependencias
-    de largo alcance entre posiciones espaciales, como en Vision Transformers
-    \cite{dosovitskiy2020image}. Su costo computacional es $O(H^2W^2)$.
-
-    \item \textbf{Atenci\'on posicional (\textit{positional attention}):}
-    Preserva informaci\'on de posici\'on espacial mientras recalibra canales,
-    como Coordinate Attention \cite{hou2021coordinate}, utilizado en este trabajo
-    para regresi\'on de puntos de referencia.
-\end{itemize}
-
-\subsection{Squeeze-and-Excitation Networks (SE-Net)}
-
-SE-Net \cite{hu2018squeeze} introduce un mecanismo de atenci\'on de canal
-eficiente que ha sido ampliamente adoptado como bloque base en arquitecturas
-modernas. El m\'odulo SE opera en tres etapas:
-
-\textbf{1. Squeeze:} Agregaci\'on espacial mediante \textit{global average pooling}
-(GAP). Dado un mapa de caracter\'isticas $\mathbf{F}\in\mathbb{R}^{C\times H\times W}$,
-se calcula un descriptor por canal:
-
-\begin{equation}
-z_c = \frac{1}{HW} \sum_{h=1}^H \sum_{w=1}^W F_c(h,w).
-\label{eq:se_squeeze}
-\end{equation}
-
-\textbf{2. Excitation:} Transformaci\'on no lineal mediante dos capas completamente
-conectadas con activaci\'on intermedia:
-
-\begin{equation}
-\mathbf{s} = \sigma(\mathbf{W}_2 \, \delta(\mathbf{W}_1 \mathbf{z})),
-\label{eq:se_excitation}
-\end{equation}
-
-donde $\mathbf{W}_1 \in \mathbb{R}^{C/r \times C}$ reduce dimensionalidad con
-factor $r$ (t\'ipicamente 16), $\delta$ es ReLU, $\mathbf{W}_2 \in \mathbb{R}^{C \times C/r}$
-restaura dimensionalidad, y $\sigma$ es sigmoide.
-
-\textbf{3. Recalibraci\'on:} El vector de pesos $\mathbf{s}\in\mathbb{R}^C$ se
-aplica elemento-wise a cada canal:
-
-\begin{equation}
-\tilde{F}_c = s_c \cdot F_c.
-\label{eq:se_scale}
-\end{equation}
-
-\textbf{Ventaja:} SE-Net recalibra la importancia de cada canal con costo
-computacional marginal ($\sim$10\% de incremento en par\'ametros).
-
-\textbf{Limitaci\'on:} El GAP global elimina completamente la informaci\'on
-espacial. Esto es problem\'atico para tareas que requieren localizaci\'on precisa,
-como la regresi\'on de puntos de referencia anat\'omicos, donde la posici\'on espacial es
-cr\'itica.
-
-\subsection{Coordinate Attention}
-
-Para tareas de localizaci\'on, preservar informaci\'on espacial es esencial.
-Coordinate Attention \cite{hou2021coordinate} aborda esta limitaci\'on mediante
-agregaciones direccionales que mantienen coordenadas espaciales.
-
-\textbf{Motivaci\'on:} En regresi\'on de puntos de referencia, el modelo debe aprender a
-localizar puntos anat\'omicos espec\'ificos (v\'ertice pulmonar superior, base
-pulmonar, etc.). El GAP de SE-Net colapsa completamente las dimensiones $H$ y
-$W$, perdiendo informaci\'on sobre \textit{d\'onde} se encuentran las caracter\'isticas.
-
-\textbf{Mecanismo:} Dado $\mathbf{F}\in\mathbb{R}^{C\times H\times W}$, se
-realizan agregaciones separadas en las direcciones horizontal y vertical:
-
-\begin{equation}
-z_h^c(h) = \frac{1}{W}\sum_{w=1}^W F_c(h,w), \quad
-z_w^c(w) = \frac{1}{H}\sum_{h=1}^H F_c(h,w),
-\label{eq:coord_pooling}
-\end{equation}
-
-produciendo $\mathbf{z}_h \in \mathbb{R}^{C\times H\times 1}$ y
-$\mathbf{z}_w \in \mathbb{R}^{C\times 1\times W}$. Estas representaciones
-preservan informaci\'on posicional en una dimensi\'on mientras agregan la otra.
-
-\textbf{Codificaci\'on conjunta:} Los tensores se concatenan y procesan mediante
-una convoluci\'on $1\times 1$ con Normalizaci\'on por Lote y activaci\'on:
-
-\begin{equation}
-\mathbf{f} = \delta(\text{BN}(\text{Conv}_{1\times 1}([\mathbf{z}_h, \mathbf{z}_w]))),
-\label{eq:coord_encode}
-\end{equation}
-
-donde $[\cdot, \cdot]$ denota concatenaci\'on y $\delta$ es una funci\'on no lineal
-(usualmente h-swish o ReLU).
-
-\textbf{Decodificaci\'on separada:} El tensor $\mathbf{f}$ se divide en
-$\mathbf{f}_h$ y $\mathbf{f}_w$, que se proyectan independientemente:
-
-\begin{equation}
-g_h = \sigma(\text{Conv}_{1\times 1}(\mathbf{f}_h)), \quad
-g_w = \sigma(\text{Conv}_{1\times 1}(\mathbf{f}_w)),
-\label{eq:coord_decode}
-\end{equation}
-
-con $\sigma$ sigmoide, produciendo mapas de atenci\'on $g_h \in \mathbb{R}^{C\times H\times 1}$
-y $g_w \in \mathbb{R}^{C\times 1\times W}$.
-
-\textbf{Aplicaci\'on:} La salida final recalibra $\mathbf{F}$ multiplicando:
-
-\begin{equation}
-\tilde{F}_c(h,w) = F_c(h,w) \cdot g_h^c(h) \cdot g_w^c(w).
-\label{eq:coord_apply}
-\end{equation}
-
-\textbf{Comparaci\'on con SE-Net:}
-\begin{itemize}
-    \item \textbf{Informaci\'on espacial:} SE-Net elimina posici\'on; Coordinate
-    Attention la preserva en una dimensi\'on.
-    \item \textbf{Complejidad:} Ambos tienen complejidad lineal $O(HW)$, mucho
-    menor que self-attention $O(H^2W^2)$.
-    \item \textbf{Par\'ametros:} En ResNet-18 con $C=512$, Coordinate Attention
-    a\~nade $\sim$24,608 par\'ametros (0.2\% del modelo total).
-    \item \textbf{Aplicaci\'on:} SE-Net es adecuado para clasificaci\'on;
-    Coordinate Attention es superior para localizaci\'on y detecci\'on.
-\end{itemize}
-
-El paper original \cite{hou2021coordinate} reporta mejoras en ImageNet
-(clasificaci\'on) y COCO (detecci\'on de objetos), demostrando efectividad
-general del mecanismo.
-
-\subsection{Group Normalization}
-
-La normalizaci\'on de activaciones estabiliza el entrenamiento de redes profundas.
-Normalizaci\'on por Lote (BN) \cite{ioffe2015batch} normaliza sobre la dimensi\'on de
-lote, pero su efectividad disminuye con lotes peque\~nos. En este trabajo, el
-entrenamiento de puntos de referencia utiliza lotes de 8-16 im\'agenes debido a
-limitaciones de memoria GPU y tama\~no de conjunto de datos.
-
-Group Normalization (GN) \cite{wu2018group} divide los canales en grupos y
-normaliza dentro de cada grupo, independientemente del tama\~no de lote.
-
-\textbf{Formulaci\'on:} Dado un tensor $\mathbf{x} \in \mathbb{R}^{N\times C\times H\times W}$,
-se divide $C$ en $G$ grupos de $C/G$ canales. Para cada grupo $g$ y muestra $n$:
-
-\begin{equation}
-\mu_{n,g} = \frac{1}{(C/G)HW} \sum_{c\in \mathcal{G}_g} \sum_{h,w} x_{n,c,h,w},
-\label{eq:gn_mean}
-\end{equation}
-
-\begin{equation}
-\sigma_{n,g}^2 = \frac{1}{(C/G)HW} \sum_{c\in \mathcal{G}_g} \sum_{h,w} (x_{n,c,h,w} - \mu_{n,g})^2,
-\label{eq:gn_var}
-\end{equation}
-
-donde $\mathcal{G}_g$ es el conjunto de canales del grupo $g$. La normalizaci\'on
-es:
-
-\begin{equation}
-\hat{x}_{n,c,h,w} = \frac{x_{n,c,h,w} - \mu_{n,g}}{\sqrt{\sigma_{n,g}^2 + \epsilon}},
-\label{eq:gn_norm}
-\end{equation}
-
-seguida de transformaci\'on af\'in aprendible:
-
-\begin{equation}
-y_{n,c,h,w} = \gamma_c \hat{x}_{n,c,h,w} + \beta_c,
-\label{eq:gn_affine}
-\end{equation}
-
-con par\'ametros $\gamma_c$ y $\beta_c$ por canal.
-
-\textbf{Comparaci\'on con otras normalizaciones:}
-
-\begin{itemize}
-    \item \textbf{Normalizaci\'on por Lote:} Normaliza sobre $(N, H, W)$. Requiere
-    $N$ grande ($\geq 32$). Comportamiento diferente en train/test.
-    \item \textbf{Layer Normalization:} Normaliza sobre $(C, H, W)$. Ignora
-    estructura espacial de CNNs.
-    \item \textbf{Instance Normalization:} Normaliza sobre $(H, W)$ por canal.
-    Usado en style transfer, menos efectivo en clasificaci\'on.
-    \item \textbf{Group Normalization:} Normaliza sobre $(C/G, H, W)$ dentro de
-    cada grupo. Independiente de $N$, preserva estructura espacial.
-\end{itemize}
-
-\textbf{Aplicaci\'on en este trabajo:} El head de regresi\'on de puntos de referencia utiliza
-Group Normalization con $G=32$ grupos sobre $C=512$ canales, garantizando
-estabilidad con lotes peque\~nos y acelerando convergencia.
-
-\section{Regresi\'on de puntos de referencia y funciones de p\'erdida}
-\label{sec:regresion_puntos_referencia}
-
-La regresi\'on de puntos de referencia consiste en aprender una funci\'on $f_{\theta}$ que
-mapea una imagen a coordenadas de puntos de referencia normalizadas:
-
-\begin{equation}
-f_{\theta}: \mathbf{I} \mapsto \hat{\mathbf{L}} \in [0,1]^{30}.
-\label{eq:landmark_model}
-\end{equation}
-
-La elecci\'on de la funci\'on de p\'erdida es cr\'itica para el desempe\~no del
-modelo, pues determina c\'omo se penalizan las desviaciones entre predicciones
-$\hat{\mathbf{l}}_i$ y anotaciones ground-truth $\mathbf{l}_i$. En esta secci\'on
-se analizan las limitaciones de funciones est\'andar (L1, L2) y se fundamenta la
-elecci\'on de Wing Loss para este trabajo.
-
-\subsection{Limitaciones de funciones de p\'erdida convencionales}
-
-\subsubsection{Error Cuadr\'atico (L2 Loss)}
-
-La p\'erdida L2, o Mean Squared Error (MSE), se define como:
-
-\begin{equation}
-\mathcal{L}_{L2}(e) = e^2,
-\label{eq:l2_loss}
-\end{equation}
-
-donde $e = \hat{l}_i - l_i$ es el error en una coordenada individual. El gradiente
-es proporcional al error:
-
-\begin{equation}
-\frac{\partial \mathcal{L}_{L2}}{\partial e} = 2e.
-\label{eq:l2_grad}
-\end{equation}
-
-\textbf{Ventaja:} La penalizaci\'on cuadr\'atica produce gradientes grandes para
-errores grandes, lo cual acelera la convergencia inicial cuando las predicciones
-est\'an alejadas del ground-truth.
-
-\textbf{Limitaci\'on:} Cuando el error se reduce ($|e| < 1$ px), el gradiente
-se vuelve muy peque\~no ($\partial \mathcal{L}/\partial e \approx 0$), lo que
-ralentiza el refinamiento fino de la localizaci\'on. Para regresi\'on de puntos de referencia,
-donde se busca precisi\'on subpixel, esta caracter\'istica es problem\'atica.
-
-\subsubsection{Error Absoluto (L1 Loss)}
-
-La p\'erdida L1, o Mean Absolute Error (MAE), se define como:
-
-\begin{equation}
-\mathcal{L}_{L1}(e) = |e|,
-\label{eq:l1_loss}
-\end{equation}
-
-con gradiente constante:
-
-\begin{equation}
-\frac{\partial \mathcal{L}_{L1}}{\partial e} = \text{sign}(e).
-\label{eq:l1_grad}
-\end{equation}
-
-\textbf{Ventaja:} El gradiente constante permite que el modelo contin\'ue
-optimizando incluso con errores peque\~nos, a diferencia de L2. Adem\'as, L1 es
-m\'as robusta a outliers que L2.
-
-\textbf{Limitaci\'on:} El gradiente constante trata de igual forma un error de
-1 px y uno de 20 px, lo cual puede causar inestabilidad durante la fase inicial
-de entrenamiento cuando las predicciones a\'un est\'an lejos del ground-truth.
-
-\subsubsection{Trade-off fundamental}
-
-Existe un trade-off entre estabilidad con errores grandes (favorece L2) y
-refinamiento con errores peque\~nos (favorece L1):
-
-\begin{itemize}
-    \item \textbf{L2:} Convergencia r\'apida al inicio, pero estancamiento en
-    refinamiento fino ($e < 1$ px).
-    \item \textbf{L1:} Refinamiento continuo, pero potencialmente inestable con
-    errores grandes ($e > 10$ px).
-\end{itemize}
-
-Para regresi\'on de puntos de referencia se requiere una funci\'on que combine lo mejor de
-ambas: penalizaci\'on fuerte (gradiente grande) para errores grandes, y
-penalizaci\'on logarítmica (gradiente creciente con la inversa del error) para
-errores peque\~nos.
-
-\subsection{Wing Loss: comportamiento adaptativo}
-
-Wing Loss \cite{feng2018wing} fue dise\~nada espec\'ificamente para localizaci\'on
-de puntos de referencia faciales, abordando las limitaciones de L1 y L2. Su formulaci\'on es:
-
-\begin{equation}
-\mathcal{L}_{\text{wing}}(e)=
-\begin{cases}
-\omega \ln\left(1+\frac{|e|}{\epsilon}\right), & |e| < \omega, \\
-|e| - C, & |e| \geq \omega,
-\end{cases}
-\label{eq:wing}
-\end{equation}
-
-donde $\omega$ define el umbral entre regiones, $\epsilon$ controla la curvatura
-logar\'itmica, y $C = \omega - \omega \ln(1+\omega/\epsilon)$ asegura continuidad
-en $|e|=\omega$.
-
-\textbf{An\'alisis del gradiente:} El gradiente de Wing Loss es:
-
-\begin{equation}
-\frac{\partial \mathcal{L}_{\text{wing}}}{\partial e} =
-\begin{cases}
-\frac{\omega}{\epsilon + |e|} \cdot \text{sign}(e), & |e| < \omega, \\
-\text{sign}(e), & |e| \geq \omega.
-\end{cases}
-\label{eq:wing_grad}
-\end{equation}
-
-\textbf{Comportamiento en dos regiones:}
-
-\begin{enumerate}
-    \item \textbf{Errores grandes ($|e| \geq \omega$):} El gradiente es
-    $\text{sign}(e)$ (constante), igual que L1. Esto provee estabilidad durante
-    la fase inicial de entrenamiento.
-
-    \item \textbf{Errores peque\~nos ($|e| < \omega$):} El gradiente es
-    $\omega/(\epsilon + |e|)$, que crece a medida que $|e|$ disminuye. Por
-    ejemplo, si $\omega=10$ px, $\epsilon=2$ px:
+    \item \textbf{Separación de grupos}: Los píxeles se dividen en dos conjuntos según su relación con la media:
     \begin{itemize}
-        \item Para $|e|=5$ px: $\partial \mathcal{L}/\partial e = 10/(2+5) = 1.43$
-        \item Para $|e|=1$ px: $\partial \mathcal{L}/\partial e = 10/(2+1) = 3.33$
-        \item Para $|e|=0.5$ px: $\partial \mathcal{L}/\partial e = 10/(2+0.5) = 4.00$
+        \item Grupo A: píxeles con intensidad mayor que $\mu$ (tonos claros)
+        \item Grupo B: píxeles con intensidad menor o igual que $\mu$ (tonos oscuros)
     \end{itemize}
-    Este comportamiento incentiva fuertemente el refinamiento fino, a diferencia
-    de L2 cuyo gradiente decrece con errores peque\~nos.
+
+    \item \textbf{Desviaciones asimétricas}: Se calcula la desviación estándar de cada grupo por separado ($\sigma_+$ para el grupo A, $\sigma_-$ para el grupo B), capturando la dispersión independiente de cada lado del histograma.
+
+    \item \textbf{Límites de estiramiento}: Se definen límites asimétricos:
+    \begin{itemize}
+        \item Límite superior: $I_{max} = \mu + 2.5 \cdot \sigma_+$
+        \item Límite inferior: $I_{min} = \mu - 2.0 \cdot \sigma_-$
+    \end{itemize}
+    Los factores 2.5 y 2.0 fueron optimizados empíricamente para radiografías de tórax.
+
+    \item \textbf{Mapeo de intensidades}: Se aplica una transformación lineal que mapea el rango $[I_{min}, I_{max}]$ al rango completo $[0, 255]$, recortando valores fuera de los límites.
 \end{enumerate}
 
-\textbf{Comparaci\'on cualitativa:} Para un rango de error $e\in[0, 30]$ px:
+La ventaja principal de SAHS sobre CLAHE es que preserva la distribución global de la imagen mientras mejora el contraste de forma adaptativa a la asimetría del histograma. Esto es particularmente útil para la clasificación, donde se desea normalizar las diferencias de adquisición entre imágenes manteniendo las características patológicas.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/F2.3_clahe_vs_sahs.png}
+    \caption{Comparación de técnicas de mejora de contraste sobre radiografías de las tres clases. (a) Imagen original. (b) CLAHE: mejora local del contraste mediante ecualización adaptativa. (c) SAHS: estiramiento global con límites asimétricos. Los histogramas muestran cómo cada técnica afecta la distribución de intensidades.}
+    \label{fig:clahe_vs_sahs}
+\end{figure}
+
+%==============================================================================
+\section{Redes Neuronales Convolucionales}
+\label{sec:cnn}
+%==============================================================================
+
+Las \textbf{Redes Neuronales Convolucionales} (CNN, por sus siglas en inglés) son un tipo de red neuronal diseñada específicamente para procesar imágenes. Su principal ventaja es la capacidad de aprender automáticamente qué características son relevantes para una tarea, sin necesidad de diseñarlas manualmente.
+
+Una CNN procesa la imagen a través de múltiples capas:
+
 \begin{itemize}
-    \item L2: Penalizaci\'on cuadr\'atica ($e^2$), hasta 900 para $e=30$ px.
-    Gradiente nulo cerca de $e=0$.
-    \item L1: Penalizaci\'on lineal ($|e|$), hasta 30 para $e=30$ px. Gradiente
-    constante.
-    \item Wing: Penalizaci\'on logar\'itmica para $|e|<\omega$ (suave cerca del
-    origen), lineal para $|e|\geq\omega$. Gradiente creciente con $1/|e|$ en la
-    regi\'on de refinamiento.
+    \item \textbf{Capas convolucionales}: Aplican pequeños filtros que se deslizan sobre la imagen. Cada filtro detecta un patrón específico (bordes verticales, horizontales, texturas, etc.). Las primeras capas detectan patrones simples; las capas más profundas combinan estos patrones para reconocer estructuras más complejas.
+
+    \item \textbf{Capas de pooling}: Reducen el tamaño espacial de la representación, conservando la información más relevante. Esto hace que la red sea más eficiente y robusta a pequeñas variaciones en la posición.
+
+    \item \textbf{Capas fully connected}: Al final de la red, estas capas combinan todas las características extraídas para producir la salida final (ya sea una clasificación o, en nuestro caso, las coordenadas de los puntos de referencia).
 \end{itemize}
 
-% [PENDIENTE: Figura 2.Y - Comparaci\'on de funciones de p\'erdida]
-% Panel con dos subplots: (a) L(e) vs e, (b) dL/de vs e
-% Mostrar L1, L2, Wing Loss, destacar ventajas de Wing en regi\'on peque\~na
+La ventaja fundamental de las CNN es que aprenden una \textbf{jerarquía de características}: las primeras capas detectan bordes y texturas básicas, las capas intermedias detectan partes de objetos, y las capas finales reconocen estructuras completas. Esta jerarquía es especialmente útil en imágenes médicas, donde las estructuras anatómicas tienen patrones visuales consistentes.
 
-\subsection{Configuraci\'on de par\'ametros}
+\begin{figure}[htbp]
+    \centering
+    \shorthandoff{>}
+    \begin{tikzpicture}[
+        node distance=0.8cm,
+        block/.style={rectangle, draw, fill=blue!20, minimum width=1.2cm, minimum height=0.8cm, align=center, font=\footnotesize},
+        pool/.style={rectangle, draw, fill=green!20, minimum width=0.8cm, minimum height=0.8cm, align=center, font=\footnotesize},
+        fc/.style={rectangle, draw, fill=orange!20, minimum width=1.2cm, minimum height=0.8cm, align=center, font=\footnotesize},
+        input/.style={rectangle, draw, fill=gray!20, minimum width=1.2cm, minimum height=1.2cm, align=center, font=\footnotesize},
+        arrow/.style={->, >=stealth, thick}
+    ]
+        % Input
+        \node[input] (input) {Imagen\\de entrada};
 
-Los par\'ametros de Wing Loss utilizados en este trabajo son:
+        % Conv blocks
+        \node[block, right=of input] (conv1) {Conv\\+ReLU};
+        \node[pool, right=of conv1] (pool1) {Pool};
+        \node[block, right=of pool1] (conv2) {Conv\\+ReLU};
+        \node[pool, right=of conv2] (pool2) {Pool};
 
-\begin{itemize}
-    \item $\omega = 10$ px (en im\'agenes $224\times 224$)
-    \item $\epsilon = 2$ px
-\end{itemize}
+        % FC layers
+        \node[fc, right=of pool2] (flatten) {Flatten};
+        \node[fc, right=of flatten] (fc1) {FC\\+ReLU};
+        \node[fc, right=of fc1] (fc2) {FC};
 
-\textbf{Justificaci\'on:} El valor $\omega=10$ px corresponde al 4.5\% del
-tama\~no de la imagen, estableciendo un threshold razonable entre errores
-``grandes'' y ``peque\~nos''. El error medio esperado tras entrenamiento es
-$\sim$3-4 px, por lo que la mayor\'ia de las predicciones caen en la regi\'on
-logar\'itmica ($|e| < \omega$), donde Wing Loss aporta mayor beneficio.
+        % Output
+        \node[input, right=of fc2, fill=red!20] (output) {Salida};
 
-\textbf{Normalizaci\'on:} Durante el entrenamiento, las coordenadas se normalizan
-a $[0,1]$, por lo que los par\'ametros se escalan proporcionalmente:
+        % Arrows
+        \draw[arrow] (input) -- (conv1);
+        \draw[arrow] (conv1) -- (pool1);
+        \draw[arrow] (pool1) -- (conv2);
+        \draw[arrow] (conv2) -- (pool2);
+        \draw[arrow] (pool2) -- (flatten);
+        \draw[arrow] (flatten) -- (fc1);
+        \draw[arrow] (fc1) -- (fc2);
+        \draw[arrow] (fc2) -- (output);
+
+        % Labels
+        \node[below=0.3cm of conv1, font=\tiny] {Extracción de características};
+        \node[below=0.3cm of fc1, font=\tiny] {Clasificación/Regresión};
+    \end{tikzpicture}
+    \shorthandon{>}
+    \caption{Arquitectura básica de una Red Neuronal Convolucional (CNN). Las capas convolucionales extraen características de la imagen, las capas de pooling reducen la dimensionalidad, y las capas fully connected (FC) producen la salida final.}
+    \label{fig:cnn_arquitectura}
+\end{figure}
+
+%==============================================================================
+\section{ResNet y conexiones residuales}
+\label{sec:resnet}
+%==============================================================================
+
+A medida que las redes neuronales se hacen más profundas (más capas), teóricamente deberían aprender representaciones más complejas. Sin embargo, en la práctica, las redes muy profundas se volvían difíciles de entrenar: los gradientes se desvanecían o explotaban al propagarse por tantas capas, impidiendo el aprendizaje efectivo.
+
+\textbf{ResNet} (Residual Network), propuesta por He et al. \cite{he2016deep}, resuelve este problema mediante \textbf{conexiones residuales} (skip connections). En lugar de aprender directamente una transformación $H(x)$, cada bloque aprende solo la diferencia (residuo) $F(x) = H(x) - x$, y luego suma la entrada original:
 
 \begin{equation}
-\omega_{\text{norm}} = \frac{\omega}{224} \approx 0.0446, \quad
-\epsilon_{\text{norm}} = \frac{\epsilon}{224} \approx 0.0089.
-\label{eq:wing_norm}
+    y = F(x) + x
+    \label{eq:residual}
 \end{equation}
 
-Esta normalizaci\'on asegura que Wing Loss opere correctamente independientemente
-de la resoluci\'on de entrada del modelo.
+donde $x$ es la entrada al bloque, $F(x)$ es la transformación aprendida por las capas convolucionales, y $y$ es la salida.
 
-\section{M\'etodos de ensamble y aumento en tiempo de prueba}
-\label{sec:ensamble_tta}
+Esta simple modificación tiene un efecto importante: si una capa no necesita transformar la información, puede aprender $F(x) = 0$, permitiendo que la entrada pase sin cambios. Esto facilita el flujo de gradientes durante el entrenamiento y permite construir redes mucho más profundas.
 
-Los m\'etodos de ensamble y aumento en tiempo de prueba (TTA) son t\'ecnicas
-complementarias que mejoran la robustez y precisi\'on de predicciones al combinar
-m\'ultiples inferencias sobre un mismo dato. A diferencia de la aumentaci\'on de
-datos durante entrenamiento, estas t\'ecnicas operan exclusivamente en fase de
-inferencia.
+En este trabajo se utiliza \textbf{ResNet-18}, que contiene 18 capas con conexiones residuales. Esta arquitectura ofrece un balance entre capacidad de aprendizaje y eficiencia computacional, siendo adecuada para el tamaño del conjunto de datos disponible.
+
+\begin{figure}[htbp]
+    \centering
+    \shorthandoff{>}
+    \begin{tikzpicture}[
+        node distance=1cm,
+        block/.style={rectangle, draw, fill=blue!20, minimum width=2cm, minimum height=0.7cm, align=center, font=\footnotesize},
+        sum/.style={circle, draw, fill=yellow!30, minimum size=0.6cm, font=\footnotesize},
+        arrow/.style={->, >=stealth, thick}
+    ]
+        % Input
+        \node (input) {$\mathbf{x}$};
+
+        % Main path
+        \node[block, right=1.2cm of input] (conv1) {Conv 3$\times$3};
+        \node[block, right=of conv1] (bn1) {BN + ReLU};
+        \node[block, right=of bn1] (conv2) {Conv 3$\times$3};
+        \node[block, right=of conv2] (bn2) {BN};
+
+        % Sum
+        \node[sum, right=1cm of bn2] (sum) {$+$};
+
+        % Output
+        \node[right=1cm of sum] (output) {$\mathbf{y}$};
+
+        % Main path arrows
+        \draw[arrow] (input) -- (conv1);
+        \draw[arrow] (conv1) -- (bn1);
+        \draw[arrow] (bn1) -- (conv2);
+        \draw[arrow] (conv2) -- (bn2);
+        \draw[arrow] (bn2) -- (sum);
+        \draw[arrow] (sum) -- node[above, font=\footnotesize] {ReLU} (output);
+
+        % Skip connection
+        \coordinate (skip_start) at ($(input)+(0.5,0)$);
+        \coordinate (skip_top) at ($(skip_start)+(0,1.2)$);
+        \coordinate (skip_end) at ($(sum)+(0,1.2)$);
+        \draw[arrow, dashed, blue!60!black] (skip_start) -- (skip_top) -- (skip_end) -- (sum);
+
+        % Label
+        \node[above=0.1cm of skip_top, font=\footnotesize, blue!60!black] {Conexión residual (skip)};
+
+        % F(x) label
+        \node[below=0.5cm of bn1, font=\footnotesize] {$F(\mathbf{x})$};
+
+    \end{tikzpicture}
+    \shorthandon{>}
+    \caption{Bloque residual de ResNet. La entrada $\mathbf{x}$ pasa por dos capas convolucionales (rama principal) y simultáneamente se suma directamente a la salida mediante la conexión residual. La salida es $\mathbf{y} = F(\mathbf{x}) + \mathbf{x}$, donde $F(\mathbf{x})$ representa la transformación aprendida.}
+    \label{fig:bloque_residual}
+\end{figure}
+
+%==============================================================================
+\section{Normalización por Lote}
+\label{sec:batch_norm}
+%==============================================================================
+
+Durante el entrenamiento de redes neuronales profundas, las distribuciones de las activaciones internas cambian constantemente a medida que los pesos se actualizan. Este fenómeno, conocido como \textit{internal covariate shift}, dificulta el entrenamiento porque cada capa debe adaptarse continuamente a distribuciones cambiantes de sus entradas.
+
+\textbf{Normalización por Lote} (BN), propuesto por Ioffe y Szegedy \cite{ioffe2015batch}, resuelve este problema normalizando las activaciones de cada capa durante el entrenamiento. La idea central es simple: para cada mini-lote de datos, se normalizan las activaciones para que tengan media cero y varianza unitaria.
+
+El proceso funciona de la siguiente manera:
+
+\begin{enumerate}
+    \item \textbf{Cálculo de estadísticas}: Para cada canal de activación, se calcula la media y la varianza sobre todos los ejemplos del mini-lote actual.
+
+    \item \textbf{Normalización}: Cada activación se transforma restando la media y dividiendo por la desviación estándar. Esto centra los valores alrededor de cero con una dispersión estándar.
+
+    \item \textbf{Escalado y desplazamiento}: Se aplican dos parámetros aprendibles ($\gamma$ y $\beta$) que permiten a la red ``desnormalizar'' si es necesario. Esto asegura que la normalización no limite la capacidad expresiva de la red.
+\end{enumerate}
+
+Los beneficios de Normalización por Lote son múltiples:
+
+\begin{itemize}
+    \item \textbf{Entrenamiento más rápido}: Permite usar tasas de aprendizaje más altas sin riesgo de divergencia.
+    \item \textbf{Regularización implícita}: El ruido introducido por las estadísticas del mini-lote actúa como regularizador, reduciendo la necesidad de dropout.
+    \item \textbf{Menor sensibilidad a la inicialización}: La normalización hace que el entrenamiento sea más estable independientemente de cómo se inicialicen los pesos.
+    \item \textbf{Gradientes más saludables}: Mantiene las activaciones en un rango donde las funciones de activación (como ReLU) funcionan bien, evitando saturación.
+\end{itemize}
+
+En las arquitecturas modernas como ResNet, Normalización por Lote se aplica después de cada capa convolucional y antes de la función de activación (ver Figura~\ref{fig:bloque_residual}). Esta combinación \textbf{Conv → BN → ReLU} se ha convertido en el estándar de facto para redes convolucionales profundas.
+
+% Recomendación de figura: Diagrama mostrando distribución de activaciones
+% antes y después de BN (histogramas), similar a la Figura 1 del paper original
+
+%==============================================================================
+\section{Aprendizaje por transferencia}
+\label{sec:transfer_learning}
+%==============================================================================
+
+El \textbf{aprendizaje por transferencia} (transfer learning) consiste en reutilizar una red neuronal entrenada en una tarea para resolver otra tarea relacionada. En lugar de inicializar los pesos de la red de forma aleatoria, se utilizan los pesos aprendidos previamente en un conjunto de datos grande.
+
+Esta técnica se justifica por la naturaleza jerárquica de las características que aprenden las CNN:
+\begin{itemize}
+    \item Las \textbf{primeras capas} aprenden características genéricas y reutilizables: bordes, texturas, gradientes de color.
+    \item Las \textbf{capas intermedias} aprenden patrones más complejos: formas, partes de objetos.
+    \item Las \textbf{últimas capas} aprenden características específicas de la tarea original.
+\end{itemize}
+
+En este trabajo, se utiliza ResNet-18 preentrenada en \textbf{ImageNet}, un conjunto de datos con más de un millón de imágenes naturales. Aunque las imágenes de ImageNet (fotos de objetos, animales, etc.) son muy diferentes a las radiografías de tórax, las características de bajo nivel aprendidas (bordes, texturas) siguen siendo útiles.
+
+El proceso de transferencia consiste en:
+\begin{enumerate}
+    \item Cargar la red con pesos preentrenados en ImageNet.
+    \item Reemplazar la última capa (originalmente diseñada para 1000 clases) por una nueva capa adaptada a la tarea actual.
+    \item Entrenar la red en el nuevo conjunto de datos, típicamente con tasas de aprendizaje pequeñas para no destruir el conocimiento previo.
+\end{enumerate}
+
+El aprendizaje por transferencia es especialmente valioso cuando el conjunto de datos disponible es limitado, como suele ocurrir en aplicaciones médicas.
+
+%==============================================================================
+\section{Función de pérdida: Wing Loss}
+\label{sec:wing_loss}
+%==============================================================================
+
+Para entrenar un modelo de regresión de puntos de referencia, se necesita una función de pérdida que mida el error entre las coordenadas predichas y las reales. Las funciones tradicionales tienen limitaciones:
+
+\begin{itemize}
+    \item \textbf{L2 (Error Cuadrático Medio)}: Penaliza fuertemente los errores grandes, pero produce gradientes muy pequeños cuando el error ya es pequeño, dificultando el refinamiento de predicciones cercanas al objetivo.
+    \item \textbf{L1 (Error Absoluto Medio)}: Trata todos los errores con igual importancia, lo que puede ser sensible a valores atípicos (outliers).
+\end{itemize}
+
+\textbf{Wing Loss}, propuesta por Feng et al. \cite{feng2018wing}, combina las ventajas de ambas mediante un comportamiento adaptativo:
+
+\begin{equation}
+    \text{Wing}(x) =
+    \begin{cases}
+        \omega \ln\left(1 + \frac{|x|}{\epsilon}\right) & \text{si } |x| < \omega \\
+        |x| - C & \text{si } |x| \geq \omega
+    \end{cases}
+    \label{eq:wing_loss_v2}
+\end{equation}
+
+donde $x$ es el error (diferencia entre predicción y valor real), $\omega$ define el umbral entre errores pequeños y grandes, $\epsilon$ controla la curvatura de la parte logarítmica, y $C = \omega - \omega \ln(1 + \omega/\epsilon)$ asegura continuidad.
+
+El comportamiento es el siguiente:
+\begin{itemize}
+    \item Para \textbf{errores pequeños} ($|x| < \omega$): La función es logarítmica, produciendo gradientes relativamente grandes que permiten seguir refinando predicciones que ya están cerca del objetivo.
+    \item Para \textbf{errores grandes} ($|x| \geq \omega$): La función es lineal (como L1), evitando que errores muy grandes dominen el entrenamiento.
+\end{itemize}
+
+En este trabajo se utilizan los valores $\omega = 10$ y $\epsilon = 2$ (en coordenadas normalizadas), que han mostrado buen desempeño en tareas de detección de puntos de referencia faciales y anatómicos.
+
+%==============================================================================
+\section{Análisis Procrustes Generalizado (GPA)}
+\label{sec:gpa}
+%==============================================================================
+
+Para normalizar geométricamente las radiografías, se necesita primero calcular una \textbf{forma estándar} o de referencia que represente la configuración promedio de los puntos de referencia. El \textbf{Análisis Procrustes Generalizado} (GPA, por sus siglas en inglés) es el método estándar para obtener esta forma.
+
+El problema que resuelve GPA es el siguiente: dado un conjunto de formas (cada una definida por sus puntos de referencia), encontrar la forma promedio eliminando las diferencias de \textbf{posición}, \textbf{escala} y \textbf{rotación} entre ellas.
+
+El algoritmo opera de forma iterativa:
+
+\begin{enumerate}
+    \item \textbf{Centrado}: Cada forma se traslada para que su centroide (punto medio de todos los puntos de referencia) quede en el origen. Esto elimina diferencias de posición.
+
+    \item \textbf{Normalización de escala}: Cada forma se escala para que tenga un tamaño estándar (típicamente, norma unitaria). Esto elimina diferencias de tamaño entre formas.
+
+    \item \textbf{Alineación de rotación}: Cada forma se rota para minimizar su distancia a la forma promedio actual. Esta rotación óptima se puede calcular mediante técnicas de álgebra lineal.
+
+    \item \textbf{Cálculo de la forma promedio}: Se calcula el promedio de todas las formas ya alineadas.
+
+    \item \textbf{Iteración}: Se repiten los pasos 3 y 4 hasta que la forma promedio converge (deja de cambiar significativamente).
+\end{enumerate}
+
+El resultado es una \textbf{forma estándar} que representa la configuración típica de los pulmones en el conjunto de entrenamiento. Esta forma sirve como referencia para el proceso de normalización geométrica (deformación) descrito en secciones posteriores.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.90\textwidth]{Figures/F4.7_proceso_gpa.png}
+    \caption{Proceso de Análisis Procrustes Generalizado (GPA). (a) Formas originales sin alinear, mostrando la variabilidad entre pacientes. (b) Formas centradas y escaladas a tamaño unitario. (c) Formas alineadas por rotación, minimizando las diferencias. (d) Forma estándar final, calculada como el promedio de todas las formas alineadas.}
+    \label{fig:proceso_gpa}
+\end{figure}
+
+%==============================================================================
+\section{Triangulación de Delaunay}
+\label{sec:delaunay}
+%==============================================================================
+
+Para aplicar una transformación geométrica a una imagen basándose en los puntos de referencia, es necesario dividir la región de interés en subregiones más pequeñas. La \textbf{triangulación de Delaunay} es el método estándar para particionar un conjunto de puntos en triángulos.
+
+Dado un conjunto de puntos (los puntos de referencia), la triangulación de Delaunay genera un conjunto de triángulos que:
+\begin{itemize}
+    \item \textbf{No se superponen}: Cada píxel de la imagen pertenece a exactamente un triángulo.
+    \item \textbf{Cubren toda la región}: Los triángulos en conjunto cubren el área delimitada por los puntos de referencia.
+    \item \textbf{Son regulares}: La triangulación de Delaunay maximiza el ángulo mínimo de todos los triángulos, evitando triángulos muy alargados o degenerados que podrían causar distorsiones en la deformación.
+\end{itemize}
+
+La propiedad característica de Delaunay es que el circuncírculo de cada triángulo (el círculo que pasa por sus tres vértices) no contiene ningún otro punto del conjunto. Esta propiedad garantiza que los triángulos resultantes sean lo más equiláteros posible.
+
+Los triángulos son ideales para transformaciones geométricas porque una \textbf{transformación afín} (que puede incluir traslación, rotación, escala y sesgo) queda completamente determinada por la correspondencia entre tres puntos en la imagen original y tres puntos en la imagen destino.
+
+En este trabajo, los 15 puntos de referencia generan 16 triángulos mediante la triangulación de Delaunay, que sirven como base para el proceso de deformación.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{Figures/F4.8_triangulacion_delaunay.png}
+    \caption{Triangulación de Delaunay sobre los 15 puntos de referencia anatómicos. Los triángulos resultantes cubren la región pulmonar sin superposición, maximizando los ángulos mínimos para evitar distorsiones durante la deformación.}
+    \label{fig:triangulacion_delaunay_teoria}
+\end{figure}
+
+%==============================================================================
+\section{Deformación afín por partes}
+\label{sec:warping}
+%==============================================================================
+
+El \textbf{deformación afín por partes} (piecewise affine deformation) es la técnica utilizada para normalizar geométricamente las radiografías. El objetivo es deformar cada imagen de manera que sus puntos de referencia coincidan con los puntos de referencia de la forma estándar, eliminando así la variabilidad geométrica entre pacientes.
+
+El proceso funciona de la siguiente manera:
+
+\begin{enumerate}
+    \item \textbf{Triangulación}: Tanto los puntos de referencia de la imagen original (predichos por el modelo) como los puntos de referencia de la forma estándar (calculados por GPA) se triangulan usando el mismo esquema de Delaunay.
+
+    \item \textbf{Correspondencia de triángulos}: Cada triángulo en la imagen original tiene un triángulo correspondiente en la forma estándar, definido por los mismos índices de puntos de referencia.
+
+    \item \textbf{Transformación por triángulo}: Para cada par de triángulos correspondientes, se calcula una transformación afín que mapea los vértices del triángulo original a los vértices del triángulo estándar. Una transformación afín puede expresar traslación, rotación, escala y sesgo.
+
+    \item \textbf{Aplicación}: Cada píxel de la imagen de salida se obtiene determinando a qué triángulo estándar pertenece, aplicando la transformación inversa para encontrar su posición en la imagen original, y copiando el valor de intensidad (usando interpolación si es necesario).
+\end{enumerate}
+
+El resultado es una imagen donde la región pulmonar tiene exactamente la forma estándar, independientemente de la forma original del paciente. Esto permite que el clasificador se enfoque en las características de textura y patología, sin verse afectado por diferencias anatómicas normales entre pacientes.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Figures/F4.9_original_vs_warped.png}
+    \caption{Comparación de radiografías originales y normalizadas por clase. Columnas: COVID-19, Normal y Neumonía viral. Filas: Original (arriba) y Normalizado (abajo). La normalización geométrica mediante deformación afín por partes alinea la región pulmonar con la forma estándar y reduce variabilidad de pose y escala.}
+    \label{fig:original_vs_warped}
+\end{figure}
+
+%==============================================================================
+\section{Clasificación de imágenes}
+\label{sec:clasificacion_v2}
+%==============================================================================
+
+La etapa final del sistema es la \textbf{clasificación} de las radiografías normalizadas en tres categorías: COVID-19, Normal y Neumonía Viral. Esta tarea se realiza mediante una CNN similar a la usada para detección de puntos de referencia, pero con una capa de salida diferente.
+
+\subsection{Función softmax}
+
+La capa final del clasificador produce un valor numérico por cada clase posible. Para convertir estos valores en \textbf{probabilidades}, se aplica la función \textit{softmax}, que transforma cualquier conjunto de valores en números entre 0 y 1 que suman exactamente 1. El valor más alto indica la clase predicha.
+
+\subsection{Función de pérdida: entropía cruzada}
+
+Para entrenar el clasificador, se utiliza la \textbf{entropía cruzada} (cross-entropy) como función de pérdida. Esta función mide qué tan diferente es la distribución de probabilidades predicha de la distribución real (donde la clase correcta tiene probabilidad 1 y las demás 0).
+
+Intuitivamente, la entropía cruzada penaliza las predicciones que asignan baja probabilidad a la clase correcta. Si el modelo está muy seguro de la respuesta incorrecta, la pérdida es muy alta.
+
+\subsection{Ponderación de clases}
+
+Cuando el conjunto de datos tiene \textbf{desbalance de clases} (más imágenes de una categoría que de otras), el modelo tiende a favorecer la clase mayoritaria. Para compensar esto, se utiliza \textit{entropía cruzada ponderada}, donde cada clase tiene un peso inversamente proporcional a su frecuencia en el conjunto de entrenamiento. Esto obliga al modelo a prestar igual atención a todas las clases, independientemente de su cantidad de ejemplos.
+
+%==============================================================================
+\section{Métricas de evaluación}
+\label{sec:metricas}
+%==============================================================================
+
+Para evaluar el desempeño del sistema se utilizan métricas específicas para cada tarea.
+
+\subsection{Métricas para detección de puntos de referencia}
+
+El desempeño del modelo de puntos de referencia se mide mediante el \textbf{error en píxeles}, definido como la distancia euclidiana entre las coordenadas predichas y las coordenadas reales:
+
+\begin{equation}
+    \text{Error} = \sqrt{(x_{\text{pred}} - x_{\text{real}})^2 + (y_{\text{pred}} - y_{\text{real}})^2}
+    \label{eq:pixel_error}
+\end{equation}
+
+Se reporta el error promedio sobre todos los puntos de referencia y todas las imágenes del conjunto de prueba.
+
+\subsection{Métricas para clasificación}
+
+Para la tarea de clasificación multiclase se utilizan las siguientes métricas:
+
+\begin{itemize}
+    \item \textbf{Exactitud (Accuracy)}: Proporción de predicciones correctas sobre el total.
+    \begin{equation}
+        \text{Accuracy} = \frac{\text{Predicciones correctas}}{\text{Total de predicciones}}
+        \label{eq:accuracy}
+    \end{equation}
+
+    \item \textbf{Precisión}: De todas las predicciones de una clase, ¿qué proporción fue correcta?
+    \begin{equation}
+        \text{Precisión} = \frac{VP}{VP + FP}
+        \label{eq:precision}
+    \end{equation}
+
+    \item \textbf{Sensibilidad (Recall)}: De todos los casos reales de una clase, ¿qué proporción fue detectada?
+    \begin{equation}
+        \text{Sensibilidad} = \frac{VP}{VP + FN}
+        \label{eq:recall}
+    \end{equation}
+
+    \item \textbf{F1-Score}: Media armónica de precisión y sensibilidad, útil cuando se busca un balance entre ambas.
+    \begin{equation}
+        \text{F1} = 2 \cdot \frac{\text{Precisión} \cdot \text{Sensibilidad}}{\text{Precisión} + \text{Sensibilidad}}
+        \label{eq:f1}
+    \end{equation}
+\end{itemize}
+
+donde VP = Verdaderos Positivos, FP = Falsos Positivos, y FN = Falsos Negativos.
+
+En problemas multiclase, estas métricas se calculan por clase y luego se promedian. El \textbf{promedio macro} (macro-average) trata todas las clases con igual importancia, mientras que el \textbf{promedio ponderado} (weighted-average) considera el número de muestras de cada clase.
+
+%==============================================================================
+\section{Mecanismo de Coordinate Attention}
+\label{sec:coord_attention}
+%==============================================================================
+
+Los \textbf{mecanismos de atención} permiten que una red neuronal se enfoque en las regiones más relevantes de una imagen para la tarea en cuestión. En el contexto de detección de puntos de referencia, es importante que el mecanismo preserve información sobre \textit{dónde} están las características importantes, no solo \textit{qué} características son importantes.
+
+\textbf{Coordinate Attention}, propuesto por Hou et al. \cite{hou2021coordinate}, es un mecanismo diseñado específicamente para tareas que requieren información de localización precisa. A diferencia de otros mecanismos como Squeeze-and-Excitation (SE-Net), que colapsan la información espacial completamente, Coordinate Attention preserva las coordenadas espaciales.
+
+El mecanismo opera en tres etapas:
+
+\begin{enumerate}
+    \item \textbf{Agregación direccional}: En lugar de comprimir toda la imagen en un solo valor por canal (como hace SE-Net), Coordinate Attention agrega información por separado en la dirección horizontal y vertical. Esto genera dos representaciones: una que captura dependencias a lo largo del eje X, y otra a lo largo del eje Y.
+
+    \item \textbf{Codificación conjunta}: Las dos representaciones direccionales se combinan y procesan para generar una representación intermedia que captura relaciones espaciales de largo alcance.
+
+    \item \textbf{Generación de mapas de atención}: Se generan dos mapas de atención, uno para cada dirección, que se combinan para producir un mapa de atención 2D que indica qué regiones de la imagen son más relevantes.
+\end{enumerate}
+
+El resultado es un mecanismo que permite a la red enfocarse en las regiones anatómicas relevantes (como los bordes pulmonares) mientras mantiene información precisa sobre su ubicación espacial, lo cual es fundamental para la predicción de coordenadas de puntos de referencia.
+
+\begin{figure}[htbp]
+    \centering
+    \shorthandoff{>}
+    \begin{tikzpicture}[
+        node distance=0.8cm,
+        block/.style={rectangle, draw, fill=blue!20, minimum width=1.6cm, minimum height=0.6cm, align=center, font=\scriptsize},
+        pool/.style={rectangle, draw, fill=green!20, minimum width=1.4cm, minimum height=0.6cm, align=center, font=\scriptsize},
+        op/.style={circle, draw, fill=yellow!30, minimum size=0.5cm, font=\scriptsize},
+        io/.style={rectangle, draw, fill=gray!20, minimum width=1.4cm, minimum height=0.8cm, align=center, font=\scriptsize},
+        arrow/.style={->, >=stealth, thick}
+    ]
+        % Fila 1: Pool H path
+        \node[pool] (poolh) {Pool H};
+        \node[block, right=0.8cm of poolh] (convh) {Conv+$\sigma$};
+
+        % Fila 2 (centro): Input -> Concat -> Multiply -> Output
+        \node[io, below=1.2cm of poolh] (input) {Entrada};
+        \node[block, right=0.8cm of input] (concat) {Concat+Conv};
+        \node[op, right=0.8cm of concat] (mult) {$\times$};
+        \node[io, right=0.8cm of mult, fill=orange!20] (output) {Salida};
+
+        % Fila 3: Pool W path
+        \node[pool, below=1.2cm of input] (poolw) {Pool W};
+        \node[block, right=0.8cm of poolw] (convw) {Conv+$\sigma$};
+
+        % Flechas horizontales principales
+        \draw[arrow] (concat) -- (mult);
+        \draw[arrow] (mult) -- (output);
+
+        % Input a los pools (bifurcación)
+        \draw[arrow] (input) -- (poolh);
+        \draw[arrow] (input) -- (poolw);
+
+        % Pools a Concat
+        \draw[arrow] (poolh) -- (convh);
+        \draw[arrow] (poolw) -- (convw);
+        \draw[arrow] (convh) -| (mult);
+        \draw[arrow] (convw) -| (mult);
+
+        % Skip connection (por debajo de todo, más abajo)
+        \draw[arrow, dashed, blue!60!black] (input.west) -- ++(-0.4,0) |- ([yshift=-1.0cm]poolw.south) -| (mult.south);
+
+        % Etiqueta (más abajo para no cruzar la línea)
+        \node[below=1.2cm of poolw, font=\tiny, blue!60!black, xshift=1cm] {skip connection};
+
+    \end{tikzpicture}
+    \shorthandon{>}
+    \caption{Mecanismo de Coordinate Attention. La entrada se procesa mediante poolings direccionales (H y W) que preservan información espacial. Las representaciones se concatenan, procesan con convoluciones y activación sigmoide ($\sigma$), y se multiplican con la entrada original (skip connection).}
+    \label{fig:coord_attention}
+\end{figure}
+
+%==============================================================================
+\section{Ensamble de modelos y Test-Time Augmentation}
+\label{sec:ensemble_tta}
+%==============================================================================
+
+Para mejorar la robustez y precisión de las predicciones, se utilizan dos técnicas complementarias: \textbf{ensamble de modelos} y \textbf{Aumento en tiempo de prueba} (TTA).
 
 \subsection{Ensamble de modelos}
 
-El ensamble de modelos consiste en combinar las predicciones de m\'ultiples
-modelos entrenados independientemente para producir una predicci\'on final m\'as
-robusta \cite{dietterich2000ensemble}.
-
-\textbf{Motivaci\'on:} Un modelo individual puede tener errores idiosincr\'aticos
-(sesgos espec\'ificos de su inicializaci\'on, orden de entrenamiento, etc.).
-Combinar m\'ultiples modelos reduce la varianza de predicci\'on, pues los errores
-no correlacionados tienden a cancelarse.
-
-\subsubsection{¿Por qu\'e modelos con la misma arquitectura difieren?}
-
-A\'un cuando se entrena la misma arquitectura (ej., ResNet-18) con los mismos
-hiperpar\'ametros, cada instancia del modelo produce predicciones ligeramente
-diferentes debido a:
-
+Un \textbf{ensamble} consiste en combinar las predicciones de múltiples modelos entrenados de forma independiente. Aunque los modelos compartan la misma arquitectura, cada uno aprende representaciones ligeramente diferentes debido a:
 \begin{itemize}
-    \item \textbf{Inicializaci\'on aleatoria:} Los pesos se inicializan con
-    distribuciones aleatorias, creando puntos de partida distintos en el espacio
-    de par\'ametros.
-
-    \item \textbf{Orden de presentaci\'on:} El shuffle aleatorio de datos en cada
-    \'epoca altera la secuencia de actualizaciones de gradiente.
-
-    \item \textbf{Dropout aleatorio:} Las m\'ascaras de dropout son estoc\'asticas,
-    afectando qu\'e neuronas se desactivan en cada forward pass.
-
-    \item \textbf{Convergencia a m\'inimos locales:} Redes profundas tienen
-    m\'ultiples m\'inimos locales; diferentes entrenamientos convergen a soluciones
-    distintas pero con desempe\~no similar.
+    \item Diferente inicialización de pesos (semilla aleatoria distinta)
+    \item Diferente orden de presentación de los datos durante el entrenamiento
+    \item Diferentes máscaras de dropout durante el entrenamiento
 \end{itemize}
 
-\textbf{Control de aleatoriedad:} Para reproducibilidad, se fijan semillas
-aleatorias diferentes para cada modelo del ensamble.
+Al promediar las predicciones de varios modelos, los errores individuales tienden a cancelarse, resultando en una predicción más estable y precisa. La reducción de varianza es proporcional al número de modelos en el ensamble.
 
-\subsubsection{Estrategia de ensamble utilizada}
-
-En este trabajo se entrena un ensamble de $K=4$ modelos ResNet-18 con semillas
-aleatorias: 123, 321, 111, 666. La predicci\'on final se obtiene mediante
-promedio aritm\'etico de coordenadas:
-
-\begin{equation}
-\hat{\mathbf{L}}_{\text{ens}} = \frac{1}{K} \sum_{k=1}^K \hat{\mathbf{L}}_k,
-\label{eq:ensemble_avg}
-\end{equation}
-
-donde $\hat{\mathbf{L}}_k \in \mathbb{R}^{30}$ es la predicci\'on del modelo $k$.
-
-\textbf{Efecto:} Los errores individuales de cada modelo se promedian, reduciendo
-la desviaci\'on est\'andar del error. Si los errores est\'an incorrelacionados, la
-varianza se reduce por un factor de $1/\sqrt{K}$.
-
-\textbf{Mejora emp\'irica:} En este trabajo, el ensamble de 4 modelos reduce el
-error de puntos de referencia de 4.04 px (mejor modelo individual) a 3.61 px (ensamble),
-representando una mejora del 10.6\%.
+En este trabajo, se utiliza un ensamble de 4 modelos ResNet-18, cada uno entrenado con una semilla aleatoria diferente.
 
 \subsection{Aumento en tiempo de prueba (TTA)}
 
-TTA extiende el concepto de ensamble aplicando transformaciones geom\'etricas o
-fotom\'etricas durante inferencia, prediciendo sobre m\'ultiples versiones
-augmentadas de la imagen, y promediando las predicciones \cite{matsunaga2017tta}.
-
-\textbf{Diferencia con augmentaci\'on de entrenamiento:}
-\begin{itemize}
-    \item \textbf{Entrenamiento:} Aumento de datos aumenta variabilidad del conjunto de datos
-    para mejorar generalizaci\'on.
-    \item \textbf{Inferencia (TTA):} Aumento de datos reduce varianza de predicci\'on
-    al promediar m\'ultiples vistas de la misma imagen.
-\end{itemize}
-
-\subsubsection{Implementaci\'on para regresi\'on de puntos de referencia}
-
-Para puntos de referencia anat\'omicos, la transformaci\'on m\'as efectiva es el flip
-horizontal, aprovechando la simetr\'ia bilateral del t\'orax:
-
-\begin{enumerate}
-    \item \textbf{Predecir en imagen original:} $\hat{\mathbf{L}}_{\text{orig}}$
-
-    \item \textbf{Flip horizontal + Predecir:} Se aplica flip horizontal a la
-    imagen, se predice, y se revierten las coordenadas:
-    \begin{equation}
-    \tilde{x}_i = 1 - x_i, \quad \tilde{y}_i = y_i.
-    \label{eq:tta_flip_coords}
-    \end{equation}
-
-    \item \textbf{Intercambio de pares sim\'etricos:} Debido a la anatom\'ia
-    bilateral, se intercambian los \'indices de puntos de referencia bilaterales:
-    \begin{equation}
-    (L_3 \leftrightarrow L_4), \; (L_5 \leftrightarrow L_6), \; (L_7 \leftrightarrow L_8),
-    \; (L_{12} \leftrightarrow L_{13}), \; (L_{14} \leftrightarrow L_{15}).
-    \label{eq:symmetric_pairs}
-    \end{equation}
-    Esto produce $\hat{\mathbf{L}}_{\text{flip}}$.
-
-    \item \textbf{Promedio:} La predicci\'on final es:
-    \begin{equation}
-    \hat{\mathbf{L}}_{\text{TTA}} = \frac{1}{2}(\hat{\mathbf{L}}_{\text{orig}} + \hat{\mathbf{L}}_{\text{flip}}).
-    \label{eq:tta_avg}
-    \end{equation}
-\end{enumerate}
-
-\textbf{Costo computacional:} TTA con flip horizontal duplica el n\'umero de
-inferencias ($2\times$), pero el impacto en tiempo de ejecuci\'on es negligible
-en procesamiento por lotes.
-
-\textbf{Otras augmentaciones no utilizadas:} Rotaciones o escalados no son
-adecuados para TTA de puntos de referencia, pues alteran la geometr\'ia de forma no trivial
-y requieren transformaciones inversas complejas. El flip horizontal es la \'unica
-transformaci\'on geom\'etrica que preserva la estructura anat\'omica al
-intercambiar pares sim\'etricos.
-
-\section{An\'alisis de forma: GPA}
-\label{sec:gpa}
-
-Dadas $N$ configuraciones $\{\mathbf{X}_i\}_{i=1}^N$ con $n$ puntos de referencia, el GPA
-alinea formas eliminando traslaci\'on, escala y rotaci\'on
-\cite{gower1975generalized,dryden2016statistical}. El centrado se define como:
-
-\begin{equation}
-\tilde{\mathbf{X}}_i = \mathbf{X}_i - \frac{1}{n}\mathbf{1}\mathbf{1}^\top\mathbf{X}_i.
-\label{eq:center_shape}
-\end{equation}
-
-La normalizaci\'on de escala usa la norma de Frobenius:
-
-\begin{equation}
-s_i = \|\tilde{\mathbf{X}}_i\|_F, \quad
-\mathbf{Y}_i = \frac{\tilde{\mathbf{X}}_i}{s_i}.
-\label{eq:scale_shape}
-\end{equation}
-
-La rotaci\'on \`optima se obtiene resolviendo el problema Procrustes
-\cite{schonemann1966generalized}:
-
-\begin{equation}
-\mathbf{R}_i^* = \arg\min_{\mathbf{R}\in SO(2)} \|\mathbf{Y}_i\mathbf{R} -
-\bar{\mathbf{X}}\|_F,
-\label{eq:procrustes_objective}
-\end{equation}
-
-con soluci\'on por SVD:
-
-\begin{equation}
-\mathbf{R}_i^* = \mathbf{V}\mathbf{U}^\top, \quad
-\text{SVD}(\mathbf{Y}_i^\top \bar{\mathbf{X}}) = \mathbf{U}\bm{\Sigma}\mathbf{V}^\top.
-\label{eq:procrustes_svd}
-\end{equation}
-
-La forma can\'onica $\bar{\mathbf{X}}$ se actualiza iterativamente como el
-promedio de las formas alineadas hasta convergencia.
-
-\subsection{Escalado a coordenadas de imagen}
-\label{subsec:canonical_scale}
-
-La forma can\'onica normalizada se escala a $S\times S$ con padding relativo
-$p$:
-
-\begin{equation}
-s = \frac{(1-2p)S}{\max(\Delta x, \Delta y)}, \quad
-\mathbf{X}_{\text{pix}} = s(\bar{\mathbf{X}} - \bar{\mathbf{x}}) + \mathbf{c},
-\label{eq:canonical_scale}
-\end{equation}
-
-donde $\Delta x$ y $\Delta y$ son los rangos de la forma, $\bar{\mathbf{x}}$ es
-el centro de masa, $\mathbf{c}=(S/2, S/2)$ es el centro de la imagen, $S$ es el
-tama\~no objetivo y $p$ el padding relativo.
-
-\section{Triangulaci\'on de Delaunay}
-\label{sec:delaunay}
-
-La triangulaci\'on de Delaunay maximiza el \'angulo m\'inimo y evita tri\'angulos
-degenerados \cite{delaunay1934sphere,berg2008computational}. Su propiedad clave
-es que el circ\'unc\'irculo de cada tri\'angulo no contiene otros puntos de la
-configuraci\'on.
-
-\section{Deformaci\'on af\'in por partes}
-\label{sec:deformacion}
-
-La deformaci\'on af\'in por partes divide la imagen en tri\'angulos y aplica una
-transformaci\'on af\'in por cada uno \cite{wolberg1990digital}. Para un
-tri\'angulo fuente $\{\mathbf{p}_k\}_{k=1}^3$ y destino
-$\{\mathbf{q}_k\}_{k=1}^3$, se busca $\mathbf{A}\in\mathbb{R}^{2\times 2}$ y
-$\mathbf{b}\in\mathbb{R}^2$ tales que:
-
-\begin{equation}
-\mathbf{q}_k = \mathbf{A}\mathbf{p}_k + \mathbf{b}, \quad k=1,2,3.
-\label{eq:affine_tri}
-\end{equation}
-
-De forma equivalente, para coordenadas baric\'entricas
-$\mathbf{x}=\sum_k \alpha_k \mathbf{p}_k$, la imagen deformada es
-$\mathbf{x}'=\sum_k \alpha_k \mathbf{q}_k$, lo que preserva continuidad en el
-interior del tri\'angulo.
-
-\section{Regularizaci\'on geom\'etrica y selecci\'on de caracter\'isticas}
-\label{sec:regularizacion_geometrica}
-
-El proceso de normalizaci\'on geom\'etrica descrito en secciones previas (GPA +
-deformaci\'on) no solo estandariza la pose y escala de las radiograf\'ias, sino que
-act\'ua impl\'icitamente como un mecanismo de regularizaci\'on que gu\'ia al
-clasificador a enfocarse en regiones anat\'omicamente relevantes. Esta secci\'on
-analiza estos efectos desde la perspectiva de aprendizaje autom\'atico.
-
-\subsection{Prior geom\'etrico y deformaci\'on como regularizaci\'on}
-
-\subsubsection{Concepto de prior geom\'etrico}
-
-Un clasificador de CNNs puede, en principio, aprender cualquier patrón
-correlacionado con las etiquetas del conjunto de datos. Esto incluye \textit{shortcuts}
-espurios como marcas hospitalarias, anotaciones en texto, artefactos de
-digitalizaci\'on, o incluso el color de fondo \cite{geirhos2020shortcut}. Estos
-patrones no generalizan a datos fuera de distribuci\'on.
-
-Un \textbf{prior geom\'etrico} es una restricci\'on impl\'icita o expl\'icita que
-limita el espacio de hip\'otesis del modelo, forzando al aprendizaje a enfocarse
-en regiones anat\'omicamente relevantes.
-
-\subsubsection{Deformaci\'on como regularizaci\'on impl\'icita}
-
-El proceso de deformaci\'on act\'ua como un prior geom\'etrico de tres formas:
-
-\begin{enumerate}
-    \item \textbf{Eliminaci\'on de variabilidad geom\'etrica irrelevante:} Al
-    normalizar pose, escala y orientaci\'on, se elimina variabilidad que no est\'a
-    relacionada con la patolog\'ia. El modelo no puede ``hacer trampa''
-    distinguiendo clases por tama\~no o posici\'on del pulmón.
-
-    \item \textbf{Remoci\'on de regiones perif\'ericas:} La deformaci\'on con
-    $\text{margin\_scale}=1.05$ (5\% de expansi\'on desde puntos de referencia) elimina
-    aproximadamente 53\% de la imagen (fill rate $\approx$ 47\%). Las regiones
-    eliminadas incluyen:
-    \begin{itemize}
-        \item Fondo sin informaci\'on diagn\'ostica
-        \item Esquinas con artefactos de adquisici\'on
-        \item Marcas hospitalarias y anotaciones
-    \end{itemize}
-
-    \item \textbf{Estandarizaci\'on de representaci\'on espacial:} Todos los
-    pulmones se alinean a una forma can\'onica. Esto reduce la complejidad de la
-    funci\'on que el clasificador debe aprender: en lugar de ser invariante a
-    transformaciones geom\'etricas (tarea dif\'icil), el clasificador solo necesita
-    reconocer patrones en una configuraci\'on est\'andar.
-\end{enumerate}
-
-\subsubsection{Analog\'ia con Spatial Transformer Networks (STN)}
-
-Spatial Transformer Networks (STN) \cite{jaderberg2015spatial} aprenden
-transformaciones geom\'etricas de forma end-to-end como parte de la red neuronal.
-Una capa STN predice par\'ametros de transformaci\'on (traslaci\'on, rotaci\'on,
-escala) y aplica la transformaci\'on al mapa de caracter\'isticas.
-
-\textbf{Diferencia con este trabajo:}
-\begin{itemize}
-    \item \textbf{STN:} Transformaci\'on impl\'icita aprendida por backpropagation.
-    Es un m\'odulo black-box; no se sabe qu\'e alineaci\'on est\'a aprendiendo.
-
-    \item \textbf{Este trabajo:} Transformaci\'on expl\'icita basada en puntos de referencia
-    anat\'omicos interpretables (v\'ertice pulmonar, base, contorno lateral). La
-    alineaci\'on es inspeccionable y validable por expertos m\'edicos.
-\end{itemize}
-
-\textbf{Ventaja de la alineaci\'on expl\'icita:} Interpretabilidad y control. Un
-experto puede verificar que los puntos de referencia corresponden a estructuras anat\'omicas
-correctas, asegurando que la alineaci\'on tiene sentido cl\'inico.
-
-\subsection{Selecci\'on impl\'icita de caracter\'isticas (feature selection)}
-
-\subsubsection{Concepto de fill rate}
-
-El \textbf{fill rate} se define como la fracci\'on de p\'ixeles no negros en la
-imagen deformada:
-
-\begin{equation}
-\text{Fill rate} = \frac{\#\{(x,y) : I_{\text{warp}}(x,y) > 0\}}{\text{Total de p\'ixeles}}.
-\label{eq:fill_rate}
-\end{equation}
-
-Con $\text{margin\_scale}=1.05$, el fill rate es $\approx 47\%$, lo que implica
-que $\approx 53\%$ de la imagen se elimina (relleno con negro, valor 0).
-
-\subsubsection{Mecanismo de atenci\'on geom\'etrica}
-
-Los mecanismos de atenci\'on convencionales (SE-Net, Coordinate Attention) operan
-en el espacio de caracter\'isticas, reweighting la importancia de canales o
-posiciones espaciales mediante multiplicaci\'on por pesos $\in [0,1]$.
-
-La deformaci\'on act\'ua como un mecanismo de \textbf{atenci\'on geom\'etrica} que opera
-en el espacio de imagen, eliminando completamente (peso = 0) regiones no
-informativas antes de que la red las procese.
-
-\textbf{Ventaja:} Reducir ruido en la entrada. El clasificador no ``desperdicia''
-capacidad representacional aprendiendo a ignorar regiones irrelevantes, pues
-estas ya fueron removidas.
-
-\subsubsection{Trade-off fill rate: informaci\'on vs ruido}
-
-\begin{itemize}
-    \item \textbf{Fill rate alto (95-99\%):} Se preserva casi toda la imagen,
-    incluyendo regiones perif\'ericas. Ventaja: No se pierde informaci\'on
-    potencialmente relevante. Desventaja: Se incluye ruido, artefactos y regiones
-    no diagn\'osticas.
-
-    \item \textbf{Fill rate bajo (40-50\%):} Solo se preserva la regi\'on pulmonar
-    central. Ventaja: Enfoque estricto en regi\'on de inter\'es. Desventaja:
-    Posible p\'erdida de contexto perif\'erico (ej., ensanchamiento de mediastino).
-\end{itemize}
-
-\textbf{Valor \'optimo:} $\text{margin\_scale}=1.05$ fue determinado mediante
-grid search experimental (Sesi\'on 25, comando \texttt{optimize-margin}). Este
-valor balancea la retenci\'on de regi\'on pulmonar completa con eliminaci\'on de
-regiones no informativas.
-
-\subsection{Restricciones soft vs hard en regresi\'on de puntos de referencia}
-
-\subsubsection{Simetr\'ia anat\'omica como restricci\'on}
-
-Los pulmones tienen anatom\'ia bilateral sim\'etrica. Idealmente, puntos de referencia
-bilaterales (ej., $L_3$ y $L_4$) deber\'ian estar a distancia equidistante del
-eje central. Sin embargo, variaciones anat\'omicas naturales (asimetr\'ia de
-h\'emitorax, escoliosis leve) introducen desviaciones.
-
-\textbf{An\'alisis de asimetr\'ia en ground-truth:} En el conjunto de datos de entrenamiento,
-la asimetr\'ia promedio de pares bilaterales es:
-\begin{itemize}
-    \item $(L_3, L_4)$: 5.5 px
-    \item $(L_5, L_6)$: 6.2 px
-    \item $(L_7, L_8)$: 7.9 px
-    \item $(L_{12}, L_{13})$: 6.8 px
-    \item $(L_{14}, L_{15})$: 6.1 px
-\end{itemize}
-
-Esto indica que la simetr\'ia perfecta no existe en datos reales.
-
-\subsubsection{Hard constraint: simetr\'ia perfecta}
-
-Una restricci\'on hard forzar\'ia simetr\'ia exacta:
-
-\begin{equation}
-d(L_{\text{izq}}, \text{eje}) = d(L_{\text{der}}, \text{eje}), \quad \forall \text{par sim\'etrico}.
-\label{eq:hard_symmetry}
-\end{equation}
-
-\textbf{Problema:} El modelo ser\'ia penalizado por asimetr\'ia anat\'omica real,
-forzando predicciones ``ideales'' que no coinciden con el ground-truth.
-
-\subsubsection{Soft constraint: simetr\'ia con margen}
-
-Una restricci\'on soft penaliza solo asimetr\'ia excesiva:
-
-\begin{equation}
-\mathcal{L}_{\text{sym}} = \sum_{\text{pares}} \max\left(0, |d(L_{\text{izq}}) - d(L_{\text{der}})| - \tau\right)^2,
-\label{eq:soft_symmetry}
-\end{equation}
-
-donde $\tau$ es un margen de tolerancia (ej., $\tau=6$ px).
-
-\textbf{Ventaja:} El modelo aprende simetr\'ia realista. Solo se penaliza
-asimetr\'ia mayor a 6 px (valor superior a la asimetr\'ia natural), permitiendo
-flexibilidad dentro del rango anat\'omicamente plausible.
-
-\textbf{Aplicaci\'on en este trabajo:} No se utiliza regularizaci\'on de simetr\'ia
-durante entrenamiento (la arquitectura aprende simetr\'ia impl\'icitamente). Sin
-embargo, el concepto de soft constraint es relevante para trabajos futuros que
-busquen mejorar consistencia geom\'etrica.
-
-\section{Clasificaci\'on de radiograf\'ias}
-\label{sec:mt_clasificacion}
-
-La clasificaci\'on de radiograf\'ias con CNNs ha mostrado resultados
-competitivos en tareas diagn\'osticas, incluyendo detecci\'on de neumon\'ia y
-COVID-19 \cite{rajpurkar2017chexnet,wang2020covidnet}. En este trabajo, el
-clasificador opera sobre im\'agenes normalizadas y produce una predicci\'on en
-$K=3$ clases: COVID-19, Normal y Neumon\'ia Viral. Sea
-$\mathbf{z}\in\mathbb{R}^K$ el vector de logits, la probabilidad se calcula con
-softmax:
-
-\begin{equation}
-p_k = \frac{\exp(z_k)}{\sum_{j=1}^K \exp(z_j)}.
-\label{eq:softmax}
-\end{equation}
-
-La p\'erdida de entrop\'ia cruzada ponderada se define como:
-
-\begin{equation}
-\mathcal{L}_{\text{CE}} = - w_y \log p_y,
-\label{eq:weighted_ce}
-\end{equation}
-
-donde $w_y$ corrige desbalance de clases. Un esquema com\'un es
-$w_k = \frac{N}{K n_k}$, con $n_k$ el n\'umero de muestras de la clase $k$.
-
-\section{M\'etricas de evaluaci\'on}
-\label{sec:metricas}
-
-\subsection{Puntos de referencia}
-El error por punto de referencia se define como la distancia euclidiana en p\'ixeles:
-
-\begin{equation}
-e_i = \left\|(\hat{\mathbf{l}}_i - \mathbf{l}_i)\odot (W,H)\right\|_2.
-\label{eq:pixel_error}
-\end{equation}
-
-El error medio por imagen es $\bar{e} = \frac{1}{n}\sum_{i=1}^n e_i$, y se
-reportan estad\'isticas como media, mediana y percentiles. Tambi\'en se reportan
-errores por punto de referencia y por categor\'ia para identificar patrones sistem\'aticos.
-
-\subsection{Clasificaci\'on}
-Se reportan exactitud y F1 macro/ponderado
-\cite{sokolova2009systematic,grandini2020metrics}:
-
-\begin{equation}
-\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN},
-\label{eq:accuracy}
-\end{equation}
-
-\begin{equation}
-\text{F1} = \frac{2\, \text{Precision}\cdot \text{Recall}}
-{\text{Precision} + \text{Recall}}.
-\label{eq:f1}
-\end{equation}
-
-El F1 macro promedia clases por igual, mientras que el F1 ponderado considera
-el soporte de cada clase. La matriz de confusi\'on permite inspeccionar errores
-por categor\'ia.
-
-En conjunto, estos fundamentos sustentan la metodolog\'ia del sistema y
-permiten interpretar los resultados experimentales presentados en los
-cap\'itulos posteriores.
+\textbf{Aumento en tiempo de prueba} extiende la idea del ensamble a las transformaciones de la imagen. En lugar de predecir solo sobre la imagen original, se aplican transformaciones (como el reflejo horizontal) y se predicen sobre las versiones transformadas. Luego se promedian todas las predicciones.
+
+Para la tarea de detección de puntos de referencia con reflejo horizontal, es necesario un paso adicional: antes de promediar, se deben intercambiar las coordenadas de los \textbf{puntos de referencia simétricos} (izquierda-derecha) y reflejar las coordenadas X. Por ejemplo, si L3 está en el pulmón izquierdo y L4 en el derecho, al reflejar la imagen estos puntos de referencia intercambian posiciones.
+
+La combinación de ensamble y TTA proporciona predicciones más robustas, especialmente en casos donde la imagen original tiene características ambiguas o ruido.
+
+\begin{figure}[htbp]
+    \centering
+    \shorthandoff{>}
+    \begin{tikzpicture}[
+        node distance=0.6cm,
+        box/.style={rectangle, draw, fill=blue!20, minimum width=1.5cm, minimum height=0.7cm, align=center, font=\scriptsize},
+        img/.style={rectangle, draw, fill=gray!20, minimum width=1.3cm, minimum height=0.7cm, align=center, font=\scriptsize},
+        op/.style={rectangle, draw, fill=yellow!30, minimum width=1.4cm, minimum height=0.7cm, align=center, font=\scriptsize},
+        pred/.style={rectangle, draw, fill=green!20, minimum width=1.3cm, minimum height=0.7cm, align=center, font=\scriptsize},
+        arrow/.style={->, >=stealth, thick}
+    ]
+        % === RAMA SUPERIOR ===
+        \node[img] (img1) {Original};
+        \node[box, right=0.5cm of img1] (ens1) {Ensamble};
+        \node[pred, right=0.5cm of ens1] (pred1) {4 predicciones};
+
+        % === RAMA INFERIOR ===
+        \node[img, below=1.2cm of img1] (img2) {Reflejada};
+        \node[box, right=0.5cm of img2] (ens2) {Ensamble};
+        \node[pred, right=0.5cm of ens2] (pred2) {4 predicciones};
+        \node[op, right=0.5cm of pred2] (swap) {Intercambio};
+
+        % === PROMEDIO Y SALIDA (a la derecha de swap, centrado entre filas) ===
+        \node[op, right=0.5cm of swap, yshift=0.6cm] (avg) {Promedio};
+        \node[pred, right=0.5cm of avg, fill=orange!30] (final) {Resultado};
+
+        % === FLECHAS ===
+        \draw[arrow] (img1) -- (ens1);
+        \draw[arrow] (ens1) -- (pred1);
+        \draw[arrow] (pred1.east) -- ++(0.3,0) |- (avg.west);
+
+        \draw[arrow] (img1) -- node[left, font=\tiny] {flip} (img2);
+        \draw[arrow] (img2) -- (ens2);
+        \draw[arrow] (ens2) -- (pred2);
+        \draw[arrow] (pred2) -- (swap);
+        \draw[arrow] (swap) -- (avg);
+
+        \draw[arrow] (avg) -- (final);
+
+    \end{tikzpicture}
+    \shorthandon{>}
+    \caption{Inferencia con ensamble y TTA. La imagen original y su reflejo se procesan por un ensamble de 4 modelos. Las predicciones del reflejo requieren intercambiar puntos de referencia simétricos (Swap) antes de promediar las 8 predicciones.}
+    \label{fig:ensemble_tta}
+\end{figure}
+
+%==============================================================================
+\section*{Síntesis}
+%==============================================================================
+
+Este capítulo presentó los conceptos fundamentales que sustentan el sistema propuesto: representación anatómica mediante puntos de referencia, técnicas de preprocesamiento (CLAHE y SAHS), arquitecturas de aprendizaje profundo (ResNet con Coordinate Attention), análisis de forma (GPA), normalización geométrica (deformación afín por partes), y estrategias de robustez (ensamble y TTA).
+
+El siguiente capítulo presenta una revisión crítica del estado del arte, analizando trabajos relacionados en detección de COVID-19, localización de puntos de referencia, y normalización geométrica, identificando las brechas que motivan la propuesta de este trabajo.

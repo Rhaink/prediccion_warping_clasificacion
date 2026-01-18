@@ -216,7 +216,7 @@ def generate_figure(
             true_label_es = labels_es.get(example["true_label"], example["true_label"])
             pred_label_es = labels_es.get(example["pred_label"], example["pred_label"])
 
-            title = f"{true_label_es} → {pred_label_es}\nConf: {example['confidence']:.0%}"
+            title = f"{true_label_es} → {pred_label_es}"
             ax.set_title(title, fontsize=11, pad=8)
 
         ax.axis('off')

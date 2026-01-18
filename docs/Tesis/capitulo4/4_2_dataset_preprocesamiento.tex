@@ -78,6 +78,13 @@ La herramienta desarrollada implementa un proceso de anotación en dos fases que
 
 \begin{figure}[htbp]
     \centering
+    \includegraphics[width=0.97\textwidth]{Figures/F4.21_proceso_anotacion.png}
+    \caption{Diagrama del proceso de anotación de puntos de referencia. Se muestran las dos fases: generación automática a partir de tres clicks y ajuste manual con validación visual antes de guardar las coordenadas en CSV.}
+    \label{fig:proceso_anotacion}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
     \includegraphics[width=0.85\textwidth]{Figures/F4.2b_interfaz_etiquetado.png}
     \caption{Interfaz de la herramienta de anotación de puntos de referencia. La ventana principal muestra la radiografía con una línea vertical central de referencia. Los landmarks se visualizan como puntos verdes conectados por líneas rojas que definen el contorno pulmonar.}
     \label{fig:herramienta_etiquetado}
@@ -147,6 +154,13 @@ Las imágenes radiográficas requieren preprocesamiento para mitigar las variaci
 
 \subsubsection{Mejora de Contraste mediante CLAHE}
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.4_clahe_comparacion.png}
+    \caption{Efecto del preprocesamiento CLAHE. Imagen original con bajo contraste en la región pulmonar. Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 4$, mostrando mejor definición de estructuras pulmonares, Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 8$.}
+    \label{fig:clahe_comparison}
+\end{figure}
+
 Se aplica el algoritmo \textit{Contrast Limited Adaptive Histogram Equalization} (CLAHE) \cite{pizer1987adaptive} para mejorar el contraste local de las imágenes. A diferencia de la ecualización de histograma global, CLAHE opera sobre regiones locales (tiles) y limita la amplificación de contraste para evitar el realce excesivo de ruido.
 
 Los parámetros utilizados fueron determinados experimentalmente:
@@ -157,13 +171,6 @@ Los parámetros utilizados fueron determinados experimentalmente:
 \end{itemize}
 
 La Figura \ref{fig:clahe_comparison} muestra el efecto del preprocesamiento CLAHE sobre una radiografía de ejemplo.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{Figures/F4.4_clahe_comparacion.png}
-    \caption{Efecto del preprocesamiento CLAHE. (a) Imagen original con bajo contraste en la región pulmonar. (b) Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 4$, mostrando mejor definición de estructuras pulmonares, (c) Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 8$.}
-    \label{fig:clahe_comparison}
-\end{figure}
 
 \subsubsection{Redimensionamiento}
 
@@ -183,6 +190,17 @@ El conjunto de datos se divide en tres subconjuntos, entrenamiento, validación 
     \item \textbf{Validación (15\%):} Utilizado para selección de hiperparámetros.
     \item \textbf{Prueba (10\%):} Reservado exclusivamente para la evaluación final del modelo.
 \end{itemize}
+
+La Figura \ref{fig:division_dataset} resume la división estratificada por clase y la
+proporción asignada a cada subconjunto.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.17_division_dataset.png}
+    \caption{Esquema de la división estratificada del conjunto anotado en entrenamiento,
+    validación y prueba, preservando las proporciones por clase.}
+    \label{fig:division_dataset}
+\end{figure}
 
 La Tabla \ref{tab:division_splits} presenta la distribución resultante para el subconjunto anotado con puntos de referencia (957 imágenes).
 

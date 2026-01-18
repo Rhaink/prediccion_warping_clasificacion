@@ -1,0 +1,644 @@
+% =============================================================================
+% GLOSARIO ACADÉMICO
+% Tesis de Maestría en Ingeniería Electrónica
+% Normalización geométrica y detección de COVID-19 mediante landmarks anatómicos
+% =============================================================================
+
+\chapter*{Glosario}
+\addcontentsline{toc}{chapter}{Glosario}
+
+Este glosario presenta las definiciones de los términos técnicos, conceptos científicos y acrónimos utilizados en la presente tesis. Los términos se organizan alfabéticamente, y los acrónimos se presentan en una sección separada al final del documento.
+
+% =============================================================================
+\section*{A}
+% =============================================================================
+
+\textbf{Alineación geométrica}
+\\
+Proceso de transformación de imágenes para que estructuras anatómicas correspondientes ocupen posiciones consistentes en el espacio de coordenadas, eliminando variaciones de posición, escala y orientación.
+
+\textbf{Aprendizaje por transferencia} (\textit{Transfer Learning})
+\\
+Técnica de aprendizaje profundo que reutiliza una red neuronal entrenada en una tarea para resolver otra tarea relacionada, aprovechando el conocimiento previo contenido en los pesos preentrenados. En este trabajo se utiliza ResNet-18 preentrenada en ImageNet como extractor de características para radiografías de tórax.
+
+\textbf{Aumento de datos} (\textit{Data Augmentation})
+\\
+Técnica que crea variaciones artificiales de las imágenes de entrenamiento mediante transformaciones controladas (reflejo horizontal, rotación, desplazamiento) para aumentar la diversidad del conjunto de datos y mejorar la generalización del modelo.
+
+% =============================================================================
+\section*{C}
+% =============================================================================
+
+\textbf{Cabeza de regresión} (\textit{Regression Head})
+\\
+Componente final de una red neuronal que transforma las características extraídas en predicciones numéricas. En este trabajo, la cabeza de regresión convierte el mapa de características de ResNet-18 (7×7×512) en 30 coordenadas normalizadas que representan los 15 puntos de referencia anatómicos.
+
+\textbf{Centroide}
+\\
+Punto geométrico que representa el centro de masa de una configuración de puntos, calculado como el promedio de todas las coordenadas. Utilizado en GPA para el paso de centrado que elimina diferencias de traslación entre formas.
+
+\textbf{Características espurias} (\textit{Shortcut Learning})
+\\
+Patrones no relacionados con la patología (etiquetas hospitalarias, marcadores de lateralidad, artefactos de los bordes) que un modelo de clasificación aprende a explotar como atajos, en lugar de aprender características diagnósticas genuinas. Este trabajo demuestra que imágenes originales sin procesar presentan este problema.
+
+\textbf{CLAHE} (\textit{Contrast Limited Adaptive Histogram Equalization})
+\\
+Algoritmo de mejora de contraste que opera de forma local sobre regiones rectangulares (\textit{tiles}), aplicando ecualización de histograma con un límite de amplificación para evitar realce excesivo de ruido. Utilizado en el preprocesamiento de radiografías antes de la predicción de landmarks.
+\\
+\textit{Parámetros}: clip limit = 2.0, tile size = 4×4 píxeles.
+
+\textbf{Conjunto de entrenamiento} (\textit{Training Set})
+\\
+Subconjunto del dataset (75\% en este trabajo) utilizado para optimizar los parámetros del modelo mediante descenso de gradiente.
+
+\textbf{Conjunto de prueba} (\textit{Test Set})
+\\
+Subconjunto del dataset (10\% en este trabajo) reservado exclusivamente para la evaluación final del sistema, sin participación en decisiones de entrenamiento o selección de hiperparámetros.
+
+\textbf{Conjunto de validación} (\textit{Validation Set})
+\\
+Subconjunto del dataset (15\% en este trabajo) utilizado para monitorear el rendimiento durante el entrenamiento y aplicar criterios de parada temprana, sin participar en la optimización de pesos.
+
+\textbf{Conexiones residuales} (\textit{Skip Connections})
+\\
+Arquitectura propuesta en ResNet que permite que la información fluya directamente entre capas no consecutivas mediante la suma $y = F(x) + x$, donde $x$ es la entrada y $F(x)$ la transformación aprendida. Facilita el entrenamiento de redes profundas al mitigar el desvanecimiento de gradiente.
+
+\textbf{Contorno pulmonar}
+\\
+Borde que delimita la silueta de la región pulmonar en una radiografía de tórax. En este trabajo se representa mediante 15 puntos de referencia anatómicos distribuidos sobre el contorno.
+
+\textbf{Convolución}
+\\
+Operación matemática fundamental en redes neuronales convolucionales que aplica un kernel sobre la imagen de entrada mediante producto punto deslizante, extrayendo características locales como bordes, texturas y patrones. Preserva las relaciones espaciales entre píxeles vecinos.
+
+\textbf{Coordinate Attention}
+\\
+Mecanismo de atención diseñado para tareas de localización que preserva información espacial procesando de forma separada las dimensiones horizontal y vertical, generando mapas de atención direccionales. Integrado en el modelo de puntos de referencia para preservar información posicional.
+
+\textbf{COVID-19}
+\\
+Enfermedad infecciosa causada por el virus SARS-CoV-2, caracterizada en radiografías de tórax por opacidades en vidrio esmerilado, consolidaciones y patrones bilaterales. Una de las tres clases diagnósticas clasificadas en este trabajo.
+
+\textbf{COVID-19 Radiography Database}
+\\
+Conjunto de datos público de 15,153 radiografías posteroanterior de tórax organizadas en tres categorías (COVID-19: 3,616; Normal: 10,192; Neumonía Viral: 1,345), desarrollado por Qatar University y colaboradores.
+
+\textbf{Cosine Annealing}
+\\
+Esquema de ajuste de tasa de aprendizaje que varía el valor siguiendo una función cosenoidal, disminuyendo gradualmente desde un valor máximo hasta un mínimo, permitiendo exploración amplia inicial y refinamiento fino posterior. Utilizado para optimizar la convergencia del entrenamiento.
+
+\textbf{CSV} (\textit{Comma-Separated Values} / Valores Separados por Comas)
+\\
+Formato de archivo de texto plano que almacena datos tabulares donde cada línea representa una fila y los valores de las columnas están separados por comas. Utilizado en este trabajo para almacenar las anotaciones manuales de coordenadas de puntos de referencia anatómicos (archivo \texttt{coordenadas\_maestro.csv} con 957 radiografías anotadas).
+
+% =============================================================================
+\section*{D}
+% =============================================================================
+
+\textbf{Desbalance de clases}
+\\
+Fenómeno donde las categorías de un conjunto de datos tienen diferente número de muestras. En este trabajo, la categoría Normal (67\%) predomina sobre COVID-19 (24\%) y Neumonía Viral (9\%), requiriendo compensación mediante pesos por clase durante el entrenamiento.
+
+\textbf{Deformación afín por partes} (\textit{Piecewise Affine Transformation / Warping})
+\\
+Técnica de transformación geométrica que divide la imagen en regiones (triángulos) y aplica transformaciones afines independientes a cada región, permitiendo deformación local que se adapta a variaciones anatómicas inter-paciente preservando la estructura triangular.
+
+\textbf{Desvanecimiento de gradiente}
+\\
+Problema en redes neuronales profundas donde los gradientes se vuelven extremadamente pequeños durante la propagación hacia atrás, dificultando el entrenamiento de capas iniciales. Resuelto en ResNet mediante conexiones residuales.
+
+\textbf{Dropout}
+\\
+Técnica de regularización que desactiva aleatoriamente un porcentaje de neuronas durante el entrenamiento, obligando al modelo a no depender excesivamente de características específicas y mejorando la generalización. Utilizado con probabilidades de 0.3 y 0.15 en la cabeza de regresión.
+
+% =============================================================================
+\section*{E}
+% =============================================================================
+
+\textbf{Ecualización de histograma}
+\\
+Transformación de intensidades que redistribuye los valores de píxeles para utilizar todo el rango dinámico disponible, mejorando el contraste global de la imagen.
+
+\textbf{Eje central}
+\\
+Línea vertical que conecta los puntos de referencia L1 (superior) → L9 → L10 → L11 → L2 (inferior), representando la línea media del tórax a lo largo de la columna vertebral, utilizada como referencia para la estructura de landmarks.
+
+\textbf{Escala de grises} (\textit{Grayscale})
+\\
+Representación de imágenes digitales donde cada píxel codifica únicamente intensidad luminosa (1 canal), sin información de color, con valores típicamente en el rango 0-255. Las radiografías de tórax son naturalmente imágenes en escala de grises que se replican a 3 canales para compatibilidad con redes preentrenadas.
+
+\textbf{Ensamble} (\textit{Ensemble})
+\\
+Combinación de predicciones de múltiples modelos entrenados de forma independiente (con diferentes semillas aleatorias) mediante promedio, reduciendo la varianza y mejorando la precisión. Este trabajo utiliza ensamble de 4 modelos ResNet-18.
+
+\textbf{Entropía cruzada} (\textit{Cross-Entropy})
+\\
+Función de pérdida para clasificación multiclase que mide la divergencia entre la distribución de probabilidades predicha y la real, penalizando predicciones que asignan baja probabilidad a la clase correcta. Utilizada con pesos por clase para compensar desbalance.
+
+\textbf{Épocas}
+\\
+Número de pasadas completas por el conjunto de entrenamiento durante el proceso de optimización. Este trabajo utiliza hasta 50 épocas para el clasificador y 100 para el modelo de landmarks (fase 2), con parada temprana.
+
+\textbf{Error en píxeles}
+\\
+Métrica para evaluar la precisión de predicción de puntos de referencia, definida como la distancia euclidiana entre las coordenadas predichas y las anotadas manualmente: $\text{Error} = \sqrt{(x_{\text{pred}} - x_{\text{real}})^2 + (y_{\text{pred}} - y_{\text{real}})^2}$.
+
+\textbf{Escalado}
+\\
+Transformación geométrica que modifica el tamaño de una configuración de puntos. En GPA, se normaliza cada forma para que tenga norma unitaria, eliminando diferencias de escala.
+
+\textbf{Estratificación}
+\\
+Técnica de división de dataset que mantiene las proporciones de clases en cada subconjunto (entrenamiento, validación, prueba), crítica cuando existe desbalance para asegurar representación adecuada de todas las categorías.
+
+\textbf{Exactitud} (\textit{Accuracy})
+\\
+Métrica principal de evaluación que mide la proporción de predicciones correctas sobre el total: $\text{Accuracy} = \frac{\text{Predicciones correctas}}{\text{Total}}$. El sistema propuesto alcanza 98.10\% de exactitud.
+
+\textbf{Extractor de características} (\textit{Feature Extractor / Backbone})
+\\
+Componente de una red neuronal (típicamente capas convolucionales) que procesa la imagen de entrada y produce representaciones de alto nivel. En este trabajo se utiliza ResNet-18 preentrenado en ImageNet.
+
+% =============================================================================
+\section*{F}
+% =============================================================================
+
+\textbf{F1-Score}
+\\
+Métrica que combina precisión y sensibilidad mediante su media armónica: $\text{F1} = 2 \cdot \frac{\text{Precisión} \cdot \text{Sensibilidad}}{\text{Precisión} + \text{Sensibilidad}}$, proporcionando un balance entre ambos objetivos.
+
+\textbf{F1-Score Macro}
+\\
+Promedio no ponderado del F1-Score de cada clase, tratando todas las categorías con igual importancia independientemente del número de muestras. Utilizado para evaluar rendimiento equilibrado en presencia de desbalance.
+
+\textbf{F1-Score Ponderado} (\textit{Weighted F1-Score})
+\\
+Promedio del F1-Score por clase ponderado por el número de muestras de cada categoría, reflejando el desempeño en el contexto del desbalance.
+
+\textbf{Falsos Negativos (FN)}
+\\
+Casos de una clase positiva que el modelo clasifica incorrectamente como negativos. En detección de COVID-19, un falso negativo es un paciente positivo clasificado como Normal o Neumonía Viral.
+
+\textbf{Falsos Positivos (FP)}
+\\
+Casos de clases negativas que el modelo clasifica incorrectamente como positivos. En detección de COVID-19, un falso positivo es un paciente Normal o con Neumonía Viral clasificado como COVID-19.
+
+\textbf{Fill rate} (Tasa de cobertura)
+\\
+Porcentaje de píxeles no negros en una imagen normalizada geométricamente, indicando qué proporción de la imagen contiene información de la región pulmonar versus fondo. Este trabajo alcanza ~47\% de fill rate.
+
+\textbf{Forma estándar} (Forma canónica)
+\\
+Configuración promedio de puntos de referencia calculada mediante GPA que representa la forma típica de los pulmones en el conjunto de entrenamiento, utilizada como plantilla de destino para la normalización geométrica.
+
+\textbf{Función de activación}
+\\
+Transformación no lineal aplicada a las salidas de capas neuronales para introducir capacidad de representación no lineal. Ejemplos: ReLU, Sigmoid, Softmax.
+
+% =============================================================================
+\section*{G}
+% =============================================================================
+
+\textbf{Global Average Pooling}
+\\
+Operación de reducción que calcula el promedio de cada canal de características sobre todas las posiciones espaciales, condensando un mapa de características (e.g., 7×7×512) en un vector (512). Utilizado en la cabeza de regresión.
+
+\textbf{GPA} (\textit{Generalized Procrustes Analysis} / Análisis Procrustes Generalizado)
+\\
+Método estadístico para alinear múltiples configuraciones de puntos eliminando diferencias de traslación, escala y rotación mediante un proceso iterativo que calcula una forma promedio por centrado, normalización y rotación óptima (SVD).
+\\
+\textit{Parámetros}: tolerancia $\tau = 10^{-8}$, máximo 100 iteraciones.
+
+\textbf{GPU} (\textit{Graphics Processing Unit} / Unidad de Procesamiento Gráfico)
+\\
+Procesador especializado diseñado originalmente para renderizado gráfico, utilizado en aprendizaje profundo por su capacidad de realizar miles de operaciones matemáticas en paralelo, acelerando significativamente el entrenamiento e inferencia de redes neuronales.
+
+\textbf{Gradiente}
+\\
+Vector de derivadas parciales de la función de pérdida respecto a los parámetros del modelo, que indica la dirección de mayor incremento. Durante el entrenamiento, se actualiza en dirección opuesta al gradiente (descenso de gradiente).
+
+\textbf{Ground truth}
+\\
+Anotaciones de referencia creadas manualmente por expertos que sirven como etiquetas verdaderas para entrenamiento y evaluación. En este trabajo, 957 imágenes tienen anotaciones manuales de 15 puntos de referencia.
+
+\textbf{Group Normalization} (Normalización por Grupos)
+\\
+Técnica de normalización que divide los canales en grupos y normaliza dentro de cada grupo, independiente del tamaño de lote. Utilizada en la cabeza de regresión como alternativa a Batch Normalization para estabilidad con lotes pequeños.
+
+% =============================================================================
+\section*{H}
+% =============================================================================
+
+\textbf{Hiperparámetros}
+\\
+Valores de configuración que definen el comportamiento del modelo y del proceso de entrenamiento, establecidos antes de iniciar el entrenamiento (tasa de aprendizaje, tamaño de lote, número de épocas, etc.), a diferencia de los parámetros que se aprenden automáticamente.
+
+% =============================================================================
+\section*{I}
+% =============================================================================
+
+\textbf{ImageNet}
+\\
+Conjunto de datos con más de un millón de imágenes naturales organizadas en 1,000 categorías, utilizado ampliamente para preentrenamiento de redes convolucionales mediante aprendizaje por transferencia.
+
+\textbf{Inferencia}
+\\
+Proceso de aplicar un modelo entrenado a nuevos datos para generar predicciones, sin actualizar los parámetros del modelo.
+
+\textbf{Interpolación bilineal}
+\\
+Método de interpolación que estima el valor de un píxel en una posición no entera promediando los valores de los cuatro píxeles vecinos, ponderados por la distancia. Utilizado durante la deformación afín por partes para obtener transiciones suaves.
+
+\textbf{Internal covariate shift}
+\\
+Fenómeno donde las distribuciones de las activaciones internas de una red neuronal cambian constantemente durante el entrenamiento a medida que se actualizan los pesos, dificultando la convergencia. Mitigado por Batch Normalization.
+
+% =============================================================================
+\section*{K}
+% =============================================================================
+
+\textbf{Kernel} (Núcleo convolucional / Filtro)
+\\
+Matriz de pesos pequeña (típicamente 3×3, 5×5 o 7×7) que se desliza sobre la imagen de entrada durante la operación de convolución, realizando producto punto en cada posición para extraer características específicas. Cada kernel aprende a detectar patrones particulares como bordes, texturas o formas.
+
+% =============================================================================
+\section*{L}
+% =============================================================================
+
+\textbf{Landmarks} (Puntos de referencia anatómicos)
+\\
+Puntos de control sobre la silueta pulmonar que representan posiciones geométricas, no estructuras anatómicas específicas. En este trabajo, 15 puntos definen el contorno pulmonar bilateral: eje central (L1, L9, L10, L11, L2 a lo largo de la línea media), contorno izquierdo (L12, L3, L5, L7, L14) y contorno derecho (L13, L4, L6, L8, L15). Estos puntos sirven como base para la normalización geométrica mediante deformación afín por partes.
+
+\textbf{Logits}
+\\
+Valores numéricos crudos en la capa de salida de una red neuronal antes de aplicar la función de activación softmax. Representan los puntajes no normalizados para cada clase, que posteriormente se convierten en probabilidades mediante softmax.
+
+% =============================================================================
+\section*{M}
+% =============================================================================
+
+\textbf{Margin scale} (Escala de margen)
+\\
+Factor de expansión aplicado al centroide de los landmarks para determinar la región de recorte durante la deformación. El valor óptimo validado experimentalmente es 1.05 (5\% de expansión), almacenado en GROUND\_TRUTH.json.
+
+\textbf{Matriz de confusión}
+\\
+Tabla que presenta la distribución completa de predicciones versus categorías reales, mostrando en la diagonal las clasificaciones correctas y fuera de ella los errores específicos entre pares de clases.
+
+\textbf{MaxPool} (\textit{Max Pooling})
+\\
+Operación de reducción espacial que selecciona el valor máximo de cada región, utilizada para disminuir dimensionalidad preservando características prominentes y proporcionando invariancia a pequeñas traslaciones.
+
+\textbf{Mecanismo de atención}
+\\
+Componente de red neuronal que aprende a enfocar selectivamente regiones relevantes de la entrada, ponderando la importancia de diferentes características o posiciones espaciales.
+
+% =============================================================================
+\section*{N}
+% =============================================================================
+
+\textbf{Neumonía}
+\\
+Inflamación del tejido pulmonar causada por infección, caracterizada en radiografías por opacidades, consolidaciones e infiltrados. Las categorías COVID-19 y Neumonía Viral son dos tipos específicos de neumonía clasificados en este trabajo.
+
+\textbf{Neumonía Viral}
+\\
+Neumonía causada por virus distintos a SARS-CoV-2, presentando patrones radiográficos similares pero diferenciables de COVID-19. Representa el 9\% del dataset (1,345 imágenes) y la clase minoritaria.
+
+\textbf{Normal}
+\\
+Radiografía de paciente sin patología pulmonar aparente, representando la clase mayoritaria (67\%, 10,192 imágenes) en el dataset.
+
+\textbf{Normalización de contraste}
+\\
+Proceso de ajustar las intensidades de una imagen para mejorar la visibilidad de estructuras relevantes, mitigando variaciones introducidas por diferentes equipos de adquisición y condiciones de exposición.
+
+\textbf{Normalización geométrica}
+\\
+Proceso de transformación de imágenes a una configuración espacial estándar mediante detección de landmarks y deformación afín por partes, eliminando variabilidad de posición, escala, orientación y deformación local no relacionada con patología.
+
+% =============================================================================
+\section*{O}
+% =============================================================================
+
+\textbf{OpenCV} (\textit{Open Source Computer Vision Library})
+\\
+Biblioteca de código abierto especializada en visión por computadora y procesamiento de imágenes, que proporciona implementaciones eficientes de algoritmos para transformaciones geométricas, mejora de contraste, detección de características y manipulación de imágenes. Utilizada en el preprocesamiento y deformación de radiografías.
+
+\textbf{Optimizador Adam}
+\\
+Algoritmo de optimización que adapta la tasa de aprendizaje para cada parámetro combinando momento y estimación de segundo momento de los gradientes. Utilizado en este trabajo con parámetros por defecto ($\beta_1=0.9$, $\beta_2=0.999$).
+
+% =============================================================================
+\section*{P}
+% =============================================================================
+
+\textbf{Pares simétricos}
+\\
+Puntos de referencia bilateralmente simétricos que corresponden a posiciones equivalentes en pulmones izquierdo y derecho: (L3, L4), (L5, L6), (L7, L8), (L12, L13), (L14, L15). Utilizados durante Test-Time Augmentation para corregir predicciones después de reflejo horizontal.
+
+\textbf{Parada temprana} (\textit{Early Stopping})
+\\
+Mecanismo de regularización que detiene el entrenamiento cuando el rendimiento en el conjunto de validación deja de mejorar durante un número de épocas consecutivas (paciencia), evitando sobreajuste y conservando el modelo con mejor rendimiento.
+
+\textbf{Padding} (Relleno)
+\\
+Técnica que agrega píxeles adicionales (típicamente con valor cero) en los bordes de la imagen o mapa de características antes de aplicar convolución, permitiendo preservar las dimensiones espaciales originales y evitar pérdida de información en los bordes.
+
+\textbf{Píxel}
+\\
+Unidad básica de una imagen digital, representando un punto con valores de intensidad (escala de grises) o color (RGB). El término proviene de "picture element" (elemento de imagen).
+
+\textbf{PNG} (\textit{Portable Network Graphics})
+\\
+Formato de archivo de imagen sin pérdida que soporta compresión, transparencia y profundidad de color de hasta 48 bits. Ampliamente utilizado para almacenar radiografías digitales y visualizaciones de resultados por su calidad sin degradación y compatibilidad universal.
+
+\textbf{Planificador} (\textit{Learning Rate Scheduler})
+\\
+Mecanismo que ajusta dinámicamente la tasa de aprendizaje durante el entrenamiento según una estrategia predefinida (Cosine Annealing, Step Decay, etc.), optimizando la convergencia y mejorando el rendimiento final del modelo.
+
+\textbf{Pooling} (Agrupamiento)
+\\
+Operación de reducción espacial que disminuye la dimensionalidad de mapas de características preservando información relevante. Tipos: Max Pooling (selecciona máximo), Average Pooling (calcula promedio).
+
+\textbf{Precisión} (\textit{Precision})
+\\
+Métrica que mide, de todas las predicciones positivas para una clase, qué proporción son correctas: $\text{Precisión} = \frac{VP}{VP + FP}$. Relevante cuando el costo de falsos positivos es alto.
+
+\textbf{Preprocesamiento}
+\\
+Conjunto de transformaciones aplicadas a las imágenes antes del procesamiento principal (mejora de contraste, redimensionamiento, normalización) para estandarizar la entrada y mejorar la efectividad del modelo.
+
+\textbf{Puntos de referencia} $\rightarrow$ Ver \textit{Landmarks}
+
+\textbf{PyTorch}
+\\
+Framework de código abierto para aprendizaje profundo desarrollado por Meta AI, que proporciona estructuras de datos tensoriales con aceleración por GPU, diferenciación automática y herramientas para construcción, entrenamiento y evaluación de redes neuronales. Utilizado como base de implementación en este trabajo.
+
+% =============================================================================
+\section*{R}
+% =============================================================================
+
+\textbf{Radiografía de tórax}
+\\
+Imagen médica obtenida mediante exposición a rayos X que visualiza estructuras torácicas (pulmones, corazón, huesos), utilizada para diagnóstico de patologías pulmonares.
+
+\textbf{Radiografía posteroanterior (PA)}
+\\
+Proyección radiográfica donde el haz de rayos X atraviesa el cuerpo del paciente de posterior a anterior, con el detector colocado frente al pecho. Estándar para radiografías de tórax de pie.
+
+\textbf{Región pulmonar}
+\\
+Área de la radiografía que contiene el tejido pulmonar, delimitada por el contorno pulmonar definido mediante los 15 landmarks en este trabajo.
+
+\textbf{Reflejo horizontal} (\textit{Horizontal Flip})
+\\
+Transformación de imagen que invierte la imagen a lo largo del eje vertical, utilizada como técnica de aumento de datos y en Test-Time Augmentation. Requiere intercambio de pares simétricos de landmarks para mantener consistencia anatómica.
+
+\textbf{Regularización}
+\\
+Conjunto de técnicas para prevenir sobreajuste y mejorar generalización, incluyendo dropout, aumento de datos, parada temprana y penalizaciones sobre parámetros.
+
+\textbf{ReLU} (\textit{Rectified Linear Unit})
+\\
+Función de activación no lineal definida como $f(x) = \max(0, x)$, que elimina valores negativos. Utilizada ampliamente en redes convolucionales por su eficiencia computacional y mitigación de desvanecimiento de gradiente.
+
+\textbf{ResNet} (\textit{Residual Network})
+\\
+Familia de arquitecturas de redes neuronales profundas que utilizan conexiones residuales para facilitar el entrenamiento. Propuesta por He et al. (2016).
+
+\textbf{ResNet-18}
+\\
+Variante de ResNet con 18 capas (11.2 millones de parámetros), utilizada en este trabajo como extractor de características para landmarks y como clasificador de enfermedades pulmonares debido a su balance entre capacidad y eficiencia.
+
+\textbf{RGB} (\textit{Red, Green, Blue})
+\\
+Modelo de representación de color que codifica cada píxel mediante tres canales (Rojo, Verde, Azul). Las radiografías de tórax son imágenes en escala de grises (un canal) que se replican a 3 canales para compatibilidad con redes preentrenadas en ImageNet.
+
+\textbf{Rotación óptima}
+\\
+Transformación de rotación que minimiza la distancia entre dos configuraciones de puntos, calculada mediante descomposición en valores singulares (SVD). Utilizada en GPA para el paso de alineación rotacional.
+
+\textbf{RT-PCR} (\textit{Reverse Transcription Polymerase Chain Reaction})
+\\
+Reacción en Cadena de la Polimerasa con Transcripción Inversa. Prueba molecular de laboratorio considerada el estándar de oro para diagnóstico de COVID-19, que detecta material genético viral (ARN) mediante amplificación. Las radiografías de tórax complementan este diagnóstico proporcionando evaluación de severidad pulmonar.
+
+% =============================================================================
+\section*{S}
+% =============================================================================
+
+\textbf{SAHS} (\textit{Statistical Asymmetrical Histogram Stretching})
+\\
+Método de mejora de contraste diseñado para histogramas asimétricos que calcula límites de estiramiento diferenciados según la distribución de intensidades por encima y por debajo de la media: $I_{max} = \mu + 2.5\sigma_+$, $I_{min} = \mu - 2.0\sigma_-$.
+
+\textbf{Semilla aleatoria} (\textit{Random Seed})
+\\
+Valor inicial que controla la generación de números pseudoaleatorios, permitiendo reproducibilidad de experimentos. Este trabajo utiliza semilla fija (42) para particiones de datos y diferentes semillas (123, 321, 111, 666) para modelos del ensamble.
+
+\textbf{Sensibilidad} (\textit{Recall / Sensitivity})
+\\
+Métrica que mide, de todos los casos reales de una clase, qué proporción detecta el sistema: $\text{Sensibilidad} = \frac{VP}{VP + FN}$. Crítica cuando el costo de falsos negativos es alto.
+
+\textbf{Sigmoid} (Sigmoide)
+\\
+Función de activación que mapea cualquier valor real al rango (0, 1): $\sigma(x) = \frac{1}{1 + e^{-x}}$. Utilizada en la salida de la cabeza de regresión para normalizar coordenadas al rango [0, 1].
+
+\textbf{Silueta pulmonar} $\rightarrow$ Ver \textit{Contorno pulmonar}
+
+\textbf{Skip connections} $\rightarrow$ Ver \textit{Conexiones residuales}
+
+\textbf{Sobreajuste} (\textit{Overfitting})
+\\
+Fenómeno donde un modelo aprende demasiado bien los ejemplos de entrenamiento, incluyendo ruido y particularidades, perdiendo capacidad de generalizar a datos nuevos. Mitigado mediante regularización, dropout y parada temprana.
+
+\textbf{Softmax}
+\\
+Función que transforma valores numéricos en probabilidades que suman 1, utilizada en la capa de salida del clasificador para convertir logits en distribución de probabilidad sobre las tres clases.
+
+\textbf{Stride} (Paso)
+\\
+Parámetro que define el desplazamiento del kernel durante la operación de convolución o pooling. Un stride de 1 aplica la operación en cada posición, mientras que stride de 2 reduce las dimensiones espaciales a la mitad, funcionando como mecanismo de reducción de resolución.
+
+\textbf{Subajuste} (\textit{Underfitting})
+\\
+Fenómeno donde un modelo es demasiado simple o no se entrena suficientemente, resultando en incapacidad para capturar patrones relevantes tanto en datos de entrenamiento como de prueba. Indica necesidad de mayor capacidad del modelo o más épocas de entrenamiento.
+
+\textbf{SVD} (\textit{Singular Value Decomposition} / Descomposición en Valores Singulares)
+\\
+Técnica de álgebra lineal que descompone una matriz en tres matrices ($A = U\Sigma V^T$), utilizada en GPA para calcular la rotación óptima entre configuraciones de puntos mediante el método de Schönemann.
+
+% =============================================================================
+\section*{T}
+% =============================================================================
+
+\textbf{Tamaño de lote} (\textit{Batch Size})
+\\
+Número de imágenes procesadas simultáneamente durante el entrenamiento. Este trabajo utiliza lotes de 16 (fase 1 landmarks), 8 (fase 2 landmarks) y 32 (clasificador).
+
+\textbf{Tasa de aprendizaje} (\textit{Learning Rate})
+\\
+Hiperparámetro que controla la magnitud de los ajustes de parámetros durante el descenso de gradiente. Este trabajo utiliza tasas diferenciadas: $10^{-3}$ (fase 1 landmarks), $2 \times 10^{-5}$ (backbone fase 2), $2 \times 10^{-4}$ (cabeza fase 2), $10^{-4}$ (clasificador).
+
+\textbf{Test-Time Augmentation (TTA)}
+\\
+Técnica que procesa cada imagen de prueba con múltiples transformaciones (original y reflejada) y promedia las predicciones para reducir varianza. Requiere intercambio de pares simétricos de landmarks al procesar imágenes reflejadas.
+
+\textbf{Tiles}
+\\
+Regiones rectangulares en las que se divide una imagen durante CLAHE para aplicar ecualización local. Tamaño típico: 4×4 u 8×8 bloques.
+
+\textbf{Transformación afín}
+\\
+Transformación geométrica que preserva líneas rectas y paralelismo, pudiendo incluir traslación, rotación, escalado y sesgo. Queda completamente determinada por la correspondencia entre tres puntos no colineales, propiedad utilizada en warping triangular.
+
+\textbf{Transfer Learning} $\rightarrow$ Ver \textit{Aprendizaje por transferencia}
+
+\textbf{Triangulación de Delaunay}
+\\
+Método geométrico que conecta un conjunto de puntos mediante triángulos que no se superponen, maximizando el ángulo mínimo de todos los triángulos para evitar triángulos degenerados. Genera 16 triángulos a partir de los 15 landmarks en este trabajo.
+
+% =============================================================================
+\section*{V}
+% =============================================================================
+
+\textbf{Validación cruzada} (\textit{Cross-Validation})
+\\
+Técnica de evaluación que divide el conjunto de datos en $k$ pliegues, entrenando $k$ veces usando $k-1$ pliegues para entrenamiento y 1 para validación, rotando los pliegues. Este trabajo utiliza $k=5$ para evaluar estabilidad del clasificador.
+
+\textbf{Verdaderos Negativos (VN)}
+\\
+Casos de clases negativas correctamente clasificados como negativos.
+
+\textbf{Verdaderos Positivos (VP)}
+\\
+Casos de una clase positiva correctamente clasificados como positivos. En detección de COVID-19, pacientes positivos correctamente identificados.
+
+% =============================================================================
+\section*{W}
+% =============================================================================
+
+\textbf{Warping} $\rightarrow$ Ver \textit{Deformación afín por partes}
+
+\textbf{Wing Loss}
+\\
+Función de pérdida diseñada para regresión de landmarks que combina comportamiento logarítmico para errores pequeños (incentivando refinamiento fino) con comportamiento lineal para errores grandes (estabilidad):
+\begin{equation*}
+\text{Wing}(x) =
+\begin{cases}
+\omega \ln\left(1 + \frac{|x|}{\epsilon}\right) & \text{si } |x| < \omega \\
+|x| - C & \text{si } |x| \geq \omega
+\end{cases}
+\end{equation*}
+donde $\omega = 10$ píxeles, $\epsilon = 2$ píxeles, $C = \omega - \omega \ln(1 + \omega/\epsilon)$.
+
+% =============================================================================
+% SECCIÓN DE ACRÓNIMOS Y ABREVIATURAS
+% =============================================================================
+
+\newpage
+\section*{Acrónimos y Abreviaturas}
+
+\begin{longtable}{ll}
+\toprule
+\textbf{Acrónimo} & \textbf{Significado} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Acrónimo} & \textbf{Significado} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+AdamW & \textit{Adam with Weight Decay} \\
+      & Optimizador Adam con Decaimiento de Pesos \\
+\addlinespace
+
+CLAHE & \textit{Contrast Limited Adaptive Histogram Equalization} \\
+      & Ecualización Adaptativa de Histograma con Límite de Contraste \\
+\addlinespace
+
+CNN & \textit{Convolutional Neural Network} \\
+    & Red Neuronal Convolucional \\
+\addlinespace
+
+COVID-19 & \textit{Coronavirus Disease 2019} \\
+         & Enfermedad por Coronavirus 2019 \\
+\addlinespace
+
+CSV & \textit{Comma-Separated Values} \\
+    & Valores Separados por Comas \\
+\addlinespace
+
+FC & \textit{Fully Connected} \\
+   & Completamente Conectado \\
+\addlinespace
+
+FN & Falsos Negativos (\textit{False Negatives}) \\
+\addlinespace
+
+FP & Falsos Positivos (\textit{False Positives}) \\
+\addlinespace
+
+GPA & \textit{Generalized Procrustes Analysis} \\
+    & Análisis Procrustes Generalizado \\
+\addlinespace
+
+GPU & \textit{Graphics Processing Unit} \\
+    & Unidad de Procesamiento Gráfico \\
+\addlinespace
+
+L1 & \textit{L1 Loss} / Error Absoluto Medio \\
+\addlinespace
+
+L2 & \textit{L2 Loss} / Error Cuadrático Medio \\
+\addlinespace
+
+PA & Posteroanterior \\
+\addlinespace
+
+PNG & \textit{Portable Network Graphics} \\
+    & Formato de imagen sin pérdida \\
+\addlinespace
+
+OpenCV & \textit{Open Source Computer Vision Library} \\
+        & Biblioteca de Visión por Computadora de Código Abierto \\
+\addlinespace
+
+ReLU & \textit{Rectified Linear Unit} \\
+     & Unidad Lineal Rectificada \\
+\addlinespace
+
+RGB & \textit{Red, Green, Blue} \\
+    & Modelo de color Rojo, Verde, Azul \\
+\addlinespace
+
+RT-PCR & \textit{Reverse Transcription Polymerase Chain Reaction} \\
+       & Reacción en Cadena de la Polimerasa con Transcripción Inversa \\
+\addlinespace
+
+PyTorch & Framework de aprendizaje profundo de código abierto \\
+\addlinespace
+
+SAHS & \textit{Statistical Asymmetrical Histogram Stretching} \\
+     & Estiramiento Asimétrico Estadístico de Histograma \\
+\addlinespace
+
+SE-Net & \textit{Squeeze-and-Excitation Network} \\
+       & Red de Compresión y Excitación \\
+\addlinespace
+
+SVD & \textit{Singular Value Decomposition} \\
+    & Descomposición en Valores Singulares \\
+\addlinespace
+
+TTA & \textit{Test-Time Augmentation} \\
+    & Aumento en Tiempo de Prueba \\
+\addlinespace
+
+VN & Verdaderos Negativos (\textit{True Negatives}) \\
+\addlinespace
+
+VP & Verdaderos Positivos (\textit{True Positives}) \\
+
+\end{longtable}

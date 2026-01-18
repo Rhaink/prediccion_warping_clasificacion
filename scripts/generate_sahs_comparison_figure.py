@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 """
-Script para generar figura comparativa: imagen warped vs imagen warped + SAHS
+Script para generar figura comparativa: imagen normalizada vs imagen normalizada + SAHS.
 
 Genera la figura F4.13_warped_sahs.png para la tesis.
-
-IMPORTANTE: SAHS se aplica SOLO a la región pulmonar (píxeles > 0),
-ignorando el fondo negro del warping.
 """
 
 import matplotlib
@@ -135,7 +132,7 @@ def main():
     gs = GridSpec(3, 4, figure=fig, hspace=0.4, wspace=0.3)
 
     for row, (category, img_path) in enumerate(sample_images.items()):
-        # Cargar imagen warped
+        # Cargar imagen normalizada
         img_warped = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
 
         if img_warped is None:
@@ -145,20 +142,20 @@ def main():
         # Aplicar SAHS solo a región pulmonar
         img_sahs = enhance_contrast_sahs_masked(img_warped, threshold=BG_THRESHOLD)
 
-        # Subplot: imagen warped
+        # Subplot: imagen normalizada
         ax1 = fig.add_subplot(gs[row, 0])
         ax1.imshow(img_warped, cmap='gray', vmin=0, vmax=255)
-        ax1.set_title(f'{category}\n(a) Warped', fontsize=11)
+        ax1.set_title(f'{category}\n(a) Normalizada', fontsize=11)
         ax1.axis('off')
 
-        # Subplot: histograma warped (solo región pulmonar)
+        # Subplot: histograma de imagen normalizada (solo región pulmonar)
         ax2 = fig.add_subplot(gs[row, 1])
         create_histogram_lung_only(img_warped, ax2, 'Histograma (región pulmonar)', 'steelblue', BG_THRESHOLD)
 
-        # Subplot: imagen con SAHS
+        # Subplot: imagen con SAHS aplicado
         ax3 = fig.add_subplot(gs[row, 2])
         ax3.imshow(img_sahs, cmap='gray', vmin=0, vmax=255)
-        ax3.set_title(f'{category}\n(b) Warped + SAHS', fontsize=11)
+        ax3.set_title(f'{category}\n(b) SAHS aplicado', fontsize=11)
         ax3.axis('off')
 
         # Subplot: histograma SAHS (solo región pulmonar)
@@ -176,7 +173,7 @@ def main():
               f"Min: {lung_sahs.min()}, Max: {lung_sahs.max()}")
 
     # Título general
-    fig.suptitle('Efecto del preprocesamiento SAHS sobre imágenes normalizadas geométricamente\n(SAHS aplicado solo a la región pulmonar)',
+    fig.suptitle('Efecto del preprocesamiento SAHS sobre imágenes normalizadas',
                  fontsize=14, fontweight='bold', y=0.98)
 
     # Guardar figura

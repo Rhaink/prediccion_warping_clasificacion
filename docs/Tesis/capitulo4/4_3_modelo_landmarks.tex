@@ -69,9 +69,13 @@ Existen otros mecanismos de atención, como SE-Net \cite{hu2018squeeze}, que res
 Coordinate Attention resuelve esta limitación procesando la información de posición de manera separada: genera un ``mapa de importancia'' para las filas de la imagen y otro para las columnas. De esta forma, el modelo puede aprender que ciertas regiones horizontales (por ejemplo, donde típicamente se encuentra el contorno superior pulmonar) y ciertas regiones verticales (donde se ubica el contorno lateral) merecen mayor atención.
 
 \paragraph{Funcionamiento del módulo.}
-El proceso se realiza en cuatro pasos:
+En términos simples, el módulo resume la información por filas y columnas, combina ambas
+vistas para estimar pesos de importancia (0--1) y repondera el mapa de características.
+La Figura \ref{fig:coord_attention_mechanism} resume este flujo conceptual.
 
-\textbf{Paso 1: Resumen por filas y columnas.} Primero, el módulo calcula un resumen de la información para cada fila y cada columna de la imagen. Para cada fila $h$, se promedian todos los valores a lo largo de esa fila:
+\textbf{Paso 1: Resumen por filas y columnas.} Primero, el módulo calcula un resumen de la
+información para cada fila y cada columna del mapa de características. Para cada fila $h$,
+se promedian todos los valores a lo largo de esa fila:
 
 \begin{equation}
     z_c^h(h) = \frac{1}{W} \sum_{w=1}^{W} x_c(h, w)
@@ -85,11 +89,18 @@ De manera análoga, para cada columna $w$:
 
 \noindent donde $x_c(h, w)$ representa el valor en la posición $(h, w)$ del canal $c$, $H$ es la altura y $W$ el ancho de la imagen de características.
 
-\textbf{Paso 2: Combinación y procesamiento.} Los resúmenes de filas y columnas se combinan y procesan conjuntamente. Esta combinación permite que el módulo analice la relación entre la información horizontal y vertical para identificar qué regiones son relevantes. Para mantener la eficiencia computacional, la información se comprime temporalmente a una representación más compacta (en este caso, de 512 a 16 valores intermedios) antes de generar los pesos de atención.
+\textbf{Paso 2: Combinación y procesamiento.} Los resúmenes de filas y columnas se combinan
+y procesan conjuntamente. Esta combinación permite que el módulo analice la relación
+entre la información horizontal y vertical para identificar qué regiones son relevantes.
 
-\textbf{Paso 3: Generación de pesos de atención.} A partir de la información combinada, se generan dos conjuntos de pesos: uno que indica la importancia de cada fila ($\mathbf{a}^h$) y otro para cada columna ($\mathbf{a}^w$). Estos pesos se calculan de forma que cada valor quede en el rango entre 0 y 1, donde 0 significa ``ignorar completamente'' y 1 significa ``prestar máxima atención''.
+\textbf{Paso 3: Generación de pesos de atención.} A partir de la información combinada, se
+generan dos conjuntos de pesos: uno que indica la importancia de cada fila ($\mathbf{a}^h$)
+y otro para cada columna ($\mathbf{a}^w$). Estos pesos se calculan de forma que cada valor
+quede en el rango entre 0 y 1, donde 0 significa ``ignorar completamente'' y 1 significa
+``prestar máxima atención''.
 
-\textbf{Paso 4: Aplicación de la atención.} Finalmente, cada posición de la imagen se pondera según la importancia de su fila y su columna:
+\textbf{Paso 4: Aplicación de la atención.} Finalmente, cada posición del mapa se pondera
+según la importancia de su fila y su columna:
 
 \begin{equation}
     y_c(h, w) = x_c(h, w) \cdot a_c^h(h) \cdot a_c^w(w)
@@ -99,8 +110,8 @@ De esta manera, las regiones donde tanto la fila como la columna tienen alta imp
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.92\textwidth]{Figures/coord_attention_v10_mechanism_real.png}
-    \caption{Mecanismo del módulo Coordinate Attention y ejemplo de mapa de atención espacial sobre una radiografía. El módulo estima pesos por fila ($a^h$) y por columna ($a^w$), y los aplica para reponderar el mapa de características.}
+    \includegraphics[width=0.98\textwidth]{Figures/coord_attention_v10_mechanism_real.png}
+\caption{Mecanismo del módulo Coordinate Attention. A partir del mapa de características de entrada, se resumen filas y columnas, se combinan ambas vistas y se generan pesos entre 0 y 1 por fila y por columna. Estos pesos reponderan el mapa, realzando zonas relevantes y atenuando las menos informativas.}
     \label{fig:coord_attention_mechanism}
 \end{figure}
 
@@ -144,6 +155,15 @@ La cabeza de regresión procesa la información a través de varias etapas:
 
     \item \textbf{Capa de salida:} Finalmente, una última capa reduce los 768 valores a exactamente 30 números, que corresponden a las coordenadas de los 15 puntos de referencia. Estos valores se restringen al rango $[0, 1]$ mediante una función sigmoide, representando posiciones normalizadas respecto al tamaño de la imagen.
 \end{enumerate}
+
+La Figura \ref{fig:cabeza_regresion} resume el flujo de procesamiento de la cabeza de regresión.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Figures/F4.24_cabeza_regresion.png}
+    \caption{Diagrama de la cabeza de regresión. Se muestra el paso desde el mapa de características ($7 \times 7 \times 512$) hasta las 30 coordenadas normalizadas, incluyendo \textit{Global Average Pooling}, capas totalmente conectadas con normalización por grupos y dropout, y la activación sigmoide final.}
+    \label{fig:cabeza_regresion}
+\end{figure}
 
 \paragraph{Técnicas de estabilización.}
 Para que el entrenamiento sea estable y el modelo generalice bien, se incorporan dos técnicas:
@@ -389,11 +409,18 @@ Los hiperparámetros son valores que definen la configuración del modelo y del 
     \end{tabular}
 \end{table}
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{Figures/F4.16_estrategia_entrenamiento_ensemble_tta.png}
+    \caption{Diagrama de la estrategia de entrenamiento y del esquema de inferencia con ensamble y TTA. La parte superior resume las dos fases de entrenamiento; la parte inferior muestra el uso de TTA y el promedio de modelos para obtener los puntos de referencia finales.}
+    \label{fig:estrategia_entrenamiento_ensemble_tta}
+\end{figure}
+
 \subsection{Ensamble de Modelos}
 \label{subsec:ensemble_modelos}
 
 \paragraph{Motivación.}
-Un modelo individual, por más bien entrenado que esté, puede cometer errores en ciertas imágenes debido a particularidades de su proceso de entrenamiento. Una estrategia para mitigar estos errores es consultar múltiples modelos y combinar sus predicciones, de manera análoga a solicitar la opinión de varios expertos antes de tomar una decisión. Esta técnica se denomina \textit{ensamble} (ensamble).
+Un modelo individual, por más bien entrenado que esté, puede cometer errores en ciertas imágenes debido a particularidades de su proceso de entrenamiento. Una estrategia para mitigar estos errores es consultar múltiples modelos y combinar sus predicciones, de manera análoga a solicitar la opinión de varios expertos antes de tomar una decisión. Esta técnica se denomina \textit{ensemble} (ensamble).
 
 \paragraph{Por qué diferentes modelos producen diferentes predicciones.}
 Aunque todos los modelos del ensamble utilizan la misma arquitectura y datos de entrenamiento, el proceso de entrenamiento involucra elementos aleatorios: el orden en que se presentan las imágenes, los valores iniciales de ciertos parámetros, y las muestras seleccionadas para cada lote. Estas diferencias, controladas por una \textit{semilla aleatoria}, hacen que cada modelo converja a una solución ligeramente diferente. Donde un modelo comete un error, otro puede acertar, y viceversa.

@@ -13,9 +13,21 @@ Este glosario presenta las definiciones de los términos técnicos, conceptos ci
 \section*{A}
 % =============================================================================
 
+\textbf{Active Shape Models (ASM)}
+\\
+Método estadístico tradicional de detección de landmarks que aprende patrones de variabilidad de forma a partir de anotaciones manuales, empleando un proceso iterativo de refinamiento análogo a Active Contour Models (Snakes) para ajustar una forma modelo a imágenes. Requieren inicialización cercana a la solución y son sensibles a variaciones significativas de apariencia.
+
+\textbf{Adaptive Wing Loss}
+\\
+Extensión de Wing Loss para heatmap regression que introduce ponderación adaptativa según el tipo de píxel (foreground vs background), combinando la función Wing con un Weighted Loss Map que asigna mayor peso a píxeles críticos, permitiendo que el entrenamiento se enfoque en regiones relevantes para localización de landmarks. Superó el estado del arte en benchmarks de face alignment (COFW, 300W, WFLW).
+
 \textbf{Alineación geométrica}
 \\
 Proceso de transformación de imágenes para que estructuras anatómicas correspondientes ocupen posiciones consistentes en el espacio de coordenadas, eliminando variaciones de posición, escala y orientación.
+
+\textbf{AlexNet}
+\\
+Arquitectura pionera de red neuronal convolucional profunda (8 capas, 5 convolucionales + 3 fully connected) que ganó la competencia ImageNet 2012, marcando el inicio de la era moderna del aprendizaje profundo en visión por computadora. Introdujo el uso de ReLU, dropout y procesamiento en GPU para entrenar redes profundas.
 
 \textbf{Aprendizaje por transferencia} (\textit{Transfer Learning})
 \\
@@ -25,6 +37,30 @@ Técnica de aprendizaje profundo que reutiliza una red neuronal entrenada en una
 \\
 Técnica que crea variaciones artificiales de las imágenes de entrenamiento mediante transformaciones controladas (reflejo horizontal, rotación, desplazamiento) para aumentar la diversidad del conjunto de datos y mejorar la generalización del modelo.
 
+\textbf{Attention Gates}
+\\
+Módulo de atención espacial que aprende máscaras de importancia para ponderar selectivamente diferentes regiones de un mapa de características, permitiendo que la red enfoque recursos computacionales en áreas anatómicamente relevantes. Utilizado en STERN para normalización jerárquica de radiografías.
+
+\textbf{Attention Maps}
+\\
+Visualizaciones que muestran dónde se enfoca la atención de la red durante predicciones, obtenidas directamente de mecanismos de atención (self-attention, coordinate attention, CBAM), útiles para interpretabilidad de decisiones del modelo y validación de que la red se enfoca en regiones anatómicamente relevantes.
+
+\textbf{AUC} (\textit{Area Under the Curve} / Área Bajo la Curva)
+\\
+Métrica que calcula el área bajo la curva ROC (Receiver Operating Characteristic), proporcionando una evaluación de rendimiento de clasificación binaria independiente del threshold de decisión. Valores cercanos a 1.0 indican excelente discriminación entre clases positivas y negativas.
+
+% =============================================================================
+\section*{B}
+% =============================================================================
+
+\textbf{BIMCV-COVID19}
+\\
+Conjunto de datos español de COVID-19 en radiografías de tórax con metadata clínica detallada (información demográfica, marcadores de severidad, evolución temporal), desarrollado por el Biosignal Interpretation and Medical Computing Laboratory de Valencia. Facilita investigación clínica mediante información complementaria más allá de imágenes.
+
+\textbf{B-splines} (\textit{Basis Splines})
+\\
+Curvas suaves paramétricas definidas por puntos de control, utilizadas para representar deformaciones no paramétricas complejas en transformaciones de imágenes médicas. Ofrecen extrema flexibilidad para modelar deformaciones locales pero pueden requerir regularización para evitar sobreajuste.
+
 % =============================================================================
 \section*{C}
 % =============================================================================
@@ -33,19 +69,31 @@ Técnica que crea variaciones artificiales de las imágenes de entrenamiento med
 \\
 Componente final de una red neuronal que transforma las características extraídas en predicciones numéricas. En este trabajo, la cabeza de regresión convierte el mapa de características de ResNet-18 (7×7×512) en 30 coordenadas normalizadas que representan los 15 puntos de referencia anatómicos.
 
-\textbf{Centroide}
-\\
-Punto geométrico que representa el centro de masa de una configuración de puntos, calculado como el promedio de todas las coordenadas. Utilizado en GPA para el paso de centrado que elimina diferencias de traslación entre formas.
-
 \textbf{Características espurias} (\textit{Shortcut Learning})
 \\
 Patrones no relacionados con la patología (etiquetas hospitalarias, marcadores de lateralidad, artefactos de los bordes) que un modelo de clasificación aprende a explotar como atajos, en lugar de aprender características diagnósticas genuinas. Este trabajo demuestra que imágenes originales sin procesar presentan este problema.
+
+\textbf{CBAM} (\textit{Convolutional Block Attention Module})
+\\
+Módulo de atención que combina channel attention y spatial attention de forma secuencial, permitiendo que la red aprenda qué características son importantes (channel attention mediante global pooling) y dónde enfocar (spatial attention mediante agregación de canales). Demostró mejoras consistentes en ImageNet-1K, MS COCO y VOC 2007.
+
+\textbf{Centroide}
+\\
+Punto geométrico que representa el centro de masa de una configuración de puntos, calculado como el promedio de todas las coordenadas. Utilizado en GPA para el paso de centrado que elimina diferencias de traslación entre formas.
 
 \textbf{CLAHE} (\textit{Contrast Limited Adaptive Histogram Equalization})
 \\
 Algoritmo de mejora de contraste que opera de forma local sobre regiones rectangulares (\textit{tiles}), aplicando ecualización de histograma con un límite de amplificación para evitar realce excesivo de ruido. Utilizado en el preprocesamiento de radiografías antes de la predicción de landmarks.
 \\
 \textit{Parámetros}: clip limit = 2.0, tile size = 4×4 píxeles.
+
+\textbf{ChestX-ray14}
+\\
+Conjunto de datos público de 112,120 radiografías de tórax frontales con anotaciones de 14 patologías torácicas diferentes, proporcionado por NIH Clinical Center. Ampliamente utilizado para preentrenamiento y evaluación de modelos de clasificación de enfermedades pulmonares en imágenes médicas.
+
+\textbf{CheXNet}
+\\
+Modelo de clasificación de patologías pulmonares basado en DenseNet-121 preentrenado en ImageNet, que excede el desempeño promedio de radiólogos en detección de neumonía en radiografías de tórax según evaluación en ChestX-ray14. Estableció una línea base importante para clasificación de patologías pulmonares mediante transfer learning.
 
 \textbf{Conjunto de entrenamiento} (\textit{Training Set})
 \\
@@ -71,6 +119,10 @@ Borde que delimita la silueta de la región pulmonar en una radiografía de tór
 \\
 Operación matemática fundamental en redes neuronales convolucionales que aplica un kernel sobre la imagen de entrada mediante producto punto deslizante, extrayendo características locales como bordes, texturas y patrones. Preserva las relaciones espaciales entre píxeles vecinos.
 
+\textbf{Coordinate Regression}
+\\
+Enfoque de detección de landmarks que predice directamente las coordenadas $(x,y)$ de cada punto de referencia como salida numérica continua de la red, sin representación espacial intermedia. Conceptualmente simple y eficiente computacionalmente, pero enfrenta desafíos de convergencia debido a la naturaleza no lineal del mapeo imagen-coordenadas. Utilizado en este trabajo para detección de 15 landmarks pulmonares.
+
 \textbf{Coordinate Attention}
 \\
 Mecanismo de atención diseñado para tareas de localización que preserva información espacial procesando de forma separada las dimensiones horizontal y vertical, generando mapas de atención direccionales. Integrado en el modelo de puntos de referencia para preservar información posicional.
@@ -82,6 +134,14 @@ Enfermedad infecciosa causada por el virus SARS-CoV-2, caracterizada en radiogra
 \textbf{COVID-19 Radiography Database}
 \\
 Conjunto de datos público de 15,153 radiografías posteroanterior de tórax organizadas en tres categorías (COVID-19: 3,616; Normal: 10,192; Neumonía Viral: 1,345), desarrollado por Qatar University y colaboradores.
+
+\textbf{COVID-Net}
+\\
+Arquitectura CNN diseñada específicamente para detección de COVID-19 mediante principios de diseño humano-en-el-loop, incorporando módulos de expansión-compresión que permiten aprendizaje eficiente de representaciones discriminativas. Alcanzó 93.3\% de exactitud en clasificación de tres clases (COVID-19, neumonía viral, normal) en el conjunto de datos COVIDx.
+
+\textbf{COVIDx}
+\\
+Conjunto de datos público de radiografías de tórax específicamente compilado para detección de COVID-19, conteniendo 13,975 imágenes de 13,870 pacientes únicos, recopiladas de múltiples fuentes públicas incluyendo repositorios de investigación y datos hospitalarios. Utilizado para entrenamiento de COVID-Net.
 
 \textbf{Cosine Annealing}
 \\
@@ -103,6 +163,10 @@ Fenómeno donde las categorías de un conjunto de datos tienen diferente número
 \\
 Técnica de transformación geométrica que divide la imagen en regiones (triángulos) y aplica transformaciones afines independientes a cada región, permitiendo deformación local que se adapta a variaciones anatómicas inter-paciente preservando la estructura triangular.
 
+\textbf{DenseNet}
+\\
+Arquitectura CNN que conecta cada capa con todas las capas anteriores mediante conexiones densas (cada capa recibe como entrada la concatenación de salidas de todas las capas previas), mejorando la propagación de gradientes, la reutilización de características y reduciendo el número de parámetros. DenseNet-121 es utilizado en CheXNet para clasificación de patologías pulmonares.
+
 \textbf{Desvanecimiento de gradiente}
 \\
 Problema en redes neuronales profundas donde los gradientes se vuelven extremadamente pequeños durante la propagación hacia atrás, dificultando el entrenamiento de capas iniciales. Resuelto en ResNet mediante conexiones residuales.
@@ -110,6 +174,14 @@ Problema en redes neuronales profundas donde los gradientes se vuelven extremada
 \textbf{Dropout}
 \\
 Técnica de regularización que desactiva aleatoriamente un porcentaje de neuronas durante el entrenamiento, obligando al modelo a no depender excesivamente de características específicas y mejorando la generalización. Utilizado con probabilidades de 0.3 y 0.15 en la cabeza de regresión.
+
+\textbf{Domain Adaptation} (Adaptación de dominio)
+\\
+Conjunto de técnicas que adaptan un modelo entrenado en dominio fuente a dominio objetivo, con acceso limitado o sin acceso a labels en el dominio objetivo, mediante fine-tuning, adversarial training o feature alignment. Crítico en imágenes médicas para mitigar desplazamiento de dominio entre hospitales con diferentes equipos y protocolos.
+
+\textbf{Domain Generalization} (Generalización de dominio)
+\\
+Enfoque que entrena modelos para aprender representaciones robustas invariantes a cambios de dominio, sin acceso a datos del dominio objetivo durante entrenamiento, mediante aumento agresivo, meta-learning o aprendizaje de características causales en lugar de correlacionales. Complementario a normalización geométrica para robustez ante variabilidad institucional.
 
 % =============================================================================
 \section*{E}
@@ -119,9 +191,17 @@ Técnica de regularización que desactiva aleatoriamente un porcentaje de neuron
 \\
 Transformación de intensidades que redistribuye los valores de píxeles para utilizar todo el rango dinámico disponible, mejorando el contraste global de la imagen.
 
+\textbf{EfficientNet}
+\\
+Familia de arquitecturas CNN que optimiza el escalamiento equilibrado de profundidad, ancho y resolución de entrada mediante Neural Architecture Search (NAS), logrando mejor compromiso entre exactitud y eficiencia computacional que arquitecturas diseñadas manualmente. Introduce el concepto de compound scaling para escalamiento óptimo de redes.
+
 \textbf{Eje central}
 \\
 Línea vertical que conecta los puntos de referencia L1 (superior) → L9 → L10 → L11 → L2 (inferior), representando la línea media del tórax a lo largo de la columna vertebral, utilizada como referencia para la estructura de landmarks.
+
+\textbf{Embeddings} (Incrustaciones)
+\\
+Representaciones vectoriales de dimensión fija que codifican información semántica de entradas (palabras, parches de imagen, características), aprendidas durante entrenamiento para ser significativas para la tarea. En Vision Transformers, cada parche de imagen se proyecta a un embedding antes de procesamiento mediante self-attention.
 
 \textbf{Escala de grises} (\textit{Grayscale})
 \\
@@ -155,6 +235,10 @@ Técnica de división de dataset que mantiene las proporciones de clases en cada
 \\
 Métrica principal de evaluación que mide la proporción de predicciones correctas sobre el total: $\text{Accuracy} = \frac{\text{Predicciones correctas}}{\text{Total}}$. El sistema propuesto alcanza 98.10\% de exactitud.
 
+\textbf{Explainable AI (XAI)} (Inteligencia Artificial Explicable)
+\\
+Campo de investigación enfocado en desarrollar técnicas que permiten interpretar y explicar decisiones de modelos de aprendizaje profundo, crítico en aplicaciones médicas donde la confianza clínica requiere comprensión de razonamiento del modelo. Incluye técnicas como Grad-CAM, saliency maps, attention visualization y métodos de interpretabilidad post-hoc.
+
 \textbf{Extractor de características} (\textit{Feature Extractor / Backbone})
 \\
 Componente de una red neuronal (típicamente capas convolucionales) que procesa la imagen de entrada y produce representaciones de alto nivel. En este trabajo se utiliza ResNet-18 preentrenado en ImageNet.
@@ -182,6 +266,10 @@ Casos de una clase positiva que el modelo clasifica incorrectamente como negativ
 \textbf{Falsos Positivos (FP)}
 \\
 Casos de clases negativas que el modelo clasifica incorrectamente como positivos. En detección de COVID-19, un falso positivo es un paciente Normal o con Neumonía Viral clasificado como COVID-19.
+
+\textbf{Federated Learning} (Aprendizaje Federado)
+\\
+Paradigma de aprendizaje distribuido donde múltiples dispositivos o instituciones entrenan colaborativamente un modelo compartido sin centralizar datos sensibles, preservando privacidad de pacientes. Relevante en contextos médicos donde compartir datos está regulado por leyes de protección de datos (HIPAA, GDPR).
 
 \textbf{Fill rate} (Tasa de cobertura)
 \\
@@ -213,6 +301,10 @@ Método estadístico para alinear múltiples configuraciones de puntos eliminand
 \\
 Procesador especializado diseñado originalmente para renderizado gráfico, utilizado en aprendizaje profundo por su capacidad de realizar miles de operaciones matemáticas en paralelo, acelerando significativamente el entrenamiento e inferencia de redes neuronales.
 
+\textbf{Grad-CAM} (\textit{Gradient-weighted Class Activation Mapping})
+\\
+Técnica de visualización que genera mapas de importancia espacial calculando gradientes de la clase predicha respecto a activaciones de la última capa convolucional, permitiendo interpretar qué regiones de la imagen influyen en decisiones del modelo. Ampliamente utilizada en diagnóstico asistido por IA para validar que modelos se enfocan en regiones patológicas relevantes.
+
 \textbf{Gradiente}
 \\
 Vector de derivadas parciales de la función de pérdida respecto a los parámetros del modelo, que indica la dirección de mayor incremento. Durante el entrenamiento, se actualiza en dirección opuesta al gradiente (descenso de gradiente).
@@ -229,6 +321,10 @@ Técnica de normalización que divide los canales en grupos y normaliza dentro d
 \section*{H}
 % =============================================================================
 
+\textbf{Heatmap Regression}
+\\
+Enfoque de detección de landmarks que predice un mapa 2D de probabilidades para cada punto de referencia, típicamente modelado como una distribución Gaussiana centrada en la ubicación verdadera. La ubicación final se obtiene mediante búsqueda del máximo (argmax) o soft-argmax diferenciable. Proporciona generalización espacial superior a coordinate regression pero introduce sobrecarga computacional.
+
 \textbf{Hiperparámetros}
 \\
 Valores de configuración que definen el comportamiento del modelo y del proceso de entrenamiento, establecidos antes de iniciar el entrenamiento (tasa de aprendizaje, tamaño de lote, número de épocas, etc.), a diferencia de los parámetros que se aprenden automáticamente.
@@ -241,17 +337,33 @@ Valores de configuración que definen el comportamiento del modelo y del proceso
 \\
 Conjunto de datos con más de un millón de imágenes naturales organizadas en 1,000 categorías, utilizado ampliamente para preentrenamiento de redes convolucionales mediante aprendizaje por transferencia.
 
+\textbf{ImageNet-1K}
+\\
+Versión estándar de ImageNet con 1,000 clases de objetos y aproximadamente 1.2 millones de imágenes de entrenamiento, utilizada como benchmark principal para validación de arquitecturas de visión por computadora. ILSVRC (ImageNet Large Scale Visual Recognition Challenge) impulsa el desarrollo de nuevas arquitecturas mediante competencias anuales.
+
+\textbf{Inductive Biases} (Sesgos inductivos)
+\\
+Suposiciones incorporadas en la arquitectura de un modelo que facilitan el aprendizaje de ciertos tipos de patrones. CNNs tienen inductive biases de locality (convoluciones procesan regiones locales) y translation equivariance (detección invariante a posición). Vision Transformers carecen de estos biases, requiriendo más datos para convergencia.
+
 \textbf{Inferencia}
 \\
 Proceso de aplicar un modelo entrenado a nuevos datos para generar predicciones, sin actualizar los parámetros del modelo.
 
 \textbf{Interpolación bilineal}
 \\
-Método de interpolación que estima el valor de un píxel en una posición no entera promediando los valores de los cuatro píxeles vecinos, ponderados por la distancia. Utilizado durante el warping para obtener transiciones suaves.
+Método de interpolación que estima el valor de un píxel en una posición no entera promediando los valores de los cuatro píxeles vecinos, ponderados por la distancia. Utilizado durante la deformación afín por partes para obtener transiciones suaves.
 
 \textbf{Internal covariate shift}
 \\
 Fenómeno donde las distribuciones de las activaciones internas de una red neuronal cambian constantemente durante el entrenamiento a medida que se actualizan los pesos, dificultando la convergencia. Mitigado por Batch Normalization.
+
+% =============================================================================
+\section*{J}
+% =============================================================================
+
+\textbf{JFT-300M}
+\\
+Conjunto de datos interno de Google con 300 millones de imágenes etiquetadas de forma semi-supervisada, utilizado para preentrenamiento masivo de Vision Transformers. Demuestra que ViT requiere conjuntos de datos significativamente más grandes que CNNs para alcanzar rendimiento competitivo debido a la ausencia de inductive biases.
 
 % =============================================================================
 \section*{K}
@@ -267,7 +379,7 @@ Matriz de pesos pequeña (típicamente 3×3, 5×5 o 7×7) que se desliza sobre l
 
 \textbf{Landmarks} (Puntos de referencia anatómicos)
 \\
-Coordenadas específicas que representan estructuras anatómicas de interés. En este trabajo, 15 puntos definen el contorno pulmonar: eje central (L1, L9, L10, L11, L2), contorno izquierdo (L12, L3, L5, L7, L14) y contorno derecho (L13, L4, L6, L8, L15).
+Puntos de control sobre la silueta pulmonar que representan posiciones geométricas, no estructuras anatómicas específicas. En este trabajo, 15 puntos definen el contorno pulmonar bilateral: eje central (L1, L9, L10, L11, L2 a lo largo de la línea media), contorno izquierdo (L12, L3, L5, L7, L14) y contorno derecho (L13, L4, L6, L8, L15). Estos puntos sirven como base para la normalización geométrica mediante deformación afín por partes.
 
 \textbf{Logits}
 \\
@@ -279,7 +391,7 @@ Valores numéricos crudos en la capa de salida de una red neuronal antes de apli
 
 \textbf{Margin scale} (Escala de margen)
 \\
-Factor de expansión aplicado al centroide de los landmarks para determinar la región de recorte durante el warping. El valor óptimo validado experimentalmente es 1.05 (5\% de expansión), almacenado en GROUND\_TRUTH.json.
+Factor de expansión aplicado al centroide de los landmarks para determinar la región de recorte durante la deformación. El valor óptimo validado experimentalmente es 1.05 (5\% de expansión), almacenado en GROUND\_TRUTH.json.
 
 \textbf{Matriz de confusión}
 \\
@@ -293,6 +405,14 @@ Operación de reducción espacial que selecciona el valor máximo de cada regió
 \\
 Componente de red neuronal que aprende a enfocar selectivamente regiones relevantes de la entrada, ponderando la importancia de diferentes características o posiciones espaciales.
 
+\textbf{MS COCO} (\textit{Microsoft Common Objects in Context})
+\\
+Conjunto de datos masivo para detección, segmentación y captioning de objetos con múltiples categorías (80 clases) y anotaciones densas (segmentación a nivel de instancia). Ampliamente utilizado para validación de arquitecturas, mecanismos de atención y métodos de detección de objetos en contextos naturales.
+
+\textbf{Multi-head Attention} (Atención multi-cabeza)
+\\
+Variante de self-attention que ejecuta múltiples operaciones de atención en paralelo con proyecciones lineales diferentes ($h$ cabezas), permitiendo que el modelo capture distintos tipos de dependencias en diferentes subespacios de representación. Las salidas se concatenan y proyectan para obtener resultado final. Componente fundamental de arquitecturas transformer.
+
 % =============================================================================
 \section*{N}
 % =============================================================================
@@ -305,6 +425,12 @@ Inflamación del tejido pulmonar causada por infección, caracterizada en radiog
 \\
 Neumonía causada por virus distintos a SARS-CoV-2, presentando patrones radiográficos similares pero diferenciables de COVID-19. Representa el 9\% del dataset (1,345 imágenes) y la clase minoritaria.
 
+\textbf{NME} (\textit{Normalized Mean Error} / Error Medio Normalizado)
+\\
+Métrica normalizada de error de localización de landmarks que expresa el error promedio en píxeles como porcentaje de una distancia de normalización característica (distancia entre ojos en facial landmarks, diagonal de imagen en chest X-rays). Permite comparación de rendimiento independiente de resolución de imagen.
+\\
+\textit{Fórmula}: $\text{NME} = \frac{1}{N} \sum_{i=1}^{N} \frac{\|\mathbf{p}_i - \hat{\mathbf{p}}_i\|_2}{d_{\text{norm}}} \times 100\%$
+
 \textbf{Normal}
 \\
 Radiografía de paciente sin patología pulmonar aparente, representando la clase mayoritaria (67\%, 10,192 imágenes) en el dataset.
@@ -315,7 +441,7 @@ Proceso de ajustar las intensidades de una imagen para mejorar la visibilidad de
 
 \textbf{Normalización geométrica}
 \\
-Proceso de transformación de imágenes a una configuración espacial estándar mediante detección de landmarks y warping, eliminando variabilidad de posición, escala, orientación y deformación local no relacionada con patología.
+Proceso de transformación de imágenes a una configuración espacial estándar mediante detección de landmarks y deformación afín por partes, eliminando variabilidad de posición, escala, orientación y deformación local no relacionada con patología.
 
 % =============================================================================
 \section*{O}
@@ -323,7 +449,11 @@ Proceso de transformación de imágenes a una configuración espacial estándar 
 
 \textbf{OpenCV} (\textit{Open Source Computer Vision Library})
 \\
-Biblioteca de código abierto especializada en visión por computadora y procesamiento de imágenes, que proporciona implementaciones eficientes de algoritmos para transformaciones geométricas, mejora de contraste, detección de características y manipulación de imágenes. Utilizada en el preprocesamiento y warping de radiografías.
+Biblioteca de código abierto especializada en visión por computadora y procesamiento de imágenes, que proporciona implementaciones eficientes de algoritmos para transformaciones geométricas, mejora de contraste, detección de características y manipulación de imágenes. Utilizada en el preprocesamiento y deformación de radiografías.
+
+\textbf{Optical Flow} (Flujo óptico)
+\\
+Técnica de visión por computadora que estima el campo vectorial de movimiento de píxeles entre frames consecutivos o entre imágenes relacionadas, utilizada para transformaciones no paramétricas de deformación en registro de imágenes médicas. Proporciona flexibilidad extrema pero puede requerir regularización para evitar deformaciones no realistas.
 
 \textbf{Optimizador Adam}
 \\
@@ -344,6 +474,10 @@ Mecanismo de regularización que detiene el entrenamiento cuando el rendimiento 
 \textbf{Padding} (Relleno)
 \\
 Técnica que agrega píxeles adicionales (típicamente con valor cero) en los bordes de la imagen o mapa de características antes de aplicar convolución, permitiendo preservar las dimensiones espaciales originales y evitar pérdida de información en los bordes.
+
+\textbf{Patches} (Parches)
+\\
+Divisiones rectangulares no solapadas de la imagen (típicamente 16×16 píxeles en Vision Transformers) que se procesan como tokens individuales. Cada parche se aplana y proyecta a un embedding de dimensión fija antes de procesamiento mediante self-attention, permitiendo que ViT trate imágenes como secuencias similares a NLP.
 
 \textbf{Píxel}
 \\
@@ -391,6 +525,10 @@ Proyección radiográfica donde el haz de rayos X atraviesa el cuerpo del pacien
 \\
 Área de la radiografía que contiene el tejido pulmonar, delimitada por el contorno pulmonar definido mediante los 15 landmarks en este trabajo.
 
+\textbf{RegNetX032}
+\\
+Arquitectura CNN de la familia RegNet regularizada mediante búsqueda neural de arquitecturas (NAS), diseñada para optimizar el compromiso entre eficiencia computacional y precisión en tareas de clasificación. Reportada con 98.6\% de exactitud en detección de COVID-19 en literatura reciente.
+
 \textbf{Reflejo horizontal} (\textit{Horizontal Flip})
 \\
 Transformación de imagen que invierte la imagen a lo largo del eje vertical, utilizada como técnica de aumento de datos y en Test-Time Augmentation. Requiere intercambio de pares simétricos de landmarks para mantener consistencia anatómica.
@@ -431,6 +569,14 @@ Reacción en Cadena de la Polimerasa con Transcripción Inversa. Prueba molecula
 \\
 Método de mejora de contraste diseñado para histogramas asimétricos que calcula límites de estiramiento diferenciados según la distribución de intensidades por encima y por debajo de la media: $I_{max} = \mu + 2.5\sigma_+$, $I_{min} = \mu - 2.0\sigma_-$.
 
+\textbf{Saliency Maps} (Mapas de relevancia)
+\\
+Mapas que visualizan la importancia de píxeles individuales calculando gradientes de la función de pérdida o de la clase predicha respecto a la imagen de entrada, mostrando qué regiones son más influyentes en predicciones. Técnica fundamental de interpretabilidad para diagnóstico médico asistido por IA.
+
+\textbf{Self-attention} (Auto-atención)
+\\
+Mecanismo en arquitecturas transformer que permite que cada elemento de una secuencia (token, parche de imagen) atienda a todos los demás elementos, capturando dependencias de largo alcance sin restricción de campo receptivo local como en CNNs. Calcula ponderaciones de atención mediante productos escalares entre queries, keys y values derivadas de la entrada.
+
 \textbf{Semilla aleatoria} (\textit{Random Seed})
 \\
 Valor inicial que controla la generación de números pseudoaleatorios, permitiendo reproducibilidad de experimentos. Este trabajo utiliza semilla fija (42) para particiones de datos y diferentes semillas (123, 321, 111, 666) para modelos del ensamble.
@@ -454,6 +600,14 @@ Fenómeno donde un modelo aprende demasiado bien los ejemplos de entrenamiento, 
 \textbf{Softmax}
 \\
 Función que transforma valores numéricos en probabilidades que suman 1, utilizada en la capa de salida del clasificador para convertir logits en distribución de probabilidad sobre las tres clases.
+
+\textbf{Spatial Transformer Networks (STN)} (Redes de Transformación Espacial)
+\\
+Módulo diferenciable que permite a redes neuronales aprender transformaciones espaciales globales (affine, perspective, thin-plate spline) de forma de extremo a extremo sin supervisión adicional, mejorando robustez a variaciones de pose. Limitación: transformaciones son globales, sin capacidad de deformación local adaptativa requerida para estructuras anatómicas deformables.
+
+\textbf{Squeeze-and-Excitation (SE)} (Compresión y Excitación)
+\\
+Mecanismo de atención a nivel de canal que recalibra feature maps mediante global average pooling (squeeze) seguido de transformación no lineal con dos capas fully-connected (excitation), generando ponderaciones adaptativas por canal. Amplifica canales informativos y suprime irrelevantes con sobrecarga computacional mínima. SE-Net ganó ILSVRC 2017.
 
 \textbf{Stride} (Paso)
 \\
@@ -487,6 +641,10 @@ Técnica que procesa cada imagen de prueba con múltiples transformaciones (orig
 \\
 Regiones rectangulares en las que se divide una imagen durante CLAHE para aplicar ecualización local. Tamaño típico: 4×4 u 8×8 bloques.
 
+\textbf{Top-5 Error} (Error Top-5)
+\\
+Métrica de evaluación en clasificación multiclase que mide el porcentaje de predicciones donde la clase correcta NO está entre las 5 predicciones con mayor probabilidad. Utilizada en competencias de ImageNet para evaluar rendimiento en tareas con muchas clases (1,000 categorías). Valores bajos (e.g., <3\%) indican excelente discriminación.
+
 \textbf{Transformación afín}
 \\
 Transformación geométrica que preserva líneas rectas y paralelismo, pudiendo incluir traslación, rotación, escalado y sesgo. Queda completamente determinada por la correspondencia entre tres puntos no colineales, propiedad utilizada en warping triangular.
@@ -496,6 +654,14 @@ Transformación geométrica que preserva líneas rectas y paralelismo, pudiendo 
 \textbf{Triangulación de Delaunay}
 \\
 Método geométrico que conecta un conjunto de puntos mediante triángulos que no se superponen, maximizando el ángulo mínimo de todos los triángulos para evitar triángulos degenerados. Genera 16 triángulos a partir de los 15 landmarks en este trabajo.
+
+% =============================================================================
+\section*{U}
+% =============================================================================
+
+\textbf{U-Net}
+\\
+Arquitectura de red neuronal con estructura codificador-decodificador simétrica y conexiones saltadas densas (skip connections) entre niveles correspondientes, diseñada originalmente para segmentación médica con capacidad de aprender con pocos datos etiquetados. La estructura en "U" permite combinar información de contexto global (encoder) con localización espacial precisa (decoder).
 
 % =============================================================================
 \section*{V}
@@ -512,6 +678,18 @@ Casos de clases negativas correctamente clasificados como negativos.
 \textbf{Verdaderos Positivos (VP)}
 \\
 Casos de una clase positiva correctamente clasificados como positivos. En detección de COVID-19, pacientes positivos correctamente identificados.
+
+\textbf{VGGNet}
+\\
+Arquitectura CNN que demostró la importancia de profundidad en redes neuronales, utilizando bloques de convoluciones 3×3 repetidas para incrementar capacidad de representación mientras se mantiene un diseño simple y homogéneo. VGG-16 y VGG-19 fueron ampliamente adoptadas como extractores de características preentrenados antes de ResNet.
+
+\textbf{Vision Transformers (ViT)} (Transformadores de Visión)
+\\
+Arquitectura que aplica mecanismos transformer (originalmente diseñados para NLP) a reconocimiento de imágenes dividiendo la imagen en parches no solapados, proyectándolos a embeddings y procesándolos mediante multi-head self-attention. Captura dependencias de largo alcance globalmente pero requiere conjuntos de datos masivos (JFT-300M) para competir con CNNs debido a ausencia de inductive biases.
+
+\textbf{VOC 2007} (\textit{Visual Object Classes 2007})
+\\
+Conjunto de datos del desafío PASCAL VOC 2007 para detección y segmentación de objetos con 20 categorías, utilizado como benchmark histórico de visión por computadora. Incluye anotaciones de bounding boxes, segmentación semántica y clasificación de acciones.
 
 % =============================================================================
 \section*{W}
@@ -554,6 +732,21 @@ AdamW & \textit{Adam with Weight Decay} \\
       & Optimizador Adam con Decaimiento de Pesos \\
 \addlinespace
 
+ASM & \textit{Active Shape Models} \\
+    & Modelos de Forma Activa \\
+\addlinespace
+
+AUC & \textit{Area Under the Curve} \\
+    & Área Bajo la Curva \\
+\addlinespace
+
+BIMCV & Biosignal Interpretation and Medical Computing Valencia \\
+\addlinespace
+
+CBAM & \textit{Convolutional Block Attention Module} \\
+     & Módulo de Atención de Bloque Convolucional \\
+\addlinespace
+
 CLAHE & \textit{Contrast Limited Adaptive Histogram Equalization} \\
       & Ecualización Adaptativa de Histograma con Límite de Contraste \\
 \addlinespace
@@ -594,6 +787,13 @@ L1 & \textit{L1 Loss} / Error Absoluto Medio \\
 L2 & \textit{L2 Loss} / Error Cuadrático Medio \\
 \addlinespace
 
+MS COCO & \textit{Microsoft Common Objects in Context} \\
+\addlinespace
+
+NME & \textit{Normalized Mean Error} \\
+    & Error Medio Normalizado \\
+\addlinespace
+
 PA & Posteroanterior \\
 \addlinespace
 
@@ -628,6 +828,10 @@ SE-Net & \textit{Squeeze-and-Excitation Network} \\
        & Red de Compresión y Excitación \\
 \addlinespace
 
+STN & \textit{Spatial Transformer Network} \\
+    & Red de Transformación Espacial \\
+\addlinespace
+
 SVD & \textit{Singular Value Decomposition} \\
     & Descomposición en Valores Singulares \\
 \addlinespace
@@ -640,5 +844,16 @@ VN & Verdaderos Negativos (\textit{True Negatives}) \\
 \addlinespace
 
 VP & Verdaderos Positivos (\textit{True Positives}) \\
+\addlinespace
+
+ViT & \textit{Vision Transformer} \\
+    & Transformador de Visión \\
+\addlinespace
+
+VOC & \textit{Visual Object Classes} \\
+\addlinespace
+
+XAI & \textit{Explainable AI} \\
+    & Inteligencia Artificial Explicable \\
 
 \end{longtable}
