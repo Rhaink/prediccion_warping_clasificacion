@@ -9,14 +9,46 @@ Options:
     --share         Create public shareable link (via Gradio)
     --port PORT     Server port (default: 7860)
     --host HOST     Server host (default: localhost)
+
+This script supports both development mode and PyInstaller standalone mode.
 """
+import os
 import sys
 import argparse
 from pathlib import Path
 
+
+def get_base_path():
+    """
+    Get base path for resources.
+
+    Returns the appropriate base directory depending on execution mode:
+    - PyInstaller frozen mode: sys._MEIPASS (temporary extraction directory)
+    - Development mode: Project root directory
+
+    Returns:
+        Path: Base path for accessing models and resources
+    """
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller executable
+        return Path(sys._MEIPASS)
+    else:
+        # Running as Python script
+        return Path(__file__).parent.parent
+
+
+# Get base path (works in both .exe and development mode)
+BASE_PATH = get_base_path()
+PROJECT_ROOT = BASE_PATH
+
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# Configure models directory for deployment mode
+if getattr(sys, 'frozen', False):
+    # In PyInstaller mode, models are in 'models/' relative to _MEIPASS
+    os.environ['COVID_DEMO_MODELS_DIR'] = str(BASE_PATH / 'models')
+    os.environ['COVID_DEMO_FROZEN'] = '1'  # Flag to detect frozen mode
 
 
 def check_dependencies():
@@ -102,10 +134,17 @@ def check_models():
     return True
 
 
+def is_frozen():
+    """Check if running as PyInstaller frozen executable."""
+    return getattr(sys, 'frozen', False)
+
+
 def print_header():
     """Print welcome header."""
     print("=" * 70)
     print("  Sistema de Detección de COVID-19 mediante Landmarks Anatómicos")
+    if is_frozen():
+        print("  COVID-19 Detection System - Standalone Demo")
     print("=" * 70)
     print()
 
@@ -155,15 +194,26 @@ def main():
 
     # Check models
     print("Verificando archivos de modelos...")
+    if is_frozen():
+        print("(Esto puede tomar 10-30 segundos en la primera ejecución...)\n")
+
     models_ok = check_models()
     if models_ok:
         print("✓ Todos los modelos encontrados\n")
     else:
         print()
-        response = input("¿Deseas continuar de todos modos? (s/n): ")
-        if response.lower() not in ['s', 'si', 'y', 'yes']:
-            print("Abortando.")
+        if is_frozen():
+            # In frozen mode, cannot continue without models
+            print("❌ Error crítico: Modelos no encontrados.")
+            print("Por favor contacte al desarrollador o reinstale la aplicación.")
+            input("\nPresione Enter para salir...")
             sys.exit(1)
+        else:
+            # In development mode, ask user
+            response = input("¿Deseas continuar de todos modos? (s/n): ")
+            if response.lower() not in ['s', 'si', 'y', 'yes']:
+                print("Abortando.")
+                sys.exit(1)
         print()
 
     # Import and create demo
@@ -204,11 +254,15 @@ def main():
         )
     except KeyboardInterrupt:
         print("\n\n✓ Servidor detenido.")
+        if is_frozen():
+            input("\nPresione Enter para salir...")
         sys.exit(0)
     except Exception as e:
         print(f"\n❌ Error al lanzar servidor: {e}")
         import traceback
         traceback.print_exc()
+        if is_frozen():
+            input("\nPresione Enter para salir...")
         sys.exit(1)
 
 

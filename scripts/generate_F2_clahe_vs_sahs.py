@@ -183,10 +183,6 @@ def main():
         print(f"  CLAHE    - Media: {img_clahe.mean():.1f}, Std: {img_clahe.std():.1f}")
         print(f"  SAHS     - Media: {img_sahs.mean():.1f}, Std: {img_sahs.std():.1f}")
 
-    # Titulo general
-    fig.suptitle('Comparacion de tecnicas de mejora de contraste: CLAHE vs SAHS',
-                 fontsize=14, fontweight='bold', y=0.98)
-
     # Guardar figura
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')

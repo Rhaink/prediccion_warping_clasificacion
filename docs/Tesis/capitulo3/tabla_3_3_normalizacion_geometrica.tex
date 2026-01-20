@@ -7,10 +7,10 @@
 \caption{Comparación de métodos de normalización geométrica aplicados a clasificación de imágenes médicas}
 \label{tab:geometric_normalization_comparison}
 \small
-\begin{tabular}{@{}lllcc@{}}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}p{3.2cm}p{2.6cm}p{2.4cm}p{1.5cm}p{2.2cm}@{}}
 \toprule
-\textbf{Trabajo} & \textbf{Método} & \textbf{Conjunto de datos} & \textbf{Mejora} & \textbf{Transformación} \\
- & & & \textbf{Exact. (\%)} & \textbf{Tipo} \\
+\textbf{Trabajo} & \textbf{Método} & \textbf{Conjunto de datos} & \textbf{Mejora Exact. (\%)} & \textbf{Transform. Tipo} \\
 \midrule
 Jaderberg et al. (2015) \cite{jaderberg2015spatial} & STN & MNIST, etc. & Variable & Affine global \\
 Rocha et al. (2024) \cite{rocha2024stern} & STERN & ChestX-ray14 & +2.1\tnote{a} & STN + Attention \\
@@ -27,8 +27,7 @@ Ayala-Raggi (2023) \cite{ayala2023synergizing} & Normalización + & COVID-19 & +
 \textbf{Este trabajo (2026)} & \textbf{GPA + Deformación} & \textbf{COVID-19} & \textbf{98.10} & \textbf{Piecewise affine} \\
  & \textbf{afín por partes} & \textbf{Radiography} & \textbf{(norm.)\tnote{c}} & \textbf{(local)} \\
 \cmidrule{4-4}
- & & & 98.68\tnote{d} & 15 landmarks + \\
- & & & (orig.) & Delaunay \\
+ & & & 98.68\tnote{d} (orig.) & 15 puntos ref. + Delaunay \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}

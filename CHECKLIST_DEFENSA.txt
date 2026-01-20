@@ -1,0 +1,436 @@
+===============================================================
+        CHECKLIST PARA DEFENSA DE TESIS
+   Sistema de Detección de COVID-19 - Preparación Demo
+===============================================================
+
+Este checklist te ayudará a preparar y validar todo lo
+necesario para una demostración exitosa en tu defensa de tesis.
+
+===============================================================
+[ ] 1 SEMANA ANTES DE LA DEFENSA
+===============================================================
+
+HARDWARE:
+  [ ] Conseguir USB Drive de 4GB o más (preferible 8GB)
+  [ ] Formatear USB en FAT32 o NTFS
+  [ ] Verificar que el USB no tiene errores (scandisk)
+  [ ] Crear USB de backup (copia exacta)
+
+BUILD DEL EJECUTABLE:
+  [ ] Ejecutar: python scripts/build_windows_exe.py --all
+  [ ] Verificar que dist/COVID19_Demo.exe se creó (~1.8GB)
+  [ ] Verificar checksum: diff dist/COVID19_Demo.exe.sha256
+  [ ] Probar ejecutable en tu máquina de desarrollo
+
+COPIAR AL USB:
+  [ ] Copiar COVID19_Demo.exe al USB (raíz o carpeta "Demo")
+  [ ] Copiar README_USUARIO.txt al USB
+  [ ] Copiar COVID19_Demo.exe.sha256 al USB
+  [ ] Crear carpeta "Ejemplos" en USB
+  [ ] Copiar 3-5 imágenes X-ray de prueba a "Ejemplos"
+      • 1-2 casos COVID positivos
+      • 1-2 casos Normales
+      • 1 caso Neumonía Viral
+  [ ] Crear carpeta "Resultados_Ejemplo" en USB
+  [ ] Generar y copiar 3 PDFs de ejemplo:
+      • Resultado COVID
+      • Resultado Normal
+      • Resultado Viral
+  [ ] Copiar Visual C++ Redistributable (vc_redist.x64.exe)
+      Descargar desde: https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+PLAN B (BACKUP):
+  [ ] Grabar video de demostración completa (7-10 minutos)
+      • Mostrar todas las pestañas
+      • Procesar las 3 clases (COVID, Normal, Viral)
+      • Explicar cada visualización
+      • Mostrar exportación a PDF
+  [ ] Crear carpeta "Video_Demo_Backup" en USB
+  [ ] Copiar video (formato MP4, H.264, resolución 1080p)
+  [ ] Crear presentación PowerPoint con screenshots:
+      • Pantalla inicial
+      • Landmarks detectados
+      • Imagen warped
+      • GradCAM
+      • Resultados de clasificación
+      • Métricas del sistema
+  [ ] Copiar presentación al USB
+
+VERIFICACIÓN:
+  [ ] Verificar estructura del USB:
+      USB_Drive/
+      ├── COVID19_Demo.exe
+      ├── COVID19_Demo.exe.sha256
+      ├── README_USUARIO.txt
+      ├── Ejemplos/
+      │   ├── covid_ejemplo_1.png
+      │   ├── normal_ejemplo_1.png
+      │   └── viral_ejemplo_1.png
+      ├── Resultados_Ejemplo/
+      │   ├── resultado_covid.pdf
+      │   ├── resultado_normal.pdf
+      │   └── resultado_viral.pdf
+      ├── Visual_C++_Redistributable/
+      │   └── vc_redist.x64.exe
+      └── Video_Demo_Backup/
+          ├── demo_completo.mp4
+          └── slides_backup.pptx
+
+  [ ] Espacio usado en USB: ~2.5-3 GB
+  [ ] Todos los archivos accesibles
+
+===============================================================
+[ ] 3 DÍAS ANTES DE LA DEFENSA
+===============================================================
+
+TESTING EN MÁQUINA LIMPIA:
+  [ ] Conseguir laptop/VM sin Python instalado (Windows limpio)
+  [ ] Copiar USB a esa máquina
+  [ ] Probar ejecutable en máquina limpia:
+      [ ] Doble-click en COVID19_Demo.exe
+      [ ] SmartScreen aparece → "Más información" → "Ejecutar"
+      [ ] Ventana negra aparece con mensajes
+      [ ] Navegador abre automáticamente (~20-30 segundos)
+      [ ] Interfaz Gradio carga correctamente
+  [ ] Probar sin conexión a Internet:
+      [ ] Desconectar WiFi/Ethernet
+      [ ] Verificar que aplicación funciona normalmente
+  [ ] Probar todas las funcionalidades:
+      [ ] Cargar imagen de ejemplo COVID
+      [ ] Click "Procesar Imagen"
+      [ ] Verificar 4 visualizaciones aparecen
+      [ ] Landmarks visibles con colores correctos
+      [ ] Imagen warped se genera
+      [ ] GradCAM muestra mapa de calor
+      [ ] Probabilidades suman ~100%
+      [ ] Expandir "Métricas del Sistema"
+      [ ] Click "Exportar a PDF"
+      [ ] Verificar PDF se descarga
+  [ ] Repetir con imagen Normal
+  [ ] Repetir con imagen Viral
+  [ ] Probar Vista Rápida (pestaña 2)
+  [ ] Probar Acerca del Sistema (pestaña 3)
+  [ ] Cerrar y reabrir aplicación 2-3 veces
+
+CRONOMETRAR TIEMPOS:
+  [ ] Tiempo de startup (desde doble-click hasta interfaz):
+      Ejecución 1: _____ segundos
+      Ejecución 2: _____ segundos
+      Ejecución 3: _____ segundos
+      Promedio: _____ segundos
+
+  [ ] Tiempo de primera inferencia (cold start):
+      COVID: _____ segundos
+      Normal: _____ segundos
+      Viral: _____ segundos
+
+  [ ] Tiempo de inferencias subsecuentes:
+      Imagen 2: _____ segundos
+      Imagen 3: _____ segundos
+      Imagen 4: _____ segundos
+
+VERIFICAR PERFORMANCE:
+  [ ] Uso de RAM (Task Manager):
+      En reposo: _____ MB
+      Durante inferencia: _____ MB
+  [ ] Uso de CPU durante inferencia: _____ %
+  [ ] No hay crashes después de 5-10 imágenes procesadas
+  [ ] Cierre limpio (Ctrl+C funciona)
+  [ ] No quedan procesos huérfanos (verificar Task Manager)
+
+IDENTIFICAR PROBLEMAS:
+  [ ] Documentar cualquier error o advertencia
+  [ ] Anotar si faltó alguna DLL (instalar VC++ Redist)
+  [ ] Verificar si antivirus bloqueó algo
+  [ ] Confirmar que todo funciona como esperado
+
+===============================================================
+[ ] 1 DÍA ANTES DE LA DEFENSA
+===============================================================
+
+COORDINAR CON LA SALA:
+  [ ] Solicitar acceso a la sala de defensa (si es posible)
+  [ ] Verificar disponibilidad de:
+      [ ] Laptop / PC de presentación
+      [ ] Proyector o pantalla grande
+      [ ] Cable HDMI/VGA
+      [ ] Conexión eléctrica para laptop
+  [ ] Si es posible, probar en la laptop de la sala:
+      [ ] Llevar USB y probar ejecutable
+      [ ] Verificar tiempo de carga
+      [ ] Confirmar que navegador funciona
+      [ ] Probar proyección en pantalla
+
+PREPARAR EJEMPLOS PARA DEMOSTRACIÓN:
+  [ ] Seleccionar 3 imágenes clave:
+      1. COVID positivo (con hallazgos claros)
+      2. Normal (radiografía limpia)
+      3. Viral Pneumonia (para contrastar con COVID)
+  [ ] Renombrar archivos para fácil identificación:
+      • "1_COVID_para_demo.png"
+      • "2_NORMAL_para_demo.png"
+      • "3_VIRAL_para_demo.png"
+  [ ] Copiar a carpeta "Demo_Presentacion" en USB
+  [ ] Pre-generar PDFs de estos ejemplos (por si acaso)
+
+PREPARAR NARRATIVA:
+  [ ] Escribir guion de demostración (2-3 minutos):
+      Minuto 1: Introducción y carga de imagen COVID
+      Minuto 2: Explicar landmarks y warping
+      Minuto 3: Mostrar GradCAM y clasificación
+  [ ] Practicar demostración completa 3 veces
+  [ ] Cronometrar duración total
+  [ ] Preparar respuestas a preguntas frecuentes:
+      • ¿Por qué 15 landmarks?
+      • ¿Cómo funciona el warping?
+      • ¿Qué es GradCAM?
+      • ¿Cuál es la accuracy del sistema?
+      • ¿Funciona en tiempo real?
+      • ¿Se puede usar en producción clínica?
+
+VERIFICAR USB FINAL:
+  [ ] Hacer checksum del ejecutable en USB
+  [ ] Comparar con checksum original (debe coincidir)
+  [ ] Probar USB en otra computadora (última verificación)
+  [ ] Marcar USB con etiqueta "DEFENSA TESIS - PRINCIPAL"
+  [ ] Marcar USB de backup "DEFENSA TESIS - BACKUP"
+
+PLAN DE CONTINGENCIA:
+  [ ] Confirmar que video de backup está listo
+  [ ] Confirmar que slides de backup están listos
+  [ ] Llevar laptop personal como plan D (si es posible)
+  [ ] Verificar que laptop personal tiene:
+      [ ] Demo funcionando
+      [ ] Cable HDMI en tu mochila
+      [ ] Cargador de laptop
+      [ ] Adaptadores HDMI-VGA (por si acaso)
+
+===============================================================
+[ ] DÍA DE LA DEFENSA (llegar 30-60 min antes)
+===============================================================
+
+PRE-VUELO (EN CASA):
+  [ ] Cargar laptop personal (100% batería)
+  [ ] Verificar que ambos USB están en tu mochila
+  [ ] Imprimir README_USUARIO.txt (para el jurado si lo piden)
+  [ ] Llevar cable HDMI
+  [ ] Llevar adaptadores (HDMI-VGA, USB-C, etc.)
+  [ ] Desayunar bien (estarás nervioso, necesitas energía)
+
+EN LA SALA (30-60 min antes):
+  [ ] Conectar laptop de presentación a proyector
+  [ ] Copiar COVID19_Demo.exe a C:\Demo\ (o Escritorio)
+  [ ] Cerrar programas innecesarios (liberar RAM):
+      [ ] Navegadores con muchas pestañas
+      [ ] Office / Adobe
+      [ ] Cliente de email
+      [ ] Spotify / reproductores multimedia
+  [ ] Deshabilitar notificaciones (Focus Assist en Windows)
+  [ ] Configurar pantalla para no apagarse (Power Settings)
+  [ ] Ejecutar COVID19_Demo.exe
+  [ ] Esperar carga completa (~20-30 segundos)
+  [ ] Verificar que interfaz abre en navegador
+  [ ] Pre-cargar 2-3 imágenes de ejemplo:
+      [ ] Procesar 1 COVID
+      [ ] Procesar 1 Normal
+      [ ] Dejar resultados visibles en pestañas del navegador
+  [ ] Tener carpeta "Demo_Presentacion" abierta
+  [ ] Maximizar ventana del navegador
+  [ ] Ocultar bookmarks bar (más espacio en pantalla)
+  [ ] Zoom al 100% en navegador
+
+SETUP DE BACKUP:
+  [ ] Abrir video de backup en VLC/reproductor (pausado)
+  [ ] Abrir slides de backup en PowerPoint (minimizado)
+  [ ] Tener laptop personal lista (si la llevas)
+
+VERIFICACIÓN FINAL (5 min antes):
+  [ ] Interfaz Gradio visible en proyector
+  [ ] Navegador en modo presentación (F11)
+  [ ] Ventana negra (consola) minimizada (pero NO cerrada)
+  [ ] Carpeta con imágenes demo accesible
+  [ ] Agua/café disponible
+  [ ] Respirar profundo (¡lo tienes!)
+
+===============================================================
+[ ] DURANTE LA DEMOSTRACIÓN (5-7 minutos)
+===============================================================
+
+NARRATIVA SUGERIDA:
+  1. [0:00-0:30] Introducción
+     "He desarrollado un sistema de detección de COVID-19 que
+     combina detección de landmarks anatómicos y normalización
+     geométrica. Permítanme mostrarles cómo funciona."
+
+  2. [0:30-1:30] Cargar imagen COVID
+     • Arrastrar imagen a la interfaz
+     • Click "Procesar Imagen"
+     • Mientras carga (~2 seg): "El sistema primero detecta
+       15 landmarks anatómicos en el contorno pulmonar..."
+
+  3. [1:30-2:30] Explicar visualizaciones
+     • Landmarks: "Estos 15 puntos definen el contorno pulmonar
+       en 5 grupos anatómicos (mostrar colores)"
+     • Warped: "Luego normaliza geométricamente la imagen usando
+       piecewise affine warping basado en Procrustes Analysis"
+
+  4. [2:30-3:30] GradCAM y clasificación
+     • "El mapa de calor GradCAM muestra las regiones donde el
+       modelo enfoca su atención"
+     • "El clasificador predice COVID-19 con 95.x% de confianza"
+     • Mostrar probabilidades
+
+  5. [3:30-4:30] Métricas
+     • Expandir accordion "Métricas del Sistema"
+     • "El sistema tiene una accuracy validada de 98.05%"
+     • "Error de landmarks de 3.61 píxeles en promedio"
+
+  6. [4:30-5:30] Caso Normal (contraste)
+     • Cargar imagen Normal
+     • "Noten cómo el GradCAM muestra un patrón diferente"
+     • "El modelo predice Normal con alta confianza"
+
+  7. [5:30-6:00] Exportar PDF (opcional)
+     • Click "Exportar a PDF"
+     • "Los resultados pueden exportarse para documentación"
+
+  8. [6:00-7:00] Buffer / Preguntas
+
+TIPS DURANTE DEMO:
+  ✓ Hablar pausadamente (estarás nervioso)
+  ✓ Si el procesamiento tarda, llenar el silencio explicando
+    qué está pasando internamente
+  ✓ Si algo falla: mantener la calma, pasar al plan B (video)
+  ✓ No disculparse en exceso si hay pequeños glitches
+  ✓ Mantener contacto visual con el jurado
+  ✓ Sonreír (proyecta confianza)
+
+SI ALGO SALE MAL:
+  Opción A: Reiniciar aplicación (10-30 seg)
+  Opción B: Mostrar resultados pre-generados (PDFs)
+  Opción C: Cambiar a video de backup
+  Opción D: Usar slides de backup con screenshots
+  Opción E: Usar laptop personal
+
+  NO ENTRAR EN PÁNICO. El jurado entiende que la tecnología
+  puede fallar. Lo importante es tu conocimiento del tema.
+
+===============================================================
+[ ] PREGUNTAS FRECUENTES DEL JURADO (preparar respuestas)
+===============================================================
+
+P: ¿Por qué 15 landmarks y no más/menos?
+R: "Los 15 landmarks fueron seleccionados para cubrir el
+   contorno pulmonar completo con suficiente granularidad
+   sin introducir puntos ambiguos. Más landmarks generarían
+   mayor error de anotación manual, menos landmarks perderían
+   detalles geométricos importantes."
+
+P: ¿Cómo se entrenó el modelo?
+R: "Usamos transfer learning con ResNet-18 preentrenado en
+   ImageNet, agregamos Coordinate Attention, y entrenamiento
+   en dos fases: primero la cabeza de regresión, luego
+   fine-tuning completo. Dataset de 100 imágenes anotadas
+   manualmente para landmarks."
+
+P: ¿Qué accuracy tiene en datos reales de hospital?
+R: "Este es un dataset académico (COVID-19 Radiography Database).
+   Para uso en producción clínica se requeriría validación
+   adicional con datos del hospital específico y domain
+   adaptation. La accuracy reportada de 98.05% es en el
+   test set de este dataset."
+
+P: ¿Funciona en tiempo real?
+R: "La inferencia toma 1-2 segundos por imagen en CPU,
+   <0.5 segundos en GPU. Es suficientemente rápido para
+   screening, pero no para aplicaciones que requieren
+   procesamiento en milisegundos."
+
+P: ¿Qué pasa si la radiografía está rotada?
+R: "El sistema es robusto a rotaciones moderadas (±10-15°)
+   gracias al ensemble y data augmentation durante entrenamiento.
+   Rotaciones extremas requerirían preprocesamiento adicional."
+
+P: ¿Por qué warping y no solo clasificar directamente?
+R: "El warping elimina variabilidad geométrica debido a
+   posicionamiento del paciente, permitiendo al clasificador
+   enfocarse en patrones patológicos en lugar de diferencias
+   espaciales. Los experimentos muestran mejora de X% en
+   accuracy con warping vs sin warping."
+
+P: ¿Cómo se interpreta el GradCAM?
+R: "GradCAM visualiza las regiones de la imagen que tienen
+   mayor influencia en la decisión del clasificador mediante
+   gradientes de la última capa convolucional. Las regiones
+   rojas/cálidas tienen mayor peso en la predicción."
+
+P: ¿Qué limitaciones tiene el sistema?
+R: "Principales limitaciones: 1) Domain shift - entrenado en
+   un dataset específico. 2) Solo 3 clases (COVID, Normal,
+   Viral Pneumonia). 3) Requiere rayos X frontales. 4) No
+   reemplaza diagnóstico médico profesional - es herramienta
+   de apoyo."
+
+===============================================================
+[ ] POST-DEFENSA
+===============================================================
+
+DESPUÉS DE LA PRESENTACIÓN:
+  [ ] Si el jurado quiere interactuar:
+      • Ofrecer subir sus propias imágenes
+      • Mostrar pestaña "Acerca del Sistema"
+      • Mostrar PDFs exportados
+  [ ] Si piden el ejecutable:
+      • Tener USB listo para copiar
+      • Entregar README_USUARIO.txt
+      • Explicar requisitos (Windows 10/11, 4GB RAM)
+
+LIMPIEZA:
+  [ ] Cerrar aplicación (Ctrl+C en consola)
+  [ ] Eliminar archivos temporales de C:\Demo\
+  [ ] Recoger USB (no olvidarlo!)
+  [ ] Guardar PDFs generados (para recuerdo)
+
+REFLEXIÓN:
+  [ ] ¿Qué funcionó bien?
+  [ ] ¿Qué mejorarías para futuras demostraciones?
+  [ ] ¿Qué preguntas te sorprendieron?
+  [ ] Agradecer al jurado y asesores
+
+===============================================================
+CONTACTOS DE EMERGENCIA (llenar antes de la defensa):
+===============================================================
+
+Asesor de tesis:
+  Nombre: _________________________________
+  Celular: ________________________________
+  Email: __________________________________
+
+Soporte técnico (amigo/colega con conocimiento del sistema):
+  Nombre: _________________________________
+  Celular: ________________________________
+
+Administrador de la sala:
+  Nombre: _________________________________
+  Extensión: ______________________________
+
+===============================================================
+NOTAS PERSONALES:
+===============================================================
+
+[Espacio para notas adicionales, recordatorios personales, etc.]
+
+
+
+
+===============================================================
+
+¡MUCHA SUERTE EN TU DEFENSA!
+
+Recuerda: Has trabajado duro en este proyecto. Conoces el
+sistema mejor que nadie. Confía en tu preparación.
+
+Respira profundo. Sonríe. Disfruta este momento - ¡es el
+culminación de tu esfuerzo!
+
+===============================================================

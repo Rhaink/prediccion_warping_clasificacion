@@ -58,7 +58,7 @@ def create_demo() -> gr.Blocks:
                 gr.Markdown("""
                 ### Pipeline Completo
                 Este modo muestra las 4 etapas del sistema:
-                1. **Imagen Original** → 2. **Landmarks Detectados** → 3. **Imagen Normalizada** → 4. **GradCAM (Explicabilidad)**
+                1. **Imagen Original** → 2. **Puntos de Referencia Detectados** → 3. **Imagen Normalizada** → 4. **SAHS (Mejora de Contraste)**
                 """)
 
                 with gr.Row():
@@ -110,19 +110,26 @@ def create_demo() -> gr.Blocks:
                                 height=300
                             )
                             img_landmarks = gr.Image(
-                                label="2️⃣ Landmarks Detectados (15 puntos)",
+                                label="2️⃣ Puntos de Referencia Detectados (15 puntos)",
                                 type="pil",
                                 height=300
                             )
 
                         with gr.Row():
+                            img_delaunay = gr.Image(
+                                label="🔷 Malla de Delaunay",
+                                type="pil",
+                                height=300
+                            )
                             img_warped = gr.Image(
                                 label="3️⃣ Imagen Normalizada (Warped)",
                                 type="pil",
                                 height=300
                             )
-                            img_gradcam = gr.Image(
-                                label="4️⃣ GradCAM: Regiones de Atención",
+
+                        with gr.Row():
+                            img_sahs = gr.Image(
+                                label="4️⃣ Imagen Normalizada con SAHS",
                                 type="pil",
                                 height=300
                             )
@@ -131,13 +138,13 @@ def create_demo() -> gr.Blocks:
                         gr.Markdown("### Resultados de Clasificación")
                         classification_label = gr.Label(
                             label="Probabilidades por Clase",
-                            num_top_classes=3
+                            num_top_classes=1
                         )
 
                         # Metrics accordion
                         with gr.Accordion("📈 Métricas Detalladas", open=False):
                             metrics_table = gr.Dataframe(
-                                label="Error por Landmark (Valores de Referencia)",
+                                label="Error por Punto de Referencia (Valores de Referencia)",
                                 interactive=False
                             )
 
@@ -154,7 +161,7 @@ def create_demo() -> gr.Blocks:
                     if image_path is None:
                         return (
                             "⚠️ Por favor, cargue una imagen primero.",
-                            None, None, None, None, None, None, None, None
+                            None, None, None, None, None, None, None, None, None
                         )
 
                     # Process image
@@ -164,7 +171,7 @@ def create_demo() -> gr.Blocks:
                         error_msg = f"❌ **Error**: {result['error']}"
                         return (
                             error_msg,
-                            None, None, None, None, None, None, None,
+                            None, None, None, None, None, None, None, None,
                             result  # Store result for potential export
                         )
 
@@ -180,8 +187,9 @@ def create_demo() -> gr.Blocks:
                         status_msg,
                         result['original'],
                         result['landmarks'],
+                        result['delaunay_mesh'],
                         result['warped'],
-                        result['gradcam'],
+                        result['warped_sahs'],
                         result['classification'],
                         result['metrics'],
                         f"{result['inference_time']:.3f} segundos",
@@ -195,8 +203,9 @@ def create_demo() -> gr.Blocks:
                         status_text,
                         img_original,
                         img_landmarks,
+                        img_delaunay,
                         img_warped,
-                        img_gradcam,
+                        img_sahs,
                         classification_label,
                         metrics_table,
                         inference_time,
@@ -255,7 +264,7 @@ def create_demo() -> gr.Blocks:
 
                         quick_output = gr.Label(
                             label="Resultado de Clasificación",
-                            num_top_classes=3
+                            num_top_classes=1
                         )
 
                         quick_time = gr.Textbox(
@@ -288,30 +297,33 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # TAB 3: ABOUT
+            # TAB 3: ABOUT (OCULTO TEMPORALMENTE)
             # ================================================================
-            with gr.TabItem("ℹ️ Acerca del Sistema"):
-                gr.Markdown(ABOUT_TEXT)
+            # Nota: Tab "Acerca del Sistema" comentado para v1.0.8
+            # Documentación disponible en README.md y GROUND_TRUTH.json
 
-                # Footer with metrics
-                gr.Markdown("---")
-                gr.Markdown(f"""
-                ### Métricas Validadas
-
-                | Métrica | Valor |
-                |---------|-------|
-                | Error de Landmarks (Ensemble) | {VALIDATED_METRICS['landmark_error_px']:.2f} ± {VALIDATED_METRICS['landmark_std_px']:.2f} px |
-                | Mediana de Error | {VALIDATED_METRICS['landmark_median_px']:.2f} px |
-                | Accuracy de Clasificación | {VALIDATED_METRICS['classification_accuracy']:.2f}% |
-                | F1-Score Macro | {VALIDATED_METRICS['classification_f1_macro']:.2f}% |
-                | F1-Score Weighted | {VALIDATED_METRICS['classification_f1_weighted']:.2f}% |
-                | Tamaño de Imagen | {VALIDATED_METRICS['model_input_size']}×{VALIDATED_METRICS['model_input_size']} px |
-                | Fill Rate | {VALIDATED_METRICS['fill_rate']}% |
-
-                **Preprocesamiento:**
-                - CLAHE: clip={VALIDATED_METRICS['clahe_clip']}, tile={VALIDATED_METRICS['clahe_tile']}×{VALIDATED_METRICS['clahe_tile']}
-                - Margen de Warping: {VALIDATED_METRICS['margin_scale']}× desde centroide
-                """)
+            # with gr.TabItem("ℹ️ Acerca del Sistema"):
+            #     gr.Markdown(ABOUT_TEXT)
+            #
+            #     # Footer with metrics
+            #     gr.Markdown("---")
+            #     gr.Markdown(f"""
+            #     ### Métricas Validadas
+            #
+            #     | Métrica | Valor |
+            #     |---------|-------|
+            #     | Error de Landmarks (Ensemble) | {VALIDATED_METRICS['landmark_error_px']:.2f} ± {VALIDATED_METRICS['landmark_std_px']:.2f} px |
+            #     | Mediana de Error | {VALIDATED_METRICS['landmark_median_px']:.2f} px |
+            #     | Accuracy de Clasificación | {VALIDATED_METRICS['classification_accuracy']:.2f}% |
+            #     | F1-Score Macro | {VALIDATED_METRICS['classification_f1_macro']:.2f}% |
+            #     | F1-Score Weighted | {VALIDATED_METRICS['classification_f1_weighted']:.2f}% |
+            #     | Tamaño de Imagen | {VALIDATED_METRICS['model_input_size']}×{VALIDATED_METRICS['model_input_size']} px |
+            #     | Fill Rate | {VALIDATED_METRICS['fill_rate']}% |
+            #
+            #     **Preprocesamiento:**
+            #     - CLAHE: clip={VALIDATED_METRICS['clahe_clip']}, tile={VALIDATED_METRICS['clahe_tile']}×{VALIDATED_METRICS['clahe_tile']}
+            #     - Margen de Warping: {VALIDATED_METRICS['margin_scale']}× desde centroide
+            #     """)
 
     return demo
 

@@ -204,37 +204,40 @@ class PortableBuilder:
         return True
 
     def install_dependencies(self) -> bool:
-        """Download Python dependencies and copy to package for first-run installation."""
-        self.log("Step 5/11: Downloading dependencies (this takes ~10 minutes)...")
+        """Download Python dependencies for Windows installation.
 
-        if not REQUIREMENTS_FILE.exists():
-            self.log(f"Requirements file not found: {REQUIREMENTS_FILE}", "ERROR")
+        Strategy:
+        1. Download torch/torchvision with --no-deps (avoid Linux-only pytorch-triton-rocm)
+        2. Download ALL other dependencies from requirements_windows_full.txt
+        3. Remove any triton packages if accidentally downloaded
+        4. Generate MANIFEST.txt for validation
+        """
+        self.log("Step 5/11: Downloading dependencies (~10 minutes)...")
+
+        requirements_file = PROJECT_ROOT / "scripts" / "requirements_windows_full.txt"
+        if not requirements_file.exists():
+            self.log(f"Requirements file not found: {requirements_file}", "ERROR")
             return False
 
-        # Create wheels directory in staging (will be included in package)
+        # Create wheels directories
         wheels_dir_staging = self.staging_dir / "wheels"
         wheels_dir_staging.mkdir(parents=True, exist_ok=True)
-
-        # Temporary download location
         wheels_dir_temp = self.output_dir / "wheels_temp"
         wheels_dir_temp.mkdir(parents=True, exist_ok=True)
 
-        # Download PyTorch separately (CPU version for Windows)
-        self.log("Downloading PyTorch CPU for Windows...")
+        # STEP 1: Download PyTorch separately with --no-deps
+        # This avoids downloading pytorch-triton-rocm (Linux x86_64 only, 500+ MB)
+        self.log("Downloading PyTorch CPU (torch + torchvision only)...")
         try:
             result = subprocess.run(
                 [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "download",
-                    "torch==2.4.1",
-                    "torchvision==0.19.1",
+                    sys.executable, "-m", "pip", "download",
+                    "torch==2.4.1", "torchvision==0.19.1",
                     "--extra-index-url", "https://download.pytorch.org/whl/cpu",
                     "--platform", "win_amd64",
                     "--python-version", "312",
                     "--only-binary", ":all:",
-                    "--no-deps",  # No dependencies to avoid CUDA issues
+                    "--no-deps",  # Avoid triton and other Linux-specific deps
                     "--dest", str(wheels_dir_temp),
                 ],
                 capture_output=not self.verbose,
@@ -247,76 +250,43 @@ class PortableBuilder:
             self.log(f"Failed to download PyTorch: {e}", "ERROR")
             return False
 
-        # Download other dependencies (without PyTorch)
-        self.log("Downloading other packages...")
-        other_packages = [
-            "gradio>=6.0.0,<7.0.0",
-            "opencv-python-headless>=4.8.0",
-            "Pillow>=11.0.0",
-            "numpy>=2.1.0,<3.0.0",
-            "scipy>=1.14.0",
-            "scikit-learn>=1.5.0",
-            "matplotlib>=3.10.0",
-            "pandas>=2.2.0",
-            "reportlab>=4.2.0",
-            "tqdm>=4.66.0",
-        ]
+        # STEP 2: Download ALL other dependencies from requirements file
+        # This includes:
+        # - Torch deps lost by --no-deps (sympy, mpmath, networkx, etc.)
+        # - Gradio + full dependency tree (typer, uvicorn, starlette, etc.)
+        # - Windows-specific packages (colorama, etc.)
+        # - All scientific computing stack
+        self.log("Downloading all dependencies from requirements file...")
+        self.log(f"  Using: {requirements_file.name}")
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable, "-m", "pip", "download",
+                    "-r", str(requirements_file),
+                    "--platform", "win_amd64",
+                    "--python-version", "312",
+                    "--only-binary", ":all:",
+                    "--dest", str(wheels_dir_temp),
+                ],
+                capture_output=not self.verbose,
+                text=True,
+            )
+            if result.returncode != 0:
+                self.log(f"Requirements download failed: {result.stderr}", "ERROR")
+                return False
+        except Exception as e:
+            self.log(f"Failed to download requirements: {e}", "ERROR")
+            return False
 
-        for package in other_packages:
-            try:
-                result = subprocess.run(
-                    [
-                        sys.executable,
-                        "-m",
-                        "pip",
-                        "download",
-                        package,
-                        "--platform", "win_amd64",
-                        "--python-version", "312",
-                        "--only-binary", ":all:",
-                        "--dest", str(wheels_dir_temp),
-                    ],
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode != 0:
-                    self.log(f"Warning: Failed to download {package}: {result.stderr}", "WARNING")
-            except Exception as e:
-                self.log(f"Warning: Failed to download {package}: {e}", "WARNING")
+        # STEP 3: Remove pytorch-triton-rocm if accidentally downloaded
+        # This can happen if pip resolves dependencies despite our efforts
+        triton_wheels = list(wheels_dir_temp.glob("*triton*rocm*.whl"))
+        if triton_wheels:
+            for triton_wheel in triton_wheels:
+                self.log(f"Removing Linux-only package: {triton_wheel.name}")
+                triton_wheel.unlink()
 
-        # Download Windows-specific dependencies explicitly
-        # These are packages with platform_system == "Windows" markers
-        # that pip download doesn't capture when running on Linux
-        self.log("Downloading Windows-specific dependencies...")
-        windows_only_packages = [
-            "colorama>=0.4.0",  # Required by: click, tqdm, uvicorn on Windows
-        ]
-
-        for package in windows_only_packages:
-            try:
-                result = subprocess.run(
-                    [
-                        sys.executable,
-                        "-m",
-                        "pip",
-                        "download",
-                        package,
-                        "--platform", "win_amd64",
-                        "--python-version", "312",
-                        "--only-binary", ":all:",
-                        "--dest", str(wheels_dir_temp),
-                    ],
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode == 0:
-                    self.log(f"  Downloaded {package}")
-                else:
-                    self.log(f"  Warning: Failed to download {package}", "WARNING")
-            except Exception as e:
-                self.log(f"  Warning: Failed to download {package}: {e}", "WARNING")
-
-        # Copy wheels to staging directory
+        # STEP 4: Copy wheels to staging
         wheel_files = list(wheels_dir_temp.glob("*.whl"))
         if not wheel_files:
             self.log("No wheel files found after download", "ERROR")
@@ -326,11 +296,18 @@ class PortableBuilder:
         for wheel_file in wheel_files:
             shutil.copy2(wheel_file, wheels_dir_staging)
 
+        # STEP 5: Generate manifest for validation
+        # This allows install_deps.py to verify all expected packages are present
+        manifest_file = self.staging_dir / "MANIFEST.txt"
+        manifest_content = sorted([f.name for f in wheel_files])
+        manifest_file.write_text("\n".join(manifest_content), encoding='utf-8')
+        self.log(f"Generated MANIFEST.txt with {len(manifest_content)} packages")
+
         # Create a simpler requirements file for Windows pip install
         win_requirements = self.staging_dir / "requirements.txt"
         win_requirements.write_text("# All dependencies will be installed from wheels/ directory\n")
 
-        self.log(f"Dependencies prepared ({len(wheel_files)} packages, will install on first run)")
+        self.log(f"Dependencies prepared ({len(wheel_files)} packages)")
         return True
 
     def cleanup_unnecessary_files(self) -> bool:
@@ -472,7 +449,18 @@ def main():
 
     # Verify critical packages
     print("Verifying installation...")
-    critical_packages = ["torch", "torchvision", "gradio", "numpy", "cv2"]
+    critical_packages = [
+        "torch",
+        "torchvision",
+        "gradio",
+        "numpy",
+        "cv2",
+        # Torch dependencies (CRITICAL - lost by --no-deps in build)
+        "sympy",      # torch.fx symbolic computation
+        "networkx",   # torch graph operations
+        # CLI framework
+        "click",      # typer/uvicorn dependency
+    ]
     missing = []
 
     for package in critical_packages:

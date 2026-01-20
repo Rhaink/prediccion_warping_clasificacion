@@ -38,6 +38,9 @@ data/coordenadas/
 # --- Checkpoints de modelos (>136GB) ---
 checkpoints/
 
+# --- Backups de modelos ---
+backups/
+
 # --- Outputs de experimentos (>5GB) ---
 outputs/
 results/

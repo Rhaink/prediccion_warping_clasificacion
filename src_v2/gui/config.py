@@ -3,6 +3,7 @@ Configuration file for the GUI demonstration.
 
 Contains paths, validated metrics, colors, and interface text.
 """
+import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -10,34 +11,68 @@ from typing import Dict, List, Tuple
 # PROJECT PATHS
 # ============================================================================
 
+# Check if running from installed demo package or PyInstaller frozen mode
+MODELS_DIR = os.environ.get('COVID_DEMO_MODELS_DIR')
+IS_FROZEN = os.environ.get('COVID_DEMO_FROZEN', '0') == '1'
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+if MODELS_DIR:
+    # Deployment mode: models in simplified structure
+    MODELS_BASE = Path(MODELS_DIR)
+elif IS_FROZEN and hasattr(sys, '_MEIPASS'):
+    # PyInstaller frozen mode fallback
+    import sys
+    MODELS_BASE = Path(sys._MEIPASS) / 'models'
+    MODELS_DIR = str(MODELS_BASE)
+elif (PROJECT_ROOT / 'python' / 'python.exe').exists():
+    # Portable mode: Python embeddable detected
+    MODELS_BASE = PROJECT_ROOT / 'models'
+    MODELS_DIR = str(MODELS_BASE)
+    IS_PORTABLE = True
+    print(f"[INFO] Portable mode detected. Models directory: {MODELS_DIR}")
+else:
+    # Development mode: original structure
+    CHECKPOINTS_DIR = PROJECT_ROOT / "checkpoints"
+    OUTPUTS_DIR = PROJECT_ROOT / "outputs"
+    CONFIGS_DIR = PROJECT_ROOT / "configs"
+    IS_PORTABLE = False
+
 DATA_DIR = PROJECT_ROOT / "data"
-OUTPUTS_DIR = PROJECT_ROOT / "outputs"
-CHECKPOINTS_DIR = PROJECT_ROOT / "checkpoints"
-CONFIGS_DIR = PROJECT_ROOT / "configs"
 
 # ============================================================================
 # MODEL PATHS (from configs/ensemble_best.json and GROUND_TRUTH.json)
 # ============================================================================
 
-# Ensemble configuration
-ENSEMBLE_CONFIG = CONFIGS_DIR / "ensemble_best.json"
+if MODELS_DIR:
+    # Deployment mode: simplified paths (PyInstaller or release package)
+    CANONICAL_SHAPE = MODELS_BASE / "shape_analysis/canonical_shape_gpa.json"
+    DELAUNAY_TRIANGLES = MODELS_BASE / "shape_analysis/canonical_delaunay_triangles.json"
 
-# Canonical shape and triangulation
-CANONICAL_SHAPE = OUTPUTS_DIR / "shape_analysis/canonical_shape_gpa.json"
-DELAUNAY_TRIANGLES = OUTPUTS_DIR / "shape_analysis/canonical_delaunay_triangles.json"
+    # PyInstaller frozen mode: models are renamed during build to standardized names
+    # (see scripts/prepare_models_for_build.py)
+    LANDMARK_MODELS = [
+        MODELS_BASE / "landmarks/resnet18_seed123_best.pt",
+        MODELS_BASE / "landmarks/resnet18_seed321_best.pt",
+        MODELS_BASE / "landmarks/resnet18_seed111_best.pt",
+        MODELS_BASE / "landmarks/resnet18_seed666_best.pt",
+    ]
 
-# Landmark ensemble models (from ensemble_best.json)
-LANDMARK_MODELS = [
-    CHECKPOINTS_DIR / "session10/ensemble/seed123/final_model.pt",
-    CHECKPOINTS_DIR / "session13/seed321/final_model.pt",
-    CHECKPOINTS_DIR / "repro_split111/session14/seed111/final_model.pt",
-    CHECKPOINTS_DIR / "repro_split666/session16/seed666/final_model.pt",
-]
+    CLASSIFIER_CHECKPOINT = MODELS_BASE / "classifier/best_classifier.pt"
+else:
+    # Development mode: original paths
+    ENSEMBLE_CONFIG = CONFIGS_DIR / "ensemble_best.json"
+    CANONICAL_SHAPE = OUTPUTS_DIR / "shape_analysis/canonical_shape_gpa.json"
+    DELAUNAY_TRIANGLES = OUTPUTS_DIR / "shape_analysis/canonical_delaunay_triangles.json"
 
-# Classifier path (from GROUND_TRUTH.json)
-CLASSIFIER_PATH = OUTPUTS_DIR / "classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on"
-CLASSIFIER_CHECKPOINT = CLASSIFIER_PATH / "best_classifier.pt"
+    LANDMARK_MODELS = [
+        CHECKPOINTS_DIR / "session10/ensemble/seed123/final_model.pt",
+        CHECKPOINTS_DIR / "session13/seed321/final_model.pt",
+        CHECKPOINTS_DIR / "repro_split111/session14/seed111/final_model.pt",
+        CHECKPOINTS_DIR / "repro_split666/session16/seed666/final_model.pt",
+    ]
+
+    CLASSIFIER_PATH = OUTPUTS_DIR / "classifier_warped_lung_best/sweeps_2026-01-12/lr2e-4_seed321_on"
+    CLASSIFIER_CHECKPOINT = CLASSIFIER_PATH / "best_classifier.pt"
 
 # ============================================================================
 # EXAMPLE IMAGES
@@ -58,10 +93,18 @@ VALIDATED_METRICS = {
     'landmark_std_px': 2.48,
     'landmark_median_px': 3.07,
 
-    # Classification (warped_lung_best)
-    'classification_accuracy': 98.05,
-    'classification_f1_macro': 97.12,
-    'classification_f1_weighted': 98.04,
+    # Classification - Cross-Validation (5-fold, más robusto)
+    'classification_cv_accuracy_mean': 98.60,
+    'classification_cv_accuracy_std': 0.26,
+    'classification_cv_f1_macro_mean': 98.00,
+    'classification_cv_f1_macro_std': 0.36,
+    'classification_cv_f1_weighted_mean': 98.60,
+    'classification_cv_f1_weighted_std': 0.25,
+
+    # Para retrocompatibilidad (mantener por ahora):
+    'classification_accuracy': 98.60,  # Ahora apunta a CV mean
+    'classification_f1_macro': 98.00,
+    'classification_f1_weighted': 98.60,
 
     # Preprocessing parameters
     'clahe_clip': 2.0,
@@ -103,11 +146,11 @@ LANDMARK_GROUPS = {
 }
 
 LANDMARK_LABELS_ES = {
-    'axis': 'Eje (L1, L2)',
-    'central': 'Central (L9-L11)',
-    'lateral': 'Lateral (L3-L8)',
-    'border': 'Borde (L12-L13)',
-    'costal': 'Costal (L14-L15)',
+    'axis': 'Eje Vertical (Vértice y Base Pulmonar)',
+    'central': 'Región Mediastínica Central',
+    'lateral': 'Contorno Lateral Pulmonar',
+    'border': 'Ápices Pulmonares Superiores',
+    'costal': 'Ángulos Costofrénicos',
 }
 
 # ============================================================================
@@ -127,11 +170,11 @@ CLASS_COLORS = {
 # INTERFACE TEXT (Spanish)
 # ============================================================================
 
-TITLE = "Sistema de Detección de COVID-19 mediante Landmarks Anatómicos"
+TITLE = "Sistema de Detección de COVID-19 mediante Puntos de Referencia Anatómicos"
 
 SUBTITLE = f"""
-**Resultados Validados**: Error Landmarks: {VALIDATED_METRICS['landmark_error_px']} px |
-Accuracy Clasificación: {VALIDATED_METRICS['classification_accuracy']}%
+**Resultados Validados**: Error Puntos de Referencia: {VALIDATED_METRICS['landmark_error_px']} px |
+Accuracy Clasificación: {VALIDATED_METRICS['classification_cv_accuracy_mean']:.2f}% ± {VALIDATED_METRICS['classification_cv_accuracy_std']:.2f}% (5-fold CV)
 """
 
 ABOUT_TEXT = f"""
@@ -139,7 +182,7 @@ ABOUT_TEXT = f"""
 
 Este sistema combina tres componentes principales para la detección de COVID-19 en radiografías de tórax:
 
-### 1. Detección de Landmarks Anatómicos
+### 1. Detección de Puntos de Referencia Anatómicos
 Ensemble de 4 modelos ResNet-18 con Coordinate Attention que predicen 15 puntos de referencia
 en el contorno pulmonar:
 - **Error medio**: {VALIDATED_METRICS['landmark_error_px']} píxeles (en imágenes 224×224)
@@ -147,7 +190,7 @@ en el contorno pulmonar:
 - **Test-Time Augmentation**: Flip horizontal con corrección de pares simétricos
 - **Preprocesamiento**: CLAHE (clip={VALIDATED_METRICS['clahe_clip']}, tile={VALIDATED_METRICS['clahe_tile']}×{VALIDATED_METRICS['clahe_tile']})
 
-Los 15 landmarks definen el contorno pulmonar en 5 grupos:
+Los 15 puntos de referencia definen el contorno pulmonar en 5 grupos:
 - **Eje (verde)**: L1, L2 - Puntos superior e inferior del eje central
 - **Central (cyan)**: L9, L10, L11 - Puntos intermedios del eje central
 - **Lateral (amarillo)**: L3-L8 - Contornos laterales izquierdo y derecho
@@ -171,7 +214,7 @@ Clasificador ResNet-18 entrenado sobre imágenes normalizadas:
 
 ## Arquitectura del Modelo
 
-### Detector de Landmarks
+### Detector de Puntos de Referencia
 ```
 ResNet-18 (pretrained ImageNet)
     ↓
@@ -179,7 +222,7 @@ Coordinate Attention Module
     ↓
 Deep Head (FC 512→768→30 coords)
     ↓
-15 landmarks (x, y) normalizados [0,1]
+15 puntos de referencia (x, y) normalizados [0,1]
 ```
 
 ### Clasificador
@@ -200,13 +243,13 @@ Softmax → Probabilidades
 - **Fuente**: COVID-19 Radiography Database (Kaggle)
 - **Clases**: COVID-19, Normal, Neumonía Viral
 - **Splits**: Train/Val/Test con seed fijo para reproducibilidad
-- **Anotaciones**: 15 landmarks manuales en 100 imágenes para entrenamiento
+- **Anotaciones**: 15 puntos de referencia manuales en 100 imágenes para entrenamiento
 
 ## Resultados Detallados
 
-### Error por Landmark (píxeles en 224×224)
-Los mejores landmarks son los centrales (L10, L9, L5) con ~2.4-2.9 px de error.
-Los landmarks de borde (L12, L13) tienen mayor error (~5.4 px) debido a la ambigüedad anatómica.
+### Error por Punto de Referencia (píxeles en 224×224)
+Los mejores puntos de referencia son los centrales (L10, L9, L5) con ~2.4-2.9 px de error.
+Los puntos de referencia de borde (L12, L13) tienen mayor error (~5.4 px) debido a la ambigüedad anatómica.
 
 ### Cross-Validation (5-fold)
 - **Val Accuracy**: {VALIDATED_METRICS.get('cv_val_accuracy_mean', 'N/A')}%
@@ -257,7 +300,7 @@ Los landmarks de borde (L12, L13) tienen mayor error (~5.4 px) debido a la ambig
 
 ---
 
-**Versión**: 1.0.0
+**Versión**: 1.0.10
 **Última actualización**: Enero 2026
 **Framework**: Gradio {4}
 **Python**: 3.8+
@@ -301,7 +344,10 @@ CLAHE_TILE_SIZE = (VALIDATED_METRICS['clahe_tile'], VALIDATED_METRICS['clahe_til
 MARGIN_SCALE = VALIDATED_METRICS['margin_scale']
 USE_FULL_COVERAGE = False  # Current best configuration
 
-# GradCAM settings
+# SAHS (Statistical Asymmetrical Histogram Stretching) settings
+SAHS_THRESHOLD = 10  # Threshold to separate lung region from background
+
+# GradCAM settings (not used in GUI v1.0.6, maintained for reference)
 GRADCAM_TARGET_LAYER = 'layer4'  # Last conv block in ResNet18
 GRADCAM_ALPHA = 0.4  # Overlay transparency
 

@@ -9071,6 +9071,112 @@ def optimize_margin(
     logger.info("Resultados en: %s", output_path)
 
 
+@app.command()
+def extract_dataset_splits(
+    output_dir: Path = typer.Option(
+        Path("outputs/dataset_splits_for_gui"),
+        "--output-dir",
+        help="Directorio de salida para el dataset extraído"
+    ),
+    warped_dir: Path = typer.Option(
+        Path("outputs/warped_lung_best/session_warping"),
+        "--warped-dir",
+        help="Directorio del dataset warped fuente"
+    ),
+    original_dir: Path = typer.Option(
+        Path("data/dataset/COVID-19_Radiography_Dataset"),
+        "--original-dir",
+        help="Directorio del dataset original"
+    ),
+    verify: bool = typer.Option(
+        True,
+        "--verify/--no-verify",
+        help="Verificar integridad de archivos copiados con checksums MD5"
+    ),
+    verbose_errors: bool = typer.Option(
+        False,
+        "--verbose-errors",
+        help="Mostrar todos los errores detalladamente"
+    )
+):
+    """
+    Extrae los splits exactos train/val/test del modelo warped_lung_best.
+
+    Copia tanto las imágenes originales como las warped a un directorio
+    separado, listo para usar en la GUI o validación. Este dataset contiene
+    los splits EXACTOS usados para entrenar el modelo que alcanzó 98.05% accuracy.
+
+    Ejemplo de uso:
+
+        python -m src_v2 extract-dataset-splits
+
+        python -m src_v2 extract-dataset-splits \\
+            --output-dir outputs/my_dataset \\
+            --no-verify
+
+    El comando crea la siguiente estructura:
+
+        outputs/dataset_splits_for_gui/
+        ├── original/           # Imágenes originales
+        │   ├── train/
+        │   ├── val/
+        │   └── test/
+        ├── warped/            # Imágenes normalizadas (las que vio el modelo)
+        │   ├── train/
+        │   ├── val/
+        │   └── test/
+        ├── metadata/          # CSVs y metadata
+        └── README.md          # Documentación
+    """
+    import subprocess
+
+    logger.info("=" * 60)
+    logger.info("Extracción de Dataset Splits - warped_lung_best")
+    logger.info("=" * 60)
+
+    # Construir comando para el script standalone
+    script_path = Path(__file__).parent.parent / "scripts" / "extract_dataset_splits.py"
+
+    if not script_path.exists():
+        logger.error("Script no encontrado: %s", script_path)
+        raise typer.Exit(code=1)
+
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "--output-dir", str(output_dir),
+        "--warped-dir", str(warped_dir),
+        "--original-dir", str(original_dir),
+    ]
+
+    if not verify:
+        cmd.append("--no-verify")
+
+    if verbose_errors:
+        cmd.append("--verbose")
+
+    logger.info("Ejecutando script de extracción...")
+    logger.info("Comando: %s", " ".join(cmd))
+    logger.info("")
+
+    # Ejecutar script
+    result = subprocess.run(cmd)
+
+    if result.returncode != 0:
+        logger.error("Error al ejecutar el script de extracción")
+        raise typer.Exit(code=result.returncode)
+
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("Dataset extraído exitosamente!")
+    logger.info("=" * 60)
+    logger.info("Directorio de salida: %s", output_dir)
+    logger.info("")
+    logger.info("Siguiente paso:")
+    logger.info("  - Revisar: %s/README.md", output_dir)
+    logger.info("  - Metadata: %s/metadata/dataset_info.json", output_dir)
+
+
 def main():
     """Entry point principal."""
     app()

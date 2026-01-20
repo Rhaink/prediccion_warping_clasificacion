@@ -27,7 +27,8 @@ La Tabla \ref{tab:distribucion_dataset} presenta la distribución de imágenes p
     \centering
     \caption{Distribución del conjunto de datos por categoría diagnóstica.}
     \label{tab:distribucion_dataset}
-    \begin{tabular}{lrrr}
+    \small
+    \begin{tabular}{@{}lcc@{}}
         \toprule
         \textbf{Categoría} & \textbf{Imágenes} & \textbf{Porcentaje} \\
         \midrule
@@ -47,12 +48,12 @@ Las imágenes originales tienen un tamaño de $299 \times 299$ píxeles en forma
 
 Para el entrenamiento del modelo de predicción de puntos de referencia, se realizó la anotación manual de 15 puntos característicos en un subconjunto del conjunto de datos. Estos puntos de referencia definen el contorno de la región pulmonar.
 
-Los puntos de referencia no corresponden a estructuras anatómicas específicas, sino que representan puntos de control sobre la silueta pulmonar diseñados para capturar la forma global del contorno. La Figura \ref{fig:landmarks_anatomicos} ilustra la ubicación de cada landmark.
+Los puntos de referencia no corresponden a estructuras anatómicas específicas, sino que representan puntos de control sobre la silueta pulmonar diseñados para capturar la forma global del contorno. La Figura \ref{fig:landmarks_anatomicos} ilustra la ubicación de cada punto de referencia.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.99\textwidth]{Figures/F4.3_landmarks_15.png}
-    \caption{Ubicación de los 15 puntos de referencia que definen el contorno pulmonar. Los puntos L1 y L2 definen el eje vertical central. Los landmarks L3-L8 delimitan los contornos laterales, mientras que L9-L11 dividen el eje central en cuatro segmentos iguales.}
+    \caption{Ubicación de los 15 puntos de referencia que definen el contorno pulmonar. (a) Radiografía con puntos de referencia etiquetados. (b) Esquema de distribución espacial. L1 y L2 definen el eje central; L3-L8 delimitan los contornos laterales; L9-L11 dividen el eje central en cuatro segmentos iguales.}
     \label{fig:landmarks_anatomicos}
 \end{figure}
 
@@ -86,7 +87,7 @@ La herramienta desarrollada implementa un proceso de anotación en dos fases que
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{Figures/F4.2b_interfaz_etiquetado.png}
-    \caption{Interfaz de la herramienta de anotación de puntos de referencia. La ventana principal muestra la radiografía con una línea vertical central de referencia. Los landmarks se visualizan como puntos verdes conectados por líneas rojas que definen el contorno pulmonar.}
+    \caption{Interfaz de la herramienta de anotación de puntos de referencia. La ventana principal muestra la radiografía con una línea vertical central de referencia. Los puntos de referencia se visualizan como puntos verdes conectados por líneas rojas que definen el contorno pulmonar.}
     \label{fig:herramienta_etiquetado}
 \end{figure}
 
@@ -134,7 +135,8 @@ La distribución del subconjunto anotado por categoría se presenta en la Tabla 
     \centering
     \caption{Distribución del subconjunto anotado con puntos de referencia.}
     \label{tab:distribucion_anotado}
-    \begin{tabular}{lrr}
+    \small
+    \begin{tabular}{@{}lcc@{}}
         \toprule
         \textbf{Categoría} & \textbf{Imágenes anotadas} & \textbf{Porcentaje} \\
         \midrule
@@ -208,7 +210,8 @@ La Tabla \ref{tab:division_splits} presenta la distribución resultante para el 
     \centering
     \caption{División del conjunto de datos en subconjuntos de entrenamiento, validación y prueba.}
     \label{tab:division_splits}
-    \begin{tabular}{lrrrr}
+    \small
+    \begin{tabular}{@{}lcccc@{}}
         \toprule
         \textbf{Conjunto} & \textbf{COVID-19} & \textbf{Normal} & \textbf{Viral} & \textbf{Total} \\
         \midrule

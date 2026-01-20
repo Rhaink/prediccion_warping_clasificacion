@@ -5,7 +5,7 @@ Coordinates the complete workflow:
 1. Load and preprocess image
 2. Predict landmarks (ensemble + TTA)
 3. Apply warping
-4. Classify + GradCAM
+4. Classify
 5. Generate all visualizations
 """
 import time
@@ -22,8 +22,9 @@ from .model_manager import get_model_manager
 from .visualizer import (
     render_original,
     render_landmarks_overlay,
+    render_delaunay_mesh,
     render_warped,
-    render_gradcam,
+    render_warped_sahs,
     render_comparison_side_by_side,
     create_probability_chart,
     create_metrics_table,
@@ -111,8 +112,9 @@ def process_image_full(image_path: str) -> Dict[str, Any]:
         - 'error': str (if failed)
         - 'original': PIL.Image
         - 'landmarks': PIL.Image (with overlay)
+        - 'delaunay_mesh': PIL.Image (Delaunay triangulation overlay)
         - 'warped': PIL.Image
-        - 'gradcam': PIL.Image
+        - 'warped_sahs': PIL.Image
         - 'classification': Dict[str, float] (probabilities in Spanish)
         - 'metrics': pd.DataFrame
         - 'inference_time': float (seconds)
@@ -163,8 +165,8 @@ def process_image_full(image_path: str) -> Dict[str, Any]:
         else:
             warping_failed = False
 
-        # Step 4: Classify + GradCAM
-        probabilities, gradcam_heatmap, predicted_class_idx = manager.classify_with_gradcam(
+        # Step 4: Classify
+        probabilities, _, predicted_class_idx = manager.classify_with_gradcam(
             warped,
             target_class=None
         )
@@ -182,8 +184,18 @@ def process_image_full(image_path: str) -> Dict[str, Any]:
         # Generate visualizations
         img_original = render_original(image)
         img_landmarks = render_landmarks_overlay(image, landmarks, show_labels=True)
+
+        # NEW: Generate Delaunay mesh visualization
+        img_delaunay = render_delaunay_mesh(
+            image,
+            landmarks,
+            show_labels=True,
+            show_landmark_points=True,
+            fill_triangles=False  # Solo bordes de triángulos
+        )
+
         img_warped = render_warped(warped)
-        img_gradcam = render_gradcam(warped, gradcam_heatmap, alpha=0.4, predicted_class=predicted_class_es)
+        img_sahs = render_warped_sahs(warped, threshold=10)
 
         # Create metrics table
         metrics_df = create_metrics_table(landmarks)
@@ -196,8 +208,9 @@ def process_image_full(image_path: str) -> Dict[str, Any]:
             'success': True,
             'original': img_original,
             'landmarks': img_landmarks,
+            'delaunay_mesh': img_delaunay,
             'warped': img_warped,
-            'gradcam': img_gradcam,
+            'warped_sahs': img_sahs,
             'classification': probabilities_es,
             'predicted_class': predicted_class_es,
             'metrics': metrics_df,
@@ -334,8 +347,9 @@ def export_results(
         images = {
             'original': result['original'],
             'landmarks': result['landmarks'],
+            'delaunay_mesh': result['delaunay_mesh'],
             'warped': result['warped'],
-            'gradcam': result['gradcam'],
+            'warped_sahs': result['warped_sahs'],
         }
 
         # Metadata

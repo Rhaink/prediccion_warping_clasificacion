@@ -1,0 +1,32 @@
+# Requirements for Windows Standalone Build (CPU-only PyTorch)
+# Use this for building the PyInstaller executable
+
+# PyTorch CPU-only (significantly smaller than CUDA version)
+# Use extra-index-url instead of index-url to fallback to PyPI for other packages
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu
+torchvision==0.19.1+cpu
+
+# GUI Framework
+gradio>=6.0.0,<7.0.0
+
+# Image Processing
+opencv-python-headless>=4.8.0
+Pillow>=11.0.0
+
+# Scientific Computing
+numpy>=2.1.0,<3.0.0
+scipy>=1.14.0
+scikit-learn>=1.5.0
+
+# Visualization
+matplotlib>=3.10.0
+
+# Data Processing
+pandas>=2.2.0
+
+# PDF Generation
+reportlab>=4.2.0
+
+# Build Tool
+pyinstaller>=6.3.0

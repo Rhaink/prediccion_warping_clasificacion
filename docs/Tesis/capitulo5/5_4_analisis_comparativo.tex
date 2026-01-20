@@ -17,7 +17,8 @@ El sistema propuesto, que integra predicción de puntos de referencia, normaliza
     \centering
     \caption{Resumen del rendimiento del sistema completo basado en normalización geométrica con preprocesamiento SAHS.}
     \label{tab:resumen_sistema_completo}
-    \begin{tabular}{lcc}
+    \small
+    \begin{tabular}{@{}lcc@{}}
         \toprule
         \textbf{Componente} & \textbf{Métrica} & \textbf{Valor} \\
         \midrule
@@ -52,7 +53,8 @@ La normalización geométrica elimina variaciones de posición, escala y orienta
     \centering
     \caption{Tipos de variabilidad geométrica eliminados por el proceso de normalización.}
     \label{tab:variabilidad_eliminada}
-    \begin{tabular}{lp{8cm}}
+    \small
+    \begin{tabular}{@{}lp{8cm@{}}}
         \toprule
         \textbf{Tipo de variabilidad} & \textbf{Mecanismo de normalización} \\
         \midrule
@@ -74,7 +76,8 @@ La tasa de cobertura de 47\% indica que aproximadamente el 53\% de la imagen ori
     \centering
     \caption{Efecto de selección de características por normalización geométrica.}
     \label{tab:feature_selection_effect}
-    \begin{tabular}{lcc}
+    \small
+    \begin{tabular}{@{}lcc@{}}
         \toprule
         \textbf{Región de imagen} & \textbf{Porcentaje} & \textbf{Información} \\
         \midrule
@@ -111,7 +114,8 @@ Se entrenó el mismo clasificador ResNet-18 con tres variantes de las imágenes,
     \centering
     \caption{Comparación de exactitud según configuración de preprocesamiento. El recorte del 12\% elimina únicamente los bordes con etiquetas hospitalarias.}
     \label{tab:evidencia_espurias}
-    \begin{tabular}{lcc}
+    \small
+    \begin{tabular}{@{}lcc@{}}
         \toprule
         \textbf{Configuración} & \textbf{Exactitud} & \textbf{Interpretación} \\
         \midrule
@@ -153,7 +157,8 @@ La Tabla \ref{tab:comparacion_literatura} compara el rendimiento del sistema pro
     \centering
     \caption{Comparación del sistema propuesto con trabajos relacionados en clasificación de COVID-19 en radiografías de tórax. Los trabajos varían en número de clases, tamaño de dataset y arquitecturas utilizadas.}
     \label{tab:comparacion_literatura}
-    \begin{tabular}{lcccc}
+    \small
+    \begin{tabular}{@{}lcccc@{}}
         \toprule
         \textbf{Trabajo} & \textbf{Clases} & \textbf{Dataset} & \textbf{Arquitectura} & \textbf{Exactitud} \\
         \midrule

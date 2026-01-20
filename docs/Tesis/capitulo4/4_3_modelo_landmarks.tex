@@ -39,7 +39,9 @@ El extractor de características procesa imágenes de entrada de dimensiones $22
     \centering
     \caption{Configuración del extractor de características ResNet-18. Se utilizan todas las capas convolucionales, removiendo únicamente la capa fully connected original.}
     \label{tab:extractor_caracteristicas_arquitectura}
-    \begin{tabular}{llcc}
+    \small
+    \setlength{\tabcolsep}{3pt}
+    \begin{tabular}{@{}p{1.8cm}p{3.5cm}p{3.0cm}p{2.2cm}@{}}
         \toprule
         \textbf{Capa} & \textbf{Descripción} & \textbf{Salida} & \textbf{Parámetros} \\
         \midrule
@@ -122,7 +124,8 @@ La Tabla \ref{tab:coord_attention_params} presenta los componentes y parámetros
     \centering
     \caption{Parámetros del módulo Coordinate Attention para $C=512$ canales de entrada.}
     \label{tab:coord_attention_params}
-    \begin{tabular}{lcc}
+    \small
+    \begin{tabular}{@{}lcc@{}}
         \toprule
         \textbf{Componente} & \textbf{Configuración} & \textbf{Parámetros} \\
         \midrule
@@ -180,7 +183,9 @@ Para obtener las coordenadas finales en píxeles, las predicciones normalizadas 
     \centering
     \caption{Arquitectura de la cabeza de regresión con normalización por grupos.}
     \label{tab:head_arquitectura}
-    \begin{tabular}{llcc}
+    \small
+    \setlength{\tabcolsep}{3pt}
+    \begin{tabular}{@{}p{2.0cm}p{3.2cm}p{2.5cm}p{2.5cm}@{}}
         \toprule
         \textbf{Capa} & \textbf{Operación} & \textbf{Salida} & \textbf{Parámetros} \\
         \midrule
@@ -290,7 +295,8 @@ La configuración de la Fase 1 se presenta en la Tabla \ref{tab:fase1_config}.
     \centering
     \caption{Configuración de entrenamiento - Fase 1.}
     \label{tab:fase1_config}
-    \begin{tabular}{ll}
+    \small
+    \begin{tabular}{@{}ll@{}}
         \toprule
         \textbf{Parámetro} & \textbf{Valor} \\
         \midrule
@@ -330,7 +336,8 @@ La Tabla \ref{tab:fase2_config} detalla la configuración de la Fase 2.
     \centering
     \caption{Configuración de entrenamiento - Fase 2.}
     \label{tab:fase2_config}
-    \begin{tabular}{ll}
+    \small
+    \begin{tabular}{@{}ll@{}}
         \toprule
         \textbf{Parámetro} & \textbf{Valor} \\
         \midrule
@@ -370,7 +377,8 @@ Los hiperparámetros son valores que definen la configuración del modelo y del 
     \centering
     \caption{Resumen completo de hiperparámetros del modelo de puntos de referencia.}
     \label{tab:hiperparametros_completos}
-    \begin{tabular}{llc}
+    \small
+    \begin{tabular}{@{}llc@{}}
         \toprule
         \textbf{Categoría} & \textbf{Parámetro} & \textbf{Valor} \\
         \midrule

@@ -901,8 +901,72 @@ class LandmarkVisualizationGenerator(BaseFigureGenerator):
         self.right_indices = [3, 5, 7, 12, 14]   # L4, L6, L8, L13, L15
 
     def generate_F4_3_landmarks_15(self) -> Path:
-        """F4.3: Visualización de los 15 landmarks anatómicos."""
-        fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+        """F4.3: Visualización de los 15 puntos de referencia anatómicos."""
+        fig, axes = plt.subplots(1, 2, figsize=(12.8, 6.2))
+        fig.subplots_adjust(wspace=0.08, bottom=0.16)
+
+        colors = {
+            'central': self.config.colors['axis'],
+            'left': self.config.colors['normal'],
+            'right': self.config.colors['viral'],
+        }
+        marker_outer = self.config.marker_size * 1.6
+        marker_inner = self.config.marker_size * 0.9
+        annotation_font_size = self.config.font_size_annotation + 3
+        title_font_size = self.config.font_size_title + 1
+        legend_font_size = self.config.font_size_legend + 1
+        orientation_font_size = self.config.font_size_tick + 1
+
+        def order_by_y(points: np.ndarray) -> np.ndarray:
+            return points[np.argsort(points[:, 1])]
+
+        def plot_landmark_group(ax, points: np.ndarray, color: str, label: str) -> None:
+            ax.scatter(
+                points[:, 0],
+                points[:, 1],
+                s=marker_outer,
+                facecolors='white',
+                edgecolors=color,
+                linewidths=1.6,
+                alpha=0.95,
+                zorder=3
+            )
+            ax.scatter(
+                points[:, 0],
+                points[:, 1],
+                s=marker_inner,
+                facecolors=color,
+                edgecolors='white',
+                linewidths=0.8,
+                alpha=0.95,
+                zorder=4,
+                label=label
+            )
+
+        def annotate_landmarks(
+            ax,
+            points: np.ndarray,
+            text_color: str,
+            bbox: Optional[Dict[str, Any]]
+        ) -> None:
+            centroid = points.mean(axis=0)
+            for i, (x, y) in enumerate(points):
+                direction = np.array([x, y]) - centroid
+                norm = np.hypot(direction[0], direction[1])
+                if norm < 1e-6:
+                    offset = np.array([6.0, -6.0])
+                else:
+                    offset = 9.0 * direction / norm
+                ax.annotate(
+                    f'L{i+1}',
+                    (x, y),
+                    xytext=(offset[0], offset[1]),
+                    textcoords='offset points',
+                    fontsize=annotation_font_size,
+                    color=text_color,
+                    fontweight='bold',
+                    bbox=bbox
+                )
 
         # Panel izquierdo: Imagen con landmarks reales de predictions.npz
         predictions = self.data.get_predictions()
@@ -928,23 +992,68 @@ class LandmarkVisualizationGenerator(BaseFigureGenerator):
             scale = img.shape[0] / 224
             landmarks_scaled = landmarks * scale
 
-            # Plotear por grupos con colores diferentes
-            for indices, color, label in [
-                (self.central_indices, self.config.colors['covid'], 'Eje central'),
-                (self.left_indices, self.config.colors['normal'], 'Pulmón izquierdo'),
-                (self.right_indices, self.config.colors['viral'], 'Pulmón derecho')
-            ]:
-                ax.scatter(landmarks_scaled[indices, 0], landmarks_scaled[indices, 1],
-                          c=color, s=80, alpha=0.9, label=label, edgecolors='white', linewidths=1)
+            # Contornos laterales y eje central
+            left_curve = order_by_y(landmarks_scaled[self.left_indices])
+            right_curve = order_by_y(landmarks_scaled[self.right_indices])
+            ax.plot(
+                left_curve[:, 0],
+                left_curve[:, 1],
+                color=colors['left'],
+                linewidth=1.1,
+                alpha=0.5,
+                zorder=1
+            )
+            ax.plot(
+                right_curve[:, 0],
+                right_curve[:, 1],
+                color=colors['right'],
+                linewidth=1.1,
+                alpha=0.5,
+                zorder=1
+            )
+            ax.plot(
+                landmarks_scaled[self.central_indices, 0],
+                landmarks_scaled[self.central_indices, 1],
+                color=colors['central'],
+                linewidth=1.4,
+                alpha=0.7,
+                zorder=2
+            )
+
+            # Plotear por grupos con marcadores de doble trazo
+            plot_landmark_group(
+                ax,
+                landmarks_scaled[self.central_indices],
+                colors['central'],
+                'Eje central'
+            )
+            plot_landmark_group(
+                ax,
+                landmarks_scaled[self.left_indices],
+                colors['left'],
+                'Pulmón izquierdo'
+            )
+            plot_landmark_group(
+                ax,
+                landmarks_scaled[self.right_indices],
+                colors['right'],
+                'Pulmón derecho'
+            )
 
             # Etiquetas
-            for i, (x, y) in enumerate(landmarks_scaled):
-                ax.annotate(f'L{i+1}', (x, y), xytext=(5, 5), textcoords='offset points',
-                           fontsize=7, color='white', fontweight='bold',
-                           bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.6))
+            annotate_landmarks(
+                ax,
+                landmarks_scaled,
+                text_color='white',
+                bbox=dict(
+                    boxstyle='round,pad=0.2',
+                    facecolor='black',
+                    alpha=0.55,
+                    edgecolor='none'
+                )
+            )
 
-            ax.set_title('Landmarks sobre radiografía', fontsize=self.config.font_size_title)
-            ax.legend(loc='lower right', fontsize=self.config.font_size_legend)
+            ax.set_title('(a) Radiografía con puntos de referencia', fontsize=title_font_size)
             ax.axis('off')
 
         # Panel derecho: Esquema de landmarks
@@ -952,44 +1061,174 @@ class LandmarkVisualizationGenerator(BaseFigureGenerator):
         canonical = self.data.get_canonical_shape()
         landmarks_px = np.array(canonical['canonical_shape_pixels'])
 
-        # Plotear forma canónica
-        for indices, color, label in [
-            (self.central_indices, self.config.colors['covid'], 'Eje central'),
-            (self.left_indices, self.config.colors['normal'], 'Pulmón izquierdo'),
-            (self.right_indices, self.config.colors['viral'], 'Pulmón derecho')
-        ]:
-            ax.scatter(landmarks_px[indices, 0], landmarks_px[indices, 1],
-                      c=color, s=100, alpha=0.9, label=label, edgecolors='white', linewidths=1.5)
+        # Contornos laterales y eje central
+        left_curve = order_by_y(landmarks_px[self.left_indices])
+        right_curve = order_by_y(landmarks_px[self.right_indices])
+        contour = np.vstack([left_curve, right_curve[::-1]])
+        ax.add_patch(
+            Polygon(
+                contour,
+                closed=True,
+                facecolor=self.config.colors['grid'],
+                edgecolor='none',
+                alpha=0.08,
+                zorder=0
+            )
+        )
+        ax.plot(
+            left_curve[:, 0],
+            left_curve[:, 1],
+            color=colors['left'],
+            linewidth=1.2,
+            alpha=0.6,
+            zorder=1
+        )
+        ax.plot(
+            right_curve[:, 0],
+            right_curve[:, 1],
+            color=colors['right'],
+            linewidth=1.2,
+            alpha=0.6,
+            zorder=1
+        )
+
+        # Plotear forma canónica con marcadores de doble trazo
+        plot_landmark_group(
+            ax,
+            landmarks_px[self.central_indices],
+            colors['central'],
+            'Eje central'
+        )
+        plot_landmark_group(
+            ax,
+            landmarks_px[self.left_indices],
+            colors['left'],
+            'Pulmón izquierdo'
+        )
+        plot_landmark_group(
+            ax,
+            landmarks_px[self.right_indices],
+            colors['right'],
+            'Pulmón derecho'
+        )
 
         # Conectar landmarks
         # Eje central
-        ax.plot(landmarks_px[self.central_indices, 0], landmarks_px[self.central_indices, 1],
-               'k-', linewidth=1.5, alpha=0.5)
+        ax.plot(
+            landmarks_px[self.central_indices, 0],
+            landmarks_px[self.central_indices, 1],
+            color=colors['central'],
+            linewidth=1.4,
+            alpha=0.7,
+            zorder=2
+        )
 
         # Pares simétricos
         for left, right in SYMMETRIC_PAIRS:
-            ax.plot([landmarks_px[left, 0], landmarks_px[right, 0]],
-                   [landmarks_px[left, 1], landmarks_px[right, 1]],
-                   'k--', linewidth=1, alpha=0.3)
+            ax.plot(
+                [landmarks_px[left, 0], landmarks_px[right, 0]],
+                [landmarks_px[left, 1], landmarks_px[right, 1]],
+                linestyle='--',
+                color=self.config.colors['grid'],
+                linewidth=0.9,
+                alpha=0.5,
+                zorder=0
+            )
 
         # Etiquetas
-        for i, (x, y) in enumerate(landmarks_px):
-            ax.annotate(f'L{i+1}', (x, y), xytext=(8, 0), textcoords='offset points',
-                       fontsize=8, fontweight='bold')
+        annotate_landmarks(ax, landmarks_px, text_color=self.config.colors['text'], bbox=None)
 
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('Esquema de 15 landmarks', fontsize=self.config.font_size_title)
-        ax.legend(loc='lower right', fontsize=self.config.font_size_legend)
-        ax.grid(True, alpha=0.3)
+        ax.set_title('(b) Esquema de 15 puntos de referencia', fontsize=title_font_size)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_color(self.config.colors['grid'])
+            spine.set_linewidth(0.8)
+            spine.set_alpha(0.4)
+        ax.annotate(
+            '',
+            xy=(0.06, 0.86),
+            xytext=(0.06, 0.14),
+            xycoords='axes fraction',
+            arrowprops=dict(
+                arrowstyle='-|>',
+                color=colors['central'],
+                linewidth=1.0
+            )
+        )
+        ax.text(
+            0.06,
+            0.88,
+            'Superior',
+            transform=ax.transAxes,
+            ha='center',
+            va='bottom',
+            fontsize=orientation_font_size,
+            color=colors['central']
+        )
+        ax.text(
+            0.06,
+            0.12,
+            'Inferior',
+            transform=ax.transAxes,
+            ha='center',
+            va='top',
+            fontsize=orientation_font_size,
+            color=colors['central']
+        )
 
-        plt.tight_layout()
+        legend_handles = [
+            Line2D(
+                [0],
+                [0],
+                marker='o',
+                linestyle='',
+                label='Eje central',
+                markerfacecolor=colors['central'],
+                markeredgecolor='white',
+                markeredgewidth=0.8,
+                markersize=7
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker='o',
+                linestyle='',
+                label='Pulmón izquierdo',
+                markerfacecolor=colors['left'],
+                markeredgecolor='white',
+                markeredgewidth=0.8,
+                markersize=7
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker='o',
+                linestyle='',
+                label='Pulmón derecho',
+                markerfacecolor=colors['right'],
+                markeredgecolor='white',
+                markeredgewidth=0.8,
+                markersize=7
+            ),
+        ]
+        ax.legend(
+            handles=legend_handles,
+            loc='upper center',
+            bbox_to_anchor=(0.5, -0.08),
+            ncol=3,
+            frameon=False,
+            fontsize=legend_font_size
+        )
+
         return self.save_figure(fig, "F4.3_landmarks_15.png", "cap4_metodologia")
 
     def generate_F4_4_clahe_comparison(self) -> Path:
         """F4.4: Comparación de imagen original vs CLAHE."""
-        fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+        fig, axes = plt.subplots(1, 3, figsize=(16, 6))
 
         # Obtener imagen de ejemplo
         samples = self.data.get_sample_images(n_per_class=1)
@@ -999,25 +1238,23 @@ class LandmarkVisualizationGenerator(BaseFigureGenerator):
 
             # Panel 1: Original
             axes[0].imshow(img, cmap='gray')
-            axes[0].set_title('Original', fontsize=self.config.font_size_title)
+            axes[0].set_title('(a) Original', fontsize=14, fontweight='bold')
             axes[0].axis('off')
 
             # Panel 2: CLAHE tile=4
             clahe_4 = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
             img_clahe_4 = clahe_4.apply(img)
             axes[1].imshow(img_clahe_4, cmap='gray')
-            axes[1].set_title('CLAHE (tile=4)', fontsize=self.config.font_size_title)
+            axes[1].set_title('(b) CLAHE (tiles=4)', fontsize=14, fontweight='bold')
             axes[1].axis('off')
 
             # Panel 3: CLAHE tile=8
             clahe_8 = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             img_clahe_8 = clahe_8.apply(img)
             axes[2].imshow(img_clahe_8, cmap='gray')
-            axes[2].set_title('CLAHE (tile=8)', fontsize=self.config.font_size_title)
+            axes[2].set_title('(c) CLAHE (tiles=8)', fontsize=14, fontweight='bold')
             axes[2].axis('off')
 
-        plt.suptitle('Ecualización adaptativa de histograma (CLAHE)',
-                    fontsize=self.config.font_size_title + 1, y=1.02)
         plt.tight_layout()
         return self.save_figure(fig, "F4.4_clahe_comparacion.png", "cap4_metodologia")
 

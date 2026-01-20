@@ -7,29 +7,29 @@
 \caption{Comparación de métodos de detección de puntos de referencia anatómicos en imágenes médicas}
 \label{tab:landmark_detection_comparison}
 \small
-\begin{tabular}{@{}llccl@{}}
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}p{3.5cm}p{2.2cm}p{2.0cm}p{1.3cm}p{3.0cm}@{}}
 \toprule
 \textbf{Trabajo} & \textbf{Tarea} & \textbf{Error} & \textbf{NME} & \textbf{Método} \\
  & & \textbf{(px/mm)} & \textbf{(\%)} & \\
 \midrule
 \multicolumn{5}{c}{\textit{Puntos de referencia faciales y de columna vertebral}} \\
 \midrule
-Feng et al. (2018) \cite{feng2018wing} & Facial (68 pts) & -- & 1.47 & Wing Loss + Heatmap \\
+Feng et al. (2018) \cite{feng2018wing} & Facial (68~pts) & -- & 1.47 & Wing Loss + Heatmap \\
 Wang et al. (2019) & Facial & -- & SOTA\tnote{a} & Adaptive Wing Loss \\
-Yeh et al. (2021) \cite{yeh2021deep} & Columna (68 pts) & 2.3 mm & -- & Deep learning \\
+Yeh et al. (2021) \cite{yeh2021deep} & Columna vertebral (68~pts) & 2.3\,mm & -- & Deep learning \\
 \midrule
 \multicolumn{5}{c}{\textit{Puntos de referencia en radiografías de tórax: Brecha identificada}} \\
 \midrule
-\textbf{Este trabajo (2026)} & \textbf{Pulmón} & \textbf{3.61 px} & \textbf{1.14} & \textbf{Wing Loss +} \\
- & \textbf{(15 pts)} & \textbf{(224$\times$224)} & & \textbf{Ensemble + TTA} \\
+\textbf{Este trabajo (2026)} & \textbf{Pulmón (15~pts)} & \textbf{3.61\,px (224$\times$224)} & \textbf{1.14} & \textbf{Wing Loss + Ensamble + TTA} \\
 \cmidrule{3-4}
- & & 4.04 px\tnote{b} & 1.28 & Individual best \\
+ & & 4.04\,px\tnote{b} & 1.28 & Mejor individual \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}
 \footnotesize
 \item[a] SOTA = Estado del arte (\textit{State-of-the-art}) reportado sin número exacto en el paper original
-\item[b] Mejor modelo individual (seed 456), ensamble reportado en fila principal
+\item[b] Mejor modelo individual (semilla 456), ensamble reportado en fila principal
 \item[--] No reportado o no aplicable (escalas diferentes)
 \item NME = Error Medio Normalizado (\textit{Normalized Mean Error}): $(error / diagonal\_imagen) \times 100$
 \item px = píxeles en imagen redimensionada (la escala varía por conjunto de datos)

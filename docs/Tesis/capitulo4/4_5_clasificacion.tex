@@ -112,7 +112,9 @@ El conjunto de datos de imágenes normalizadas se divide en tres subconjuntos si
     \centering
     \caption{Distribución del conjunto de datos para entrenamiento del clasificador.}
     \label{tab:distribucion_clasificador}
-    \begin{tabular}{lcccc}
+    \small
+    \setlength{\tabcolsep}{2.5pt}
+    \begin{tabular}{@{}p{2.5cm}cccc@{}}
         \toprule
         \textbf{Categoría} & \textbf{Entrenamiento} & \textbf{Validación} & \textbf{Prueba} & \textbf{Total (\%)} \\
         \midrule
@@ -135,7 +137,8 @@ Para compensar este desbalance, se asigna a cada categoría un peso inversamente
     \centering
     \caption{Pesos asignados a cada categoría para compensar el desbalance del conjunto de datos.}
     \label{tab:class_weights}
-    \begin{tabular}{lcc}
+    \small
+    \begin{tabular}{@{}lcc@{}}
         \toprule
         \textbf{Categoría} & \textbf{Muestras (Entrenamiento)} & \textbf{Peso} \\
         \midrule
@@ -156,7 +159,8 @@ Los parámetros de entrenamiento controlan aspectos como la velocidad de aprendi
     \centering
     \caption{Parámetros de configuración del entrenamiento del clasificador.}
     \label{tab:hiperparametros_clasificador}
-    \begin{tabular}{ll}
+    \small
+    \begin{tabular}{@{}ll@{}}
         \toprule
         \textbf{Parámetro} & \textbf{Valor} \\
         \midrule
@@ -258,7 +262,8 @@ La Tabla \ref{tab:resumen_clasificador} consolida los aspectos principales del m
     \centering
     \caption{Resumen de la configuración del clasificador de enfermedades pulmonares.}
     \label{tab:resumen_clasificador}
-    \begin{tabular}{llc}
+    \small
+    \begin{tabular}{@{}llc@{}}
         \toprule
         \textbf{Aspecto} & \textbf{Elemento} & \textbf{Valor/Descripción} \\
         \midrule

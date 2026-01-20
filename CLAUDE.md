@@ -178,7 +178,14 @@ This avoids re-running inference during warping experiments. The `.npz` file con
 
 **Dataset Organization**:
 - `data/dataset/COVID-19_Radiography_Dataset/`: Original images (not in repo)
-- `checkpoints/`: Trained models (not in repo)
+- `checkpoints/`: Trained models (~629 MB after cleanup on 2026-01-20)
+  - `session10/ensemble/seed123/final_model.pt` - Ensemble model (critical)
+  - `session10/ensemble/seed456/final_model.pt` - Best individual (4.04 px, historical)
+  - `session13/seed321/final_model.pt` - Ensemble model (critical)
+  - `session13/seed789/final_model.pt` - Historical ensemble (3.71 px)
+  - `repro_split111/session14/seed111/final_model.pt` - Ensemble model (critical)
+  - `repro_split666/session16/seed666/final_model.pt` - Ensemble model (critical)
+  - **NOTE**: Cleanup removed ~133 GB of intermediate checkpoints and non-critical experiments. See `docs/CHECKPOINTS_CLEANUP_REPORT.md` for details. Backup available at `checkpoints_backup_20260120.tar.gz`.
 - `outputs/`: Generated artifacts (not in repo)
   - `shape_analysis/`: Canonical shape and triangulation
   - `landmark_predictions/`: Cached predictions
@@ -204,6 +211,7 @@ Key docs in `docs/`:
 - `REPRO_CLASSIFIER_RESNET18.md`: Classifier training details
 - `CONFIGS.md`: Configuration system guide
 - `EXPERIMENTS.md`: Experimental results summary
+- `CHECKPOINTS_CLEANUP_REPORT.md`: Checkpoint cleanup report (2026-01-20, freed 133 GB)
 
 Session notes and reports are in `docs/sesiones/` and `docs/reportes/`.
 

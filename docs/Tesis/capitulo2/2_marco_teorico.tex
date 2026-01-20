@@ -11,12 +11,20 @@
 
 En el análisis de imágenes médicas, los \textit{puntos de referencia} son coordenadas específicas que representan estructuras anatómicas de interés. En este trabajo, se utilizan 15 puntos de referencia para definir el contorno pulmonar en radiografías de tórax.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Figures/F4.3_landmarks_15.png}
+    \caption{Representación de los 15 puntos de referencia anatómicos. (a) Radiografía con puntos de referencia etiquetados. (b) Esquema de la distribución espacial, donde el eje central (gris) define la línea media y los puntos laterales delimitan los contornos pulmonares izquierdo (azul) y derecho (naranja).}
+    \label{fig:landmarks_15}
+\end{figure}
+
 La distribución de los puntos de referencia sigue una estructura lógica:
 \begin{itemize}
     \item \textbf{Eje central} (5 puntos): L1, L9, L10, L11, L2, que representan la línea media del tórax, desde el ápice hasta la base.
     \item \textbf{Contorno del pulmón izquierdo} (5 puntos): L12, L3, L5, L7, L14.
     \item \textbf{Contorno del pulmón derecho} (5 puntos): L13, L4, L6, L8, L15.
 \end{itemize}
+
 
 Debido a la simetría bilateral del tórax, existen 5 pares de puntos de referencia simétricos: (L3, L4), (L5, L6), (L7, L8), (L12, L13) y (L14, L15). Esta propiedad es aprovechada durante el entrenamiento y la evaluación del modelo.
 
@@ -28,12 +36,6 @@ Matemáticamente, el conjunto de puntos de referencia de una imagen se represent
 
 donde $(x_i, y_i)$ son las coordenadas del $i$-ésimo punto de referencia. Este vector de 30 valores es la salida que predice el modelo de detección de puntos de referencia.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{Figures/F4.3_landmarks_15.png}
-    \caption{Representación de los 15 puntos de referencia anatómicos. Izquierda: puntos de referencia etiquetados sobre una radiografía de tórax. Derecha: esquema de la distribución espacial de los puntos de referencia, donde el eje central (rojo) define la línea media y los puntos laterales delimitan los contornos pulmonares izquierdo (azul) y derecho (naranja).}
-    \label{fig:landmarks_15}
-\end{figure}
 
 %==============================================================================
 \section{Preprocesamiento: CLAHE}
@@ -41,6 +43,13 @@ donde $(x_i, y_i)$ son las coordenadas del $i$-ésimo punto de referencia. Este 
 %==============================================================================
 
 Las radiografías de tórax suelen presentar bajo contraste, lo que dificulta la visualización de estructuras anatómicas como los bordes pulmonares. Para mejorar el contraste se utiliza \textbf{CLAHE} (Contrast Limited Adaptive Histogram Equalization).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Figures/F4.4_clahe_comparacion.png}
+    \caption{Efecto de CLAHE sobre una radiografía de tórax. (a) Imagen original con bajo contraste. (b) Imagen procesada con CLAHE usando tamaño de tile 4×4. (c) Imagen procesada con CLAHE usando tamaño de tile 8×8. El tamaño de tile menor produce una mejora de contraste más localizada.}
+    \label{fig:clahe_comparacion}
+\end{figure}
 
 A diferencia de la ecualización de histograma tradicional, que aplica una transformación global a toda la imagen, CLAHE opera de forma \textit{local}:
 
@@ -53,17 +62,16 @@ A diferencia de la ecualización de histograma tradicional, que aplica una trans
 
 El resultado es una imagen con contraste mejorado de forma uniforme, donde las estructuras pulmonares (bordes, texturas, opacidades) son más visibles para el modelo de detección de puntos de referencia.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{Figures/F4.4_clahe_comparacion.png}
-    \caption{Efecto de CLAHE sobre una radiografía de tórax. (a) Imagen original con bajo contraste. (b) Imagen procesada con CLAHE usando tamaño de tile 4×4. (c) Imagen procesada con CLAHE usando tamaño de tile 8×8. El tamaño de tile menor produce una mejora de contraste más localizada.}
-    \label{fig:clahe_comparacion}
-\end{figure}
-
 %==============================================================================
 \section{Preprocesamiento: SAHS}
 \label{sec:sahs}
 %==============================================================================
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/F2.3_clahe_vs_sahs.png}
+    \caption{Comparación de técnicas de mejora de contraste sobre radiografías de las tres clases. (a) Imagen original. (b) CLAHE: mejora local del contraste mediante ecualización adaptativa. (c) SAHS: estiramiento global con límites asimétricos. Los histogramas muestran cómo cada técnica afecta la distribución de intensidades.}
+    \label{fig:clahe_vs_sahs}
+\end{figure}
 
 Las radiografías de tórax presentan histogramas de intensidad marcadamente asimétricos, con tendencia hacia tonos oscuros debido a las regiones pulmonares llenas de aire. Esta característica hace que técnicas convencionales como CLAHE presenten limitaciones. El método \textbf{SAHS} (Statistical Asymmetrical Histogram Stretching) fue desarrollado específicamente para abordar esta asimetría \cite{cruz2025sahs}.
 
@@ -92,12 +100,7 @@ A diferencia de CLAHE que opera de forma local, SAHS realiza un estiramiento glo
 
 La ventaja principal de SAHS sobre CLAHE es que preserva la distribución global de la imagen mientras mejora el contraste de forma adaptativa a la asimetría del histograma. Esto es particularmente útil para la clasificación, donde se desea normalizar las diferencias de adquisición entre imágenes manteniendo las características patológicas.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{Figures/F2.3_clahe_vs_sahs.png}
-    \caption{Comparación de técnicas de mejora de contraste sobre radiografías de las tres clases. (a) Imagen original. (b) CLAHE: mejora local del contraste mediante ecualización adaptativa. (c) SAHS: estiramiento global con límites asimétricos. Los histogramas muestran cómo cada técnica afecta la distribución de intensidades.}
-    \label{fig:clahe_vs_sahs}
-\end{figure}
+
 
 %==============================================================================
 \section{Redes Neuronales Convolucionales}
@@ -121,12 +124,13 @@ La ventaja fundamental de las CNN es que aprenden una \textbf{jerarquía de cara
 \begin{figure}[htbp]
     \centering
     \shorthandoff{>}
+    \resizebox{\textwidth}{!}{%
     \begin{tikzpicture}[
-        node distance=0.8cm,
-        block/.style={rectangle, draw, fill=blue!20, minimum width=1.2cm, minimum height=0.8cm, align=center, font=\footnotesize},
-        pool/.style={rectangle, draw, fill=green!20, minimum width=0.8cm, minimum height=0.8cm, align=center, font=\footnotesize},
-        fc/.style={rectangle, draw, fill=orange!20, minimum width=1.2cm, minimum height=0.8cm, align=center, font=\footnotesize},
-        input/.style={rectangle, draw, fill=gray!20, minimum width=1.2cm, minimum height=1.2cm, align=center, font=\footnotesize},
+        node distance=1.0cm,
+        block/.style={rectangle, draw, fill=blue!20, minimum width=1.6cm, minimum height=1.0cm, align=center, font=\small},
+        pool/.style={rectangle, draw, fill=green!20, minimum width=1.2cm, minimum height=1.0cm, align=center, font=\small},
+        fc/.style={rectangle, draw, fill=orange!20, minimum width=1.6cm, minimum height=1.0cm, align=center, font=\small},
+        input/.style={rectangle, draw, fill=gray!20, minimum width=1.6cm, minimum height=1.4cm, align=center, font=\small},
         arrow/.style={->, >=stealth, thick}
     ]
         % Input
@@ -157,9 +161,10 @@ La ventaja fundamental de las CNN es que aprenden una \textbf{jerarquía de cara
         \draw[arrow] (fc2) -- (output);
 
         % Labels
-        \node[below=0.3cm of conv1, font=\tiny] {Extracción de características};
-        \node[below=0.3cm of fc1, font=\tiny] {Clasificación/Regresión};
-    \end{tikzpicture}
+        \node[below=0.4cm of conv1, font=\footnotesize] {Extracción de características};
+        \node[below=0.4cm of fc1, font=\footnotesize] {Clasificación/Regresión};
+    \end{tikzpicture}%
+    }
     \shorthandon{>}
     \caption{Arquitectura básica de una Red Neuronal Convolucional (CNN). Las capas convolucionales extraen características de la imagen, las capas de pooling reducen la dimensionalidad, y las capas fully connected (FC) producen la salida final.}
     \label{fig:cnn_arquitectura}
@@ -188,26 +193,27 @@ En este trabajo se utiliza \textbf{ResNet-18}, que contiene 18 capas con conexio
 \begin{figure}[htbp]
     \centering
     \shorthandoff{>}
+    \resizebox{0.95\textwidth}{!}{%
     \begin{tikzpicture}[
-        node distance=1cm,
-        block/.style={rectangle, draw, fill=blue!20, minimum width=2cm, minimum height=0.7cm, align=center, font=\footnotesize},
-        sum/.style={circle, draw, fill=yellow!30, minimum size=0.6cm, font=\footnotesize},
+        node distance=1.2cm,
+        block/.style={rectangle, draw, fill=blue!20, minimum width=2.4cm, minimum height=0.9cm, align=center, font=\small},
+        sum/.style={circle, draw, fill=yellow!30, minimum size=0.8cm, font=\small},
         arrow/.style={->, >=stealth, thick}
     ]
         % Input
-        \node (input) {$\mathbf{x}$};
+        \node[font=\normalsize] (input) {$\mathbf{x}$};
 
         % Main path
-        \node[block, right=1.2cm of input] (conv1) {Conv 3$\times$3};
+        \node[block, right=1.4cm of input] (conv1) {Conv 3$\times$3};
         \node[block, right=of conv1] (bn1) {BN + ReLU};
         \node[block, right=of bn1] (conv2) {Conv 3$\times$3};
         \node[block, right=of conv2] (bn2) {BN};
 
         % Sum
-        \node[sum, right=1cm of bn2] (sum) {$+$};
+        \node[sum, right=1.2cm of bn2] (sum) {$+$};
 
         % Output
-        \node[right=1cm of sum] (output) {$\mathbf{y}$};
+        \node[right=1.2cm of sum, font=\normalsize] (output) {$\mathbf{y}$};
 
         % Main path arrows
         \draw[arrow] (input) -- (conv1);
@@ -215,21 +221,22 @@ En este trabajo se utiliza \textbf{ResNet-18}, que contiene 18 capas con conexio
         \draw[arrow] (bn1) -- (conv2);
         \draw[arrow] (conv2) -- (bn2);
         \draw[arrow] (bn2) -- (sum);
-        \draw[arrow] (sum) -- node[above, font=\footnotesize] {ReLU} (output);
+        \draw[arrow] (sum) -- node[above, font=\small] {ReLU} (output);
 
         % Skip connection
         \coordinate (skip_start) at ($(input)+(0.5,0)$);
-        \coordinate (skip_top) at ($(skip_start)+(0,1.2)$);
-        \coordinate (skip_end) at ($(sum)+(0,1.2)$);
+        \coordinate (skip_top) at ($(skip_start)+(0,1.5)$);
+        \coordinate (skip_end) at ($(sum)+(0,1.5)$);
         \draw[arrow, dashed, blue!60!black] (skip_start) -- (skip_top) -- (skip_end) -- (sum);
 
         % Label
-        \node[above=0.1cm of skip_top, font=\footnotesize, blue!60!black] {Conexión residual (skip)};
+        \node[above=0.15cm of skip_top, font=\small, blue!60!black] {Conexión residual (skip)};
 
         % F(x) label
-        \node[below=0.5cm of bn1, font=\footnotesize] {$F(\mathbf{x})$};
+        \node[below=0.6cm of bn1, font=\small] {$F(\mathbf{x})$};
 
-    \end{tikzpicture}
+    \end{tikzpicture}%
+    }
     \shorthandon{>}
     \caption{Bloque residual de ResNet. La entrada $\mathbf{x}$ pasa por dos capas convolucionales (rama principal) y simultáneamente se suma directamente a la salida mediante la conexión residual. La salida es $\mathbf{y} = F(\mathbf{x}) + \mathbf{x}$, donde $F(\mathbf{x})$ representa la transformación aprendida.}
     \label{fig:bloque_residual}
@@ -335,6 +342,13 @@ Para normalizar geométricamente las radiografías, se necesita primero calcular
 
 El problema que resuelve GPA es el siguiente: dado un conjunto de formas (cada una definida por sus puntos de referencia), encontrar la forma promedio eliminando las diferencias de \textbf{posición}, \textbf{escala} y \textbf{rotación} entre ellas.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Figures/F4.7_proceso_gpa.png}
+    \caption{Proceso de Análisis Procrustes Generalizado (GPA). (a) Formas originales sin alinear, mostrando la variabilidad entre pacientes. (b) Formas centradas y escaladas a tamaño unitario. (c) Formas alineadas por rotación, minimizando las diferencias. (d) Forma estándar final, calculada como el promedio de todas las formas alineadas.}
+    \label{fig:proceso_gpa}
+\end{figure}
+
 El algoritmo opera de forma iterativa:
 
 \begin{enumerate}
@@ -351,19 +365,19 @@ El algoritmo opera de forma iterativa:
 
 El resultado es una \textbf{forma estándar} que representa la configuración típica de los pulmones en el conjunto de entrenamiento. Esta forma sirve como referencia para el proceso de normalización geométrica (deformación) descrito en secciones posteriores.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.90\textwidth]{Figures/F4.7_proceso_gpa.png}
-    \caption{Proceso de Análisis Procrustes Generalizado (GPA). (a) Formas originales sin alinear, mostrando la variabilidad entre pacientes. (b) Formas centradas y escaladas a tamaño unitario. (c) Formas alineadas por rotación, minimizando las diferencias. (d) Forma estándar final, calculada como el promedio de todas las formas alineadas.}
-    \label{fig:proceso_gpa}
-\end{figure}
-
 %==============================================================================
 \section{Triangulación de Delaunay}
 \label{sec:delaunay}
 %==============================================================================
 
 Para aplicar una transformación geométrica a una imagen basándose en los puntos de referencia, es necesario dividir la región de interés en subregiones más pequeñas. La \textbf{triangulación de Delaunay} es el método estándar para particionar un conjunto de puntos en triángulos.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{Figures/F4.8_triangulacion_delaunay.png}
+    \caption{Triangulación de Delaunay sobre los 15 puntos de referencia anatómicos. Los triángulos resultantes cubren la región pulmonar sin superposición, maximizando los ángulos mínimos para evitar distorsiones durante la deformación.}
+    \label{fig:triangulacion_delaunay_teoria}
+\end{figure}
 
 Dado un conjunto de puntos (los puntos de referencia), la triangulación de Delaunay genera un conjunto de triángulos que:
 \begin{itemize}
@@ -378,12 +392,7 @@ Los triángulos son ideales para transformaciones geométricas porque una \textb
 
 En este trabajo, los 15 puntos de referencia generan 16 triángulos mediante la triangulación de Delaunay, que sirven como base para el proceso de deformación.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.5\textwidth]{Figures/F4.8_triangulacion_delaunay.png}
-    \caption{Triangulación de Delaunay sobre los 15 puntos de referencia anatómicos. Los triángulos resultantes cubren la región pulmonar sin superposición, maximizando los ángulos mínimos para evitar distorsiones durante la deformación.}
-    \label{fig:triangulacion_delaunay_teoria}
-\end{figure}
+
 
 %==============================================================================
 \section{Deformación afín por partes}
@@ -391,6 +400,13 @@ En este trabajo, los 15 puntos de referencia generan 16 triángulos mediante la 
 %==============================================================================
 
 El \textbf{deformación afín por partes} (piecewise affine deformation) es la técnica utilizada para normalizar geométricamente las radiografías. El objetivo es deformar cada imagen de manera que sus puntos de referencia coincidan con los puntos de referencia de la forma estándar, eliminando así la variabilidad geométrica entre pacientes.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Figures/F4.9_original_vs_warped.png}
+    \caption{Comparación de radiografías originales y normalizadas por clase. Columnas: COVID-19, Normal y Neumonía viral. Filas: Original (arriba) y Normalizado (abajo). La normalización geométrica mediante deformación afín por partes alinea la región pulmonar con la forma estándar y reduce variabilidad de pose y escala.}
+    \label{fig:original_vs_warped}
+\end{figure}
 
 El proceso funciona de la siguiente manera:
 
@@ -405,13 +421,6 @@ El proceso funciona de la siguiente manera:
 \end{enumerate}
 
 El resultado es una imagen donde la región pulmonar tiene exactamente la forma estándar, independientemente de la forma original del paciente. Esto permite que el clasificador se enfoque en las características de textura y patología, sin verse afectado por diferencias anatómicas normales entre pacientes.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.75\textwidth]{Figures/F4.9_original_vs_warped.png}
-    \caption{Comparación de radiografías originales y normalizadas por clase. Columnas: COVID-19, Normal y Neumonía viral. Filas: Original (arriba) y Normalizado (abajo). La normalización geométrica mediante deformación afín por partes alinea la región pulmonar con la forma estándar y reduce variabilidad de pose y escala.}
-    \label{fig:original_vs_warped}
-\end{figure}
 
 %==============================================================================
 \section{Clasificación de imágenes}
@@ -510,27 +519,28 @@ El resultado es un mecanismo que permite a la red enfocarse en las regiones anat
 \begin{figure}[htbp]
     \centering
     \shorthandoff{>}
+    \resizebox{0.7\textwidth}{!}{%
     \begin{tikzpicture}[
-        node distance=0.8cm,
-        block/.style={rectangle, draw, fill=blue!20, minimum width=1.6cm, minimum height=0.6cm, align=center, font=\scriptsize},
-        pool/.style={rectangle, draw, fill=green!20, minimum width=1.4cm, minimum height=0.6cm, align=center, font=\scriptsize},
-        op/.style={circle, draw, fill=yellow!30, minimum size=0.5cm, font=\scriptsize},
-        io/.style={rectangle, draw, fill=gray!20, minimum width=1.4cm, minimum height=0.8cm, align=center, font=\scriptsize},
+        node distance=1.0cm,
+        block/.style={rectangle, draw, fill=blue!20, minimum width=2.0cm, minimum height=0.8cm, align=center, font=\small},
+        pool/.style={rectangle, draw, fill=green!20, minimum width=1.8cm, minimum height=0.8cm, align=center, font=\small},
+        op/.style={circle, draw, fill=yellow!30, minimum size=0.7cm, font=\small},
+        io/.style={rectangle, draw, fill=gray!20, minimum width=1.8cm, minimum height=1.0cm, align=center, font=\small},
         arrow/.style={->, >=stealth, thick}
     ]
         % Fila 1: Pool H path
         \node[pool] (poolh) {Pool H};
-        \node[block, right=0.8cm of poolh] (convh) {Conv+$\sigma$};
+        \node[block, right=1.0cm of poolh] (convh) {Conv+$\sigma$};
 
         % Fila 2 (centro): Input -> Concat -> Multiply -> Output
-        \node[io, below=1.2cm of poolh] (input) {Entrada};
-        \node[block, right=0.8cm of input] (concat) {Concat+Conv};
-        \node[op, right=0.8cm of concat] (mult) {$\times$};
-        \node[io, right=0.8cm of mult, fill=orange!20] (output) {Salida};
+        \node[io, below=1.5cm of poolh] (input) {Entrada};
+        \node[block, right=1.0cm of input] (concat) {Concat+Conv};
+        \node[op, right=1.0cm of concat] (mult) {$\times$};
+        \node[io, right=1.0cm of mult, fill=orange!20] (output) {Salida};
 
         % Fila 3: Pool W path
-        \node[pool, below=1.2cm of input] (poolw) {Pool W};
-        \node[block, right=0.8cm of poolw] (convw) {Conv+$\sigma$};
+        \node[pool, below=1.5cm of input] (poolw) {Pool W};
+        \node[block, right=1.0cm of poolw] (convw) {Conv+$\sigma$};
 
         % Flechas horizontales principales
         \draw[arrow] (concat) -- (mult);
@@ -547,12 +557,13 @@ El resultado es un mecanismo que permite a la red enfocarse en las regiones anat
         \draw[arrow] (convw) -| (mult);
 
         % Skip connection (por debajo de todo, más abajo)
-        \draw[arrow, dashed, blue!60!black] (input.west) -- ++(-0.4,0) |- ([yshift=-1.0cm]poolw.south) -| (mult.south);
+        \draw[arrow, dashed, blue!60!black] (input.west) -- ++(-0.5,0) |- ([yshift=-1.2cm]poolw.south) -| (mult.south);
 
         % Etiqueta (más abajo para no cruzar la línea)
-        \node[below=1.2cm of poolw, font=\tiny, blue!60!black, xshift=1cm] {skip connection};
+        \node[below=1.4cm of poolw, font=\footnotesize, blue!60!black, xshift=1.2cm] {skip connection};
 
-    \end{tikzpicture}
+    \end{tikzpicture}%
+    }
     \shorthandon{>}
     \caption{Mecanismo de Coordinate Attention. La entrada se procesa mediante poolings direccionales (H y W) que preservan información espacial. Las representaciones se concatenan, procesan con convoluciones y activación sigmoide ($\sigma$), y se multiplican con la entrada original (skip connection).}
     \label{fig:coord_attention}
@@ -589,35 +600,36 @@ La combinación de ensamble y TTA proporciona predicciones más robustas, especi
 \begin{figure}[htbp]
     \centering
     \shorthandoff{>}
+    \resizebox{0.9\textwidth}{!}{%
     \begin{tikzpicture}[
-        node distance=0.6cm,
-        box/.style={rectangle, draw, fill=blue!20, minimum width=1.5cm, minimum height=0.7cm, align=center, font=\scriptsize},
-        img/.style={rectangle, draw, fill=gray!20, minimum width=1.3cm, minimum height=0.7cm, align=center, font=\scriptsize},
-        op/.style={rectangle, draw, fill=yellow!30, minimum width=1.4cm, minimum height=0.7cm, align=center, font=\scriptsize},
-        pred/.style={rectangle, draw, fill=green!20, minimum width=1.3cm, minimum height=0.7cm, align=center, font=\scriptsize},
+        node distance=0.8cm,
+        box/.style={rectangle, draw, fill=blue!20, minimum width=2.0cm, minimum height=0.9cm, align=center, font=\small},
+        img/.style={rectangle, draw, fill=gray!20, minimum width=1.8cm, minimum height=0.9cm, align=center, font=\small},
+        op/.style={rectangle, draw, fill=yellow!30, minimum width=2.0cm, minimum height=0.9cm, align=center, font=\small},
+        pred/.style={rectangle, draw, fill=green!20, minimum width=2.2cm, minimum height=0.9cm, align=center, font=\small},
         arrow/.style={->, >=stealth, thick}
     ]
         % === RAMA SUPERIOR ===
         \node[img] (img1) {Original};
-        \node[box, right=0.5cm of img1] (ens1) {Ensamble};
-        \node[pred, right=0.5cm of ens1] (pred1) {4 predicciones};
+        \node[box, right=0.7cm of img1] (ens1) {Ensamble};
+        \node[pred, right=0.7cm of ens1] (pred1) {4 predicciones};
 
         % === RAMA INFERIOR ===
-        \node[img, below=1.2cm of img1] (img2) {Reflejada};
-        \node[box, right=0.5cm of img2] (ens2) {Ensamble};
-        \node[pred, right=0.5cm of ens2] (pred2) {4 predicciones};
-        \node[op, right=0.5cm of pred2] (swap) {Intercambio};
+        \node[img, below=1.5cm of img1] (img2) {Reflejada};
+        \node[box, right=0.7cm of img2] (ens2) {Ensamble};
+        \node[pred, right=0.7cm of ens2] (pred2) {4 predicciones};
+        \node[op, right=0.7cm of pred2] (swap) {Intercambio};
 
         % === PROMEDIO Y SALIDA (a la derecha de swap, centrado entre filas) ===
-        \node[op, right=0.5cm of swap, yshift=0.6cm] (avg) {Promedio};
-        \node[pred, right=0.5cm of avg, fill=orange!30] (final) {Resultado};
+        \node[op, right=0.7cm of swap, yshift=0.75cm] (avg) {Promedio};
+        \node[pred, right=0.7cm of avg, fill=orange!30] (final) {Resultado};
 
         % === FLECHAS ===
         \draw[arrow] (img1) -- (ens1);
         \draw[arrow] (ens1) -- (pred1);
-        \draw[arrow] (pred1.east) -- ++(0.3,0) |- (avg.west);
+        \draw[arrow] (pred1.east) -- ++(0.4,0) |- (avg.west);
 
-        \draw[arrow] (img1) -- node[left, font=\tiny] {flip} (img2);
+        \draw[arrow] (img1) -- node[left, font=\footnotesize] {flip} (img2);
         \draw[arrow] (img2) -- (ens2);
         \draw[arrow] (ens2) -- (pred2);
         \draw[arrow] (pred2) -- (swap);
@@ -625,7 +637,8 @@ La combinación de ensamble y TTA proporciona predicciones más robustas, especi
 
         \draw[arrow] (avg) -- (final);
 
-    \end{tikzpicture}
+    \end{tikzpicture}%
+    }
     \shorthandon{>}
     \caption{Inferencia con ensamble y TTA. La imagen original y su reflejo se procesan por un ensamble de 4 modelos. Las predicciones del reflejo requieren intercambiar puntos de referencia simétricos (Swap) antes de promediar las 8 predicciones.}
     \label{fig:ensemble_tta}

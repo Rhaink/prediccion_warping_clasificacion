@@ -17,7 +17,8 @@ El clasificador fue evaluado sobre un conjunto de prueba de 1,895 imágenes que 
     \centering
     \caption{Rendimiento del clasificador sobre el conjunto de prueba (1,895 imágenes).}
     \label{tab:resultados_clasificacion_global}
-    \begin{tabular}{lc}
+    \small
+    \begin{tabular}{@{}lc@{}}
         \toprule
         \textbf{Métrica} & \textbf{Valor} \\
         \midrule
@@ -46,7 +47,8 @@ estándar de las métricas en validación.
     \centering
     \caption{Resultados de validación cruzada (k=5) sobre train+val.}
     \label{tab:resultados_clasificacion_cv}
-    \begin{tabular}{lc}
+    \small
+    \begin{tabular}{@{}lc@{}}
         \toprule
         \textbf{Métrica} & \textbf{Media $\pm$ DE} \\
         \midrule
@@ -66,7 +68,8 @@ La Tabla \ref{tab:metricas_por_clase} desglosa el rendimiento del clasificador p
     \centering
     \caption{Rendimiento del clasificador por categoría diagnóstica.}
     \label{tab:metricas_por_clase}
-    \begin{tabular}{lcccc}
+    \small
+    \begin{tabular}{@{}lcccc@{}}
         \toprule
         \textbf{Categoría} & \textbf{Precisión} & \textbf{Sensibilidad} & \textbf{F1-Score} & \textbf{Muestras} \\
         \midrule
@@ -92,7 +95,8 @@ La Tabla \ref{tab:matriz_confusion} muestra la matriz de confusión, que detalla
     \centering
     \caption{Matriz de confusión del clasificador. Las filas representan la categoría real y las columnas la categoría predicha por el sistema.}
     \label{tab:matriz_confusion}
-    \begin{tabular}{lccc|c}
+    \small
+    \begin{tabular}{@{}lccc|c@{}}
         \toprule
         & \multicolumn{3}{c}{\textbf{Predicción del Sistema}} & \\
         \textbf{Categoría Real} & \textbf{COVID-19} & \textbf{Normal} & \textbf{Neum. Viral} & \textbf{Total} \\
@@ -162,7 +166,8 @@ La Tabla \ref{tab:comparacion_configuraciones} presenta los resultados de esta c
     \centering
     \caption{Comparación de configuraciones de preprocesamiento. Todas utilizan SAHS para mejora de contraste. La diferencia se calcula respecto a las imágenes originales.}
     \label{tab:comparacion_configuraciones}
-    \begin{tabular}{lccc}
+    \small
+    \begin{tabular}{@{}lccc@{}}
         \toprule
         \textbf{Configuración} & \textbf{Exactitud} & \textbf{F1-Macro} & \textbf{Diferencia} \\
         \midrule
