@@ -166,6 +166,28 @@ CLASS_COLORS = {
     'Viral_Pneumonia': '#FFD43B',  # Amarillo
 }
 
+
+def get_class_color_es(class_name_es: str) -> str:
+    """
+    Obtiene el color hexadecimal para una clase (nombre en español).
+
+    Args:
+        class_name_es: Nombre de clase en español ("COVID-19", "Normal", "Neumonía Viral")
+
+    Returns:
+        Color hex string (e.g., "#FF6B6B")
+    """
+    # Mapeo de nombres en español a claves en CLASS_COLORS
+    mapping = {
+        'COVID-19': 'COVID',
+        'Normal': 'Normal',
+        'Neumonía Viral': 'Viral_Pneumonia',
+    }
+
+    class_key = mapping.get(class_name_es, 'COVID')  # Default a COVID si no se encuentra
+    return CLASS_COLORS.get(class_key, '#FF6B6B')  # Default rojo
+
+
 # ============================================================================
 # INTERFACE TEXT (Spanish)
 # ============================================================================
@@ -173,7 +195,7 @@ CLASS_COLORS = {
 TITLE = "Sistema de Detección de COVID-19 mediante Puntos de Referencia Anatómicos"
 
 SUBTITLE = f"""
-**Resultados Validados**: Error Puntos de Referencia: {VALIDATED_METRICS['landmark_error_px']} px |
+**Sistema Validado**: Ensemble de Detección de Landmarks (15 puntos) |
 Accuracy Clasificación: {VALIDATED_METRICS['classification_cv_accuracy_mean']:.2f}% ± {VALIDATED_METRICS['classification_cv_accuracy_std']:.2f}% (5-fold CV)
 """
 
@@ -185,10 +207,10 @@ Este sistema combina tres componentes principales para la detección de COVID-19
 ### 1. Detección de Puntos de Referencia Anatómicos
 Ensemble de 4 modelos ResNet-18 con Coordinate Attention que predicen 15 puntos de referencia
 en el contorno pulmonar:
-- **Error medio**: {VALIDATED_METRICS['landmark_error_px']} píxeles (en imágenes 224×224)
-- **Desviación estándar**: {VALIDATED_METRICS['landmark_std_px']} píxeles
+- **Arquitectura**: ResNet-18 con módulo de Coordinate Attention
 - **Test-Time Augmentation**: Flip horizontal con corrección de pares simétricos
 - **Preprocesamiento**: CLAHE (clip={VALIDATED_METRICS['clahe_clip']}, tile={VALIDATED_METRICS['clahe_tile']}×{VALIDATED_METRICS['clahe_tile']})
+- **Landmarks**: 15 puntos anatómicos en 5 grupos funcionales
 
 Los 15 puntos de referencia definen el contorno pulmonar en 5 grupos:
 - **Eje (verde)**: L1, L2 - Puntos superior e inferior del eje central
@@ -247,9 +269,12 @@ Softmax → Probabilidades
 
 ## Resultados Detallados
 
-### Error por Punto de Referencia (píxeles en 224×224)
-Los mejores puntos de referencia son los centrales (L10, L9, L5) con ~2.4-2.9 px de error.
-Los puntos de referencia de borde (L12, L13) tienen mayor error (~5.4 px) debido a la ambigüedad anatómica.
+### Distribución de Puntos de Referencia
+Los 15 puntos de referencia se distribuyen estratégicamente para capturar la geometría pulmonar:
+- **Puntos centrales** (L9, L10, L11): Eje mediastínico y mediastino
+- **Contornos laterales** (L3-L8): Bordes izquierdo y derecho de ambos pulmones
+- **Puntos axiales** (L1, L2): Vértice superior y base inferior
+- **Ápices y ángulos** (L12-L15): Regiones de mayor variabilidad anatómica
 
 ### Cross-Validation (5-fold)
 - **Val Accuracy**: {VALIDATED_METRICS.get('cv_val_accuracy_mean', 'N/A')}%
@@ -300,7 +325,7 @@ Los puntos de referencia de borde (L12, L13) tienen mayor error (~5.4 px) debido
 
 ---
 
-**Versión**: 1.0.10
+**Versión**: 1.0.13
 **Última actualización**: Enero 2026
 **Framework**: Gradio {4}
 **Python**: 3.8+

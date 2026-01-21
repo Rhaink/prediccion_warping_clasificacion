@@ -20,6 +20,8 @@ networkx>=2.8            # torch graph operations (CRITICAL)
 filelock>=3.0            # torch resource locking
 fsspec>=2022.1.0         # torch filesystem operations
 setuptools>=60.0         # torch utilities
+pip>=24.0                # pip installer (CRITICAL for offline installation)
+wheel>=0.42.0            # wheel package format (CRITICAL for offline installation)
 typing-extensions>=4.8   # type hints (required by torch + gradio)
 jinja2>=3.0              # code generation (torch.jit + gradio)
 

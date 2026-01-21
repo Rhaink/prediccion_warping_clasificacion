@@ -21,8 +21,109 @@ from .config import (
     THEME,
     populate_examples,
     VALIDATED_METRICS,
+    get_class_color_es,
 )
 from .visualizer import create_probability_chart
+
+
+def create_probability_html(probabilities: dict, predicted_class: str) -> str:
+    """
+    Crea HTML personalizado para mostrar probabilidades con colores y emoji.
+
+    Args:
+        probabilities: Diccionario {clase: probabilidad}
+        predicted_class: Nombre de la clase ganadora
+
+    Returns:
+        String HTML con barras de progreso coloreadas
+    """
+    # Ordenar por probabilidad descendente
+    sorted_probs = sorted(probabilities.items(), key=lambda x: x[1], reverse=True)
+
+    html = """
+    <div style="font-family: 'Inter', sans-serif; padding: 10px;">
+    """
+
+    for class_name, prob in sorted_probs:
+        display_name = class_name  # Usar nombre completo directamente
+        percentage = prob * 100
+        color = get_class_color_es(class_name)
+
+        # Agregar emoji solo a la ganadora
+        if class_name == predicted_class:
+            display_name = f"⭐ {display_name}"
+            font_weight = "bold"
+        else:
+            font_weight = "normal"
+
+        html += f"""
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-weight: {font_weight}; color: {color}; font-size: 14px;">{display_name}</span>
+                <span style="font-weight: {font_weight}; color: {color}; font-size: 14px;">{percentage:.1f}%</span>
+            </div>
+            <div style="background-color: #e0e0e0; border-radius: 10px; height: 8px; overflow: hidden;">
+                <div style="background-color: {color}; height: 100%; width: {percentage:.1f}%; border-radius: 10px; transition: width 0.3s ease;"></div>
+            </div>
+        </div>
+        """
+
+    html += "</div>"
+    return html
+
+
+def create_prediction_display_html(predicted_class: str, confidence: float) -> str:
+    """
+    Crea HTML para mostrar la clase predicha de forma destacada.
+
+    Args:
+        predicted_class: Nombre de la clase predicha
+        confidence: Confianza de la predicción (0-1)
+
+    Returns:
+        HTML con la clase predicha en grande y con color
+    """
+    color = get_class_color_es(predicted_class)
+    percentage = confidence * 100
+
+    html = f"""
+    <div style="text-align: center; padding: 15px; background-color: #2a2a2a; border-radius: 10px; margin-bottom: 15px;">
+        <div style="font-size: 32px; font-weight: bold; color: {color};">
+            ⭐ {predicted_class}
+        </div>
+    </div>
+    """
+    return html
+
+
+def highlight_winner_in_probabilities(probabilities: dict, predicted_class: str) -> dict:
+    """
+    Crea una copia del diccionario de probabilidades con la clase ganadora resaltada.
+    Redondea a 1 decimal para consistencia.
+
+    Args:
+        probabilities: Diccionario original {clase: probabilidad}
+        predicted_class: Nombre de la clase ganadora
+
+    Returns:
+        Diccionario con la clase ganadora resaltada con ⭐
+    """
+    highlighted = {}
+    for class_name, prob in probabilities.items():
+        # Usar nombre completo directamente
+        display_name = class_name
+
+        # Redondear a 1 decimal para consistencia
+        prob_rounded = round(prob, 3)  # Mantener 3 decimales internos para precisión
+
+        if class_name == predicted_class:
+            # Agregar emoji y color para la clase ganadora
+            class_color = get_class_color_es(class_name)
+            highlighted[f"⭐ {display_name}"] = prob_rounded
+        else:
+            highlighted[display_name] = prob_rounded
+
+    return highlighted
 
 
 def create_demo() -> gr.Blocks:
@@ -136,15 +237,21 @@ def create_demo() -> gr.Blocks:
 
                         # Classification results
                         gr.Markdown("### Resultados de Clasificación")
-                        classification_label = gr.Label(
-                            label="Probabilidades por Clase",
-                            num_top_classes=1
+
+                        # Mostrar predicción destacada
+                        predicted_class_display = gr.HTML(
+                            label="Predicción"
+                        )
+
+                        # Barras de probabilidades
+                        classification_html = gr.HTML(
+                            label="Probabilidades por Clase"
                         )
 
                         # Metrics accordion
                         with gr.Accordion("📈 Métricas Detalladas", open=False):
                             metrics_table = gr.Dataframe(
-                                label="Error por Punto de Referencia (Valores de Referencia)",
+                                label="Coordenadas de Puntos de Referencia Detectados",
                                 interactive=False
                             )
 
@@ -161,7 +268,7 @@ def create_demo() -> gr.Blocks:
                     if image_path is None:
                         return (
                             "⚠️ Por favor, cargue una imagen primero.",
-                            None, None, None, None, None, None, None, None, None
+                            None, None, None, None, None, None, None, None, None, None
                         )
 
                     # Process image
@@ -171,7 +278,7 @@ def create_demo() -> gr.Blocks:
                         error_msg = f"❌ **Error**: {result['error']}"
                         return (
                             error_msg,
-                            None, None, None, None, None, None, None, None,
+                            None, None, None, None, None, None, None, None, None,
                             result  # Store result for potential export
                         )
 
@@ -181,7 +288,24 @@ def create_demo() -> gr.Blocks:
                     if result.get('warping_failed', False):
                         status_msg += "\n⚠️ Advertencia: Warping falló, mostrando imagen original."
 
-                    status_msg += f"\n\n**Predicción**: {result['predicted_class']} ({result['classification'][result['predicted_class']] * 100:.1f}% confianza)"
+                    # Add prediction with emoji and color
+                    predicted_class = result['predicted_class']
+                    predicted_prob = result['classification'][predicted_class]  # 0-1
+                    class_color = get_class_color_es(predicted_class)
+
+                    status_msg += f'\n\n### <span style="color: {class_color};">⭐ {predicted_class}</span>\n\n**Confianza**: {predicted_prob * 100:.1f}%'
+
+                    # Create HTML de predicción destacada
+                    prediction_display_html = create_prediction_display_html(
+                        predicted_class,
+                        predicted_prob
+                    )
+
+                    # Create HTML for probabilities display with colors
+                    probabilities_html = create_probability_html(
+                        result['classification'],
+                        predicted_class
+                    )
 
                     return (
                         status_msg,
@@ -190,7 +314,8 @@ def create_demo() -> gr.Blocks:
                         result['delaunay_mesh'],
                         result['warped'],
                         result['warped_sahs'],
-                        result['classification'],
+                        prediction_display_html,  # Nuevo output
+                        probabilities_html,        # Barras
                         result['metrics'],
                         f"{result['inference_time']:.3f} segundos",
                         result  # Store for export
@@ -206,7 +331,8 @@ def create_demo() -> gr.Blocks:
                         img_delaunay,
                         img_warped,
                         img_sahs,
-                        classification_label,
+                        predicted_class_display,  # Nuevo
+                        classification_html,       # Barras
                         metrics_table,
                         inference_time,
                         result_state
@@ -262,9 +388,14 @@ def create_demo() -> gr.Blocks:
                     with gr.Column(scale=1):
                         quick_status = gr.Markdown("Esperando imagen...")
 
-                        quick_output = gr.Label(
-                            label="Resultado de Clasificación",
-                            num_top_classes=1
+                        # Mostrar predicción destacada
+                        quick_predicted_display = gr.HTML(
+                            label="Predicción"
+                        )
+
+                        # Barras de probabilidades
+                        quick_output = gr.HTML(
+                            label="Probabilidades por Clase"
                         )
 
                         quick_time = gr.Textbox(
@@ -275,25 +406,48 @@ def create_demo() -> gr.Blocks:
                 # Quick classification
                 def on_quick_classify(image_path):
                     if image_path is None:
-                        return "⚠️ Por favor, cargue una imagen primero.", None, ""
+                        return "⚠️ Por favor, cargue una imagen primero.", None, None, ""
 
                     result = process_image_quick(image_path)
 
                     if not result['success']:
-                        return f"❌ **Error**: {result['error']}", None, ""
+                        return f"❌ **Error**: {result['error']}", None, None, ""
 
-                    status_msg = f"✅ **Clasificación completada**\n\n**Predicción**: {result['predicted_class']}"
+                    # Add prediction with emoji and color
+                    predicted_class = result['predicted_class']
+                    predicted_prob = result['classification'][predicted_class]
+                    class_color = get_class_color_es(predicted_class)
+
+                    status_msg = f'✅ **Clasificación completada**\n\n### <span style="color: {class_color};">⭐ {predicted_class}</span>'
+
+                    # Create HTML de predicción destacada
+                    prediction_display_html = create_prediction_display_html(
+                        predicted_class,
+                        predicted_prob
+                    )
+
+                    # Create HTML for probabilities display with colors
+                    probabilities_html = create_probability_html(
+                        result['classification'],
+                        predicted_class
+                    )
 
                     return (
                         status_msg,
-                        result['classification'],
+                        prediction_display_html,  # Nuevo output
+                        probabilities_html,        # Barras
                         f"{result['inference_time']:.3f} segundos"
                     )
 
                 quick_btn.click(
                     fn=on_quick_classify,
                     inputs=[quick_input],
-                    outputs=[quick_status, quick_output, quick_time]
+                    outputs=[
+                        quick_status,
+                        quick_predicted_display,  # Nuevo
+                        quick_output,              # Barras
+                        quick_time
+                    ]
                 )
 
             # ================================================================

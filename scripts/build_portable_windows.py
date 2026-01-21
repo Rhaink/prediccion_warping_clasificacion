@@ -653,7 +653,7 @@ if not exist python\\Lib\\site-packages\\gradio (
 
     REM Install pip first
     echo [1/2] Installing pip...
-    python\\python.exe get-pip.py --no-warn-script-location >nul 2>&1
+    python\\python.exe get-pip.py --no-index --find-links=wheels --no-warn-script-location >nul 2>&1
 
     REM Install dependencies using Python script
     echo [2/2] Installing packages from wheels...
@@ -736,7 +736,7 @@ if errorlevel 1 (
     pause
 
     echo   Installing pip...
-    python\\python.exe get-pip.py --no-warn-script-location >nul 2>&1
+    python\\python.exe get-pip.py --no-index --find-links=wheels --no-warn-script-location >nul 2>&1
 
     echo   Installing packages (please wait)...
     python\\python.exe install_deps.py

@@ -5,11 +5,13 @@ Genera la matriz de confusión del clasificador warped_sahs_masked
 con los valores correctos verificados.
 """
 
+import argparse
 import json
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from pathlib import Path
 
 
 def plot_confusion_matrix(
@@ -19,6 +21,9 @@ def plot_confusion_matrix(
     output_path: Path,
     accuracy: float,
     f1_macro: float,
+    colorbar_label: str,
+    x_label: str,
+    y_label: str,
 ):
     """
     Genera un heatmap de la matriz de confusión.
@@ -42,14 +47,14 @@ def plot_confusion_matrix(
         annot=False,
         fmt='.1f',
         cmap='Blues',
-        cbar_kws={'label': 'Porcentaje (%)'},
+        cbar_kws={'label': colorbar_label},
         ax=ax,
         vmin=0,
         vmax=100
     )
     cbar = heatmap.collections[0].colorbar
-    cbar.set_label('Porcentaje (%)', fontsize=14, fontweight='bold')
-    cbar.ax.tick_params(labelsize=12)
+    cbar.set_label(colorbar_label, fontsize=15, fontweight='bold')
+    cbar.ax.tick_params(labelsize=13)
 
     # Anotar con valores absolutos y porcentajes
     for i in range(len(class_names)):
@@ -75,16 +80,16 @@ def plot_confusion_matrix(
                 j + 0.5, i + 0.5, text,
                 ha='center', va='center',
                 color=text_color,
-                fontsize=14,
+                fontsize=15,
                 weight=weight
             )
 
     # Configurar ejes
-    ax.set_xlabel('Predicción', fontsize=16, fontweight='bold')
-    ax.set_ylabel('Categoría Real', fontsize=16, fontweight='bold')
+    ax.set_xlabel(x_label, fontsize=17, fontweight='bold')
+    ax.set_ylabel(y_label, fontsize=17, fontweight='bold')
     ax.set_title(
         f'{title}\nAccuracy: {accuracy:.2f}% | F1-Macro: {f1_macro:.2f}%',
-        fontsize=18,
+        fontsize=20,
         fontweight='bold',
         pad=20
     )
@@ -92,7 +97,7 @@ def plot_confusion_matrix(
     # Etiquetas de las clases
     ax.set_xticklabels(class_names, rotation=0, ha='center')
     ax.set_yticklabels(class_names, rotation=0)
-    ax.tick_params(axis='both', labelsize=14)
+    ax.tick_params(axis='both', labelsize=15)
 
     # Ajustar layout
     plt.tight_layout()
@@ -104,11 +109,37 @@ def plot_confusion_matrix(
     plt.close()
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Genera matrices de confusion para el experimento SAHS."
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("docs/Tesis/Figures"),
+        help="Directorio de salida para las figuras.",
+    )
+    parser.add_argument(
+        "--lang",
+        choices=["es", "en"],
+        default="es",
+        help="Idioma de los textos en la figura.",
+    )
+    return parser.parse_args()
+
+
+def resolve_output_dir(base_dir: Path, output_dir: Path) -> Path:
+    if output_dir.is_absolute():
+        return output_dir
+    return (base_dir / output_dir).resolve()
+
+
 def main():
     # Rutas
     base_dir = Path(__file__).parent.parent
+    args = parse_args()
     results_path = base_dir / "outputs/classifier_warped_sahs_masked/results.json"
-    output_dir = base_dir / "docs/Tesis/Figures"
+    output_dir = resolve_output_dir(base_dir, args.output_dir)
 
     # Cargar resultados
     with open(results_path) as f:
@@ -120,13 +151,50 @@ def main():
     accuracy = results["test_metrics"]["accuracy"] * 100
     f1_macro = results["test_metrics"]["f1_macro"] * 100
 
-    # Mapeo de nombres más legibles
-    class_display_names = {
-        "COVID": "COVID-19",
-        "Normal": "Normal",
-        "Viral_Pneumonia": "Neumonía Viral"
+    language_configs = {
+        "es": {
+            "colorbar": "Porcentaje (%)",
+            "xlabel": "Predicción",
+            "ylabel": "Categoría Real",
+            "title": "Matriz de Confusión - Clasificador Normalizado + SAHS",
+            "comparison_title": "Comparación de Configuraciones SAHS",
+            "comparison_xlabel": "Predicción",
+            "comparison_ylabel": "Real",
+            "class_display_names": {
+                "COVID": "COVID-19",
+                "Normal": "Normal",
+                "Viral_Pneumonia": "Neumonía Viral",
+            },
+            "config_names": {
+                "original": "Original + SAHS",
+                "normalized": "Normalizado + SAHS",
+                "cropped": "Cropped + SAHS",
+            },
+        },
+        "en": {
+            "colorbar": "Percentage (%)",
+            "xlabel": "Prediction",
+            "ylabel": "True Label",
+            "title": "Confusion Matrix - Warped Classifier + SAHS",
+            "comparison_title": "SAHS Configuration Comparison",
+            "comparison_xlabel": "Prediction",
+            "comparison_ylabel": "True",
+            "class_display_names": {
+                "COVID": "COVID-19",
+                "Normal": "Normal",
+                "Viral_Pneumonia": "Viral Pneumonia",
+            },
+            "config_names": {
+                "original": "Original + SAHS",
+                "normalized": "Warped + SAHS",
+                "cropped": "Cropped + SAHS",
+            },
+        },
     }
-    display_names = [class_display_names.get(name, name) for name in class_names]
+    lang_config = language_configs[args.lang]
+    display_names = [
+        lang_config["class_display_names"].get(name, name) for name in class_names
+    ]
 
     print("=" * 70)
     print("GENERACIÓN DE MATRIZ DE CONFUSIÓN - EXPERIMENTO SAHS")
@@ -143,10 +211,13 @@ def main():
     plot_confusion_matrix(
         cm=cm,
         class_names=display_names,
-        title="Matriz de Confusión - Clasificador Normalizado + SAHS",
+        title=lang_config["title"],
         output_path=output_path,
         accuracy=accuracy,
-        f1_macro=f1_macro
+        f1_macro=f1_macro,
+        colorbar_label=lang_config["colorbar"],
+        x_label=lang_config["xlabel"],
+        y_label=lang_config["ylabel"],
     )
 
     # Generar también comparación de las 3 configuraciones
@@ -156,9 +227,12 @@ def main():
 
     # Cargar resultados de las 3 configuraciones
     configs = {
-        "Original + SAHS": base_dir / "outputs/classifier_original_sahs/results.json",
-        "Normalizado + SAHS": base_dir / "outputs/classifier_warped_sahs_masked/results.json",
-        "Cropped + SAHS": base_dir / "outputs/classifier_cropped_12_sahs/results.json",
+        lang_config["config_names"]["original"]: base_dir
+        / "outputs/classifier_original_sahs/results.json",
+        lang_config["config_names"]["normalized"]: base_dir
+        / "outputs/classifier_warped_sahs_masked/results.json",
+        lang_config["config_names"]["cropped"]: base_dir
+        / "outputs/classifier_cropped_12_sahs/results.json",
     }
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
@@ -208,29 +282,33 @@ def main():
                     j + 0.5, i + 0.5, f'{value}',
                     ha='center', va='center',
                     color=text_color,
-                    fontsize=10,
+                    fontsize=11,
                     weight=weight
                 )
 
         # Configurar título y etiquetas
         ax.set_title(
             f'{config_name}\nAcc: {acc_config:.2f}% | F1: {f1_config:.2f}%',
-            fontsize=12,
+            fontsize=13,
             fontweight='bold'
         )
 
         if idx == 0:
-            ax.set_ylabel('Real', fontsize=11, fontweight='bold')
+            ax.set_ylabel(
+                lang_config["comparison_ylabel"], fontsize=12, fontweight='bold'
+            )
             ax.set_yticklabels(display_names, rotation=0)
         else:
             ax.set_yticklabels([])
 
-        ax.set_xlabel('Predicción', fontsize=11, fontweight='bold')
+        ax.set_xlabel(
+            lang_config["comparison_xlabel"], fontsize=12, fontweight='bold'
+        )
         ax.set_xticklabels(display_names, rotation=45, ha='right')
 
     plt.suptitle(
-        'Comparación de Configuraciones SAHS',
-        fontsize=16,
+        lang_config["comparison_title"],
+        fontsize=17,
         fontweight='bold',
         y=1.02
     )

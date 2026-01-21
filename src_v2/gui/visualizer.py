@@ -48,7 +48,6 @@ def render_original(image: np.ndarray) -> Image.Image:
         ax.imshow(image)
 
     ax.axis('off')
-    ax.set_title('Imagen Original', fontsize=14, color='white', pad=10)
     ax.set_facecolor('black')
     fig.patch.set_facecolor('black')
 
@@ -183,8 +182,6 @@ def render_landmarks_overlay(
     # ============================================================
 
     ax.axis('off')
-    ax.set_title('Puntos de Referencia Anatómicos Detectados (15 puntos)',
-                 fontsize=14, color='white', pad=10)
     ax.set_facecolor('black')
     fig.patch.set_facecolor('black')
 
@@ -340,12 +337,6 @@ def render_delaunay_mesh(
             )
 
     ax.axis('off')
-    ax.set_title(
-        f'Malla de Delaunay ({len(triangles)} triángulos)\nDivisión para Warping Geométrico',
-        fontsize=14,
-        color='white',
-        pad=10
-    )
     ax.set_facecolor('black')
     fig.patch.set_facecolor('black')
 
@@ -370,7 +361,6 @@ def render_warped(warped_image: np.ndarray) -> Image.Image:
 
     ax.imshow(warped_image, cmap='gray')
     ax.axis('off')
-    ax.set_title('Imagen Normalizada (Warped)', fontsize=14, color='white', pad=10)
     ax.set_facecolor('black')
     fig.patch.set_facecolor('black')
 
@@ -468,25 +458,9 @@ def render_warped_sahs(warped_image: np.ndarray, threshold: int = 10) -> Image.I
     # Crear figura matplotlib
     fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
     ax.imshow(enhanced, cmap='gray', vmin=0, vmax=255)
-    ax.set_title(
-        'Imagen Normalizada con SAHS\n(Mejora de Contraste Asimétrica)',
-        fontsize=14,
-        color='white',
-        pad=10
-    )
     ax.axis('off')
     ax.set_facecolor('black')
     fig.patch.set_facecolor('black')
-
-    # Agregar texto informativo
-    fig.text(
-        0.5, 0.02,
-        'SAHS: Statistical Asymmetrical Histogram Stretching\nMejora contraste en región pulmonar',
-        ha='center',
-        fontsize=9,
-        style='italic',
-        color='lightgray'
-    )
 
     plt.tight_layout()
 
@@ -523,14 +497,6 @@ def render_gradcam(
 
     ax.imshow(overlay)
     ax.axis('off')
-
-    # Title with class name if provided
-    if predicted_class:
-        title = f'GradCAM: Regiones de Atención\nClase: {predicted_class}'
-    else:
-        title = 'GradCAM: Regiones de Atención'
-
-    ax.set_title(title, fontsize=14, color='white', pad=10)
     ax.set_facecolor('black')
     fig.patch.set_facecolor('black')
 
@@ -571,12 +537,10 @@ def render_comparison_side_by_side(
 
     # Original
     ax1.imshow(original, cmap='gray')
-    ax1.set_title('Original', fontsize=16, color='white')
     ax1.axis('off')
 
     # Warped
     ax2.imshow(warped, cmap='gray')
-    ax2.set_title('Normalizada (Warped)', fontsize=16, color='white')
     ax2.axis('off')
 
     fig.patch.set_facecolor('black')
@@ -640,7 +604,6 @@ def create_probability_chart(
     ax.set_yticks(y_pos)
     ax.set_yticklabels(classes_es, fontsize=12, color='white')
     ax.set_xlabel('Probabilidad (%)', fontsize=12, color='white')
-    ax.set_title(title, fontsize=14, color='white', pad=15)
     ax.set_xlim([0, 105])
 
     # Grid
@@ -691,15 +654,11 @@ def create_metrics_table(
     for i in range(15):
         landmark_name = f'L{i+1}'
         x, y = landmarks[i]
-        error = per_landmark_errors.get(landmark_name, np.nan)
-        group = LANDMARK_GROUPS[i]
 
         data.append({
             'Landmark': landmark_name,
-            'Grupo': LANDMARK_LABELS_ES[group],
             'X (px)': f'{x:.1f}',
-            'Y (px)': f'{y:.1f}',
-            'Error Ref. (px)': f'{error:.2f}' if not np.isnan(error) else 'N/A'
+            'Y (px)': f'{y:.1f}'
         })
 
     df = pd.DataFrame(data)
@@ -770,7 +729,7 @@ def export_to_pdf(
             colLabels=metrics_df.columns,
             cellLoc='center',
             loc='center',
-            colWidths=[0.15, 0.25, 0.15, 0.15, 0.2]
+            colWidths=[0.30, 0.30, 0.30]
         )
         table.auto_set_font_size(False)
         table.set_fontsize(10)
@@ -785,10 +744,11 @@ def export_to_pdf(
         if metadata:
             metadata_text = '\n'.join([f'{k}: {v}' for k, v in metadata.items()])
             ax.text(
-                0.5, 0.95, metadata_text,
+                0.5, 0.02, metadata_text,
                 transform=fig.transFigure,
-                ha='center', va='top',
-                fontsize=10, family='monospace'
+                ha='center', va='bottom',
+                fontsize=9, family='monospace',
+                color='gray'
             )
 
         plt.title('Métricas Detalladas', fontsize=16, pad=20)

@@ -715,7 +715,9 @@ class DiagramFigureGenerator(BaseFigureGenerator):
         plt.tight_layout()
         return self.save_figure(fig, "F4.2_pipeline_operacion.png", "cap4_metodologia")
 
-    def generate_F4_5_arquitectura_modelo(self) -> Path:
+    def generate_F4_5_arquitectura_modelo(
+        self, language: str = "es", font_scale: float = 1.0
+    ) -> Path:
         """F4.5: Arquitectura del modelo de predicción de landmarks.
 
         Diseño minimalista para publicación científica:
@@ -723,6 +725,34 @@ class DiagramFigureGenerator(BaseFigureGenerator):
         - Texto grande y legible
         - Sin información redundante (detalles en tablas/caption)
         """
+        labels_by_lang = {
+            "es": {
+                "input": "Entrada",
+                "backbone": "ResNet-18",
+                "attention": "Coordinate\nAttention",
+                "head": "Cabeza de\nRegresión",
+                "output": "(x, y)₁₅",
+                "input_dim": "224×224×3",
+                "backbone_dim": "7×7×512",
+                "attention_dim": "7×7×512",
+                "head_dim": "30",
+                "head_dim_2": "(15 landmarks)",
+            },
+            "en": {
+                "input": "Input",
+                "backbone": "ResNet-18",
+                "attention": "Coordinate\nAttention",
+                "head": "Regression\nHead",
+                "output": "(x, y)₁₅",
+                "input_dim": "224×224×3",
+                "backbone_dim": "7×7×512",
+                "attention_dim": "7×7×512",
+                "head_dim": "30",
+                "head_dim_2": "(15 landmarks)",
+            },
+        }
+        labels = labels_by_lang.get(language.lower(), labels_by_lang["es"])
+
         fig, ax = plt.subplots(figsize=(12, 4))
         ax.set_xlim(0, 12)
         ax.set_ylim(0, 4)
@@ -740,6 +770,13 @@ class DiagramFigureGenerator(BaseFigureGenerator):
             'dim': '#616161',        # Gris para dimensiones
         }
 
+        label_size = 12 * font_scale
+        sublabel_size = 10 * font_scale
+        sublabel2_size = 9 * font_scale
+        output_size = 14 * font_scale
+        sublabel_offset = 0.2 * font_scale
+        sublabel2_offset = 0.45 * font_scale
+
         def draw_block(x, y, w, h, label, color, sublabel=None, sublabel2=None):
             """Dibuja un bloque con estilo de publicación científica."""
             rect = plt.Rectangle((x - w/2, y - h/2), w, h,
@@ -747,13 +784,13 @@ class DiagramFigureGenerator(BaseFigureGenerator):
                                  linewidth=1.5, zorder=2)
             ax.add_patch(rect)
             ax.text(x, y, label, ha='center', va='center',
-                   fontsize=12, fontweight='bold', color=colors['text'], zorder=3)
+                   fontsize=label_size, fontweight='bold', color=colors['text'], zorder=3)
             if sublabel:
-                ax.text(x, y - h/2 - 0.2, sublabel, ha='center', va='top',
-                       fontsize=10, color=colors['dim'], style='italic')
+                ax.text(x, y - h/2 - sublabel_offset, sublabel, ha='center', va='top',
+                       fontsize=sublabel_size, color=colors['dim'], style='italic')
             if sublabel2:
-                ax.text(x, y - h/2 - 0.45, sublabel2, ha='center', va='top',
-                       fontsize=9, color=colors['dim'])
+                ax.text(x, y - h/2 - sublabel2_offset, sublabel2, ha='center', va='top',
+                       fontsize=sublabel2_size, color=colors['dim'])
 
         def draw_arrow(x1, x2, y):
             """Dibuja flecha horizontal."""
@@ -770,28 +807,69 @@ class DiagramFigureGenerator(BaseFigureGenerator):
         # =====================================================================
 
         # 1. ENTRADA
-        draw_block(1.0, y_main, 1.5, h_main, 'Entrada', colors['input'], '224×224×3')
+        draw_block(
+            1.0,
+            y_main,
+            1.5,
+            h_main,
+            labels["input"],
+            colors['input'],
+            labels["input_dim"],
+        )
 
         draw_arrow(1.8, 2.4, y_main)
 
         # 2. BACKBONE ResNet-18
-        draw_block(3.8, y_main, 2.2, h_main, 'ResNet-18', colors['backbone'], '7×7×512')
+        draw_block(
+            3.8,
+            y_main,
+            2.2,
+            h_main,
+            labels["backbone"],
+            colors['backbone'],
+            labels["backbone_dim"],
+        )
 
         draw_arrow(5.0, 5.6, y_main)
 
         # 3. COORDINATE ATTENTION
-        draw_block(7.0, y_main, 2.0, h_main, 'Coordinate\nAttention', colors['attention'], '7×7×512')
+        draw_block(
+            7.0,
+            y_main,
+            2.0,
+            h_main,
+            labels["attention"],
+            colors['attention'],
+            labels["attention_dim"],
+        )
 
         draw_arrow(8.1, 8.7, y_main)
 
         # 4. CABEZA DE REGRESIÓN (incluye GAP implícitamente)
-        draw_block(10.0, y_main, 1.8, h_main, 'Cabeza de\nRegresión', colors['head'], '30', '(15 landmarks)')
+        draw_block(
+            10.0,
+            y_main,
+            1.8,
+            h_main,
+            labels["head"],
+            colors['head'],
+            labels["head_dim"],
+            labels["head_dim_2"],
+        )
 
         draw_arrow(11.0, 11.5, y_main)
 
         # 5. OUTPUT - solo el símbolo
-        ax.text(11.8, y_main, '(x, y)₁₅', ha='left', va='center',
-               fontsize=14, fontweight='bold', color=colors['text'])
+        ax.text(
+            11.8,
+            y_main,
+            labels["output"],
+            ha='left',
+            va='center',
+            fontsize=output_size,
+            fontweight='bold',
+            color=colors['text'],
+        )
 
         plt.tight_layout(pad=0.3)
         return self.save_figure(fig, "F4.5_arquitectura_modelo.png", "cap4_metodologia")
@@ -1292,8 +1370,8 @@ class LandmarkVisualizationGenerator(BaseFigureGenerator):
 class GPAAnalysisGenerator(BaseFigureGenerator):
     """Generador de figuras de análisis GPA."""
 
-    def generate_F4_7_proceso_gpa(self) -> Path:
-        """F4.7: Proceso de GPA (2x2 grid)."""
+    def _generate_F4_7_proceso_gpa(self, text_labels: Dict[str, str]) -> Path:
+        """Generar F4.7 con etiquetas personalizadas."""
         fig, axes = plt.subplots(2, 2, figsize=(12, 12))
 
         canonical = self.data.get_canonical_shape()
@@ -1303,6 +1381,14 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         # Invertir Y para orientación correcta (pulmón con ápex arriba)
         landmarks_norm_vis = landmarks_norm.copy()
         landmarks_norm_vis[:, 1] = -landmarks_norm_vis[:, 1]
+
+        font_delta = 2
+        title_size = self.config.font_size_title + font_delta
+        label_size = self.config.font_size_label + font_delta
+        legend_size = self.config.font_size_legend + font_delta
+        annotation_size = self.config.font_size_annotation + font_delta
+        tick_size = self.config.font_size_tick + font_delta
+        suptitle_size = self.config.font_size_title + 2 + font_delta
 
         # Conexiones del contorno pulmonar (orden correcto para dibujar)
         # Eje central: L1(0) -> L9(8) -> L10(9) -> L11(10) -> L2(1)
@@ -1330,9 +1416,10 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
             varied = (landmarks_norm_vis + noise) @ rot_matrix * scale + translation
             ax.scatter(varied[:, 0], varied[:, 1], c='gray', s=15, alpha=0.3)
 
-        ax.set_title('a) Formas originales (sin alinear)', fontsize=self.config.font_size_title)
+        ax.set_title(text_labels['panel_a'], fontsize=title_size)
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
+        ax.tick_params(labelsize=tick_size)
 
         # Panel 2: Después de centrar y escalar
         ax = axes[0, 1]
@@ -1342,11 +1429,13 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
             ax.scatter(varied[:, 0], varied[:, 1], c='blue', s=15, alpha=0.3)
 
         ax.scatter(landmarks_norm_vis[:, 0], landmarks_norm_vis[:, 1],
-                  c=self.config.colors['covid'], s=80, zorder=5, label='Media')
-        ax.set_title('b) Centradas y escaladas', fontsize=self.config.font_size_title)
+                  c=self.config.colors['covid'], s=80, zorder=5,
+                  label=text_labels['mean_label'])
+        ax.set_title(text_labels['panel_b'], fontsize=title_size)
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
-        ax.legend(loc='upper right')
+        ax.legend(loc='upper right', fontsize=legend_size)
+        ax.tick_params(labelsize=tick_size)
 
         # Panel 3: Después de rotar (alineadas)
         ax = axes[1, 0]
@@ -1357,9 +1446,10 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
 
         ax.scatter(landmarks_norm_vis[:, 0], landmarks_norm_vis[:, 1],
                   c=self.config.colors['covid'], s=80, zorder=5)
-        ax.set_title('c) Alineadas por rotación', fontsize=self.config.font_size_title)
+        ax.set_title(text_labels['panel_c'], fontsize=title_size)
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
+        ax.tick_params(labelsize=tick_size)
 
         # Panel 4: Forma Canónica Final con contorno conectado
         ax = axes[1, 1]
@@ -1389,27 +1479,55 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
                   c=self.config.colors['covid'], s=100, zorder=5, edgecolors='white', linewidth=1.5)
 
         # Etiquetar landmarks
-        labels = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8',
-                  'L9', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15']
+        landmark_labels = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8',
+                           'L9', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15']
         for i, (x, y) in enumerate(landmarks_norm_vis):
             offset_x = 0.02 if x < 0 else -0.02
             ha = 'right' if x < 0 else 'left'
-            ax.annotate(labels[i], (x, y), xytext=(x + offset_x, y),
-                       fontsize=8, ha=ha, va='center', color='#333333')
+            ax.annotate(landmark_labels[i], (x, y), xytext=(x + offset_x, y),
+                       fontsize=annotation_size, ha=ha, va='center', color='#333333')
 
-        ax.set_title('d) Forma Estándar Final', fontsize=self.config.font_size_title)
+        ax.set_title(text_labels['panel_d'], fontsize=title_size)
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
-        ax.set_xlabel('Coordenada X (normalizada)', fontsize=self.config.font_size_label)
-        ax.set_ylabel('Coordenada Y (normalizada)', fontsize=self.config.font_size_label)
+        ax.set_xlabel(text_labels['x_label'], fontsize=label_size)
+        ax.set_ylabel(text_labels['y_label'], fontsize=label_size)
+        ax.tick_params(labelsize=tick_size)
 
-        plt.suptitle('Análisis Procrustes Generalizado (GPA)',
-                    fontsize=self.config.font_size_title + 2, y=1.02)
+        plt.suptitle(text_labels['suptitle'], fontsize=suptitle_size, y=1.02)
         plt.tight_layout()
         return self.save_figure(fig, "F4.7_proceso_gpa.png", "cap4_metodologia")
 
-    def generate_F4_8_triangulacion_delaunay(self) -> Path:
-        """F4.8: Triangulación de Delaunay."""
+    def generate_F4_7_proceso_gpa(self) -> Path:
+        """F4.7: Proceso de GPA (2x2 grid)."""
+        labels = {
+            'panel_a': 'a) Formas originales (sin alinear)',
+            'panel_b': 'b) Centradas y escaladas',
+            'panel_c': 'c) Alineadas por rotación',
+            'panel_d': 'd) Forma Estándar Final',
+            'x_label': 'Coordenada X (normalizada)',
+            'y_label': 'Coordenada Y (normalizada)',
+            'suptitle': 'Análisis Procrustes Generalizado (GPA)',
+            'mean_label': 'Media',
+        }
+        return self._generate_F4_7_proceso_gpa(labels)
+
+    def generate_F4_7_proceso_gpa_en(self) -> Path:
+        """F4.7 (EN): GPA process (2x2 grid)."""
+        labels = {
+            'panel_a': 'a) Original shapes (unaligned)',
+            'panel_b': 'b) Centered and scaled',
+            'panel_c': 'c) Rotation-aligned',
+            'panel_d': 'd) Final standard shape',
+            'x_label': 'X coordinate (normalized)',
+            'y_label': 'Y coordinate (normalized)',
+            'suptitle': 'Generalized Procrustes Analysis (GPA)',
+            'mean_label': 'Mean',
+        }
+        return self._generate_F4_7_proceso_gpa(labels)
+
+    def _generate_F4_8_triangulacion_delaunay(self, title: str) -> Path:
+        """Generar F4.8 con título personalizado."""
         fig, ax = plt.subplots(1, 1, figsize=(7, 7))
 
         canonical = self.data.get_canonical_shape()
@@ -1421,14 +1539,23 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         # Dibujar triángulos
         for simplex in tri.simplices:
             triangle = landmarks_px[simplex]
-            polygon = plt.Polygon(triangle, fill=False,
-                                 edgecolor=self.config.colors['normal'],
-                                 linewidth=1.5, alpha=0.7)
+            polygon = plt.Polygon(
+                triangle,
+                fill=False,
+                edgecolor=self.config.colors['normal'],
+                linewidth=1.5,
+                alpha=0.7,
+            )
             ax.add_patch(polygon)
 
         # Dibujar landmarks
-        ax.scatter(landmarks_px[:, 0], landmarks_px[:, 1],
-                  c=self.config.colors['covid'], s=100, zorder=5)
+        ax.scatter(
+            landmarks_px[:, 0],
+            landmarks_px[:, 1],
+            c=self.config.colors['covid'],
+            s=100,
+            zorder=5,
+        )
 
         # Offsets personalizados para evitar superposición con líneas
         # Formato: (offset_x, offset_y, ha, va) - ha/va para alineación del texto
@@ -1453,20 +1580,43 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         for i, (x, y) in enumerate(landmarks_px):
             idx = i + 1
             ox, oy, ha, va = label_offsets.get(idx, (8, 0, 'left', 'center'))
-            ax.annotate(f'L{idx}', (x, y), xytext=(ox, oy), textcoords='offset points',
-                       fontsize=9, fontweight='bold', ha=ha, va=va,
-                       bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                                edgecolor='none', alpha=1.0))
+            ax.annotate(
+                f'L{idx}',
+                (x, y),
+                xytext=(ox, oy),
+                textcoords='offset points',
+                fontsize=9,
+                fontweight='bold',
+                ha=ha,
+                va=va,
+                bbox=dict(
+                    boxstyle='round,pad=0.2',
+                    facecolor='white',
+                    edgecolor='none',
+                    alpha=1.0,
+                ),
+            )
 
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('Triangulación de Delaunay sobre forma Estándar',
-                    fontsize=self.config.font_size_title)
+        ax.set_title(title, fontsize=self.config.font_size_title + 3)
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
         return self.save_figure(fig, "F4.8_triangulacion_delaunay.png", "cap4_metodologia")
+
+    def generate_F4_8_triangulacion_delaunay(self) -> Path:
+        """F4.8: Triangulación de Delaunay."""
+        return self._generate_F4_8_triangulacion_delaunay(
+            "Triangulación de Delaunay sobre forma Estándar"
+        )
+
+    def generate_F4_8_triangulacion_delaunay_en(self) -> Path:
+        """F4.8 (EN): Delaunay triangulation."""
+        return self._generate_F4_8_triangulacion_delaunay(
+            "Delaunay triangulation on the standard shape"
+        )
 
     def generate_F5_3_forma_canonica(self) -> Path:
         """F5.3: Forma canónica resultante."""
@@ -1626,13 +1776,44 @@ class WarpingVisualizationGenerator(BaseFigureGenerator):
 
     def generate_F4_9_original_vs_warped(self) -> Path:
         """F4.9: Comparación original vs warped."""
+        return self._generate_F4_9_original_vs_warped(
+            label_overrides=None,
+            row_labels=("Original", "Normalizado"),
+            suptitle="Normalización geométrica por warping",
+            filename="F4.9_original_vs_warped.png",
+        )
+
+    def generate_F4_9_original_vs_warped_en(self) -> Path:
+        """F4.9 (EN): Original vs warped comparison."""
+        label_overrides = {
+            "COVID": "COVID-19",
+            "Normal": "Normal",
+            "Viral_Pneumonia": "Viral Pneumonia",
+        }
+        return self._generate_F4_9_original_vs_warped(
+            label_overrides=label_overrides,
+            row_labels=("Original", "Warped"),
+            suptitle=None,
+            filename="F4.9_original_vs_warped_en.png",
+        )
+
+    def _generate_F4_9_original_vs_warped(
+        self,
+        label_overrides: Optional[Dict[str, str]],
+        row_labels: Tuple[str, str],
+        suptitle: Optional[str],
+        filename: str,
+    ) -> Path:
+        """Generar comparación original vs warped con etiquetas configurables."""
         fig, axes = plt.subplots(2, 3, figsize=(14, 10))
+        title_size = self.config.font_size_title + 14
+        row_label_size = title_size + 2
 
         # Mapeo de clases: warped_dir -> original_dir
         class_mapping = {
-            'COVID': 'COVID',
-            'Normal': 'Normal',
-            'Viral_Pneumonia': 'Viral Pneumonia'
+            "COVID": "COVID",
+            "Normal": "Normal",
+            "Viral_Pneumonia": "Viral Pneumonia",
         }
 
         dataset_dir = self.data.project_root / "data" / "dataset" / "COVID-19_Radiography_Dataset"
@@ -1645,36 +1826,56 @@ class WarpingVisualizationGenerator(BaseFigureGenerator):
                 warped_path = samples_warp[warp_class][0]
 
                 # Derivar nombre original: COVID-1000_warped.png -> COVID-1000.png
-                original_name = warped_path.name.replace('_warped', '')
+                original_name = warped_path.name.replace("_warped", "")
                 original_path = dataset_dir / orig_class / "images" / original_name
 
                 # Mostrar imagen original
                 ax = axes[0, col]
                 if original_path.exists():
                     img_orig = self.data.load_image(original_path)
-                    ax.imshow(img_orig, cmap='gray')
+                    ax.imshow(img_orig, cmap="gray")
 
-                label = self.config.labels_es.get(warp_class.lower().replace('_', ' '), warp_class)
-                ax.set_title(f'{label}\n(Original)', fontsize=self.config.font_size_title)
-                ax.axis('off')
+                label_key = warp_class.lower().replace("_", " ")
+                label = self.config.labels_es.get(label_key, warp_class)
+                if label_overrides:
+                    label = label_overrides.get(warp_class, label)
+
+                ax.set_title(f"{label}\n({row_labels[0]})", fontsize=title_size)
+                ax.axis("off")
 
                 # Mostrar imagen warped (la misma radiografía normalizada)
                 ax = axes[1, col]
                 img_warp = self.data.load_image(warped_path)
-                ax.imshow(img_warp, cmap='gray')
-                ax.set_title(f'{label}\n(Normalizado)', fontsize=self.config.font_size_title)
-                ax.axis('off')
+                ax.imshow(img_warp, cmap="gray")
+                ax.set_title(f"{label}\n({row_labels[1]})", fontsize=title_size)
+                ax.axis("off")
 
         # Etiquetas de fila
-        axes[0, 0].text(-0.15, 0.5, 'Original', transform=axes[0, 0].transAxes,
-                       fontsize=12, fontweight='bold', rotation=90, va='center')
-        axes[1, 0].text(-0.15, 0.5, 'Normalizado', transform=axes[1, 0].transAxes,
-                       fontsize=12, fontweight='bold', rotation=90, va='center')
+        axes[0, 0].text(
+            -0.15,
+            0.5,
+            row_labels[0],
+            transform=axes[0, 0].transAxes,
+            fontsize=row_label_size,
+            fontweight="bold",
+            rotation=90,
+            va="center",
+        )
+        axes[1, 0].text(
+            -0.15,
+            0.5,
+            row_labels[1],
+            transform=axes[1, 0].transAxes,
+            fontsize=row_label_size,
+            fontweight="bold",
+            rotation=90,
+            va="center",
+        )
 
-        plt.suptitle('Normalización geométrica por warping',
-                    fontsize=self.config.font_size_title + 2, y=1.02)
+        if suptitle:
+            plt.suptitle(suptitle, fontsize=self.config.font_size_title + 2, y=1.02)
         plt.tight_layout()
-        return self.save_figure(fig, "F4.9_original_vs_warped.png", "cap4_metodologia")
+        return self.save_figure(fig, filename, "cap4_metodologia")
 
     def generate_F4_10_margin_scale(self) -> Path:
         """F4.10: Efecto del margin scale."""
@@ -1955,16 +2156,36 @@ class TrainingVisualizationGenerator(BaseFigureGenerator):
 class LandmarkResultsGenerator(BaseFigureGenerator):
     """Generador de figuras de resultados de landmarks."""
 
-    def generate_F5_1_error_por_landmark(self) -> Path:
+    def generate_F5_1_error_por_landmark(self, language: str = "es") -> Path:
         """F5.1: Error por landmark."""
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
         # Tamaños locales para mejorar legibilidad en artículo
-        title_size = self.config.font_size_title + 4
-        label_size = self.config.font_size_label + 3
-        tick_size = self.config.font_size_tick + 3
-        legend_size = self.config.font_size_legend + 3
-        annotation_size = self.config.font_size_annotation + 3
+        font_bump = 2
+        title_size = self.config.font_size_title + 4 + font_bump
+        label_size = self.config.font_size_label + 3 + font_bump
+        tick_size = self.config.font_size_tick + 3 + font_bump
+        legend_size = self.config.font_size_legend + 3 + font_bump
+        annotation_size = self.config.font_size_annotation + 3 + font_bump
+
+        language = (language or "es").lower()
+        labels = {
+            "es": {
+                "mean_label": "Media",
+                "landmark": "Punto de referencia",
+                "mean_error": "Error medio (px)",
+                "panel_a": "a) Error medio por punto de referencia",
+                "panel_b": "b) Mapa de error sobre forma estándar",
+            },
+            "en": {
+                "mean_label": "Mean",
+                "landmark": "Landmark",
+                "mean_error": "Mean error (px)",
+                "panel_a": "a) Mean error per landmark",
+                "panel_b": "b) Error map on standard shape",
+            },
+        }
+        text = labels.get(language, labels["es"])
 
         gt = self.data.get_ground_truth()
         per_landmark = gt['per_landmark_errors']['values_best_20260111']
@@ -1985,12 +2206,17 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
 
         # Línea de media
         mean_error = np.mean(errors)
-        ax.axhline(y=mean_error, color=self.config.colors['axis'], linestyle='--', linewidth=1.2,
-                   label=f'Media = {mean_error:.2f} px')
+        ax.axhline(
+            y=mean_error,
+            color=self.config.colors['axis'],
+            linestyle='--',
+            linewidth=1.2,
+            label=f"{text['mean_label']} = {mean_error:.2f} px",
+        )
 
-        ax.set_xlabel('Punto de referencia', fontsize=label_size)
-        ax.set_ylabel('Error medio (px)', fontsize=label_size)
-        ax.set_title('a) Error medio por punto de referencia', fontsize=title_size)
+        ax.set_xlabel(text['landmark'], fontsize=label_size)
+        ax.set_ylabel(text['mean_error'], fontsize=label_size)
+        ax.set_title(text['panel_a'], fontsize=title_size)
         ax.set_axisbelow(True)
         ax.grid(True, alpha=0.25, axis='y', linestyle='--', linewidth=0.6)
         ax.set_ylim(0, max(errors) * 1.15)
@@ -2054,13 +2280,13 @@ class LandmarkResultsGenerator(BaseFigureGenerator):
 
         # Colorbar
         cbar = plt.colorbar(scatter, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label('Error medio (px)', fontsize=label_size)
+        cbar.set_label(text['mean_error'], fontsize=label_size)
         cbar.ax.tick_params(labelsize=tick_size)
 
         ax.set_xlim(0, 224)
         ax.set_ylim(224, 0)
         ax.set_aspect('equal')
-        ax.set_title('b) Mapa de error sobre forma estándar', fontsize=title_size)
+        ax.set_title(text['panel_b'], fontsize=title_size)
         ax.set_xticks([])
         ax.set_yticks([])
         for spine in ax.spines.values():
