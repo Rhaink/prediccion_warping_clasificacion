@@ -85,29 +85,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENSEMBLE-01 | TBD | Pending |
-| ENSEMBLE-02 | TBD | Pending |
-| ENSEMBLE-03 | TBD | Pending |
-| ENSEMBLE-04 | TBD | Pending |
-| TTA-01 | TBD | Pending |
-| TTA-02 | TBD | Pending |
-| METRICS-01 | TBD | Pending |
-| METRICS-02 | TBD | Pending |
-| METRICS-03 | TBD | Pending |
-| METRICS-04 | TBD | Pending |
-| METRICS-05 | TBD | Pending |
-| OUTPUT-01 | TBD | Pending |
-| OUTPUT-02 | TBD | Pending |
-| OUTPUT-03 | TBD | Pending |
-| VALID-01 | TBD | Pending |
-| VALID-02 | TBD | Pending |
-| VALID-03 | TBD | Pending |
+| ENSEMBLE-01 | Phase 2 | Pending |
+| ENSEMBLE-02 | Phase 2 | Pending |
+| ENSEMBLE-03 | Phase 2 | Pending |
+| ENSEMBLE-04 | Phase 5 | Pending |
+| TTA-01 | Phase 3 | Pending |
+| TTA-02 | Phase 3 | Pending |
+| METRICS-01 | Phase 2 | Pending |
+| METRICS-02 | Phase 2 | Pending |
+| METRICS-03 | Phase 3 | Pending |
+| METRICS-04 | Phase 3 | Pending |
+| METRICS-05 | Phase 4 | Pending |
+| OUTPUT-01 | Phase 2 | Pending |
+| OUTPUT-02 | Phase 4 | Pending |
+| OUTPUT-03 | Phase 4 | Pending |
+| VALID-01 | Phase 5 | Pending |
+| VALID-02 | Phase 5 | Pending |
+| VALID-03 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 14 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 14 ⚠️
+- v1 requirements: 17 total
+- Mapped to phases: 17 (100% coverage)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-27*
-*Last updated: 2026-01-27 after initial definition*
+*Last updated: 2026-01-27 after roadmap creation*
