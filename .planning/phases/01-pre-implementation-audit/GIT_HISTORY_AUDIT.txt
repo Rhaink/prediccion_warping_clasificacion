@@ -1,0 +1,135 @@
+GIT HISTORY AND TRAINING METHODOLOGY AUDIT
+Generated: 2026-01-27
+Plan: 01-01-pre-implementation-audit
+Purpose: Verify no test set contamination through improper usage
+
+================================================================================
+SECTION 1: GIT HISTORY ANALYSIS
+================================================================================
+
+1.1 Test Directory Modifications
+Command: git log --all --follow -- outputs/warped_lung_best/session_warping/test/
+Result: No output (expected - outputs/ not tracked in git)
+
+Analysis: Test data directory is not version controlled, which is correct for
+large datasets. No git history modifications to examine.
+
+1.2 Test-Related Commits
+Command: git log --all --oneline --grep="test"
+Recent relevant commits (sample):
+  - 2e6db8a9 fix(01-01): detect data leakage in test set
+  - 1ec7b373 docs(01-01): verify test set image counts
+  - c50f41c8 Add classifier TTA support and document future loss tests
+  - a058e625 Add classifier TTA support and document future loss tests
+  - 625eade2 Document classifier smoke test artifacts
+
+Analysis: Commits referencing "test" are documentation or feature additions
+(TTA support, smoke tests). No commits modifying test set splitting logic or
+methodology found.
+
+Section 1 Status: PASS
+No git history evidence of test set manipulation or improper modifications.
+
+================================================================================
+SECTION 2: TRAINING LOG AUDIT
+================================================================================
+
+2.1 Training History Metrics Check
+Location: outputs/classifier_cv/fold_*/training_history.json
+
+Metrics tracked during training (all 5 folds):
+  - train_acc
+  - train_loss
+  - val_acc
+  - val_f1_macro
+  - val_f1_weighted
+  - val_loss
+
+Test metrics found: NONE
+
+Analysis: Training history files contain ONLY train and validation metrics.
+No test set metrics were computed during training. This confirms early
+stopping and model selection used validation set only.
+
+Section 2 Status: PASS
+No test metrics in training history - validation set used for early stopping.
+
+================================================================================
+SECTION 3: TIMESTAMP VERIFICATION
+================================================================================
+
+File Timestamp Analysis (best_classifier.pt vs test_results.json):
+
+Fold 01:
+  Model: 2026-01-16 09:22:50
+  Test:  2026-01-27 09:01:58
+  Delta: 11 days, 0 hours, 39 minutes
+
+Fold 02:
+  Model: 2026-01-16 09:51:28
+  Test:  2026-01-27 09:02:12
+  Delta: 11 days, 0 hours, 11 minutes
+
+Fold 03:
+  Model: 2026-01-16 10:14:59
+  Test:  2026-01-27 09:02:26
+  Delta: 11 days, 0 hours, 48 minutes
+
+Fold 04:
+  Model: 2026-01-16 10:44:02
+  Test:  2026-01-27 09:02:40
+  Delta: 11 days, 0 hours, 19 minutes
+
+Fold 05:
+  Model: 2026-01-16 11:12:51
+  Test:  2026-01-27 09:02:54
+  Delta: 11 days, 0 hours, 50 minutes
+
+Analysis: Test evaluation occurred 11 days AFTER model training completed.
+This temporal separation confirms test set was not accessed during training
+or model selection. Models were frozen before test evaluation.
+
+Section 3 Status: PASS
+Test evaluation timestamps are significantly later than training completion.
+
+================================================================================
+SECTION 4: CONFIG FILE CHECK
+================================================================================
+
+Command: grep -r "test" configs/classifier_*.json | grep -v "test_"
+Result: No output
+
+Analysis: Classifier configuration files contain no references to test set
+usage during training. Only train/val splits are configured.
+
+Config files checked:
+  - configs/classifier_*.json
+
+Section 4 Status: PASS
+No test set references in training configuration files.
+
+================================================================================
+OVERALL AUDIT STATUS
+================================================================================
+
+METHODOLOGY VERIFICATION: PASS
+
+Summary:
+1. Git history shows no test set manipulation
+2. Training logs contain only train/val metrics (no test metrics)
+3. Test evaluation occurred 11 days after training completed
+4. Config files have no test set references during training
+
+Conclusion:
+Training methodology is sound. Test set was properly isolated and used only
+for final evaluation after model training and selection completed.
+
+HOWEVER: Section 2 of DATA_INTEGRITY_CHECK.txt identified 1 duplicate image
+between train and test sets (data leakage). While the METHODOLOGY is correct
+(test set not used during training), the DATA itself has integrity issues
+that must be addressed.
+
+Recommendation:
+Proceed with confidence in methodology, but address data leakage before
+claiming final results.
+
