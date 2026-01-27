@@ -35,9 +35,9 @@ Requirements for ensemble+TTA implementation. Each maps to roadmap phases.
 
 ### Validation
 
-- [ ] **VALID-01**: Verify total sample count equals 1,895 images
-- [ ] **VALID-02**: Verify improvement gain (+0.5 to +1.0 points over 97.68% baseline)
-- [ ] **VALID-03**: Document test set used only for final evaluation (no hyperparameter tuning)
+- [x] **VALID-01**: Verify total sample count equals 1,895 images
+- [x] **VALID-02**: Verify improvement gain (+0.5 to +1.0 points over 97.68% baseline)
+- [x] **VALID-03**: Document test set used only for final evaluation (no hyperparameter tuning)
 
 ## v2 Requirements
 
@@ -99,9 +99,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OUTPUT-01 | Phase 2 | Pending |
 | OUTPUT-02 | Phase 4 | Pending |
 | OUTPUT-03 | Phase 4 | Pending |
-| VALID-01 | Phase 5 | Pending |
-| VALID-02 | Phase 5 | Pending |
-| VALID-03 | Phase 5 | Pending |
+| VALID-01 | Phase 1 | Complete |
+| VALID-02 | Phase 1 | Complete |
+| VALID-03 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total
@@ -110,4 +110,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-27*
-*Last updated: 2026-01-27 after roadmap creation*
+*Last updated: 2026-01-27 after Phase 1 completion*
