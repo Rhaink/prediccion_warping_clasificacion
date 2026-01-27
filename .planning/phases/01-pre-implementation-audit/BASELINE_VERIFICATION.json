@@ -1,0 +1,46 @@
+{
+  "verification_date": "2026-01-27",
+  "tolerance": 0.001,
+  "folds": {
+    "fold_01": {
+      "reported_accuracy": 0.975198,
+      "verified_accuracy": 0.975198,
+      "difference": 0.0,
+      "within_tolerance": true
+    },
+    "fold_02": {
+      "reported_accuracy": 0.977836,
+      "verified_accuracy": 0.977836,
+      "difference": 0.0,
+      "within_tolerance": true
+    },
+    "fold_03": {
+      "reported_accuracy": 0.975198,
+      "verified_accuracy": 0.975198,
+      "difference": 0.0,
+      "within_tolerance": true
+    },
+    "fold_04": {
+      "reported_accuracy": 0.976253,
+      "verified_accuracy": 0.976253,
+      "difference": 0.0,
+      "within_tolerance": true
+    },
+    "fold_05": {
+      "reported_accuracy": 0.97942,
+      "verified_accuracy": 0.97942,
+      "difference": 0.0,
+      "within_tolerance": true
+    }
+  },
+  "aggregate": {
+    "reported_mean": 0.976781,
+    "reported_std": 0.001635,
+    "verified_mean": 0.976781,
+    "verified_std": 0.001828,
+    "difference": 0.0,
+    "within_tolerance": true
+  },
+  "status": "PASS",
+  "notes": "Re-evaluation performed using CLI evaluate-classifier command on test set (1,895 images)"
+}
