@@ -1,0 +1,37 @@
+DATA INTEGRITY CHECK REPORT
+Generated: 2026-01-27
+Plan: 01-01-pre-implementation-audit
+Dataset: outputs/warped_lung_best/session_warping
+
+================================================================================
+SECTION 1: IMAGE COUNT VERIFICATION
+================================================================================
+
+Test Set Directory: outputs/warped_lung_best/session_warping/test
+
+Expected Counts:
+- COVID: 452 images
+- Normal: 1,274 images
+- Viral_Pneumonia: 169 images
+- Total: 1,895 images
+
+Actual Counts:
+- COVID: 452 images (MATCH)
+- Normal: 1,274 images (MATCH)
+- Viral_Pneumonia: 169 images (MATCH)
+- Total: 1,895 images (MATCH)
+
+Verification Commands:
+  find COVID -name "*.png" | wc -l        => 452
+  find Normal -name "*.png" | wc -l       => 1274
+  find Viral_Pneumonia -name "*.png" | wc -l  => 169
+  find . -name "*.png" | wc -l            => 1895
+
+Class Distribution:
+- COVID: 23.85% (452/1895)
+- Normal: 67.23% (1274/1895)
+- Viral_Pneumonia: 8.92% (169/1895)
+
+Section 1 Status: PASS
+All image counts match expected values exactly.
+
