@@ -35,3 +35,55 @@ Class Distribution:
 Section 1 Status: PASS
 All image counts match expected values exactly.
 
+================================================================================
+SECTION 2: DATA LEAKAGE CHECK (HASH-BASED ANALYSIS)
+================================================================================
+
+Hash Generation:
+- Train set: 11,364 images hashed
+- Validation set: 1,894 images hashed
+- Test set: 1,895 images hashed
+
+Duplicate Detection Results:
+
+1. TRAIN vs TEST Duplicates: 1 DUPLICATE FOUND
+   Hash: 03aef20ae0517bfacf353a58a018bba5
+   Files:
+     - train/Normal/Normal-818_warped.png
+     - test/Normal/Normal-817_warped.png
+   Impact: CRITICAL - Test set contamination detected
+
+2. TRAIN vs VAL Duplicates: 8 DUPLICATES FOUND
+   Sample duplicates:
+     - Hash: 10c7c4d76a8bd54fb53be995ef2494b7
+       train/Viral_Pneumonia/Viral Pneumonia-953_warped.png
+       val/Viral_Pneumonia/Viral Pneumonia-954_warped.png
+     - Hash: 26b2991a398e2a3f3da137f7e9be2fd6
+       train/Viral_Pneumonia/Viral Pneumonia-294_warped.png
+       val/Viral_Pneumonia/Viral Pneumonia-295_warped.png
+     - Hash: 62654d3531db139722305390b308b69f
+       train/COVID/COVID-2493_warped.png
+       val/COVID/COVID-2492_warped.png
+   Impact: HIGH - Validation metrics may be inflated
+
+3. TEST vs VAL Duplicates: 0 duplicates (GOOD)
+
+Pattern Analysis:
+All duplicates involve sequential filename pairs (e.g., Normal-817/818,
+Viral Pneumonia-953/954). This suggests the original dataset may have had
+duplicate or near-duplicate images with consecutive numbering. The warping
+process preserved these duplicates.
+
+Leakage Rate:
+- Train-Test: 0.053% (1/1895 test images)
+- Train-Val: 0.422% (8/1894 val images)
+
+Section 2 Status: FAIL
+DATA LEAKAGE DETECTED - Test set contains 1 duplicate from training set.
+Validation set contains 8 duplicates from training set.
+
+Recommendation:
+Remove duplicate images from test and validation sets before final evaluation.
+This leakage, while minimal in percentage, violates methodological integrity
+and must be addressed.
+
