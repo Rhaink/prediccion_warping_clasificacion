@@ -1,0 +1,227 @@
+% =============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% Sección 4.2: Dataset y Preprocesamiento
+% =============================================================================
+
+\section{Conjunto de Datos y Preprocesamiento}
+\label{sec:dataset_preprocesamiento}
+
+Esta sección describe el conjunto de datos utilizado para el desarrollo y evaluación del sistema propuesto, así como los procesos de anotación y preprocesamiento aplicados a las imágenes.
+
+\subsection{COVID-19 Radiography Database}
+\label{subsec:covid19_radiography_database}
+
+El presente trabajo utiliza el \textit{COVID-19 Radiography Database}, un conjunto de datos públicamente disponible desarrollado por investigadores de Qatar University, University of Dhaka y colaboradores de Malasia y Pakistán \cite{chowdhury2020can, rahman2021exploring}. Este conjunto de datos ha sido ampliamente utilizado en la literatura para el desarrollo de sistemas de detección de COVID-19 basados en radiografías de tórax.
+
+El conjunto de datos contiene imágenes de radiografías posteroanterior (PA) de tórax organizadas en tres categorías diagnósticas:
+
+\begin{itemize}
+    \item \textbf{COVID-19:} Radiografías de pacientes con diagnóstico confirmado de COVID-19 mediante prueba RT-PCR.
+    \item \textbf{Normal:} Radiografías de pacientes sin patología pulmonar aparente.
+    \item \textbf{Neumonía Viral:} Radiografías de pacientes con neumonía viral de etiología distinta a SARS-CoV-2.
+\end{itemize}
+
+La Tabla \ref{tab:distribucion_dataset} presenta la distribución de imágenes por categoría utilizada en este trabajo.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Distribución del conjunto de datos por categoría diagnóstica.}
+    \label{tab:distribucion_dataset}
+    \small
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        \textbf{Categoría} & \textbf{Imágenes} & \textbf{Porcentaje} \\
+        \midrule
+        COVID-19 & 3,616 & 23.9\% \\
+        Normal & 10,192 & 67.2\% \\
+        Neumonía Viral & 1,345 & 8.9\%\\
+        \midrule
+        \textbf{Total} & \textbf{15,153} & \textbf{100\%}\\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Las imágenes originales tienen un tamaño de $299 \times 299$ píxeles en formato PNG. El conjunto de datos presenta un desbalance de clases natural, con predominancia de imágenes normales, lo cual refleja la distribución típica en escenarios clínicos reales.
+
+\subsection{Anotación de Puntos de Referencia Anatómicos}
+\label{subsec:anotacion_landmarks}
+
+Para el entrenamiento del modelo de predicción de puntos de referencia, se realizó la anotación manual de 15 puntos característicos en un subconjunto del conjunto de datos. Estos puntos de referencia definen el contorno de la región pulmonar.
+
+Los puntos de referencia no corresponden a estructuras anatómicas específicas, sino que representan puntos de control sobre la silueta pulmonar diseñados para capturar la forma global del contorno. La Figura \ref{fig:landmarks_anatomicos} ilustra la ubicación de cada punto de referencia.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.99\textwidth]{Figures/F4.3_landmarks_15.png}
+    \caption{Ubicación de los 15 puntos de referencia que definen el contorno pulmonar. (a) Radiografía con puntos de referencia etiquetados. (b) Esquema de distribución espacial. L1 y L2 definen el eje central; L3-L8 delimitan los contornos laterales; L9-L11 dividen el eje central en cuatro segmentos iguales.}
+    \label{fig:landmarks_anatomicos}
+\end{figure}
+
+La estructura geométrica de los puntos de referencia se organiza de la siguiente manera:
+
+\begin{enumerate}
+    \item \textbf{Eje central vertical:} Los puntos de referencia L1 (superior) y L2 (inferior) definen la línea media de la silueta pulmonar. Los puntos L9, L10 y L11 dividen este eje en cuatro segmentos de igual longitud.
+
+    \item \textbf{Contorno pulmonar izquierdo:} Los puntos de referencia L12, L3, L5, L7 y L14 trazan el borde lateral izquierdo de la silueta, desde la región superior hasta la inferior.
+
+    \item \textbf{Contorno pulmonar derecho:} De manera simétrica, los puntos de referencia L13, L4, L6, L8 y L15 definen el borde lateral derecho.
+
+    \item \textbf{Pares simétricos:} Existen cinco pares de puntos de referencia bilateralmente simétricos: (L3, L4), (L5, L6), (L7, L8), (L12, L13) y (L14, L15).
+\end{enumerate}
+
+\subsubsection{Proceso de Anotación}
+
+Para realizar la anotación de puntos de referencia se desarrolló una herramienta gráfica interactiva basada en OpenCV que facilita el proceso mediante un algoritmo semi-automático. La anotación se realizó sobre un subconjunto de 957 imágenes seleccionadas del conjunto de datos, asegurando representatividad de las tres categorías diagnósticas.
+
+\paragraph{Herramienta de Anotación}
+
+La herramienta desarrollada implementa un proceso de anotación en dos fases que reduce significativamente el tiempo requerido respecto a la marcación individual de cada punto. La Figura \ref{fig:herramienta_etiquetado} ilustra la interfaz de la herramienta.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.99\textwidth]{Figures/F4.21_proceso_anotacion.png}
+    \caption{Diagrama del proceso de anotación de puntos de referencia. Se muestran las dos fases: generación automática a partir de tres clicks y ajuste manual con validación visual antes de guardar las coordenadas en CSV.}
+    \label{fig:proceso_anotacion}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Figures/F4.2b_interfaz_etiquetado.png}
+    \caption{Interfaz de la herramienta de anotación de puntos de referencia. La ventana principal muestra la radiografía con una línea vertical central de referencia. Los puntos de referencia se visualizan como puntos verdes conectados por líneas rojas que definen el contorno pulmonar.}
+    \label{fig:herramienta_etiquetado}
+\end{figure}
+
+\paragraph{Fase 1: Generación Automática}
+
+El proceso inicia con tres interacciones del operador que definen la geometría base:
+
+\begin{enumerate}
+    \item \textbf{Primer click (L1):} Define el punto superior de la silueta pulmonar.
+    \item \textbf{Segundo click (L2):} Define la base inferior, estableciendo el eje central del contorno.
+    \item \textbf{Tercer click:} Confirma la selección y activa el algoritmo de generación automática.
+\end{enumerate}
+
+El algoritmo de generación automática calcula los 13 puntos de referencia restantes (L3-L15) mediante el siguiente procedimiento:
+
+\begin{enumerate}
+    \item Calcula la línea central entre L1 y L2, determinando su pendiente.
+    \item Divide el eje central en cuatro segmentos iguales, ubicando los puntos intermedios L9, L10 y L11 en las posiciones respectivas.
+    \item Genera líneas perpendiculares al eje central en cada punto de división.
+    \item Ubica los puntos de referencia laterales (L3-L8, L12-L15) sobre estas perpendiculares a distancias predefinidas del eje central.
+\end{enumerate}
+
+\paragraph{Fase 2: Ajuste Manual}
+
+Los puntos de referencia generados automáticamente proporcionan una aproximación inicial que raramente coincide exactamente con el contorno pulmonar visible. La herramienta permite ajustar cada punto de referencia horizontalmente mediante atajos de teclado, manteniendo la coherencia geométrica al desplazar los puntos a lo largo de sus respectivas líneas perpendiculares.
+
+El ajuste se realiza hasta que cada punto de referencia coincida visualmente con el borde de la silueta pulmonar en la imagen.
+
+\paragraph{Criterios de Anotación}
+
+El proceso de anotación siguió las siguientes directrices para garantizar consistencia:
+
+\begin{enumerate}
+    \item Se colocó cada punto de referencia sobre el borde perceptible de la silueta pulmonar, no sobre estructuras anatómicas internas.
+    \item En casos de ambigüedad por baja calidad de imagen o superposición de estructuras, se priorizó la consistencia visual sobre la precisión anatómica.
+    \item Se verificó visualmente que los pares simétricos (L3-L4, L5-L6, etc.) mantuvieran una distribución razonable respecto al eje central.
+    \item Las coordenadas se registraron en píxeles respecto a la imagen original de $299 \times 299$ píxeles.
+\end{enumerate}
+
+Las anotaciones se almacenaron en formato CSV.
+
+La distribución del subconjunto anotado por categoría se presenta en la Tabla \ref{tab:distribucion_anotado}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Distribución del subconjunto anotado con puntos de referencia.}
+    \label{tab:distribucion_anotado}
+    \small
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        \textbf{Categoría} & \textbf{Imágenes anotadas} & \textbf{Porcentaje} \\
+        \midrule
+        COVID-19 & 306 & 32.0\% \\
+        Normal & 468 & 48.9\% \\
+        Neumonía Viral & 183 & 19.1\% \\
+        \midrule
+        \textbf{Total} & \textbf{957} & \textbf{100\%} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Preprocesamiento de Imágenes}
+\label{subsec:preprocesamiento}
+
+Las imágenes radiográficas requieren preprocesamiento para mitigar las variaciones introducidas por distintos equipos de adquisición y diversas condiciones de exposición. El proceso implementado consta de tres etapas: mejora de contraste, redimensionamiento y normalización.
+
+\subsubsection{Mejora de Contraste mediante CLAHE}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.99\textwidth]{Figures/F4.4_clahe_comparacion.png}
+    \caption{Efecto del preprocesamiento CLAHE. Imagen original con bajo contraste en la región pulmonar. Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 4$, mostrando mejor definición de estructuras pulmonares, Imagen después de aplicar CLAHE con clip limit $= 2.0$ y tile size $= 8$.}
+    \label{fig:clahe_comparison}
+\end{figure}
+
+Se aplica el algoritmo \textit{Contrast Limited Adaptive Histogram Equalization} (CLAHE) \cite{pizer1987adaptive} para mejorar el contraste local de las imágenes. A diferencia de la ecualización de histograma global, CLAHE opera sobre regiones locales (tiles) y limita la amplificación de contraste para evitar el realce excesivo de ruido.
+
+Los parámetros utilizados fueron determinados experimentalmente:
+
+\begin{itemize}
+    \item \textbf{Clip limit:} $2.0$. Controla el límite máximo de amplificación de contraste. Valores mayores producen mayor contraste pero pueden amplificar ruido.
+    \item \textbf{Tile size:} $4 \times 4$. Tamaño de las regiones para ecualización local. Un valor menor produce una adaptación más fina pero aumenta el tiempo de cómputo.
+\end{itemize}
+
+La Figura \ref{fig:clahe_comparison} muestra el efecto del preprocesamiento CLAHE sobre una radiografía de ejemplo.
+
+\subsubsection{Redimensionamiento}
+
+Las imágenes se redimensionan de su tamaño original ($299 \times 299$ píxeles) a $224 \times 224$ píxeles mediante interpolación bilineal. Este tamaño corresponde a la entrada estándar de las arquitecturas de redes neuronales preentrenadas en ImageNet \cite{deng2009imagenet}.
+
+\subsubsection{Normalización}
+
+Las coordenadas de los puntos de referencia se normalizan al rango $[0, 1]$ dividiendo entre el tamaño de la imagen ($224$ píxeles), facilitando el entrenamiento del modelo de regresión.
+
+\subsection{División del Conjunto de Datos}
+\label{subsec:division_dataset}
+
+El conjunto de datos se divide en tres subconjuntos, entrenamiento, validación y prueba. La división se realiza de manera estratificada por categoría para mantener las proporciones de clases en cada subconjunto.
+
+\begin{itemize}
+    \item \textbf{Entrenamiento (75\%):} Utilizado para optimizar los parámetros del modelo.
+    \item \textbf{Validación (15\%):} Utilizado para selección de hiperparámetros.
+    \item \textbf{Prueba (10\%):} Reservado exclusivamente para la evaluación final del modelo.
+\end{itemize}
+
+La Figura \ref{fig:division_dataset} resume la división estratificada por clase y la
+proporción asignada a cada subconjunto.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Figures/F4.17_division_dataset.png}
+    \caption{Esquema de la división estratificada del conjunto anotado en entrenamiento,
+    validación y prueba, preservando las proporciones por clase.}
+    \label{fig:division_dataset}
+\end{figure}
+
+La Tabla \ref{tab:division_splits} presenta la distribución resultante para el subconjunto anotado con puntos de referencia (957 imágenes).
+
+\begin{table}[htbp]
+    \centering
+    \caption{División del conjunto de datos en subconjuntos de entrenamiento, validación y prueba.}
+    \label{tab:division_splits}
+    \small
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Conjunto} & \textbf{COVID-19} & \textbf{Normal} & \textbf{Viral} & \textbf{Total} \\
+        \midrule
+        Entrenamiento (75\%) & 229 & 351 & 137 & 717 \\
+        Validación (15\%) & 46 & 70 & 28 & 144 \\
+        Prueba (10\%) & 31 & 47 & 18 & 96 \\
+        \midrule
+        \textbf{Total} & \textbf{306} & \textbf{468} & \textbf{183} & \textbf{957} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Para garantizar la reproducibilidad de los experimentos, se utiliza una semilla aleatoria fija ($seed = 42$) en todas las operaciones que involucran aleatorización.

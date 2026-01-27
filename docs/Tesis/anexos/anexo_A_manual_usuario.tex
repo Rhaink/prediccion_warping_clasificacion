@@ -1,0 +1,270 @@
+%----------------------------------------------------------------------------------------
+%       ANEXO A: MANUAL DE USUARIO
+%----------------------------------------------------------------------------------------
+\chapter{Manual de Usuario - Interfaz Gráfica de Demostración}
+\label{anexo:manual_usuario}
+
+Este anexo presenta el manual de usuario de la interfaz gráfica desarrollada para demostrar el sistema completo de detección de COVID-19 mediante landmarks anatómicos y normalización geométrica.
+
+\section{Descripción General}
+
+La interfaz gráfica está implementada con Gradio, un framework para crear interfaces web interactivas en Python. El sistema permite visualizar las cuatro etapas principales del pipeline de procesamiento:
+
+\begin{enumerate}
+    \item Imagen original de radiografía de tórax
+    \item Detección de 15 landmarks anatómicos
+    \item Imagen normalizada mediante warping geométrico
+    \item Mapa de atención GradCAM mostrando regiones relevantes para la clasificación
+\end{enumerate}
+
+\section{Requisitos del Sistema}
+
+\subsection{Dependencias de Software}
+
+\begin{itemize}
+    \item Python 3.8 o superior
+    \item Gradio 4.0.0 o superior
+    \item PyTorch con soporte para GPU (opcional, recomendado)
+    \item Dependencias adicionales especificadas en \texttt{requirements.txt}
+\end{itemize}
+
+\subsection{Modelos Necesarios}
+
+El sistema requiere los siguientes archivos de modelos entrenados:
+
+\textbf{Ensemble de Landmarks (4 modelos):}
+\begin{itemize}
+    \item \texttt{checkpoints/session10/ensemble/seed123/final\_model.pt}
+    \item \texttt{checkpoints/session13/seed321/final\_model.pt}
+    \item \texttt{checkpoints/repro\_split111/session14/seed111/final\_model.pt}
+    \item \texttt{checkpoints/repro\_split666/session16/seed666/final\_model.pt}
+\end{itemize}
+
+\textbf{Forma Canónica y Triangulación:}
+\begin{itemize}
+    \item \texttt{outputs/shape\_analysis/canonical\_shape\_gpa.json}
+    \item \texttt{outputs/shape\_analysis/canonical\_delaunay\_triangles.json}
+\end{itemize}
+
+\textbf{Clasificador:}
+\begin{itemize}
+    \item {\small \texttt{outputs/classifier\_warped\_lung\_best/sweeps\_2026-01-12/\linebreak lr2e-4\_seed321\_on/best\_classifier.pt}}
+\end{itemize}
+
+\section{Instalación y Ejecución}
+
+\subsection{Lanzar la Interfaz}
+
+Existen dos opciones para ejecutar la interfaz:
+
+\paragraph{Opción 1 (Recomendada):} Usar el script de lanzamiento con verificaciones automáticas:
+
+\begin{verbatim}
+python scripts/run_demo.py
+\end{verbatim}
+
+Opciones disponibles:
+\begin{itemize}
+    \item \texttt{-{}-share}: Crear enlace público compartible
+    \item \texttt{-{}-port PORT}: Cambiar puerto (predeterminado: 7860)
+    \item \texttt{-{}-host HOST}: Cambiar host (predeterminado: localhost)
+\end{itemize}
+
+\paragraph{Opción 2:} Ejecutar directamente el módulo:
+
+\begin{verbatim}
+python -m src_v2.gui.app
+\end{verbatim}
+
+La interfaz se abrirá automáticamente en el navegador web en \texttt{http://localhost:7860}.
+
+\section{Uso de la Interfaz}
+
+\subsection{Tab 1: Demostración Completa}
+
+Esta pestaña muestra el pipeline completo con visualizaciones de todas las etapas:
+
+\begin{enumerate}
+    \item \textbf{Cargar imagen:}
+    \begin{itemize}
+        \item Arrastrar y soltar una radiografía de tórax en el área designada
+        \item Hacer clic en el botón de carga para seleccionar un archivo
+        \item Seleccionar uno de los ejemplos precargados (COVID, Normal, Viral)
+    \end{itemize}
+
+    \item \textbf{Procesar:}
+    \begin{itemize}
+        \item Hacer clic en el botón ``Procesar Imagen''
+        \item Esperar 1-2 segundos mientras el sistema procesa (el tiempo varía según el hardware)
+    \end{itemize}
+
+    \item \textbf{Visualizar resultados:}
+    \begin{itemize}
+        \item La interfaz mostrará 4 imágenes correspondientes a cada etapa del pipeline
+        \item Se mostrarán las probabilidades de clasificación para cada clase
+        \item Es posible expandir la sección ``Métricas Detalladas'' para ver el error promedio por landmark
+    \end{itemize}
+
+    \item \textbf{Exportar (opcional):}
+    \begin{itemize}
+        \item Hacer clic en ``Exportar Resultados a PDF''
+        \item El sistema generará un reporte PDF con todas las visualizaciones y métricas
+        \item El archivo se guardará en el directorio de trabajo actual
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Tab 2: Vista Rápida}
+
+Esta pestaña proporciona una clasificación directa sin visualizaciones intermedias:
+
+\begin{enumerate}
+    \item Cargar la radiografía de tórax
+    \item Hacer clic en ``Clasificar''
+    \item Obtener el resultado inmediato (clase predicha y probabilidades)
+\end{enumerate}
+
+Esta opción es útil cuando se requiere únicamente la clasificación sin inspeccionar las etapas intermedias.
+
+\subsection{Tab 3: Acerca del Sistema}
+
+Esta pestaña contiene información sobre:
+\begin{itemize}
+    \item Metodología de landmarks y normalización geométrica
+    \item Arquitectura del sistema
+    \item Métricas validadas del modelo
+    \item Referencias bibliográficas
+\end{itemize}
+
+\section{Visualización de Landmarks}
+
+Los 15 landmarks se visualizan con un código de colores según su grupo anatómico:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llp{6cm}}
+\toprule
+\textbf{Grupo} & \textbf{Landmarks} & \textbf{Descripción} \\
+\midrule
+Eje & L1, L2 & Puntos superior e inferior del eje central \\
+Central & L9, L10, L11 & Puntos intermedios del eje central \\
+Lateral & L3--L8 & Contornos laterales izquierdo y derecho \\
+Borde & L12, L13 & Puntos de borde superior \\
+Costal & L14, L15 & Puntos costales inferiores \\
+\bottomrule
+\end{tabular}
+\caption{Grupos de landmarks y su representación visual}
+\end{table}
+
+\section{Métricas del Sistema}
+
+Las métricas validadas que se muestran en la interfaz son:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lc}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Error de Landmarks (píxeles) & $3.61 \pm 2.48$ \\
+Accuracy de Clasificación & 98.05\% \\
+F1-Score Macro & 97.12\% \\
+F1-Score Weighted & 98.04\% \\
+\bottomrule
+\end{tabular}
+\caption{Métricas validadas del sistema completo}
+\end{table}
+
+Estos valores fueron obtenidos mediante evaluación rigurosa en el conjunto de prueba y están documentados en el archivo \texttt{GROUND\_TRUTH.json} versión 2.1.0.
+
+\section{Solución de Problemas}
+
+\subsection{Error: Modelos no encontrados}
+
+Si la interfaz reporta que no encuentra los modelos:
+\begin{itemize}
+    \item Verificar que los archivos de checkpoints existen en las rutas especificadas
+    \item Ejecutar \texttt{python scripts/run\_demo.py} para diagnóstico automático
+    \item Consultar la documentación de reproducción del pipeline completo
+\end{itemize}
+
+\subsection{Error: Memoria GPU insuficiente}
+
+La interfaz automáticamente detectará problemas de memoria GPU y realizará fallback a CPU:
+\begin{itemize}
+    \item El tiempo de inferencia será aproximadamente 2-3× más lento en CPU
+    \item Para forzar el uso de CPU, modificar \texttt{DEVICE\_PREFERENCE = "cpu"} en \texttt{config.py}
+\end{itemize}
+
+\subsection{La interfaz no se abre en el navegador}
+
+\begin{itemize}
+    \item Verificar que el puerto 7860 no esté siendo utilizado por otra aplicación
+    \item Usar la opción \texttt{-{}-port 8080} para cambiar el puerto
+    \item Revisar la configuración del firewall si se usa la opción \texttt{-{}-share}
+\end{itemize}
+
+\subsection{Imágenes de baja calidad}
+
+\begin{itemize}
+    \item Tamaño mínimo recomendado: 100×100 píxeles
+    \item Tamaño óptimo: 224×224 píxeles o superior
+    \item La interfaz redimensiona automáticamente las imágenes al tamaño requerido
+\end{itemize}
+
+\section{Arquitectura del Sistema}
+
+\subsection{Patrón Singleton para Gestión de Modelos}
+
+El módulo \texttt{ModelManager} utiliza el patrón Singleton para optimizar el uso de memoria:
+\begin{itemize}
+    \item \textbf{Lazy loading}: Los modelos se cargan únicamente cuando se utilizan por primera vez
+    \item \textbf{Cacheo en memoria}: Los modelos permanecen en memoria entre inferencias
+    \item \textbf{Detección automática}: El sistema detecta automáticamente si hay GPU disponible
+\end{itemize}
+
+\subsection{Pipeline de Inferencia}
+
+El flujo de procesamiento sigue las siguientes etapas:
+
+\begin{enumerate}
+    \item \textbf{Validación}: Verificar formato y dimensiones de la imagen
+    \item \textbf{Preprocesamiento}: Cargar y redimensionar a 224×224 píxeles
+    \item \textbf{Predicción de landmarks}:
+    \begin{itemize}
+        \item Aplicar CLAHE (clip=2.0, tile\_size=4)
+        \item Ejecutar ensemble de 4 modelos
+        \item Aplicar TTA (Test-Time Augmentation) con flip horizontal
+        \item Promediar predicciones para obtener landmarks finales (15, 2)
+    \end{itemize}
+    \item \textbf{Warping}: Normalización geométrica mediante transformación afín por piezas
+    \item \textbf{Clasificación}: Inferencia con ResNet-18 y generación de GradCAM
+    \item \textbf{Visualización}: Renderizado de las 4 etapas para presentación al usuario
+\end{enumerate}
+
+\section{Notas Técnicas}
+
+\subsection{Formato de Imágenes Soportadas}
+
+La interfaz acepta los siguientes formatos:
+\begin{itemize}
+    \item PNG (.png)
+    \item JPEG (.jpg, .jpeg)
+    \item Escala de grises o RGB (se convierte automáticamente a escala de grises)
+\end{itemize}
+
+\subsection{Tiempo de Procesamiento}
+
+El tiempo de procesamiento típico es:
+\begin{itemize}
+    \item Con GPU (NVIDIA con CUDA): 1-2 segundos
+    \item Con CPU (multi-core moderno): 3-5 segundos
+    \item El primer procesamiento puede tardar más debido a la carga inicial de modelos
+\end{itemize}
+
+\subsection{Uso de Recursos}
+
+\begin{itemize}
+    \item Memoria GPU requerida: $\sim$2 GB
+    \item Memoria RAM requerida: $\sim$4 GB
+    \item Espacio en disco para modelos: $\sim$500 MB
+\end{itemize}

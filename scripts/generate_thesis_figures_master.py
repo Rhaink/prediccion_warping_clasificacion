@@ -1370,8 +1370,12 @@ class LandmarkVisualizationGenerator(BaseFigureGenerator):
 class GPAAnalysisGenerator(BaseFigureGenerator):
     """Generador de figuras de análisis GPA."""
 
-    def _generate_F4_7_proceso_gpa(self, text_labels: Dict[str, str]) -> Path:
-        """Generar F4.7 con etiquetas personalizadas."""
+    def _generate_F4_7_proceso_gpa(
+        self,
+        text_labels: Dict[str, str],
+        filename: str = "F4.7_proceso_gpa.png",
+    ) -> Path:
+        """Generar F4.7 con etiquetas personalizadas y nombre de archivo configurable."""
         fig, axes = plt.subplots(2, 2, figsize=(12, 12))
 
         canonical = self.data.get_canonical_shape()
@@ -1496,10 +1500,10 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
 
         plt.suptitle(text_labels['suptitle'], fontsize=suptitle_size, y=1.02)
         plt.tight_layout()
-        return self.save_figure(fig, "F4.7_proceso_gpa.png", "cap4_metodologia")
+        return self.save_figure(fig, filename, "cap4_metodologia")
 
     def generate_F4_7_proceso_gpa(self) -> Path:
-        """F4.7: Proceso de GPA (2x2 grid)."""
+        """F4.7 (ES): Proceso de GPA (2x2 grid)."""
         labels = {
             'panel_a': 'a) Formas originales (sin alinear)',
             'panel_b': 'b) Centradas y escaladas',
@@ -1510,7 +1514,10 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
             'suptitle': 'Análisis Procrustes Generalizado (GPA)',
             'mean_label': 'Media',
         }
-        return self._generate_F4_7_proceso_gpa(labels)
+        return self._generate_F4_7_proceso_gpa(
+            labels,
+            filename="F4.7_proceso_gpa_es.png",
+        )
 
     def generate_F4_7_proceso_gpa_en(self) -> Path:
         """F4.7 (EN): GPA process (2x2 grid)."""
@@ -1524,10 +1531,17 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
             'suptitle': 'Generalized Procrustes Analysis (GPA)',
             'mean_label': 'Mean',
         }
-        return self._generate_F4_7_proceso_gpa(labels)
+        return self._generate_F4_7_proceso_gpa(
+            labels,
+            filename="F4.7_proceso_gpa.png",
+        )
 
-    def _generate_F4_8_triangulacion_delaunay(self, title: str) -> Path:
-        """Generar F4.8 con título personalizado."""
+    def _generate_F4_8_triangulacion_delaunay(
+        self,
+        title: str,
+        filename: str = "F4.8_triangulacion_delaunay.png",
+    ) -> Path:
+        """Generar F4.8 con título y nombre de archivo personalizados."""
         fig, ax = plt.subplots(1, 1, figsize=(7, 7))
 
         canonical = self.data.get_canonical_shape()
@@ -1604,18 +1618,20 @@ class GPAAnalysisGenerator(BaseFigureGenerator):
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        return self.save_figure(fig, "F4.8_triangulacion_delaunay.png", "cap4_metodologia")
+        return self.save_figure(fig, filename, "cap4_metodologia")
 
     def generate_F4_8_triangulacion_delaunay(self) -> Path:
         """F4.8: Triangulación de Delaunay."""
         return self._generate_F4_8_triangulacion_delaunay(
-            "Triangulación de Delaunay sobre forma Estándar"
+            "Triangulación de Delaunay sobre forma Estándar",
+            filename="F4.8_triangulacion_delaunay_es.png",
         )
 
     def generate_F4_8_triangulacion_delaunay_en(self) -> Path:
         """F4.8 (EN): Delaunay triangulation."""
         return self._generate_F4_8_triangulacion_delaunay(
-            "Delaunay triangulation on the standard shape"
+            "Delaunay triangulation on the standard shape",
+            filename="F4.8_triangulacion_delaunay.png",
         )
 
     def generate_F5_3_forma_canonica(self) -> Path:
@@ -1805,9 +1821,14 @@ class WarpingVisualizationGenerator(BaseFigureGenerator):
         filename: str,
     ) -> Path:
         """Generar comparación original vs warped con etiquetas configurables."""
-        fig, axes = plt.subplots(2, 3, figsize=(14, 10))
-        title_size = self.config.font_size_title + 14
-        row_label_size = title_size + 2
+        fig, axes = plt.subplots(
+            2,
+            3,
+            figsize=(11, 6.5),
+            gridspec_kw={"wspace": 0.02, "hspace": 0.02},
+        )
+        title_size = self.config.font_size_title + 2
+        row_label_size = self.config.font_size_title + 2
 
         # Mapeo de clases: warped_dir -> original_dir
         class_mapping = {
@@ -1817,64 +1838,83 @@ class WarpingVisualizationGenerator(BaseFigureGenerator):
         }
 
         dataset_dir = self.data.project_root / "data" / "dataset" / "COVID-19_Radiography_Dataset"
+        samples_warp = self.data.get_warped_images(n_per_class=1)
+
+        column_titles = []
+        for warp_class in class_mapping:
+            label_key = warp_class.lower().replace("_", " ")
+            label = self.config.labels_es.get(label_key, warp_class)
+            if label_overrides:
+                label = label_overrides.get(warp_class, label)
+            column_titles.append(label)
+
+        for ax in axes.flat:
+            ax.axis("off")
 
         for col, (warp_class, orig_class) in enumerate(class_mapping.items()):
             # Obtener UNA imagen warped
-            samples_warp = self.data.get_warped_images(n_per_class=1)
-
-            if samples_warp.get(warp_class):
-                warped_path = samples_warp[warp_class][0]
+            warped_list = samples_warp.get(warp_class, [])
+            if warped_list:
+                warped_path = warped_list[0]
 
                 # Derivar nombre original: COVID-1000_warped.png -> COVID-1000.png
                 original_name = warped_path.name.replace("_warped", "")
                 original_path = dataset_dir / orig_class / "images" / original_name
 
                 # Mostrar imagen original
-                ax = axes[0, col]
                 if original_path.exists():
                     img_orig = self.data.load_image(original_path)
-                    ax.imshow(img_orig, cmap="gray")
-
-                label_key = warp_class.lower().replace("_", " ")
-                label = self.config.labels_es.get(label_key, warp_class)
-                if label_overrides:
-                    label = label_overrides.get(warp_class, label)
-
-                ax.set_title(f"{label}\n({row_labels[0]})", fontsize=title_size)
-                ax.axis("off")
+                    axes[0, col].imshow(img_orig, cmap="gray")
 
                 # Mostrar imagen warped (la misma radiografía normalizada)
-                ax = axes[1, col]
                 img_warp = self.data.load_image(warped_path)
-                ax.imshow(img_warp, cmap="gray")
-                ax.set_title(f"{label}\n({row_labels[1]})", fontsize=title_size)
-                ax.axis("off")
+                axes[1, col].imshow(img_warp, cmap="gray")
 
-        # Etiquetas de fila
-        axes[0, 0].text(
-            -0.15,
-            0.5,
-            row_labels[0],
-            transform=axes[0, 0].transAxes,
-            fontsize=row_label_size,
-            fontweight="bold",
-            rotation=90,
-            va="center",
-        )
-        axes[1, 0].text(
-            -0.15,
-            0.5,
-            row_labels[1],
-            transform=axes[1, 0].transAxes,
-            fontsize=row_label_size,
-            fontweight="bold",
-            rotation=90,
-            va="center",
-        )
+            axes[0, col].set_title(
+                column_titles[col],
+                fontsize=title_size,
+                pad=6,
+                color=self.config.colors["text"],
+            )
 
         if suptitle:
-            plt.suptitle(suptitle, fontsize=self.config.font_size_title + 2, y=1.02)
-        plt.tight_layout()
+            fig.suptitle(
+                suptitle,
+                fontsize=self.config.font_size_title + 3,
+                y=0.98,
+                color=self.config.colors["text"],
+            )
+            top_margin = 0.88
+        else:
+            top_margin = 0.92
+
+        fig.subplots_adjust(left=0.08, right=0.99, top=top_margin, bottom=0.06)
+
+        # Etiquetas de fila (en coordenadas de la figura para evitar solapamientos)
+        top_row_pos = axes[0, 0].get_position()
+        bottom_row_pos = axes[1, 0].get_position()
+        fig.text(
+            0.03,
+            (top_row_pos.y0 + top_row_pos.y1) / 2,
+            row_labels[0],
+            fontsize=row_label_size,
+            fontweight="bold",
+            rotation=90,
+            va="center",
+            ha="center",
+            color=self.config.colors["text"],
+        )
+        fig.text(
+            0.03,
+            (bottom_row_pos.y0 + bottom_row_pos.y1) / 2,
+            row_labels[1],
+            fontsize=row_label_size,
+            fontweight="bold",
+            rotation=90,
+            va="center",
+            ha="center",
+            color=self.config.colors["text"],
+        )
         return self.save_figure(fig, filename, "cap4_metodologia")
 
     def generate_F4_10_margin_scale(self) -> Path:
@@ -2837,9 +2877,12 @@ class ThesisFigureGenerator:
             'F4.4': ('landmarks', 'generate_F4_4_clahe_comparison'),
             'F4.5': ('diagrams', 'generate_F4_5_arquitectura_modelo'),
             'F4.6': ('training', 'generate_F4_6_wing_loss'),
-            'F4.7': ('gpa', 'generate_F4_7_proceso_gpa'),
-            'F4.8': ('gpa', 'generate_F4_8_triangulacion_delaunay'),
+            'F4.7': ('gpa', 'generate_F4_7_proceso_gpa_en'),
+            'F4.7_es': ('gpa', 'generate_F4_7_proceso_gpa'),
+            'F4.8': ('gpa', 'generate_F4_8_triangulacion_delaunay_en'),
+            'F4.8_es': ('gpa', 'generate_F4_8_triangulacion_delaunay'),
             'F4.9': ('warping', 'generate_F4_9_original_vs_warped'),
+            'F4.9_en': ('warping', 'generate_F4_9_original_vs_warped_en'),
             'F4.10': ('warping', 'generate_F4_10_margin_scale'),
             'F4.11': ('diagrams', 'generate_F4_11_flujo_normalizacion'),
             'F4.12': ('training', 'generate_F4_12_aumento_datos'),

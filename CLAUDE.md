@@ -53,6 +53,13 @@ python -m src_v2 evaluate-classifier \
 
 # 6. Evaluate landmark ensemble
 python scripts/evaluate_ensemble_from_config.py --config configs/ensemble_best.json
+
+# 6b. Generate landmark visualization dataset
+python -m src_v2 generate-landmark-visualization-dataset \
+  --config configs/landmark_viz_best.json
+
+# Verify alignment with warped dataset
+python scripts/verify_landmark_viz_dataset.py
 ```
 
 ### Testing
@@ -208,6 +215,7 @@ Key docs in `docs/`:
 - `REPRO_FULL_PIPELINE.md`: Complete reproduction guide
 - `REPRO_ENSEMBLE_3_71.md`: Landmark ensemble details
 - `QUICKSTART_WARPING.md`: Warping pipeline quick start
+- `LANDMARK_VISUALIZATION_DATASET.md`: Generate landmark visualizations on original images
 - `REPRO_CLASSIFIER_RESNET18.md`: Classifier training details
 - `CONFIGS.md`: Configuration system guide
 - `EXPERIMENTS.md`: Experimental results summary

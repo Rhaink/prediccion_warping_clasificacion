@@ -1,0 +1,89 @@
+{
+  "pairs": [
+    "COVID->Normal",
+    "Viral_Pneumonia->Normal",
+    "Normal->COVID"
+  ],
+  "cases_per_pair": 2,
+  "selection_mode": "confidence",
+  "cases": [
+    {
+      "image_path": "outputs/warped_lung_best/session_warping/test/COVID/COVID-326_warped.png",
+      "image_name": "COVID-326",
+      "true_class": "COVID",
+      "predicted_class": "Normal",
+      "probabilities": [
+        6.71229405391216e-10,
+        1.0,
+        3.5281874644077504e-11
+      ],
+      "confidence": 1.0,
+      "margin": 1.0
+    },
+    {
+      "image_path": "outputs/warped_lung_best/session_warping/test/COVID/COVID-797_warped.png",
+      "image_name": "COVID-797",
+      "true_class": "COVID",
+      "predicted_class": "Normal",
+      "probabilities": [
+        6.069994640256482e-08,
+        0.9999998807907104,
+        4.526475028132637e-10
+      ],
+      "confidence": 0.9999998807907104,
+      "margin": 0.9999998211860657
+    },
+    {
+      "image_path": "outputs/warped_lung_best/session_warping/test/Viral_Pneumonia/Viral Pneumonia-606_warped.png",
+      "image_name": "Viral Pneumonia-606",
+      "true_class": "Viral_Pneumonia",
+      "predicted_class": "Normal",
+      "probabilities": [
+        8.880859780902028e-08,
+        0.9999996423721313,
+        2.0792771238120622e-07
+      ],
+      "confidence": 0.9999996423721313,
+      "margin": 0.999999463558197
+    },
+    {
+      "image_path": "outputs/warped_lung_best/session_warping/test/Viral_Pneumonia/Viral Pneumonia-621_warped.png",
+      "image_name": "Viral Pneumonia-621",
+      "true_class": "Viral_Pneumonia",
+      "predicted_class": "Normal",
+      "probabilities": [
+        8.190095286408905e-07,
+        0.9999990463256836,
+        1.4063249409446144e-07
+      ],
+      "confidence": 0.9999990463256836,
+      "margin": 0.9999982118606567
+    },
+    {
+      "image_path": "outputs/warped_lung_best/session_warping/test/Normal/Normal-8928_warped.png",
+      "image_name": "Normal-8928",
+      "true_class": "Normal",
+      "predicted_class": "COVID",
+      "probabilities": [
+        0.9999996423721313,
+        3.992967663180025e-07,
+        8.215594426985717e-09
+      ],
+      "confidence": 0.9999996423721313,
+      "margin": 0.9999992251396179
+    },
+    {
+      "image_path": "outputs/warped_lung_best/session_warping/test/Normal/Normal-1943_warped.png",
+      "image_name": "Normal-1943",
+      "true_class": "Normal",
+      "predicted_class": "COVID",
+      "probabilities": [
+        0.9999474287033081,
+        5.2515777497319505e-05,
+        3.929507760846995e-11
+      ],
+      "confidence": 0.9999474287033081,
+      "margin": 0.999894917011261
+    }
+  ]
+}

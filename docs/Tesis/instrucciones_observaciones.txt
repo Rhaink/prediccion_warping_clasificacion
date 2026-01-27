@@ -1,0 +1,178 @@
+Necesitamos analizar `docs/Tesis` y analizar cada archivo `.tex` para comprender la tesis. Después, vamos a analizar las observaciones del jurado y crearemos un plan detallado paso a paso para corregir cada observación o prestarle atención. En cada paso, debes preguntarme si debemos trabajar en ese punto, saltarlo, posponerlo, etc. Tendremos un archivo base en el cual iremos trabajando en las diferentes partes de la revisión de la tesis y lo iremos actualizando mientras vayamos avanzando en la revisión, para controlar el contexto. Después de terminar una fase, sugiere una limpieza de contexto con información para iniciar una nueva fase limpia, creando un plan siempre antes de iniciar cada fase para planear cómo trabajaremos, pero en base al plan maestro que crearemos ahora y que iremos actualizando con su progreso para tener un archivo base. El objetivo se cumple cuando todas las observaciones del jurado se han resuelto. Todo lo nuevo que creemos, créalo dentro de `docs/Tesis/revision`. Es importante en el archivo de actualización agregar información relevante de la estructura de la tesis para ayudarte a trabajar más adelante. Estamos trabajando en una tesis de nivel maestría sobre visión por computadora con redes profundas con radiografías de tórax para la normalización geométrica; eso lo debes analizar, pero es importante para saber el nivel de formalismo y profesionalismo que se debe tener en esta tarea.
+
+---
+
+## **Viernes 23 de enero 2026**
+
+**Dra. Montes**
+¿Cuál es el aporte?
+
+→ Puntos de referencia — ¿cuántos puntos?
+→ Algoritmo de minimización.
+
+¿Influyen las características de los equipos de rayos X?
+¿Todas las imágenes son iguales?
+
+Tamaño de las bases de datos.
+15,000 imágenes.
+
+**Pesos**
+Función lineal
+Espectros desde esa perspectiva
+Variación de los pesos
+¿Cuántos pesos se encuentran?
+~~Estructura de la red~~
+
+Costo computacional
+Hiperparámetros
+
+Base de datos no balanceada
+Pocas personas enfermas
+¿# de personas sanas?
+¿Balanceo de datos?
+
+Generar datos sintéticos.
+
+---
+
+## **Viernes 23 de enero 2026**
+
+**Manual de usuario**
+El diseño de la interfaz ¿a qué tipo de usuario va dirigido?
+
+Diferencia entre un neumólogo o algún médico que decida si es COVID.
+
+Usar una imagen ruidosa ¿funciona?
+
+No hay referencia de género (hombre o mujer).
+
+→ M.C. Ana María Rodríguez Domínguez
+
+Falta agradecimientos
+→ Anexos (no colocar código)
+→ Referencia web
+
+Explicar cómo se cumplieron cada uno de los objetivos específicos.
+
+Evaluar KNN, CNN, MLP (3°)
+Solo ese
+
+Quitar en objetivos específicos: “Publicar resultados”
+
+---
+
+## **Viernes 23 de enero 2026**
+
+**Estado del arte (Tabla 1)**
+Referencia [5] se puede comparar con otras métricas.
+
+**Aportación:** lo que no hay en la literatura.
+
+¿Cómo se decidió pasar del a 16?
+1 triángulo → 16 triángulos
+
+**Slide 9** — Actualizar el primer bloque
+Error de alimentar imágenes
+Anita comenta que le gustó la diapositiva
+
+---
+
+**M.C. Nicolás**
+
+**Objetivos**
+Definir los objetivos en función de los resultados.
+Revisar y actualizar el documento con respecto a los objetivos.
+
+¿Se necesita un buen equipo de cómputo?
+¿Mencionarlo en el documento de tesis?
+¿Se requieren licencias de algo?
+
+---
+
+---
+
+## 📄 Página 1 — *“29 enero – Coloquio Rafael”*
+
+**29 enero**
+**Coloquio Rafael**
+
+**Metodología:** las imágenes entran junto a las etiquetas
+**Dra. Monse Morin** ←
+¿Cuál es el aporte?
+
+Para identificar los puntos de referencia, trabajaron con minimización,
+es decir cuantos puntos mínimos necesitas.
+
+¿Influyen las características del equipo? ¿Cómo lo resolviste?
+¿De cuánto es tu base de datos?
+
+Hablas mucho de los pesos, ¿para qué te sirven? pesos, pesos coeficientes que te
+van a describir a todo el sistema.
+
+Quieres identificar los valores en los que oscilan los pesos, combinación
+lineal Anita.
+
+Costo computacional
+Base de datos no
+
+---
+
+## 📄 Página 2 — *(continuación, datos balanceados y proyecto)*
+
+Balanceada, ¿cuántos datos tienes de personas sanas? ¿no
+propusieron balancear datos
+con solución sintética?
+
+Este proyecto esperaba ver más robusto,
+manual de usuario
+
+Ventaja vs a un médico especialista
+Pruebas con imágenes poco claras
+No tienes metadatos, eso es importante
+tener info sobre las pacientes
+**M.C. Ana María** ←
+
+Documento con detalles menores, le
+falta agradecimientos (Scalh y BUAP), anexos
+
+Lámina de objetivos, ¿cómo ya se cumplieron cada uno de los
+específicos? ¿publicar resultados no
+es objetivo específico, no va?
+
+El zero es el que causa ruido,
+¿cuáles evaluaron?
+
+---
+
+## 📄 Página 3 — *(metodología, malla, jurado)*
+
+Demostrar que lo hicieron con los temas
+clasificadores, reportarlo súper importante
+Estado del arte, comparamos con 5 redes
+porque usa el mismo conjunto de datos
+o cómo lo comparas con los demás trabajos? toma en cuenta las
+variantes (Intervención Dra. Morin)
+
+Método aplicado a un tema en específico
+Metodología, ustedes hicieron una malla
+triángulos, cómo pasaron de un ▲ a una
+malla de 16?, los diagramas están
+bien, denotan que sabes los pasos
+
+**M.C. Nicolás Quiroz** ←
+Objetivos, ese es el problema porque es
+fundamental porque es lo que evalúa el
+jurado, quitar lo de publicar porque es
+un requisito, tal vez poner diseñar un software
+modificar el lugar de los objetivos porque
+es poco ortodoxo
+
+Consideras que es importante para el
+desarrollo del trabajo tener un buen
+equipo de cómputo
+
+Varias etapas que es bueno que lo menciones
+Con respecto a licencias no hay problema
+por si quieres lucrar
+
+---

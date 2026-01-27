@@ -1,0 +1,38 @@
+% Tabla 3.1: Comparación de métodos de detección de COVID-19 en radiografías de tórax
+% Uso: \input{capitulo3/tabla_3_1_covid19_detection}
+
+\begin{table}[htbp]
+\centering
+\begin{threeparttable}
+\caption{Comparación de métodos de aprendizaje profundo para detección de COVID-19 en radiografías de tórax}
+\label{tab:covid19_detection_comparison}
+\small
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}p{3.0cm}p{2.8cm}p{3.4cm}cc@{}}
+\toprule
+\textbf{Trabajo} & \textbf{Arquitectura} & \textbf{Conjunto de datos} & \textbf{Exact.} & \textbf{Sens. COVID-19} \\
+ & & & \textbf{(\%)} & \textbf{(\%)} \\
+\midrule
+Wang et al. (2020) \cite{wang2020covidnet} & COVID-Net & COVIDx (13,975) & 93.3 & -- \\
+Rajpurkar et al. (2017)\tnote{a} & DenseNet-121 & ChestX-ray14 (112k) & F1 nivel radiólogo & -- \\
+\midrule
+\multicolumn{5}{c}{\textit{Métodos recientes (2023-2024)}} \\
+\midrule
+CovC-ReDRNet (2023) \cite{zhu2023covc} & ResNet-18 + dRVFL & COVID-19 Radiography & 97.56 & 94.94 \\
+RegNetX032 (2023) \cite{chetoui2023regnet} & RegNetX032 & Chest X-ray & 98.6 & 98.0 \\
+VGG19 (2024) \cite{elhouby2024vgg19} & VGG19 & Chest X-ray & 95.0 & 96.0 \\
+DenseNet-121 (2024) \cite{dalvi2024densenet121} & DenseNet-121 & Chest X-ray & 95.27 & -- \\
+DenseNet-201 (2024) \cite{baker2024densenet201} & DenseNet-201 & Chest X-ray & 98.13\tnote{b} & -- \\
+\midrule
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] Rajpurkar et al. (2017): Pre-COVID, detección de neumonía general (no específica COVID-19)
+\item[b] Baker et al. (2024): Clasificación binaria (Normal vs. Anormal); clasificación multiclase (3 clases) reporta 87.73\%
+\item[--] No reportado en el trabajo original
+\item Exact. = Exactitud (\textit{Accuracy}), Sens. COVID-19 = Sensibilidad (\textit{Sensitivity}) para clase COVID-19
+\item dRVFL = \textit{deep Random Vector Function Link network}
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

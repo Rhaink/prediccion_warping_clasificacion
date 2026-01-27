@@ -1,0 +1,77 @@
+<mxfile host="65bd71144e">
+    <diagram id="F4.2_pipeline_operacion_en" name="Page-1">
+        <mxGraphModel dx="1027" dy="1155" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="20" value="&lt;span style=&quot;font-size: 33px;&quot;&gt;Fase Prueba&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#333333" parent="1" vertex="1">
+                    <mxGeometry y="120" width="1400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 23px;&quot;&gt;ENTRADA&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 23px;&quot;&gt;&lt;br&gt;Radiografía&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f28c28;strokeColor=#f28c28;fontColor=#ffffff;fontStyle=1;fontSize=18" parent="1" vertex="1">
+                    <mxGeometry x="80" y="200" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;299 x 299&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#666666;fontSize=14" parent="1" vertex="1">
+                    <mxGeometry x="80" y="330" width="200" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 22px;&quot;&gt;Preprocesamiento&lt;br&gt;Redimensionar&lt;br&gt;CLAHE&lt;br&gt;Normalización&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1976d2;strokeColor=#1976d2;fontColor=#ffffff;fontStyle=1;fontSize=18" parent="1" vertex="1">
+                    <mxGeometry x="320" y="200" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;224 x 224&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#666666;fontSize=14" parent="1" vertex="1">
+                    <mxGeometry x="320" y="330" width="200" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 23px;&quot;&gt;Predicción Puntos de Referencia&lt;br&gt;RN1 (ResNet-18)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2e7d32;strokeColor=#2e7d32;fontColor=#ffffff;fontStyle=1;fontSize=18" parent="1" vertex="1">
+                    <mxGeometry x="560" y="200" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;15 x 2 coords&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#666666;fontSize=14" parent="1" vertex="1">
+                    <mxGeometry x="560" y="330" width="200" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 22px;&quot;&gt;&amp;nbsp;Normalización Geométrica&lt;br&gt;por deformación afín por partes&lt;br&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a1b9a;strokeColor=#6a1b9a;fontColor=#ffffff;fontStyle=1;fontSize=18;strokeWidth=3;" parent="1" vertex="1">
+                    <mxGeometry x="800" y="200" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;224 x 224&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#666666;fontSize=14" parent="1" vertex="1">
+                    <mxGeometry x="800" y="330" width="200" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 23px;&quot;&gt;Clasificación&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 23px;&quot;&gt;RN2 (ResNet-18)&lt;br&gt;3 Clases&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c62828;strokeColor=#c62828;fontColor=#ffffff;fontStyle=1;fontSize=18;strokeWidth=3;" parent="1" vertex="1">
+                    <mxGeometry x="1040" y="200" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="" style="edgeStyle=none;html=1;" parent="1" source="11" target="18" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="" style="edgeStyle=none;html=1;" parent="1" source="11" target="18" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;COVID / Normal / Neumonía&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#666666;fontSize=14" parent="1" vertex="1">
+                    <mxGeometry x="1040" y="330" width="200" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" style="endArrow=block;endFill=1;strokeColor=#000000;strokeWidth=2" parent="1" source="2" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" style="endArrow=block;endFill=1;strokeColor=#000000;strokeWidth=2" parent="1" source="4" target="6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" style="endArrow=block;endFill=1;strokeColor=#000000;strokeWidth=2" parent="1" source="6" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" style="endArrow=block;endFill=1;strokeColor=#000000;strokeWidth=2" parent="1" source="8" target="10" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 19px;&quot;&gt;Error: 3.61 px&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2e7d32;strokeColor=#2e7d32;fontColor=#ffffff;fontStyle=1;fontSize=14;strokeWidth=4;" parent="1" vertex="1">
+                    <mxGeometry x="580" y="410" width="160" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" style="endArrow=block;endFill=1;strokeColor=#000000;strokeWidth=2" parent="1" target="16" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="660" y="360" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="18" value="&lt;font style=&quot;color: rgb(255, 255, 255); font-size: 19px;&quot;&gt;Exactitud: 98.6%&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c62828;strokeColor=#c62828;fontColor=#ffffff;fontStyle=1;fontSize=14;strokeWidth=3;" parent="1" vertex="1">
+                    <mxGeometry x="1050" y="410" width="180" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" style="endArrow=block;endFill=1;strokeColor=#000000;strokeWidth=2" parent="1" target="18" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="1140" y="360" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

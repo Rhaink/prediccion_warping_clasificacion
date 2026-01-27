@@ -1,0 +1,28 @@
+═══════════════════════════════════════════════════════════════════════════
+COMANDO PARA COPIAR Y PEGAR AL INICIO DE LA SESIÓN 4
+═══════════════════════════════════════════════════════════════════════════
+
+Estoy trabajando en la revisión de mi tesis según observaciones del jurado.
+Completé la Fase 1 (tareas críticas C1, C2, C3), pero C3 (Anexos) requiere
+revisión y expansión.
+
+Por favor lee el archivo de instrucciones:
+docs/Tesis/revision/INSTRUCCIONES_SESION4_ANEXOS_REVISION.md
+
+Necesito:
+1. Corregir errores LaTeX en Anexo A (anexo_A_manual_usuario.tex)
+2. Integrar PDFs de artículos publicados y certificados como anexos
+3. Verificar versión de la GUI (v15) en el manual
+4. Sugerir otros anexos críticos o de suma importancia
+5. Completar esto ANTES de iniciar Fase 2 (tareas de alta prioridad)
+
+Archivos de contexto adicionales:
+- docs/Tesis/revision/RESUMEN_SESION3_FASE1_COMPLETA.md (sesión anterior)
+- docs/Tesis/revision/PROGRESO_REVISION.md (estado general)
+- docs/Tesis/revision/CHECKLIST_OBSERVACIONES.md (tareas pendientes)
+
+PDFs disponibles en docs/Tesis/anexos/:
+- 2 artículos publicados (inglés y español)
+- 4 certificados y reconocimientos
+
+═══════════════════════════════════════════════════════════════════════════

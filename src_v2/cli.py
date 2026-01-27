@@ -9177,6 +9177,1340 @@ def extract_dataset_splits(
     logger.info("  - Metadata: %s/metadata/dataset_info.json", output_dir)
 
 
+@app.command("generate-landmark-visualization-dataset")
+def generate_landmark_visualization_dataset(
+    input_dir: Optional[str] = typer.Argument(
+        None,
+        help="Directorio del dataset original (estructura COVID/Normal/Viral_Pneumonia/images/)"
+    ),
+    output_dir: Optional[str] = typer.Argument(
+        None,
+        help="Directorio de salida para visualizaciones"
+    ),
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="Path a JSON con parametros"
+    ),
+    predictions: Optional[str] = typer.Option(
+        None,
+        "--predictions",
+        help="Archivo NPZ con landmarks predichos (requerido)"
+    ),
+    splits: str = typer.Option(
+        "0.75,0.125,0.125",
+        "--splits",
+        help="Ratios train,val,test separados por coma"
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        "-s",
+        help="Semilla para reproducibilidad de splits (debe ser 42 para alinearse con warped dataset)"
+    ),
+    classes: str = typer.Option(
+        "COVID,Normal,Viral Pneumonia",
+        "--classes",
+        help="Clases a procesar separadas por coma"
+    ),
+    cross_size: int = typer.Option(
+        5,
+        "--cross-size",
+        help="Tamaño medio de cruces en píxeles"
+    ),
+    cross_thickness: int = typer.Option(
+        2,
+        "--cross-thickness",
+        help="Grosor de líneas de cruces"
+    ),
+    cross_color: str = typer.Option(
+        "red",
+        "--cross-color",
+        help="Color de las cruces (red, green, blue, yellow, etc.)"
+    ),
+):
+    """
+    Generar dataset de visualización con landmarks dibujados sobre imágenes originales.
+
+    Este comando:
+    1. Carga predicciones de landmarks desde archivo NPZ
+    2. Usa los MISMOS splits que generate-dataset (con seed=42)
+    3. Dibuja cruces rojas científicas en cada landmark
+    4. Guarda imágenes originales (299x299, sin preprocesamiento) con landmarks marcados
+
+    IMPORTANTE: Usar seed=42 para garantizar que los splits coincidan exactamente
+    con el dataset warped usado para clasificación.
+
+    Estructura de salida:
+        output_dir/
+        ├── train/
+        │   ├── COVID/
+        │   │   └── COVID-1_landmarks_viz.png
+        │   ├── Normal/
+        │   └── Viral_Pneumonia/
+        ├── val/
+        ├── test/
+        └── dataset_summary.json
+
+    Ejemplo:
+        python -m src_v2 generate-landmark-visualization-dataset \\
+            --config configs/landmark_viz_best.json
+
+        python -m src_v2 generate-landmark-visualization-dataset \\
+            data/dataset/COVID-19_Radiography_Dataset \\
+            outputs/landmark_visualizations/session_warping \\
+            --predictions outputs/landmark_predictions/session_warping/predictions.npz
+    """
+    import json
+    import time
+    from collections import defaultdict
+
+    import cv2
+    import numpy as np
+    from tqdm import tqdm
+
+    from src_v2.visualization.utils import draw_scientific_crosses_on_image
+
+    logger.info("=" * 60)
+    logger.info("Generate Landmark Visualization Dataset")
+    logger.info("=" * 60)
+
+    # Load config if provided
+    argv = sys.argv[1:]
+
+    def option_present(*names: str) -> bool:
+        for name in names:
+            if name in argv:
+                return True
+            prefix = f"{name}="
+            if any(arg.startswith(prefix) for arg in argv):
+                return True
+        return False
+
+    config_data = {}
+    if config:
+        config_path = Path(config)
+        if not config_path.exists():
+            logger.error("Config no existe: %s", config)
+            raise typer.Exit(code=1)
+        with open(config_path, "r") as f:
+            config_data = json.load(f)
+
+        def override_param(
+            param_name: str,
+            current_value,
+            config_key: Optional[str] = None,
+            option_names: Optional[tuple[str, ...]] = None,
+        ):
+            key = config_key or param_name
+            if key not in config_data:
+                return current_value
+            if option_names and option_present(*option_names):
+                return current_value
+            if option_names is None and current_value is not None:
+                return current_value
+            return config_data[key]
+
+        input_dir = override_param("input_dir", input_dir, "input_dir")
+        output_dir = override_param("output_dir", output_dir, "output_dir")
+        predictions = override_param("predictions", predictions, "predictions", ("--predictions",))
+        splits = override_param("splits", splits, "splits", ("--splits",))
+        seed = override_param("seed", seed, "seed", ("--seed", "-s"))
+        classes = override_param("classes", classes, "classes", ("--classes",))
+        cross_size = override_param("cross_size", cross_size, "cross_size", ("--cross-size",))
+        cross_thickness = override_param("cross_thickness", cross_thickness, "cross_thickness", ("--cross-thickness",))
+        cross_color = override_param("cross_color", cross_color, "cross_color", ("--cross-color",))
+
+    if isinstance(splits, (list, tuple)):
+        splits = ",".join(str(x) for x in splits)
+    if isinstance(classes, (list, tuple)):
+        classes = ",".join(str(x) for x in classes)
+
+    # Validate inputs
+    if input_dir is None or output_dir is None:
+        logger.error("input_dir y output_dir son requeridos (usa argumentos o --config)")
+        raise typer.Exit(code=1)
+
+    if predictions is None:
+        logger.error("--predictions es requerido (archivo NPZ con landmarks)")
+        raise typer.Exit(code=1)
+
+    input_path = Path(input_dir)
+    if not input_path.exists():
+        logger.error("Directorio de entrada no existe: %s", input_dir)
+        raise typer.Exit(code=1)
+
+    predictions_path = Path(predictions)
+    if not predictions_path.exists():
+        logger.error("Archivo de predicciones no existe: %s", predictions)
+        raise typer.Exit(code=1)
+
+    # Parse splits
+    try:
+        split_ratios = [float(x) for x in splits.split(",")]
+        if len(split_ratios) != 3:
+            raise ValueError("Se requieren exactamente 3 valores")
+        if abs(sum(split_ratios) - 1.0) > 0.01:
+            raise ValueError(f"Los ratios deben sumar 1.0, suman {sum(split_ratios)}")
+        train_ratio, val_ratio, test_ratio = split_ratios
+    except Exception as e:
+        logger.error("Error parseando splits '%s': %s", splits, e)
+        raise typer.Exit(code=1)
+
+    # Parse classes
+    class_list = [c.strip() for c in classes.split(",")]
+    class_mapping = {c: c.replace(" ", "_") for c in class_list}
+    logger.info("Clases a procesar: %s", class_list)
+
+    # Load predictions from NPZ
+    logger.info("Cargando predicciones: %s", predictions_path)
+    data = np.load(predictions_path, allow_pickle=True)
+
+    if "landmarks" not in data:
+        logger.error("NPZ no contiene clave 'landmarks'")
+        raise typer.Exit(code=1)
+
+    landmarks_224 = data["landmarks"]  # Shape: (N, 15, 2)
+    image_names = data["image_names"] if "image_names" in data else None
+    categories = data["categories"] if "categories" in data else None
+
+    if image_names is None:
+        logger.error("NPZ debe incluir 'image_names'")
+        raise typer.Exit(code=1)
+
+    # Build lookup dictionary: (image_name, category) -> landmarks
+    predictions_dict = {}
+    for i in range(len(landmarks_224)):
+        name = str(image_names[i])
+        cat = str(categories[i]).replace(" ", "_") if categories is not None else None
+        predictions_dict[(name, cat)] = landmarks_224[i]
+
+    logger.info("Predicciones cargadas: %d", len(predictions_dict))
+
+    # Scale factor for landmarks: 224 -> 299
+    SCALE_FACTOR = ORIGINAL_IMAGE_SIZE / DEFAULT_IMAGE_SIZE
+    logger.info("Factor de escala para landmarks: %.4f (224 -> %d)", SCALE_FACTOR, ORIGINAL_IMAGE_SIZE)
+
+    # Create output directory
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Collect images (SAME logic as generate-dataset)
+    logger.info("Recolectando imágenes del dataset...")
+    all_images = []
+
+    for class_name in class_list:
+        # Try class_name/images/ structure first
+        class_dir = input_path / class_name / "images"
+        if not class_dir.exists():
+            # Try without images subdirectory
+            class_dir = input_path / class_name
+        if not class_dir.exists():
+            logger.warning("Directorio de clase no existe: %s", class_dir)
+            continue
+
+        images = list(class_dir.glob("*.png")) + list(class_dir.glob("*.jpg"))
+        mapped_class = class_mapping[class_name]
+        all_images.extend([(img, mapped_class) for img in images])
+        logger.info("  %s: %d imágenes", class_name, len(images))
+
+    if not all_images:
+        logger.error("No se encontraron imágenes")
+        raise typer.Exit(code=1)
+
+    logger.info("Total: %d imágenes", len(all_images))
+
+    # Create splits (EXACT SAME logic as generate-dataset)
+    logger.info("Creando splits (train=%.0f%%, val=%.0f%%, test=%.0f%%)...",
+                train_ratio * 100, val_ratio * 100, test_ratio * 100)
+    logger.info("Usando seed=%d (CRÍTICO: debe ser 42 para alinearse con warped dataset)", seed)
+
+    # CRITICAL: Set seed for reproducibility (SAME as generate-dataset)
+    random.seed(seed)
+    np.random.seed(seed)
+
+    # Group by class
+    by_class = defaultdict(list)
+    for path, class_name in all_images:
+        by_class[class_name].append(path)
+
+    split_data = {'train': [], 'val': [], 'test': []}
+
+    # Split each class (EXACT SAME logic)
+    for class_name, paths in by_class.items():
+        np.random.shuffle(paths)
+        n = len(paths)
+        n_train = int(n * train_ratio)
+        n_val = int(n * val_ratio)
+
+        split_data['train'].extend([(p, class_name) for p in paths[:n_train]])
+        split_data['val'].extend([(p, class_name) for p in paths[n_train:n_train + n_val]])
+        split_data['test'].extend([(p, class_name) for p in paths[n_train + n_val:]])
+
+    # Shuffle each split
+    for split_name in split_data:
+        np.random.shuffle(split_data[split_name])
+        by_class_count = defaultdict(int)
+        for _, c in split_data[split_name]:
+            by_class_count[c] += 1
+        logger.info("  %s: %d imágenes %s", split_name, len(split_data[split_name]), dict(by_class_count))
+
+    # Process images
+    start_time = time.time()
+    stats = {
+        'processed': 0,
+        'failed': 0,
+        'missing_predictions': 0,
+        'wrong_size': 0,
+    }
+
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("Procesando imágenes...")
+    logger.info("=" * 60)
+
+    for split_name, split_images in split_data.items():
+        logger.info("")
+        logger.info("=== Procesando %s ===", split_name.upper())
+
+        for image_path, class_name in tqdm(split_images, desc=f"  {split_name}"):
+            # 1. Load original image (NO preprocessing)
+            image_orig = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+            if image_orig is None:
+                stats['failed'] += 1
+                continue
+
+            # Verify image size (should be 299x299)
+            if image_orig.shape[:2] != (ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE):
+                logger.warning("Imagen %s tiene tamaño %s (esperado %dx%d), aplicando resize",
+                              image_path.name, image_orig.shape[:2], ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE)
+                image_orig = cv2.resize(image_orig, (ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE))
+                stats['wrong_size'] += 1
+
+            # 2. Look up predicted landmarks
+            image_name = image_path.stem
+            landmarks_key = (image_name, class_name)
+            landmarks_224_img = predictions_dict.get(landmarks_key)
+
+            if landmarks_224_img is None:
+                logger.warning("Predicción no encontrada para: %s (clase: %s)", image_name, class_name)
+                stats['missing_predictions'] += 1
+                continue
+
+            # 3. Scale landmarks: 224 -> 299
+            landmarks_299 = landmarks_224_img * SCALE_FACTOR
+
+            # 4. Clip to valid range [0, 298]
+            landmarks_299 = np.clip(landmarks_299, 0, ORIGINAL_IMAGE_SIZE - 1)
+
+            # 5. Draw scientific crosses
+            image_with_landmarks = draw_scientific_crosses_on_image(
+                image_orig,
+                landmarks_299,
+                cross_size=cross_size,
+                thickness=cross_thickness,
+                color=cross_color,
+                return_rgb=True
+            )
+
+            # 6. Save visualization
+            output_filename = f"{image_path.stem}_landmarks_viz.png"
+            output_file_path = output_path / split_name / class_name / output_filename
+            output_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            cv2.imwrite(str(output_file_path), image_with_landmarks)
+            stats['processed'] += 1
+
+    elapsed = time.time() - start_time
+
+    # Save dataset summary
+    summary = {
+        "source_dataset": str(input_path),
+        "predictions": str(predictions_path),
+        "classes": class_list,
+        "splits": {
+            "train": {
+                "count": len(split_data['train']),
+                "by_class": {c: sum(1 for _, cls in split_data['train'] if cls == c) for c in class_mapping.values()}
+            },
+            "val": {
+                "count": len(split_data['val']),
+                "by_class": {c: sum(1 for _, cls in split_data['val'] if cls == c) for c in class_mapping.values()}
+            },
+            "test": {
+                "count": len(split_data['test']),
+                "by_class": {c: sum(1 for _, cls in split_data['test'] if cls == c) for c in class_mapping.values()}
+            },
+        },
+        "seed": seed,
+        "image_size": ORIGINAL_IMAGE_SIZE,
+        "landmarks_scale_factor": float(SCALE_FACTOR),
+        "cross_size": cross_size,
+        "cross_thickness": cross_thickness,
+        "cross_color": cross_color,
+        "processing_stats": stats,
+        "processing_time_seconds": elapsed,
+    }
+
+    # Add metadata from predictions if available
+    if "metadata_json" in data:
+        try:
+            pred_meta = json.loads(str(data["metadata_json"].item()))
+            summary["landmark_ensemble"] = pred_meta
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+    summary_path = output_path / "dataset_summary.json"
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2)
+
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("Dataset de visualización completado!")
+    logger.info("=" * 60)
+    logger.info("Imágenes procesadas: %d", stats['processed'])
+    logger.info("Fallos: %d", stats['failed'])
+    logger.info("Predicciones faltantes: %d", stats['missing_predictions'])
+    logger.info("Imágenes con tamaño incorrecto: %d", stats['wrong_size'])
+    logger.info("Tiempo total: %.1f minutos", elapsed / 60)
+    logger.info("")
+    logger.info("Directorio de salida: %s", output_path)
+    logger.info("Resumen guardado: %s", summary_path)
+    logger.info("")
+    logger.info("Siguiente paso:")
+    logger.info("  - Verificar alineación: python scripts/verify_landmark_viz_dataset.py")
+
+
+@app.command("generate-delaunay-mesh-dataset")
+def generate_delaunay_mesh_dataset(
+    input_dir: Optional[str] = typer.Argument(
+        None,
+        help="Directorio del dataset original (estructura COVID/Normal/Viral Pneumonia/images/)"
+    ),
+    output_dir: Optional[str] = typer.Argument(
+        None,
+        help="Directorio de salida para visualizaciones con malla"
+    ),
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="Path a JSON con parametros"
+    ),
+    predictions: Optional[str] = typer.Option(
+        None,
+        "--predictions",
+        help="Archivo NPZ con landmarks predichos (requerido)"
+    ),
+    triangles: str = typer.Option(
+        "outputs/shape_analysis/canonical_delaunay_triangles.json",
+        "--triangles",
+        help="Archivo JSON con triangulacion Delaunay canonica"
+    ),
+    warped_dataset_dir: Optional[str] = typer.Option(
+        None,
+        "--warped-dataset",
+        help="Dataset warped para usar sus splits (train/val/test/images.csv)"
+    ),
+    splits: str = typer.Option(
+        "0.75,0.125,0.125",
+        "--splits",
+        help="Ratios train,val,test separados por coma (si no se usa --warped-dataset)"
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        "-s",
+        help="Semilla para reproducibilidad (si no se usa --warped-dataset)"
+    ),
+    classes: str = typer.Option(
+        "COVID,Normal,Viral Pneumonia",
+        "--classes",
+        help="Clases a procesar separadas por coma"
+    ),
+    image_size: int = typer.Option(
+        ORIGINAL_IMAGE_SIZE,
+        "--image-size",
+        help="Tamaño de imagen para visualización (default: 299)"
+    ),
+    preserve_size: bool = typer.Option(
+        True,
+        "--preserve-size/--resize",
+        help="Preservar tamaño original o forzar resize al image-size"
+    ),
+    mesh_color: str = typer.Option(
+        "cyan",
+        "--mesh-color",
+        help="Color de la malla (cyan, red, green, blue, yellow, white o #RRGGBB)"
+    ),
+    mesh_thickness: int = typer.Option(
+        1,
+        "--mesh-thickness",
+        help="Grosor de líneas de la malla"
+    ),
+):
+    """
+    Generar dataset con malla de Delaunay sobre imágenes originales.
+
+    Este comando:
+    1. Carga predicciones NPZ del ensemble (3.61 px)
+    2. Carga triangulación canónica (Procrustes/GPA)
+    3. Usa splits del dataset warped o genera splits reproducibles
+    4. Dibuja la malla de Delaunay sobre cada imagen original
+    5. Guarda imágenes en train/val/test con la misma estructura del clasificador
+    """
+    import csv
+    import json
+    import time
+    from collections import defaultdict
+
+    import cv2
+    import numpy as np
+    from tqdm import tqdm
+
+    logger.info("=" * 60)
+    logger.info("Generate Delaunay Mesh Dataset")
+    logger.info("=" * 60)
+
+    argv = sys.argv[1:]
+
+    def option_present(*names: str) -> bool:
+        for name in names:
+            if name in argv:
+                return True
+            prefix = f"{name}="
+            if any(arg.startswith(prefix) for arg in argv):
+                return True
+        return False
+
+    config_data = {}
+    if config:
+        config_path = Path(config)
+        if not config_path.exists():
+            logger.error("Config no existe: %s", config)
+            raise typer.Exit(code=1)
+        with open(config_path, "r") as f:
+            config_data = json.load(f)
+
+        def override_param(
+            param_name: str,
+            current_value,
+            config_key: Optional[str] = None,
+            option_names: Optional[tuple[str, ...]] = None,
+        ):
+            key = config_key or param_name
+            if key not in config_data:
+                return current_value
+            if option_names and option_present(*option_names):
+                return current_value
+            if option_names is None and current_value is not None:
+                return current_value
+            return config_data[key]
+
+        input_dir = override_param("input_dir", input_dir, "input_dir")
+        output_dir = override_param("output_dir", output_dir, "output_dir")
+        predictions = override_param("predictions", predictions, "predictions", ("--predictions",))
+        triangles = override_param("triangles", triangles, "triangles", ("--triangles",))
+        warped_dataset_dir = override_param(
+            "warped_dataset_dir",
+            warped_dataset_dir,
+            "warped_dataset_dir",
+            ("--warped-dataset",),
+        )
+        splits = override_param("splits", splits, "splits", ("--splits",))
+        seed = override_param("seed", seed, "seed", ("--seed", "-s"))
+        classes = override_param("classes", classes, "classes", ("--classes",))
+        image_size = override_param("image_size", image_size, "image_size", ("--image-size",))
+        preserve_size = override_param(
+            "preserve_size",
+            preserve_size,
+            "preserve_size",
+            ("--preserve-size", "--resize"),
+        )
+        mesh_color = override_param("mesh_color", mesh_color, "mesh_color", ("--mesh-color",))
+        mesh_thickness = override_param(
+            "mesh_thickness",
+            mesh_thickness,
+            "mesh_thickness",
+            ("--mesh-thickness",),
+        )
+
+    if isinstance(splits, (list, tuple)):
+        splits = ",".join(str(x) for x in splits)
+    if isinstance(classes, (list, tuple)):
+        classes = ",".join(str(x) for x in classes)
+
+    if input_dir is None or output_dir is None:
+        logger.error("input_dir y output_dir son requeridos (usa argumentos o --config)")
+        raise typer.Exit(code=1)
+
+    if predictions is None:
+        logger.error("--predictions es requerido (archivo NPZ con landmarks)")
+        raise typer.Exit(code=1)
+
+    input_path = Path(input_dir)
+    if not input_path.exists():
+        logger.error("Directorio de entrada no existe: %s", input_dir)
+        raise typer.Exit(code=1)
+
+    predictions_path = Path(predictions)
+    if not predictions_path.exists():
+        logger.error("Archivo de predicciones no existe: %s", predictions_path)
+        raise typer.Exit(code=1)
+
+    triangles_path = Path(triangles)
+    if not triangles_path.exists():
+        logger.error("Archivo de triangulacion no existe: %s", triangles_path)
+        raise typer.Exit(code=1)
+
+    def parse_color(color_value: str) -> tuple[int, int, int]:
+        color_map = {
+            "cyan": (255, 255, 0),
+            "red": (0, 0, 255),
+            "green": (0, 255, 0),
+            "blue": (255, 0, 0),
+            "yellow": (0, 255, 255),
+            "white": (255, 255, 255),
+        }
+        value = color_value.strip().lower()
+        if value in color_map:
+            return color_map[value]
+        if value.startswith("#") and len(value) == 7:
+            r = int(value[1:3], 16)
+            g = int(value[3:5], 16)
+            b = int(value[5:7], 16)
+            return (b, g, r)
+        raise ValueError(f"Color no soportado: {color_value}")
+
+    try:
+        mesh_color_bgr = parse_color(mesh_color)
+    except ValueError as exc:
+        logger.error("%s", exc)
+        raise typer.Exit(code=1)
+
+    class_list = [c.strip() for c in classes.split(",")]
+    class_mapping = {c: c.replace(" ", "_") for c in class_list}
+    logger.info("Clases a procesar: %s", class_list)
+
+    def resolve_class_dir(class_name: str) -> Optional[Path]:
+        candidates = [
+            input_path / class_name / "images",
+            input_path / class_name,
+            input_path / class_name.replace("_", " ") / "images",
+            input_path / class_name.replace("_", " "),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return None
+
+    class_dirs = {mapped: resolve_class_dir(mapped) for mapped in class_mapping.values()}
+    for class_name, class_dir in class_dirs.items():
+        if class_dir is None:
+            logger.warning("Directorio de clase no existe para: %s", class_name)
+
+    logger.info("Cargando predicciones: %s", predictions_path)
+    data = np.load(predictions_path, allow_pickle=True)
+    if "landmarks" not in data:
+        logger.error("NPZ no contiene clave 'landmarks'")
+        raise typer.Exit(code=1)
+
+    landmarks_224 = data["landmarks"]
+    image_names = data["image_names"] if "image_names" in data else None
+    categories = data["categories"] if "categories" in data else None
+    if image_names is None or categories is None:
+        logger.error("NPZ debe incluir 'image_names' y 'categories'")
+        raise typer.Exit(code=1)
+
+    predictions_dict = {}
+    for i in range(len(landmarks_224)):
+        name = str(image_names[i])
+        cat = str(categories[i]).replace(" ", "_")
+        predictions_dict[(name, cat)] = landmarks_224[i]
+
+    logger.info("Predicciones cargadas: %d", len(predictions_dict))
+
+    with triangles_path.open("r", encoding="utf-8") as f:
+        triangles_data = json.load(f)
+    triangles_list = np.array(triangles_data["triangles"], dtype=np.int32)
+
+    scale_factor = image_size / DEFAULT_IMAGE_SIZE
+    if preserve_size:
+        logger.info("Escala landmarks: se calcula por imagen (224 -> tamaño original)")
+    else:
+        logger.info("Factor de escala para landmarks: %.4f (224 -> %d)", scale_factor, image_size)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    split_data = {}
+    if warped_dataset_dir:
+        warped_path = Path(warped_dataset_dir)
+        if not warped_path.exists():
+            logger.error("Warped dataset no existe: %s", warped_dataset_dir)
+            raise typer.Exit(code=1)
+        for split_name in ("train", "val", "test"):
+            csv_path = warped_path / split_name / "images.csv"
+            if not csv_path.exists():
+                logger.error("No se encontro: %s", csv_path)
+                raise typer.Exit(code=1)
+            entries = []
+            with csv_path.open(newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    entries.append((row["image_name"], row["category"]))
+            split_data[split_name] = entries
+        logger.info("Splits cargados desde: %s", warped_path)
+    else:
+        try:
+            split_ratios = [float(x) for x in splits.split(",")]
+            if len(split_ratios) != 3:
+                raise ValueError("Se requieren exactamente 3 valores")
+            if abs(sum(split_ratios) - 1.0) > 0.01:
+                raise ValueError(f"Los ratios deben sumar 1.0, suman {sum(split_ratios)}")
+            train_ratio, val_ratio, test_ratio = split_ratios
+        except Exception as exc:
+            logger.error("Error parseando splits '%s': %s", splits, exc)
+            raise typer.Exit(code=1)
+
+        logger.info("Recolectando imágenes del dataset...")
+        all_images = []
+        for class_name in class_list:
+            class_dir = resolve_class_dir(class_name)
+            if class_dir is None:
+                logger.warning("Directorio de clase no existe: %s", class_name)
+                continue
+            images = list(class_dir.glob("*.png")) + list(class_dir.glob("*.jpg"))
+            mapped_class = class_mapping[class_name]
+            for img in images:
+                all_images.append((img.stem, mapped_class))
+            logger.info("  %s: %d imágenes", class_name, len(images))
+
+        if not all_images:
+            logger.error("No se encontraron imágenes")
+            raise typer.Exit(code=1)
+
+        random.seed(seed)
+        np.random.seed(seed)
+
+        by_class = defaultdict(list)
+        for image_name, class_name in all_images:
+            by_class[class_name].append(image_name)
+
+        split_data = {"train": [], "val": [], "test": []}
+        for class_name, names in by_class.items():
+            np.random.shuffle(names)
+            n = len(names)
+            n_train = int(n * train_ratio)
+            n_val = int(n * val_ratio)
+            split_data["train"].extend([(name, class_name) for name in names[:n_train]])
+            val_names = names[n_train:n_train + n_val]
+            split_data["val"].extend([(name, class_name) for name in val_names])
+            split_data["test"].extend([(name, class_name) for name in names[n_train + n_val:]])
+
+        for split_name in split_data:
+            np.random.shuffle(split_data[split_name])
+            counts = defaultdict(int)
+            for _, class_name in split_data[split_name]:
+                counts[class_name] += 1
+            logger.info(
+                "  %s: %d imágenes %s",
+                split_name,
+                len(split_data[split_name]),
+                dict(counts),
+            )
+
+    def to_bgr(image: np.ndarray) -> np.ndarray:
+        if image.ndim == 2:
+            return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        if image.shape[2] == 4:
+            return cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        return image.copy()
+
+    def draw_mesh(image: np.ndarray, landmarks: np.ndarray) -> np.ndarray:
+        image_bgr = to_bgr(image)
+        points = landmarks.astype(np.int32)
+        for triangle in triangles_list:
+            tri_points = points[triangle].reshape((-1, 1, 2))
+            cv2.polylines(
+                image_bgr,
+                [tri_points],
+                isClosed=True,
+                color=mesh_color_bgr,
+                thickness=mesh_thickness,
+                lineType=cv2.LINE_AA,
+            )
+        return image_bgr
+
+    start_time = time.time()
+    stats = {
+        "processed": 0,
+        "failed": 0,
+        "missing_predictions": 0,
+        "wrong_size": 0,
+    }
+
+    for split_name, split_images in split_data.items():
+        logger.info("")
+        logger.info("=== Procesando %s ===", split_name.upper())
+
+        for image_name, class_name in tqdm(split_images, desc=f"  {split_name}"):
+            class_dir = class_dirs.get(class_name)
+            if class_dir is None:
+                stats["failed"] += 1
+                continue
+
+            image_path = class_dir / f"{image_name}.png"
+            if not image_path.exists():
+                image_path = class_dir / f"{image_name}.jpg"
+            if not image_path.exists():
+                stats["failed"] += 1
+                continue
+
+            image_orig = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+            if image_orig is None:
+                stats["failed"] += 1
+                continue
+
+            if image_orig.shape[:2] != (image_size, image_size):
+                stats["wrong_size"] += 1
+                if not preserve_size:
+                    interp = cv2.INTER_AREA
+                    if image_orig.shape[0] < image_size or image_orig.shape[1] < image_size:
+                        interp = cv2.INTER_CUBIC
+                    image_orig = cv2.resize(image_orig, (image_size, image_size), interpolation=interp)
+
+            landmarks_224_img = predictions_dict.get((image_name, class_name))
+            if landmarks_224_img is None:
+                stats["missing_predictions"] += 1
+                continue
+
+            if preserve_size:
+                target_h, target_w = image_orig.shape[:2]
+                landmarks_scaled = landmarks_224_img.copy()
+                landmarks_scaled[:, 0] *= target_w / DEFAULT_IMAGE_SIZE
+                landmarks_scaled[:, 1] *= target_h / DEFAULT_IMAGE_SIZE
+                landmarks_scaled[:, 0] = np.clip(landmarks_scaled[:, 0], 0, target_w - 1)
+                landmarks_scaled[:, 1] = np.clip(landmarks_scaled[:, 1], 0, target_h - 1)
+            else:
+                landmarks_scaled = landmarks_224_img * scale_factor
+                landmarks_scaled = np.clip(landmarks_scaled, 0, image_size - 1)
+
+            image_with_mesh = draw_mesh(image_orig, landmarks_scaled)
+
+            output_filename = f"{image_name}_mesh.png"
+            output_file_path = output_path / split_name / class_name / output_filename
+            output_file_path.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(output_file_path), image_with_mesh)
+            stats["processed"] += 1
+
+    elapsed = time.time() - start_time
+
+    summary = {
+        "source_dataset": str(input_path),
+        "predictions": str(predictions_path),
+        "triangles": str(triangles_path),
+        "classes": class_list,
+        "splits": {
+            split: {
+                "count": len(split_data[split]),
+                "by_class": {c: sum(1 for _, cls in split_data[split] if cls == c)
+                             for c in class_mapping.values()}
+            }
+            for split in split_data
+        },
+        "seed": seed,
+        "image_size": image_size,
+        "preserve_size": preserve_size,
+        "landmarks_scale_factor": float(scale_factor),
+        "mesh_color": mesh_color,
+        "mesh_thickness": mesh_thickness,
+        "processing_stats": stats,
+        "processing_time_seconds": elapsed,
+        "warped_dataset_dir": str(warped_dataset_dir) if warped_dataset_dir else None,
+    }
+
+    if "metadata_json" in data:
+        try:
+            pred_meta = json.loads(str(data["metadata_json"].item()))
+            summary["landmark_ensemble"] = pred_meta
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+    summary_path = output_path / "dataset_summary.json"
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2)
+
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("Dataset con malla de Delaunay completado!")
+    logger.info("=" * 60)
+    logger.info("Imágenes procesadas: %d", stats["processed"])
+    logger.info("Fallos: %d", stats["failed"])
+    logger.info("Predicciones faltantes: %d", stats["missing_predictions"])
+    logger.info("Imágenes con tamaño incorrecto: %d", stats["wrong_size"])
+    logger.info("Tiempo total: %.1f minutos", elapsed / 60)
+    logger.info("")
+    logger.info("Directorio de salida: %s", output_path)
+    logger.info("Resumen guardado: %s", summary_path)
+
+
+@app.command("generate-landmark-comparison-dataset")
+def generate_landmark_comparison_dataset(
+    input_dir: str = typer.Argument(
+        ...,
+        help="Directorio del dataset original"
+    ),
+    output_dir: str = typer.Argument(
+        ...,
+        help="Directorio de salida para comparaciones"
+    ),
+    ground_truth_csv: str = typer.Option(
+        "data/coordenadas/coordenadas_maestro.csv",
+        "--ground-truth-csv",
+        help="CSV con landmarks ground truth (299×299)"
+    ),
+    predictions: str = typer.Option(
+        "outputs/landmark_predictions/session_warping/predictions.npz",
+        "--predictions",
+        help="NPZ con predicciones del ensemble (224×224)"
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed", "-s",
+        help="Semilla para splits reproducibles"
+    ),
+    pred_color: str = typer.Option(
+        "red",
+        "--pred-color",
+        help="Color para predicciones (red, blue, green, etc.)"
+    ),
+    gt_color: str = typer.Option(
+        "green",
+        "--gt-color",
+        help="Color para ground truth"
+    ),
+    cross_size: int = typer.Option(
+        5,
+        "--cross-size",
+        help="Tamaño de cruces en píxeles"
+    ),
+    cross_thickness: int = typer.Option(
+        2,
+        "--cross-thickness",
+        help="Grosor de líneas"
+    ),
+    show_error_lines: bool = typer.Option(
+        False,
+        "--show-error-lines/--no-error-lines",
+        help="Dibujar líneas amarillas entre pares correspondientes"
+    ),
+    max_per_split: Optional[int] = typer.Option(
+        None,
+        "--max-per-split",
+        help="Máximo de imágenes por split (para testing)"
+    ),
+):
+    """
+    Generar dataset de visualizaciones comparativas (predicciones vs ground truth).
+
+    Este comando:
+    1. Carga landmarks ground truth desde CSV (957 imágenes)
+    2. Carga predicciones desde NPZ
+    3. Hace matching entre ambos
+    4. Crea splits estratificados (75/15/10)
+    5. Genera visualizaciones duales:
+       - Cruces rojas: predicciones
+       - Cruces verdes: ground truth
+    6. Calcula errores por imagen y landmark
+    7. Guarda metadata con estadísticas detalladas
+
+    Ejemplo:
+        python -m src_v2 generate-landmark-comparison-dataset \\
+            data/dataset/COVID-19_Radiography_Dataset \\
+            outputs/landmark_comparisons/best_ensemble
+
+        # Testing con subset pequeño
+        python -m src_v2 generate-landmark-comparison-dataset \\
+            data/dataset/COVID-19_Radiography_Dataset \\
+            outputs/landmark_comparisons/test \\
+            --max-per-split 5 \\
+            --show-error-lines
+    """
+    from pathlib import Path
+    from src_v2.visualization.comparison_viz import generate_comparison_dataset
+
+    logger.info("=" * 60)
+    logger.info("Generate Landmark Comparison Dataset")
+    logger.info("=" * 60)
+
+    # Validar inputs
+    input_path = Path(input_dir)
+    if not input_path.exists():
+        logger.error(f"Input directory no existe: {input_dir}")
+        raise typer.Exit(code=1)
+
+    gt_csv_path = Path(ground_truth_csv)
+    if not gt_csv_path.exists():
+        logger.error(f"Ground truth CSV no existe: {ground_truth_csv}")
+        raise typer.Exit(code=1)
+
+    pred_npz_path = Path(predictions)
+    if not pred_npz_path.exists():
+        logger.error(f"Predictions NPZ no existe: {predictions}")
+        raise typer.Exit(code=1)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Ejecutar pipeline
+    try:
+        metadata = generate_comparison_dataset(
+            input_dir=input_path,
+            output_dir=output_path,
+            ground_truth_csv=gt_csv_path,
+            predictions_npz=pred_npz_path,
+            seed=seed,
+            pred_color=pred_color,
+            gt_color=gt_color,
+            cross_size=cross_size,
+            cross_thickness=cross_thickness,
+            show_error_lines=show_error_lines,
+            max_per_split=max_per_split
+        )
+
+        logger.info("")
+        logger.info("Archivos generados:")
+        logger.info(f"  - {output_path / 'metadata.json'}")
+        logger.info(f"  - {output_path / 'error_statistics.json'}")
+        logger.info(f"  - {output_path / 'image_errors.csv'}")
+
+    except Exception as e:
+        logger.error(f"Error durante generación: {e}")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(code=1)
+
+
+@app.command("generate-landmark-comparison-dataset-aligned")
+def generate_landmark_comparison_dataset_aligned(
+    warped_dataset_dir: str = typer.Argument(
+        ...,
+        help="Directorio del warped dataset (ej: outputs/warped_lung_best/session_warping)"
+    ),
+    output_dir: str = typer.Argument(
+        ...,
+        help="Directorio de salida para comparaciones"
+    ),
+    original_images_dir: str = typer.Option(
+        "data/dataset/COVID-19_Radiography_Dataset",
+        "--original-images",
+        help="Directorio de imágenes originales 299×299"
+    ),
+    ground_truth_csv: str = typer.Option(
+        "data/coordenadas/coordenadas_maestro.csv",
+        "--ground-truth-csv",
+        help="CSV con landmarks ground truth"
+    ),
+    predictions: str = typer.Option(
+        "outputs/landmark_predictions/session_warping/predictions.npz",
+        "--predictions",
+        help="NPZ con predicciones del ensemble"
+    ),
+    pred_color: str = typer.Option(
+        "red",
+        "--pred-color",
+        help="Color para predicciones (red, blue, green, etc.)"
+    ),
+    gt_color: str = typer.Option(
+        "green",
+        "--gt-color",
+        help="Color para ground truth"
+    ),
+    cross_size: int = typer.Option(
+        5,
+        "--cross-size",
+        help="Tamaño de cruces en píxeles"
+    ),
+    cross_thickness: int = typer.Option(
+        2,
+        "--cross-thickness",
+        help="Grosor de líneas"
+    ),
+    show_error_lines: bool = typer.Option(
+        False,
+        "--show-error-lines/--no-error-lines",
+        help="Dibujar líneas amarillas entre pares correspondientes"
+    ),
+):
+    """
+    Generar comparaciones alineadas con el dataset warped usado para clasificación.
+
+    Este comando genera un dataset de comparaciones que mantiene EXACTAMENTE la misma
+    estructura de carpetas, splits y nombres de archivo que el warped dataset usado
+    para clasificación, permitiendo un análisis perfecto de la relación entre
+    errores de landmarks y performance de clasificación.
+
+    Diferencias vs generate-landmark-comparison-dataset:
+    - Usa splits del warped dataset (NO crea nuevos splits)
+    - Mantiene estructura de carpetas idéntica al warped dataset
+    - Proporciona mapeo 1:1 con el dataset de clasificación
+    - Solo procesa ~957 imágenes que tienen ground truth (~6.3% de 15,153)
+
+    Este comando:
+    1. Lee la estructura del warped dataset (train/val/test splits)
+    2. Para cada imagen en el warped dataset que tiene GT:
+       - Carga imagen original (299×299)
+       - Genera visualización comparativa (pred vs GT)
+       - Guarda en la MISMA ubicación relativa que el warped dataset
+    3. Mantiene consistencia perfecta con el dataset de clasificación
+
+    Estructura de salida (espejo del warped dataset):
+        output_dir/
+        ├── train/
+        │   ├── COVID/{name}_comparison.png
+        │   ├── Normal/{name}_comparison.png
+        │   └── Viral_Pneumonia/{name}_comparison.png
+        ├── val/...
+        ├── test/...
+        ├── metadata.json
+        ├── error_statistics.json
+        └── image_errors.csv
+
+    Ejemplo:
+        python -m src_v2 generate-landmark-comparison-dataset-aligned \\
+            outputs/warped_lung_best/session_warping \\
+            outputs/landmark_comparisons/aligned_with_classifier
+
+        # Con opciones personalizadas
+        python -m src_v2 generate-landmark-comparison-dataset-aligned \\
+            outputs/warped_lung_best/session_warping \\
+            outputs/landmark_comparisons/aligned \\
+            --show-error-lines \\
+            --cross-size 7
+    """
+    from pathlib import Path
+    from src_v2.visualization.comparison_viz import generate_comparison_dataset_aligned
+
+    logger.info("=" * 60)
+    logger.info("Generate Aligned Landmark Comparison Dataset")
+    logger.info("=" * 60)
+
+    # Validar inputs
+    warped_path = Path(warped_dataset_dir)
+    if not warped_path.exists():
+        logger.error(f"Warped dataset directory no existe: {warped_dataset_dir}")
+        raise typer.Exit(code=1)
+
+    # Verificar que tiene la estructura esperada
+    expected_splits = ['train', 'val', 'test']
+    missing_splits = [s for s in expected_splits if not (warped_path / s / 'images.csv').exists()]
+    if missing_splits:
+        logger.error(f"Warped dataset missing expected splits: {missing_splits}")
+        logger.error(f"Expected structure: {warped_dataset_dir}/{{train,val,test}}/images.csv")
+        raise typer.Exit(code=1)
+
+    original_images_path = Path(original_images_dir)
+    if not original_images_path.exists():
+        logger.error(f"Original images directory no existe: {original_images_dir}")
+        raise typer.Exit(code=1)
+
+    gt_csv_path = Path(ground_truth_csv)
+    if not gt_csv_path.exists():
+        logger.error(f"Ground truth CSV no existe: {ground_truth_csv}")
+        raise typer.Exit(code=1)
+
+    pred_npz_path = Path(predictions)
+    if not pred_npz_path.exists():
+        logger.error(f"Predictions NPZ no existe: {predictions}")
+        raise typer.Exit(code=1)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Ejecutar pipeline
+    try:
+        metadata = generate_comparison_dataset_aligned(
+            warped_dataset_dir=warped_path,
+            output_dir=output_path,
+            ground_truth_csv=gt_csv_path,
+            predictions_npz=pred_npz_path,
+            original_images_dir=original_images_path,
+            pred_color=pred_color,
+            gt_color=gt_color,
+            cross_size=cross_size,
+            cross_thickness=cross_thickness,
+            show_error_lines=show_error_lines,
+        )
+
+        logger.info("")
+        logger.info("Archivos generados:")
+        logger.info(f"  - {output_path / 'metadata.json'}")
+        logger.info(f"  - {output_path / 'error_statistics.json'}")
+        logger.info(f"  - {output_path / 'image_errors.csv'}")
+        logger.info("")
+        logger.info("Siguiente paso:")
+        logger.info("  - Verificar alineación con el warped dataset")
+        logger.info(f"  - Analizar relación entre errores de landmarks y clasificación")
+
+    except Exception as e:
+        logger.error(f"Error durante generación: {e}")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def generate_viz_dataset(
+    input_dir: str = typer.Argument(
+        ...,
+        help="Directorio del dataset original (COVID-19_Radiography_Dataset)"
+    ),
+    output_dir: str = typer.Argument(
+        ...,
+        help="Directorio de salida para visualizaciones"
+    ),
+    predictions: str = typer.Option(
+        "outputs/landmark_predictions/session_warping/predictions.npz",
+        "--predictions",
+        help="Cache NPZ de predicciones del ensemble"
+    ),
+    canonical: str = typer.Option(
+        "outputs/shape_analysis/canonical_shape_gpa.json",
+        "--canonical",
+        help="Forma canónica de GPA"
+    ),
+    triangles: str = typer.Option(
+        "outputs/shape_analysis/canonical_delaunay_triangles.json",
+        "--triangles",
+        help="Triangulación de Delaunay"
+    ),
+    csv_path: str = typer.Option(
+        "data/coordenadas/coordenadas_maestro.csv",
+        "--csv-path",
+        help="CSV maestro para splits"
+    ),
+    viz_size: int = typer.Option(
+        299,
+        "--viz-size",
+        help="Tamaño de visualización (píxeles)"
+    ),
+    model_size: int = typer.Option(
+        224,
+        "--model-size",
+        help="Tamaño del modelo (píxeles)"
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        "-s",
+        help="Seed para splits"
+    ),
+    max_per_split: Optional[int] = typer.Option(
+        None,
+        "--max-per-split",
+        help="Máximo de imágenes por split (para testing)"
+    ),
+    dpi: int = typer.Option(
+        300,
+        "--dpi",
+        help="Resolución de visualizaciones"
+    ),
+    no_numbers: bool = typer.Option(
+        False,
+        "--no-numbers",
+        help="No mostrar números en landmarks"
+    ),
+):
+    """
+    Generar dataset de visualizaciones científicas con landmarks y triangulación.
+
+    Crea visualizaciones mostrando:
+    - Radiografía original 299x299 (sin preprocesamiento)
+    - Predicciones exactas del ensemble best (3.61 px)
+    - Malla de triangulación de Delaunay sobre landmarks predichos
+
+    Las visualizaciones usan:
+    - Splits idénticos al clasificador (seed=42)
+    - Predicciones cacheadas del ensemble
+    - Coordenadas escaladas correctamente de 224x224 a 299x299
+
+    Ejemplo:
+        # Generar dataset completo
+        python -m src_v2 generate-viz-dataset \\
+            data/dataset/COVID-19_Radiography_Dataset \\
+            outputs/viz_dataset
+
+        # Muestra pequeña para testing
+        python -m src_v2 generate-viz-dataset \\
+            data/dataset/COVID-19_Radiography_Dataset \\
+            outputs/viz_dataset_test \\
+            --max-per-split 5
+    """
+    from src_v2.visualization.scientific_viz import generate_viz_dataset as gen_viz
+
+    logger.info("Iniciando generación de dataset de visualizaciones")
+    logger.info("")
+
+    # Convertir paths
+    input_path = Path(input_dir)
+    output_path = Path(output_dir)
+    predictions_path = Path(predictions)
+    canonical_path = Path(canonical)
+    triangles_path = Path(triangles)
+    csv_path_obj = Path(csv_path)
+
+    # Validar que existan los archivos necesarios
+    if not input_path.exists():
+        logger.error(f"Directorio de entrada no existe: {input_path}")
+        raise typer.Exit(code=1)
+
+    if not predictions_path.exists():
+        logger.error(f"Cache de predicciones no existe: {predictions_path}")
+        logger.error("Genera predicciones primero con scripts/predict_landmarks_dataset.py")
+        raise typer.Exit(code=1)
+
+    if not canonical_path.exists():
+        logger.error(f"Forma canónica no existe: {canonical_path}")
+        logger.error("Genera forma canónica con: python -m src_v2 compute-canonical")
+        raise typer.Exit(code=1)
+
+    if not triangles_path.exists():
+        logger.error(f"Triangulación no existe: {triangles_path}")
+        logger.error("Genera triangulación con: python -m src_v2 compute-canonical")
+        raise typer.Exit(code=1)
+
+    if not csv_path_obj.exists():
+        logger.error(f"CSV maestro no existe: {csv_path_obj}")
+        raise typer.Exit(code=1)
+
+    # Ejecutar generación
+    try:
+        metadata = gen_viz(
+            input_dir=input_path,
+            output_dir=output_path,
+            predictions_npz=predictions_path,
+            canonical_json=canonical_path,
+            triangles_json=triangles_path,
+            csv_path=csv_path_obj,
+            viz_size=viz_size,
+            model_size=model_size,
+            seed=seed,
+            splits=(0.75, 0.125, 0.125),
+            max_per_split=max_per_split,
+            dpi=dpi,
+            show_numbers=not no_numbers
+        )
+
+        logger.info("")
+        logger.info("Dataset de visualizaciones generado exitosamente!")
+        logger.info(f"Output: {output_path}")
+        logger.info(f"Metadata: {output_path / 'metadata.json'}")
+
+    except Exception as e:
+        logger.error(f"Error al generar dataset: {e}", exc_info=True)
+        raise typer.Exit(code=1)
+
+
 def main():
     """Entry point principal."""
     app()

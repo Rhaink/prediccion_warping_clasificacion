@@ -125,7 +125,7 @@ def main() -> None:
         },
         {
             "key": "Viral_Pneumonia",
-            "label": "Neumonia viral",
+            "label": "Viral Pneumonia",
             "class_dir": "Viral_Pneumonia",
             "case_id": VIRAL_PNEUMONIA_ID,
         },

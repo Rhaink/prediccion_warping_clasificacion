@@ -1,0 +1,194 @@
+\documentclass[12pt,letterpaper]{report}
+\usepackage[spanish]{babel}
+\usepackage[letterpaper, margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{pdfpages}
+\usepackage{nameref}
+\usepackage{titlesec}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes, calc}
+
+% Ajuste de espaciado para títulos de capítulos
+% \titlespacing*{<command>}{<left>}{<before-sep>}{<after-sep>}
+% before-sep: Espacio antes del título. Por defecto es ~50pt. Aquí lo reducimos.
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{0pt}{1pt}
+
+% Configuración de bibliografía - Estilo IEEE
+\usepackage[numbers]{natbib}
+\bibliographystyle{IEEEtran}
+
+% Nombres en español
+\renewcommand{\tablename}{Tabla}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\contentsname}{Contenido}
+\renewcommand{\algorithmicforall}{\textbf{para todo}}
+\renewcommand{\algorithmicdo}{\textbf{hacer}}
+\renewcommand{\algorithmicend}{\textbf{fin}}
+\renewcommand{\algorithmicif}{\textbf{si}}
+\renewcommand{\algorithmicthen}{\textbf{entonces}}
+\renewcommand{\algorithmicelse}{\textbf{sino}}
+\renewcommand{\algorithmicwhile}{\textbf{mientras}}
+\renewcommand{\algorithmicrepeat}{\textbf{repetir}}
+\renewcommand{\algorithmicuntil}{\textbf{hasta que}}
+\renewcommand{\algorithmicreturn}{\textbf{devolver}}
+
+% Numeración de ecuaciones, figuras y tablas por capítulo
+\numberwithin{equation}{chapter}
+\numberwithin{figure}{chapter}
+\numberwithin{table}{chapter}
+
+% Evitar hyphenation excesiva
+\pretolerance=5000
+\tolerance=2000
+\emergencystretch=30pt
+
+% BibTeX habilitado - usar natbib con estilo IEEEtran (numérico)
+
+\begin{document}
+
+\setstretch{1.15}
+
+% ============================================================================
+% PORTADA ORIGINAL (BUAP)
+% ============================================================================
+\input{portada/title-page}
+
+% ============================================================================
+% AGRADECIMIENTOS
+% ============================================================================
+\newpage
+\input{agradecimientos/agradecimientos}
+
+% ============================================================================
+% TABLA DE CONTENIDO
+% ============================================================================
+\newpage
+\tableofcontents
+
+% ============================================================================
+% OBJETIVOS
+% ============================================================================
+\newpage
+\input{objetivos/0-Objetivos}
+
+% ============================================================================
+% CAPÍTULO 1: INTRODUCCIÓN
+% ============================================================================
+\newpage
+\input{capitulo1/1_introduccion}
+
+% ============================================================================
+% CAPÍTULO 2: MARCO TEÓRICO
+% ============================================================================
+\newpage
+\input{capitulo2/2_marco_teorico}
+
+% ============================================================================
+% CAPÍTULO 3: ESTADO DEL ARTE
+% ============================================================================
+\newpage
+\input{capitulo3/3_estado_del_arte}
+
+% ============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% ============================================================================
+\newpage
+
+% Sección 4.1: Descripción General del Sistema
+\input{capitulo4/4_1_descripcion_general}
+
+% Sección 4.2: Dataset y Preprocesamiento
+\newpage
+\input{capitulo4/4_2_dataset_preprocesamiento}
+
+% Sección 4.3: Modelo de Predicción de Landmarks
+\newpage
+\input{capitulo4/4_3_modelo_landmarks}
+
+% Sección 4.4: Normalización Geométrica
+\newpage
+\input{capitulo4/4_4_normalizacion_geometrica}
+
+% Sección 4.5: Clasificación de Enfermedades Pulmonares
+\newpage
+\input{capitulo4/4_5_clasificacion}
+
+% Sección 4.6: Protocolo de Inferencia y Evaluación
+\newpage
+\input{capitulo4/4_6_inferencia_metricas}
+
+% ============================================================================
+% CAPÍTULO 5: RESULTADOS
+% ============================================================================
+\newpage
+
+% Sección 5.1: Detección de Puntos de Referencia (incluye \chapter{Resultados})
+\input{capitulo5/5_1_resultados_landmarks}
+
+% Sección 5.2: Normalización Geométrica
+\newpage
+\input{capitulo5/5_2_forma_canonica}
+
+% Sección 5.3: Clasificación de Enfermedades Pulmonares
+\newpage
+\input{capitulo5/5_3_resultados_clasificacion}
+
+% ============================================================================
+% CAPÍTULO 6: CONCLUSIONES Y TRABAJOS FUTUROS
+% ============================================================================
+\newpage
+\input{capitulo6/6_conclusiones}
+
+% ============================================================================
+% CAPÍTULOS PENDIENTES:
+% - Capítulo 3: Estado del Arte
+% ============================================================================
+
+% ============================================================================
+% GLOSARIO
+% ============================================================================
+\newpage
+\input{glosario}
+
+% ============================================================================
+% ANEXOS
+% ============================================================================
+\appendix
+\newpage
+% TEMPORAL: Comentado para revisión posterior (Sesión 6)
+% El Anexo A (Manual de Usuario de la GUI) requiere revisión adicional
+% antes de su inclusión definitiva en la tesis
+%\input{anexos/anexo_A_manual_usuario}
+
+\newpage
+\input{anexos/anexo_B_articulos_publicados}
+
+\newpage
+\input{anexos/anexo_C_certificados}
+
+% ============================================================================
+% BIBLIOGRAFÍA
+% ============================================================================
+\newpage
+\bibliography{references}
+
+\end{document}

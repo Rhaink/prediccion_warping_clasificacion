@@ -1,0 +1,246 @@
+% =============================================================================
+% CAPÍTULO 4: METODOLOGÍA
+% Sección 4.4: Normalización Geométrica
+% =============================================================================
+
+\section{Normalización Geométrica}
+\label{sec:normalizacion_geometrica}
+
+\paragraph{El problema de la variabilidad anatómica.}
+Las radiografías de tórax de diferentes pacientes presentan variaciones significativas: los pulmones pueden aparecer más arriba o más abajo en la imagen, ser más grandes o más pequeños, o estar ligeramente rotados dependiendo de la posición del paciente durante la adquisición. Estas diferencias geométricas, aunque irrelevantes para el diagnóstico médico, representan un desafío para los algoritmos de clasificación automática, ya que el modelo debe aprender a reconocer patologías independientemente de estas variaciones.
+
+\paragraph{La solución: normalización geométrica.}
+La normalización geométrica aborda este problema transformando todas las radiografías a una \textit{forma estándar}, donde los pulmones ocupan siempre la misma posición, tienen el mismo tamaño y la misma orientación. De esta manera, el clasificador puede concentrarse en detectar diferencias relevantes (como opacidades o consolidaciones) sin verse confundido por diferencias geométricas irrelevantes.
+
+El proceso de normalización se realiza en tres etapas principales:
+\begin{enumerate}
+    \item \textbf{Cálculo de la forma estándar:} Se determina una forma de referencia ``promedio'' a partir del conjunto de entrenamiento mediante Análisis Procrustes Generalizado.
+    \item \textbf{División de la imagen en regiones:} Se particiona la imagen en triángulos mediante triangulación de Delaunay.
+    \item \textbf{Transformación de cada región:} Se deforma cada triángulo para alinear los puntos de referencia de la imagen con los de la forma estándar.
+\end{enumerate}
+
+\subsection{Análisis Procrustes Generalizado}
+\label{subsec:gpa}
+
+\paragraph{Objetivo.}
+Para normalizar las radiografías, primero necesitamos definir una ``forma de referencia'' que represente la configuración típica de los pulmones. El Análisis Procrustes Generalizado (GPA) \cite{gower1975generalized, dryden1998statistical} es una técnica que permite calcular esta forma de referencia a partir de las 957 configuraciones de puntos de referencia anotadas en el conjunto de entrenamiento.
+
+\paragraph{Intuición del método.}
+El nombre ``Procrustes'' proviene del mito griego de un posadero que ajustaba a sus huéspedes a una cama de tamaño fijo, estirándolos o cortándolos según fuera necesario. De manera análoga, GPA ``ajusta'' cada configuración de puntos de referencia eliminando tres tipos de diferencias que no afectan la forma intrínseca:
+
+\begin{itemize}
+    \item \textbf{Posición:} Si una configuración está desplazada hacia la izquierda y otra hacia la derecha, se centran ambas en el mismo punto.
+    \item \textbf{Tamaño:} Si una configuración es más grande que otra, se escalan para que tengan el mismo tamaño.
+    \item \textbf{Orientación:} Si una configuración está ligeramente rotada, se rota para alinearla con las demás.
+\end{itemize}
+
+Una vez eliminadas estas diferencias, las configuraciones restantes reflejan únicamente variaciones en la \textit{forma} de los pulmones. El promedio de estas configuraciones alineadas constituye la \textit{forma estándar}.
+
+\subsubsection{Procedimiento de Alineación}
+
+El proceso de alineación se realiza en tres pasos:
+
+\textbf{Paso 1: Centrado (eliminación de posición).} Cada configuración de puntos de referencia se desplaza para que su centro geométrico coincida con el origen de coordenadas. El centro se calcula como el promedio de las coordenadas de todos los puntos de referencia.
+
+\textbf{Paso 2: Escalado (eliminación de tamaño).} Para que todas las configuraciones tengan el mismo ``tamaño'', se normalizan dividiendo por una medida de dispersión. Después de este paso, todas las configuraciones quedan con el mismo tamaño estándar, independientemente del tamaño original de los pulmones en la imagen.
+
+\textbf{Paso 3: Rotación (eliminación de orientación).} Finalmente, se rota cada configuración para alinearla lo mejor posible con una forma de referencia. La rotación óptima es aquella que minimiza la distancia entre la configuración rotada y la referencia.
+
+\subsubsection{Cálculo de la Rotación Óptima}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.99\textwidth]{Figures/F4.19_rotacion_optima_svd.png}
+    \caption{Esquema del cálculo de la rotación óptima mediante SVD. A partir de dos configuraciones centradas y escaladas, se construye la matriz de correlación, se aplica la descomposición SVD y se obtiene la rotación que alinea la configuración con la referencia.}
+    \label{fig:rotacion_optima_svd}
+\end{figure}
+
+El ángulo de rotación óptimo se calcula mediante una técnica de álgebra lineal llamada Descomposición en Valores Singulares (SVD) \cite{schonemann1966generalized}, que encuentra automáticamente la rotación que mejor alinea dos conjuntos de puntos. Esta técnica determina el ángulo exacto que minimiza la distancia entre los puntos de una configuración y los de la referencia, sin necesidad de probar múltiples ángulos por ensayo y error.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.80\textwidth]{Figures/F4.7_proceso_gpa_es.png}
+    \caption{Proceso de Análisis Procrustes Generalizado. (a) Las 957 configuraciones de puntos de referencia originales muestran variabilidad en posición, escala y orientación. (b) Después del centrado y escalado, las formas comparten origen y norma unitaria. (c) La alineación rotacional minimiza las diferencias residuales. (d) La forma estándar representa el consenso estadístico del conjunto.}
+    \label{fig:gpa_proceso}
+\end{figure}
+
+\subsubsection{Algoritmo Iterativo}
+
+
+Para alinear las configuraciones necesitamos una referencia, pero para calcular la referencia necesitamos que las configuraciones estén alineadas. GPA resuelve este dilema mediante un proceso iterativo:
+
+\begin{enumerate}
+    \item Se comienza con una referencia inicial (el promedio simple de las configuraciones centradas y escaladas).
+    \item Se alinean todas las configuraciones con esta referencia.
+    \item Se calcula una nueva referencia como el promedio de las configuraciones alineadas.
+    \item Se repite hasta que la referencia deje de cambiar significativamente.
+\end{enumerate}
+
+El Algoritmo \ref{alg:gpa} presenta el pseudocódigo formal.
+
+\begin{algorithm}[htbp]
+\caption{Análisis Procrustes Generalizado Iterativo}
+\label{alg:gpa}
+\begin{algorithmic}[1]
+\Require Conjunto de $n$ configuraciones de puntos de referencia, tolerancia $\tau$, máximo de iteraciones $T$
+\Ensure Forma estándar, configuraciones alineadas
+\State \textbf{Preparación:}
+\For{cada configuración $i$ de 1 a $n$}
+    \State Centrar la configuración (mover su centro al origen)
+    \State Escalar la configuración (normalizar su tamaño)
+\EndFor
+\State Calcular referencia inicial como el promedio de todas las configuraciones
+\State \textbf{Refinamiento iterativo:}
+\For{cada iteración $t$ de 1 a $T$}
+    \For{cada configuración $i$ de 1 a $n$}
+        \State Calcular el ángulo de rotación óptimo para alinear con la referencia
+        \State Rotar la configuración según el ángulo calculado
+    \EndFor
+    \State Calcular nueva referencia como el promedio de las configuraciones alineadas
+    \State Medir cuánto cambió la referencia respecto a la iteración anterior
+    \If{el cambio es menor que la tolerancia $\tau$}
+        \State Terminar (se alcanzó convergencia)
+    \EndIf
+\EndFor
+\State La forma estándar es la referencia final
+\State \Return forma estándar y configuraciones alineadas
+\end{algorithmic}
+\end{algorithm}
+
+Los parámetros utilizados en la implementación son:
+\begin{itemize}
+    \item Tolerancia de convergencia: $\tau = 10^{-8}$
+    \item Máximo de iteraciones: $T = 100$
+\end{itemize}
+
+En la práctica, el algoritmo converge típicamente en menos de 20 iteraciones para el conjunto de 957 configuraciones de puntos de referencia anotadas.
+
+\subsubsection{Transformación a Coordenadas de Imagen}
+
+La forma estándar resultante del GPA está expresada en un sistema de coordenadas matemático (centrada en el origen, con norma unitaria). Para poder utilizarla en el proceso de deformación, es necesario transformarla al sistema de coordenadas de la imagen (donde las coordenadas van de 0 a 224 píxeles).
+
+Esta transformación simplemente escala y desplaza la forma estándar para que ocupe la región central de la imagen de $224 \times 224$ píxeles, dejando un margen del 10\% en los bordes.
+
+La Figura \ref{fig:gpa_proceso} ilustra el proceso de GPA aplicado al conjunto de puntos de referencia.
+
+
+\subsection{Triangulación de Delaunay}
+\label{subsec:triangulacion_delaunay}
+
+\paragraph{Necesidad de dividir la imagen.}
+El siguiente paso del proceso de normalización es deformar la imagen para que los puntos de referencia del paciente coincidan con los puntos de referencia de la forma estándar. Sin embargo, aplicar una única transformación global a toda la imagen no es suficiente: diferentes regiones de la imagen necesitan deformarse de manera diferente (por ejemplo, la parte superior de los pulmones puede necesitar comprimirse mientras que la parte inferior se expande).
+
+La solución es dividir la imagen en regiones más pequeñas (triángulos) y transformar cada región de manera independiente. Esto permite deformaciones locales que preservan la estructura general de la anatomía.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.60\textwidth]{Figures/F4.8_triangulacion_delaunay_es.png}
+    \caption{Triangulación de Delaunay sobre los 15 puntos de referencia de la forma estándar. Los triángulos definen las regiones donde se aplicarán transformaciones afines independientes durante el proceso de deformación.}
+    \label{fig:triangulacion_delaunay}
+\end{figure}
+
+\paragraph{Por qué triángulos y no otra forma.}
+Los triángulos tienen una propiedad matemática conveniente: dados tres puntos en la imagen original y sus correspondientes tres puntos en la imagen destino, existe una única transformación lineal (llamada \textit{transformación afín}) que mapea exactamente un triángulo en el otro. Esto no ocurre con cuadriláteros u otras formas más complejas.
+
+\subsubsection{Triangulación de Delaunay}
+
+Existen muchas formas de conectar un conjunto de puntos para formar triángulos. La triangulación de Delaunay \cite{delaunay1934sphere} es un método que produce triángulos ``bien formados'', es decir, triángulos que tienden a ser lo más equiláteros posible, evitando triángulos muy alargados o ``delgados'' que podrían causar distorsiones visuales durante la deformación \cite{berg2008computational}.
+
+\subsubsection{Aplicación a los Puntos de Referencia}
+
+La triangulación se calcula una única vez sobre los puntos de referencia de la forma estándar. Para los 15 puntos de referencia del contorno pulmonar, la triangulación de Delaunay produce 16 triángulos que cubren la región de interés. Esta misma estructura de triángulos se utiliza para todas las imágenes, garantizando consistencia en el proceso de normalización.
+
+La Figura \ref{fig:triangulacion_delaunay} muestra la triangulación resultante sobre la forma estándar.
+
+\subsection{Transformación Afín por Partes}
+\label{subsec:warping_afin}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.90\textwidth]{Figures/F4.9_original_vs_warped_es.png}
+    \caption{Comparación de radiografías originales y normalizadas por clase. Columnas: COVID-19, Normal y Neumonía viral. Filas: Original (arriba) y Normalizado (abajo). La normalización geométrica mediante deformación afín por partes alinea la región pulmonar con la forma estándar y reduce variabilidad de pose y escala.}
+    \label{fig:warping_comparison}
+\end{figure}
+
+\paragraph{El proceso de deformación.}
+El \textit{Warping} (deformación) es el proceso de ``estirar'' o ``comprimir'' partes de la imagen para que los puntos de referencia del paciente coincidan con los puntos de referencia de la forma estándar. Se denomina ``por partes'' porque cada triángulo se transforma de manera independiente \cite{wolberg1990digital}.
+
+\paragraph{Analogía visual.}
+Imaginemos la imagen impresa en una hoja de goma elástica, con los puntos de referencia marcados como puntos. La deformación consiste en ``tirar'' de cada punto de referencia hasta que coincida con su posición en la forma estándar. Los triángulos actúan como regiones que se estiran de manera uniforme: si un vértice del triángulo se mueve, toda la región triangular se deforma proporcionalmente.
+
+La Figura \ref{fig:warping_comparison} muestra la comparación visual entre una radiografía original y su versión normalizada geométricamente.
+
+
+\subsubsection{Transformación de un Triángulo}
+
+Para cada triángulo, se calcula una \textit{transformación afín}: una operación matemática que puede incluir traslación, rotación, escalado y sesgo, pero que preserva las líneas rectas y el paralelismo. La transformación se determina de forma única a partir de la correspondencia entre los tres vértices del triángulo en la imagen original y sus posiciones en la forma estándar. Esto significa que dados tres puntos de origen y tres puntos de destino, existe exactamente una transformación afín que mapea unos en otros.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.99\textwidth]{Figures/F4.22_transformacion_triangulo.png}
+    \caption{Esquema de la transformación afín de un triángulo. A partir de los vértices en la imagen original y sus correspondencias en la forma estándar, se calcula la matriz afín y se aplica a los píxeles del triángulo para obtener la región alineada.}
+    \label{fig:transformacion_triangulo}
+\end{figure}
+
+\subsubsection{Proceso de Deformación}
+
+La deformación completa procesa cada triángulo de la siguiente manera:
+
+\begin{enumerate}
+    \item Se identifican los tres vértices del triángulo en la imagen original (puntos de referencia predichos) y en la forma estándar.
+    \item Se calcula la matriz de transformación afín que mapea un triángulo en el otro.
+    \item Se aplica esta transformación a todos los píxeles dentro del triángulo.
+    \item Se repite para todos los triángulos de la triangulación.
+\end{enumerate}
+
+El Algoritmo \ref{alg:warping} presenta el pseudocódigo formal del proceso.
+
+\begin{algorithm}[htbp]
+\caption{Deformación Afín por Partes}
+\label{alg:warping}
+\begin{algorithmic}[1]
+\Require Imagen original, puntos de referencia de la imagen, puntos de referencia de la forma estándar, triangulación
+\Ensure Imagen normalizada
+\State Crear imagen destino vacía (todos los píxeles en negro)
+\For{cada triángulo en la triangulación}
+    \State Identificar los 3 vértices del triángulo en la imagen original
+    \State Identificar los 3 vértices correspondientes en la forma estándar
+    \If{el triángulo tiene área muy pequeña}
+        \State Saltar este triángulo (evitar divisiones por cero)
+    \EndIf
+    \State Calcular la transformación afín que mapea los vértices originales a los estándar
+    \State Aplicar la transformación a todos los píxeles dentro del triángulo
+    \State Copiar los píxeles transformados a la imagen destino
+\EndFor
+\State \Return imagen normalizada
+\end{algorithmic}
+\end{algorithm}
+
+Durante la deformación, los valores de los píxeles en posiciones intermedias se calculan mediante \textit{interpolación bilineal}, que promedia los valores de los píxeles vecinos para producir transiciones suaves. Esto evita que la imagen resultante tenga bordes dentados o discontinuidades visibles.
+
+\subsection{Proceso Completo de Normalización}
+\label{subsec:proceso_normalizacion}
+
+Esta sección resume cómo se integran todos los componentes descritos anteriormente para normalizar una radiografía. La Figura \ref{fig:proceso_normalizacion} presenta el diagrama de flujo del proceso completo.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Figures/F4.11_flujo_normalizacion.png}
+    \caption{Proceso completo de normalización geométrica. El sistema transforma una radiografía de entrada en una imagen geométricamente normalizada mediante la secuencia de predicción de puntos de referencia, forma estándar, triangulación y deformación afín por partes.}
+    \label{fig:proceso_normalizacion}
+\end{figure}
+
+\paragraph{Pasos del proceso.}
+Cuando llega una nueva radiografía para clasificar, el sistema ejecuta los siguientes pasos:
+
+\begin{enumerate}
+    \item \textbf{Predicción de puntos de referencia:} El modelo de detección (descrito en la Sección \ref{sec:modelo_landmarks}) localiza los 15 puntos del contorno pulmonar en la radiografía de entrada.
+
+    \item \textbf{Forma estándar:} Se utiliza la forma estándar pulmonar obtenida del GPA junto con los puntos de referencia predichos para establecer la correspondencia entre los puntos de la imagen y los puntos de referencia.
+
+    \item \textbf{Triangulación:} Se aplica la triangulación de Delaunay sobre los 15 puntos de referencia para definir los triángulos que conectan los puntos.
+
+    \item \textbf{Deformación:} Cada triángulo de la imagen original se transforma para que sus vértices coincidan con los de la forma estándar.
+
+    \item \textbf{Resultado:} Se obtiene una imagen de $224 \times 224$ píxeles donde los pulmones tienen siempre la misma posición, tamaño y orientación.
+\end{enumerate}
