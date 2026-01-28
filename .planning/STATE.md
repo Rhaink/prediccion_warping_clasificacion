@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-01-27)
 
 **Core value:** Maximize test set accuracy using existing cross-validation models while preserving methodological integrity (no test set contamination)
-**Current focus:** Pre-Implementation Audit
+**Current focus:** Ensemble Core
 
 ## Current Position
 
-Phase: 1 of 5 (Pre-Implementation Audit)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-01-27 — Completed 01-02-PLAN.md (Baseline Performance Verification)
+Phase: 2 of 5 (Ensemble Core)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-28 — Completed 02-01-PLAN.md (Ensemble Evaluation Infrastructure)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [███░░░░░░░] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 4 min
-- Total execution time: 0.13 hours
+- Total plans completed: 3
+- Average duration: 3.7 min
+- Total execution time: 0.18 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-pre-implementation-audit | 2 | 8 min | 4 min |
+| 02-ensemble-core | 1 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4m), 01-02 (4m)
-- Trend: Consistent velocity (4 min/plan)
+- Last 5 plans: 01-01 (4m), 01-02 (4m), 02-01 (3m)
+- Trend: Improving velocity (3 min/plan recent)
 
 *Updated after each plan completion*
 
@@ -42,9 +43,11 @@ Progress: [██░░░░░░░░] 20%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Soft voting over hard voting: Probability averaging captures model confidence, superior to majority vote (Pending)
-- Conservative TTA (flip horizontal focus): Radiographs are medical images; preserve diagnostic features (Pending)
-- 5 CV models ensemble: Diversity from different data partitions adds complementary information (Pending)
+- Use validation F1-macro as ensemble weights: Extract from results.json to avoid test contamination (IMPLEMENTED - 02-01)
+- Compute both soft and hard voting: Soft primary, hard provides baseline comparison (IMPLEMENTED - 02-01)
+- Soft voting over hard voting: Probability averaging captures model confidence, superior to majority vote (Pending validation - 02-02)
+- Conservative TTA (flip horizontal focus): Radiographs are medical images; preserve diagnostic features (Pending - Phase 3)
+- 5 CV models ensemble: Diversity from different data partitions adds complementary information (Pending validation - 02-02)
 - Test set used only for final evaluation: Methodological rigor for thesis validity (VALIDATED - 01-01)
 - Data leakage detected but methodology valid: Training methodology sound despite 1 test duplicate, 8 val duplicates (01-01)
 - Duplicates must be removed before final evaluation: 0.053% leakage rate small but violates thesis integrity (01-01)
@@ -65,7 +68,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-27 19:05 UTC (plan execution)
-Stopped at: Completed 01-02-PLAN.md - Baseline Performance Verification
+Last session: 2026-01-28 01:51 UTC (plan execution)
+Stopped at: Completed 02-01-PLAN.md - Ensemble Evaluation Infrastructure
 Resume file: None
-Next: Phase 1 complete - Ready for Phase 2 planning
+Next: Plan 02-02 - Config Creation and Baseline Evaluation
