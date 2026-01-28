@@ -2601,6 +2601,298 @@ def evaluate_classifier(
     logger.info("=" * 60)
 
 
+@app.command("evaluate-classifier-ensemble")
+def evaluate_classifier_ensemble(
+    config: str = typer.Option(
+        ...,
+        "--config", "-c",
+        help="Path to ensemble configuration JSON"
+    ),
+    output: str = typer.Option(
+        "outputs/classifier_cv/ensemble_test_results.json",
+        "--output", "-o",
+        help="Output JSON path"
+    ),
+    device: str = typer.Option(
+        "auto",
+        "--device",
+        help="Device: auto, cuda, cpu, mps"
+    ),
+    batch_size: int = typer.Option(
+        32,
+        "--batch-size",
+        help="Batch size for inference"
+    ),
+    predictions_csv: Optional[str] = typer.Option(
+        None,
+        "--predictions-csv",
+        help="Save per-sample predictions to CSV (debug output)"
+    ),
+):
+    """
+    Evaluate 5-fold cross-validation ensemble on test set.
+
+    Computes both soft voting (weighted probability averaging) and
+    hard voting (majority vote) for comparison. This establishes
+    baseline ensemble metrics; final evaluation with validation
+    checks is performed in Phase 5.
+
+    Example:
+        python -m src_v2 evaluate-classifier-ensemble \\
+            --config configs/ensemble_classifier.json \\
+            --output outputs/classifier_cv/ensemble_test_results.json
+    """
+    import json
+    from datetime import datetime
+
+    import numpy as np
+    import torch
+    from torch.utils.data import DataLoader
+    from torchvision import datasets
+    from sklearn.metrics import (
+        classification_report,
+        confusion_matrix,
+        f1_score,
+        accuracy_score,
+    )
+
+    from src_v2.models import get_classifier_transforms
+    from src_v2.evaluation.ensemble import (
+        load_ensemble_models,
+        weighted_soft_voting,
+        hard_voting,
+        ensemble_inference,
+        validate_ensemble_setup,
+    )
+
+    logger.info("=" * 60)
+    logger.info("COVID-19 Classifier Ensemble Evaluation")
+    logger.info("=" * 60)
+
+    # Load config
+    config_path = Path(config)
+    if not config_path.exists():
+        logger.error("Config file not found: %s", config)
+        raise typer.Exit(code=1)
+
+    with open(config_path) as f:
+        config_data = json.load(f)
+
+    checkpoint_paths = config_data.get("checkpoint_paths")
+    data_dir = config_data.get("data_dir")
+    baseline_accuracy = config_data.get("baseline_accuracy", 0.9768)
+
+    if not checkpoint_paths:
+        logger.error("Config missing 'checkpoint_paths' field")
+        raise typer.Exit(code=1)
+    if not data_dir:
+        logger.error("Config missing 'data_dir' field")
+        raise typer.Exit(code=1)
+
+    # Verify checkpoint paths exist
+    for i, ckpt_path in enumerate(checkpoint_paths):
+        if not Path(ckpt_path).exists():
+            logger.error("Checkpoint not found: %s", ckpt_path)
+            raise typer.Exit(code=1)
+
+    # Verify data directory
+    data_path = Path(data_dir)
+    test_dir = data_path / "test"
+    if not test_dir.exists():
+        logger.error("Test directory not found: %s", test_dir)
+        raise typer.Exit(code=1)
+
+    # Setup device
+    torch_device = get_device(device)
+    logger.info("Device: %s", torch_device)
+    logger.info("Number of models: %d", len(checkpoint_paths))
+
+    # Load ensemble models
+    logger.info("Loading ensemble models...")
+    models, weights = load_ensemble_models(checkpoint_paths, torch_device)
+    logger.info("Validation weights (F1-macro): %s", [f"{w:.4f}" for w in weights])
+
+    # Get class names from first checkpoint
+    ckpt_data = torch.load(checkpoint_paths[0], map_location="cpu", weights_only=False)
+    class_names = ckpt_data.get("class_names", CLASSIFIER_CLASSES)
+    logger.info("Classes: %s", class_names)
+
+    # Prepare test dataset
+    eval_transform = get_classifier_transforms(train=False, img_size=DEFAULT_IMAGE_SIZE)
+    test_dataset = datasets.ImageFolder(test_dir, transform=eval_transform)
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=get_optimal_num_workers()
+    )
+    logger.info("Test samples: %d", len(test_dataset))
+
+    # Validate ensemble setup
+    logger.info("Running sanity checks...")
+    validate_ensemble_setup(models, test_loader, expected_samples=len(test_dataset))
+
+    # Run ensemble inference
+    logger.info("Running ensemble inference...")
+    model_preds, model_probs, labels = ensemble_inference(
+        models, test_loader, torch_device
+    )
+
+    # Compute per-fold metrics
+    logger.info("Computing per-fold metrics...")
+    per_fold_metrics = []
+    for i in range(len(models)):
+        fold_preds = model_preds[i].numpy()
+        fold_acc = accuracy_score(labels, fold_preds)
+        fold_f1_macro = f1_score(labels, fold_preds, average='macro')
+        fold_f1_weighted = f1_score(labels, fold_preds, average='weighted')
+        per_fold_metrics.append({
+            "fold": i + 1,
+            "checkpoint": str(checkpoint_paths[i]),
+            "validation_f1_macro": weights[i],
+            "test_metrics": {
+                "accuracy": float(fold_acc),
+                "f1_macro": float(fold_f1_macro),
+                "f1_weighted": float(fold_f1_weighted),
+            }
+        })
+
+    # Compute soft voting ensemble
+    logger.info("Computing soft voting ensemble...")
+    soft_preds, soft_probs = weighted_soft_voting(model_probs, weights)
+    soft_preds_np = soft_preds.numpy()
+
+    soft_acc = accuracy_score(labels, soft_preds_np)
+    soft_f1_macro = f1_score(labels, soft_preds_np, average='macro')
+    soft_f1_weighted = f1_score(labels, soft_preds_np, average='weighted')
+    soft_cm = confusion_matrix(labels, soft_preds_np)
+    soft_report = classification_report(
+        labels, soft_preds_np, target_names=class_names, output_dict=True
+    )
+
+    ensemble_soft_metrics = {
+        "method": "weighted_probability_averaging",
+        "weights_source": "validation_f1_macro",
+        "weights": weights,
+        "metrics": {
+            "accuracy": float(soft_acc),
+            "f1_macro": float(soft_f1_macro),
+            "f1_weighted": float(soft_f1_weighted),
+        },
+        "per_class": soft_report,
+        "confusion_matrix": soft_cm.tolist(),
+    }
+
+    # Compute hard voting ensemble
+    logger.info("Computing hard voting ensemble...")
+    hard_preds = hard_voting(model_preds)
+    hard_preds_np = hard_preds.numpy()
+
+    hard_acc = accuracy_score(labels, hard_preds_np)
+    hard_f1_macro = f1_score(labels, hard_preds_np, average='macro')
+    hard_f1_weighted = f1_score(labels, hard_preds_np, average='weighted')
+
+    ensemble_hard_metrics = {
+        "method": "majority_vote",
+        "metrics": {
+            "accuracy": float(hard_acc),
+            "f1_macro": float(hard_f1_macro),
+            "f1_weighted": float(hard_f1_weighted),
+        },
+    }
+
+    # Compute comparison with baseline
+    baseline_mean = baseline_accuracy
+    baseline_std = config_data.get("baseline_std", 0.0016)
+    comparison = {
+        "baseline_mean": baseline_mean,
+        "baseline_std": baseline_std,
+        "ensemble_soft_delta": float(soft_acc - baseline_mean),
+        "ensemble_hard_delta": float(hard_acc - baseline_mean),
+    }
+
+    # Create output JSON
+    output_data = {
+        "description": "5-fold ensemble evaluation on test set",
+        "timestamp": datetime.now().isoformat(),
+        "n_folds": len(checkpoint_paths),
+        "test_set_size": len(labels),
+        "per_fold_metrics": per_fold_metrics,
+        "ensemble_soft_voting": ensemble_soft_metrics,
+        "ensemble_hard_voting": ensemble_hard_metrics,
+        "comparison": comparison,
+        "class_names": class_names,
+    }
+
+    # Save output JSON
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(output_data, f, indent=2)
+    logger.info("Results saved to: %s", output_path)
+
+    # Print summary table
+    logger.info("\n" + "=" * 60)
+    logger.info("ENSEMBLE EVALUATION RESULTS")
+    logger.info("=" * 60)
+
+    # Per-fold metrics
+    logger.info("\n--- Per-Fold Metrics (Test Set) ---")
+    logger.info(f"{'Fold':<6} {'Val F1':>8} {'Acc':>8} {'F1-Macro':>10} {'F1-Weighted':>12}")
+    logger.info("-" * 50)
+    for fold_result in per_fold_metrics:
+        fold_num = fold_result["fold"]
+        val_f1 = fold_result["validation_f1_macro"]
+        test_acc = fold_result["test_metrics"]["accuracy"]
+        test_f1_macro = fold_result["test_metrics"]["f1_macro"]
+        test_f1_weighted = fold_result["test_metrics"]["f1_weighted"]
+        logger.info(
+            f"{fold_num:<6} {val_f1:>8.4f} {test_acc:>8.4f} {test_f1_macro:>10.4f} {test_f1_weighted:>12.4f}"
+        )
+
+    # Ensemble soft voting
+    logger.info("\n--- Ensemble Soft Voting (Weighted Probability Averaging) ---")
+    logger.info(f"Accuracy:    {soft_acc:.4f} ({soft_acc*100:.2f}%)")
+    logger.info(f"F1-Macro:    {soft_f1_macro:.4f}")
+    logger.info(f"F1-Weighted: {soft_f1_weighted:.4f}")
+    logger.info(f"Delta vs Baseline: {comparison['ensemble_soft_delta']:+.4f}")
+
+    # Ensemble hard voting
+    logger.info("\n--- Ensemble Hard Voting (Majority Vote) ---")
+    logger.info(f"Accuracy:    {hard_acc:.4f} ({hard_acc*100:.2f}%)")
+    logger.info(f"F1-Macro:    {hard_f1_macro:.4f}")
+    logger.info(f"F1-Weighted: {hard_f1_weighted:.4f}")
+    logger.info(f"Delta vs Baseline: {comparison['ensemble_hard_delta']:+.4f}")
+
+    # Comparison
+    logger.info("\n--- Comparison with Baseline ---")
+    logger.info(f"Baseline (mean ± std): {baseline_mean:.4f} ± {baseline_std:.4f}")
+    logger.info(f"Soft Voting:           {soft_acc:.4f} ({comparison['ensemble_soft_delta']:+.4f})")
+    logger.info(f"Hard Voting:           {hard_acc:.4f} ({comparison['ensemble_hard_delta']:+.4f})")
+
+    # Confusion matrix
+    logger.info("\nConfusion Matrix (Soft Voting):")
+    logger.info(f"\n{soft_cm}")
+
+    # Save predictions CSV if requested
+    if predictions_csv:
+        import pandas as pd
+        pred_df = pd.DataFrame({
+            "sample_idx": range(len(labels)),
+            "true_label": labels,
+            "soft_prediction": soft_preds_np,
+            "hard_prediction": hard_preds_np,
+            "soft_correct": (labels == soft_preds_np).astype(int),
+            "hard_correct": (labels == hard_preds_np).astype(int),
+        })
+        pred_df.to_csv(predictions_csv, index=False)
+        logger.info(f"\nPredictions saved to: {predictions_csv}")
+
+    logger.info("\n" + "=" * 60)
+    logger.info("Ensemble evaluation completed!")
+    logger.info("=" * 60)
+
+
 @app.command("cross-validate-classifier")
 def cross_validate_classifier(
     ctx: typer.Context,
