@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 2 of 5 (Ensemble Core)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-28 — Completed 02-01-PLAN.md (Ensemble Evaluation Infrastructure)
+Last activity: 2026-01-28 — Completed 02-02-PLAN.md (Ensemble Config and Baseline Evaluation)
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 3.7 min
-- Total execution time: 0.18 hours
+- Total plans completed: 4
+- Average duration: 4.5 min
+- Total execution time: 0.30 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-pre-implementation-audit | 2 | 8 min | 4 min |
-| 02-ensemble-core | 1 | 3 min | 3 min |
+| 02-ensemble-core | 2 | 10 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4m), 01-02 (4m), 02-01 (3m)
-- Trend: Improving velocity (3 min/plan recent)
+- Last 5 plans: 01-01 (4m), 01-02 (4m), 02-01 (3m), 02-02 (7m)
+- Trend: Stable velocity (4-7 min/plan range)
 
 *Updated after each plan completion*
 
@@ -43,11 +43,13 @@ Progress: [███░░░░░░░] 30%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- Ensemble achieves 98.10% accuracy: Soft/hard voting identical, +0.42% improvement over baseline (VALIDATED - 02-02)
+- Baseline ensemble documented in GROUND_TRUTH.json: Reference point for TTA and final evaluation (IMPLEMENTED - 02-02)
 - Use validation F1-macro as ensemble weights: Extract from results.json to avoid test contamination (IMPLEMENTED - 02-01)
 - Compute both soft and hard voting: Soft primary, hard provides baseline comparison (IMPLEMENTED - 02-01)
-- Soft voting over hard voting: Probability averaging captures model confidence, superior to majority vote (Pending validation - 02-02)
+- Soft voting equivalent to hard voting: Both achieve 98.10%, demonstrates strong model consensus (VALIDATED - 02-02)
 - Conservative TTA (flip horizontal focus): Radiographs are medical images; preserve diagnostic features (Pending - Phase 3)
-- 5 CV models ensemble: Diversity from different data partitions adds complementary information (Pending validation - 02-02)
+- 5 CV models ensemble effectiveness: Diversity from data partitions reduces errors by 47% (36→19) (VALIDATED - 02-02)
 - Test set used only for final evaluation: Methodological rigor for thesis validity (VALIDATED - 01-01)
 - Data leakage detected but methodology valid: Training methodology sound despite 1 test duplicate, 8 val duplicates (01-01)
 - Duplicates must be removed before final evaluation: 0.053% leakage rate small but violates thesis integrity (01-01)
@@ -68,7 +70,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-28 01:51 UTC (plan execution)
-Stopped at: Completed 02-01-PLAN.md - Ensemble Evaluation Infrastructure
+Last session: 2026-01-28 02:02 UTC (plan execution)
+Stopped at: Completed 02-02-PLAN.md - Ensemble Config and Baseline Evaluation
 Resume file: None
-Next: Plan 02-02 - Config Creation and Baseline Evaluation
+Next: Plan 02-03 - TTA Integration
