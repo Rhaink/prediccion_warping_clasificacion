@@ -57,15 +57,16 @@ Plans:
 **Depends on**: Phase 2
 **Requirements**: TTA-01, TTA-02, METRICS-03, METRICS-04
 **Success Criteria** (what must be TRUE):
-  1. Horizontal flip TTA applies symmetry correction (reusing SYMMETRIC_PAIRS from landmark pipeline)
-  2. TTA configuration controlled via JSON (enable/disable TTA, augmentation parameters)
+  1. Horizontal flip TTA implemented (no symmetry correction needed - class labels are anatomically symmetric)
+  2. TTA configuration controlled via JSON (use_tta parameter) with CLI override (--tta/--no-tta)
   3. Per-class breakdown computed for all predictions (COVID/Normal/Viral_Pneumonia accuracy, precision, recall, F1)
-  4. Confusion matrix generated for ensemble predictions showing true vs predicted labels
+  4. Case-level impact tracking categorizes each sample as helped/hurt/neutral by TTA
   5. Ensemble+TTA improves over ensemble-only baseline (measurable accuracy delta)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md - Implement TTA prediction functions and CLI integration
+- [ ] 03-02-PLAN.md - Execute evaluation with case-level tracking and update GROUND_TRUTH
 
 ### Phase 4: Analysis & Visualization
 **Goal**: Generate comparison analysis and thesis-ready confusion matrix visualizations
@@ -104,6 +105,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Pre-Implementation Audit | 2/2 | Complete | 2026-01-27 |
 | 2. Ensemble Core | 2/2 | Complete | 2026-01-27 |
-| 3. TTA Integration | 0/TBD | Not started | - |
+| 3. TTA Integration | 0/2 | Ready | - |
 | 4. Analysis & Visualization | 0/TBD | Not started | - |
 | 5. Final Test Evaluation | 0/TBD | Not started | - |
