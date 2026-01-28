@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Pre-Implementation Audit** - Validate test set integrity and document current state
 - [x] **Phase 2: Ensemble Core** - Implement model loading and soft/hard voting with baseline metrics
-- [ ] **Phase 3: TTA Integration** - Add test-time augmentation with conservative horizontal flip
+- [x] **Phase 3: TTA Integration** - Add test-time augmentation with conservative horizontal flip
 - [ ] **Phase 4: Analysis & Visualization** - Generate comparison metrics and thesis-ready confusion matrices
 - [ ] **Phase 5: Final Test Evaluation** - Evaluate complete test set with validation checks
 
@@ -67,7 +67,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md - Implement TTA prediction functions and CLI integration
 - [x] 03-02-PLAN.md - Execute evaluation with case-level tracking and update GROUND_TRUTH
-- [ ] 03-03-PLAN.md - Wire orphaned case-level impact functions into CLI (gap closure)
+- [x] 03-03-PLAN.md - Wire orphaned case-level impact functions into CLI (gap closure)
 
 ### Phase 4: Analysis & Visualization
 **Goal**: Generate comparison analysis and thesis-ready confusion matrix visualizations
@@ -106,6 +106,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Pre-Implementation Audit | 2/2 | Complete | 2026-01-27 |
 | 2. Ensemble Core | 2/2 | Complete | 2026-01-27 |
-| 3. TTA Integration | 2/3 | In progress | - |
+| 3. TTA Integration | 3/3 | Complete | 2026-01-27 |
 | 4. Analysis & Visualization | 0/TBD | Not started | - |
 | 5. Final Test Evaluation | 0/TBD | Not started | - |

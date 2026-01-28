@@ -16,15 +16,15 @@ Requirements for ensemble+TTA implementation. Each maps to roadmap phases.
 
 ### Test-Time Augmentation
 
-- [ ] **TTA-01**: Apply horizontal flip with symmetry correction (validated in landmark pipeline)
-- [ ] **TTA-02**: JSON-driven configuration (enable/disable TTA, augmentation parameters)
+- [x] **TTA-01**: Apply horizontal flip with symmetry correction (validated in landmark pipeline)
+- [x] **TTA-02**: JSON-driven configuration (enable/disable TTA, augmentation parameters)
 
 ### Metrics & Evaluation
 
 - [x] **METRICS-01**: Compute accuracy, F1-macro, F1-weighted for ensemble
 - [x] **METRICS-02**: Compute individual metrics per model (all 5 CV folds)
-- [ ] **METRICS-03**: Per-class breakdown (COVID/Normal/Viral_Pneumonia)
-- [ ] **METRICS-04**: Generate confusion matrix for ensemble predictions
+- [x] **METRICS-03**: Per-class breakdown (COVID/Normal/Viral_Pneumonia)
+- [x] **METRICS-04**: Generate confusion matrix for ensemble predictions
 - [ ] **METRICS-05**: Compare ensemble vs individual average vs best individual model
 
 ### Output & Visualization
@@ -89,12 +89,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENSEMBLE-02 | Phase 2 | Complete |
 | ENSEMBLE-03 | Phase 2 | Complete |
 | ENSEMBLE-04 | Phase 5 | Pending |
-| TTA-01 | Phase 3 | Pending |
-| TTA-02 | Phase 3 | Pending |
+| TTA-01 | Phase 3 | Complete |
+| TTA-02 | Phase 3 | Complete |
 | METRICS-01 | Phase 2 | Complete |
 | METRICS-02 | Phase 2 | Complete |
-| METRICS-03 | Phase 3 | Pending |
-| METRICS-04 | Phase 3 | Pending |
+| METRICS-03 | Phase 3 | Complete |
+| METRICS-04 | Phase 3 | Complete |
 | METRICS-05 | Phase 4 | Pending |
 | OUTPUT-01 | Phase 2 | Complete |
 | OUTPUT-02 | Phase 4 | Pending |

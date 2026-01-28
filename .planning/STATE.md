@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 3 of 5 (TTA Integration)
-Plan: 2 of 2 in current phase
+Plan: 3 of 3 in current phase
 Status: Phase complete
-Last activity: 2026-01-28 — Completed 03-02-PLAN.md (TTA Evaluation)
+Last activity: 2026-01-27 — Completed 03-03-PLAN.md (Gap closure: case-level impact wiring)
 
 Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 7 min
-- Total execution time: 0.78 hours
+- Total execution time: 0.92 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [██████░░░░] 60%
 |-------|-------|-------|----------|
 | 01-pre-implementation-audit | 2 | 8 min | 4 min |
 | 02-ensemble-core | 2 | 10 min | 5 min |
-| 03-tta-integration | 2 | 26 min | 13 min |
+| 03-tta-integration | 3 | 34 min | 11 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (3m), 02-02 (7m), 03-01 (15m), 03-02 (11m)
-- Trend: Phase 3 higher complexity (13m avg) due to TTA infrastructure + evaluation
+- Last 5 plans: 02-02 (7m), 03-01 (15m), 03-02 (11m), 03-03 (8m)
+- Trend: Phase 3 maintains complexity (11m avg) - gap closure plan faster than initial infrastructure
 
 *Updated after each plan completion*
 
@@ -44,6 +44,7 @@ Progress: [██████░░░░] 60%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- Case-level impact fully wired: CLI now tracks helped/hurt/neutral outcomes, enables TTA value assessment (IMPLEMENTED - 03-03)
 - TTA validated at 98.26% accuracy: +0.16pp improvement over baseline, net +3 samples corrected (VALIDATED - 03-02)
 - TTA per-class impact varies: COVID +0.44%, Normal +0.12%, Viral -0.28% F1 delta (VALIDATED - 03-02)
 - Case-level tracking implemented: 6 helped, 3 hurt, 1886 neutral samples (IMPLEMENTED - 03-02)
@@ -75,13 +76,14 @@ None yet.
 
 **From Phase 03 (TTA Integration) - COMPLETE:**
 1. TTA improvement validated - 98.26% accuracy (+0.16pp over 98.10% baseline)
-2. Case-level impact tracked - 6 helped, 3 hurt, net +3 samples improvement
-3. Per-class impact documented - COVID benefits most (+0.44% F1), Viral degrades slightly (-0.28% F1)
-4. GROUND_TRUTH.json updated - with_tta section contains validated metrics
+2. Case-level impact fully wired - Functions integrated into CLI, output JSON includes analysis
+3. Case-level metrics validated - 6 helped, 3 hurt, net +3 samples improvement (matches ground truth)
+4. Per-class impact documented - COVID benefits most (+0.44% F1), Viral degrades slightly (-0.28% F1)
+5. GROUND_TRUTH.json updated - with_tta section contains validated metrics
 
 ## Session Continuity
 
-Last session: 2026-01-28 04:09 UTC (plan execution)
-Stopped at: Completed 03-02-PLAN.md - TTA Evaluation
+Last session: 2026-01-27 22:46 UTC (plan execution)
+Stopped at: Completed 03-03-PLAN.md - Gap closure (case-level impact wiring)
 Resume file: None
-Next: Phase 3 complete - Ready for Phase 4 planning (thesis writing) or Phase 5 (final evaluation)
+Next: Phase 3 verification pending - Ready for verifier to validate must_haves
