@@ -148,6 +148,28 @@
       },
       "source": "outputs/classifier_cv/cross_validation_results.json",
       "note": "Metrics converted to percent from CV summary (scale 0-1)."
+    },
+    "classifier_ensemble_cv": {
+      "description": "5-fold CV ensemble BASELINE evaluation on test set (Phase 2)",
+      "note": "Baseline metrics - final evaluation with validation checks in Phase 5",
+      "baseline_individual_mean": 0.9768,
+      "baseline_individual_std": 0.0016,
+      "ensemble_soft_voting": {
+        "accuracy": 0.9810026385224274,
+        "f1_macro": 0.9703237736245484,
+        "f1_weighted": 0.9809286214299495,
+        "improvement_over_baseline": 0.004202638522427415
+      },
+      "ensemble_hard_voting": {
+        "accuracy": 0.9810026385224274,
+        "f1_macro": 0.9710129370669066,
+        "improvement_over_baseline": 0.004202638522427415
+      },
+      "timestamp": "2026-01-27T20:01:02.860435",
+      "test_set_size": 1895,
+      "validated": "2026-01-27",
+      "config": "configs/ensemble_classifier.json",
+      "results": "outputs/classifier_cv/ensemble_test_results.json"
     }
   },
   "robustness": {
