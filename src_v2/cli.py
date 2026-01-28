@@ -2628,6 +2628,11 @@ def evaluate_classifier_ensemble(
         "--predictions-csv",
         help="Save per-sample predictions to CSV (debug output)"
     ),
+    tta: Optional[bool] = typer.Option(
+        None,
+        "--tta/--no-tta",
+        help="Enable/disable TTA (overrides config use_tta if provided)"
+    ),
 ):
     """
     Evaluate 5-fold cross-validation ensemble on test set.
@@ -2662,6 +2667,7 @@ def evaluate_classifier_ensemble(
         weighted_soft_voting,
         hard_voting,
         ensemble_inference,
+        ensemble_inference_with_tta,
         validate_ensemble_setup,
     )
 
@@ -2681,6 +2687,10 @@ def evaluate_classifier_ensemble(
     checkpoint_paths = config_data.get("checkpoint_paths")
     data_dir = config_data.get("data_dir")
     baseline_accuracy = config_data.get("baseline_accuracy", 0.9768)
+
+    # Resolve TTA setting: CLI overrides config
+    use_tta = tta if tta is not None else config_data.get("use_tta", True)
+    logger.info("TTA enabled: %s", use_tta)
 
     if not checkpoint_paths:
         logger.error("Config missing 'checkpoint_paths' field")
@@ -2734,8 +2744,8 @@ def evaluate_classifier_ensemble(
 
     # Run ensemble inference
     logger.info("Running ensemble inference...")
-    model_preds, model_probs, labels = ensemble_inference(
-        models, test_loader, torch_device
+    model_preds, model_probs, labels, tta_details = ensemble_inference_with_tta(
+        models, test_loader, torch_device, use_tta=use_tta
     )
 
     # Compute per-fold metrics
@@ -2815,6 +2825,7 @@ def evaluate_classifier_ensemble(
     output_data = {
         "description": "5-fold ensemble evaluation on test set",
         "timestamp": datetime.now().isoformat(),
+        "tta_enabled": use_tta,
         "n_folds": len(checkpoint_paths),
         "test_set_size": len(labels),
         "per_fold_metrics": per_fold_metrics,
