@@ -2669,6 +2669,8 @@ def evaluate_classifier_ensemble(
         ensemble_inference,
         ensemble_inference_with_tta,
         validate_ensemble_setup,
+        categorize_tta_impact,
+        compute_tta_delta_metrics,
     )
 
     logger.info("=" * 60)
@@ -2748,6 +2750,16 @@ def evaluate_classifier_ensemble(
         models, test_loader, torch_device, use_tta=use_tta
     )
 
+    # Compute baseline predictions for TTA comparison (if TTA enabled)
+    if use_tta:
+        logger.info("Computing baseline (no-TTA) predictions for case-level comparison...")
+        logger.info("NOTE: This runs a second inference pass without TTA (doubles inference time)")
+        baseline_model_preds, baseline_model_probs, _, _ = ensemble_inference_with_tta(
+            models, test_loader, torch_device, use_tta=False
+        )
+        baseline_soft_preds, _ = weighted_soft_voting(baseline_model_probs, weights)
+        baseline_soft_preds_np = baseline_soft_preds.numpy()
+
     # Compute per-fold metrics
     logger.info("Computing per-fold metrics...")
     per_fold_metrics = []
@@ -2793,6 +2805,44 @@ def evaluate_classifier_ensemble(
         "confusion_matrix": soft_cm.tolist(),
     }
 
+    # Compute TTA case-level impact and delta metrics
+    if use_tta:
+        # Case-level analysis: helped/hurt/neutral
+        case_level = categorize_tta_impact(
+            pred_baseline=baseline_soft_preds_np,
+            pred_tta=soft_preds_np,
+            ground_truth=labels
+        )
+        logger.info("TTA Case-Level Impact: helped=%d, hurt=%d, neutral=%d",
+            case_level["summary"]["helped"],
+            case_level["summary"]["hurt"],
+            case_level["summary"]["neutral"])
+
+        # Delta metrics: accuracy and F1 deltas
+        baseline_acc = accuracy_score(labels, baseline_soft_preds_np)
+        baseline_f1_macro = f1_score(labels, baseline_soft_preds_np, average='macro')
+        baseline_report = classification_report(
+            labels, baseline_soft_preds_np, target_names=class_names, output_dict=True
+        )
+        baseline_metrics_dict = {
+            "accuracy": float(baseline_acc),
+            "f1_macro": float(baseline_f1_macro),
+            "per_class": baseline_report,
+        }
+        tta_metrics_dict = {
+            "accuracy": float(soft_acc),
+            "f1_macro": float(soft_f1_macro),
+            "per_class": soft_report,
+        }
+        delta_metrics = compute_tta_delta_metrics(
+            baseline_metrics=baseline_metrics_dict,
+            tta_metrics=tta_metrics_dict,
+            class_names=class_names,
+        )
+        logger.info("TTA Delta: accuracy=%+.4f, f1_macro=%+.4f",
+            delta_metrics["accuracy_delta"],
+            delta_metrics["f1_macro_delta"])
+
     # Compute hard voting ensemble
     logger.info("Computing hard voting ensemble...")
     hard_preds = hard_voting(model_preds)
@@ -2834,6 +2884,15 @@ def evaluate_classifier_ensemble(
         "comparison": comparison,
         "class_names": class_names,
     }
+
+    # Add TTA-specific fields to output
+    if use_tta:
+        # Only include summary in JSON (per_sample list is large)
+        output_data["case_level_analysis"] = {
+            "summary": case_level["summary"],
+            "net_improvement": case_level["summary"]["helped"] - case_level["summary"]["hurt"],
+        }
+        output_data["tta_delta_metrics"] = delta_metrics
 
     # Save output JSON
     output_path = Path(output)
@@ -2884,6 +2943,19 @@ def evaluate_classifier_ensemble(
     # Confusion matrix
     logger.info("\nConfusion Matrix (Soft Voting):")
     logger.info(f"\n{soft_cm}")
+
+    # TTA case-level impact and delta metrics (if TTA enabled)
+    if use_tta:
+        logger.info("\n--- TTA Case-Level Impact ---")
+        logger.info(f"Helped (baseline wrong, TTA correct): {case_level['summary']['helped']}")
+        logger.info(f"Hurt (baseline correct, TTA wrong):   {case_level['summary']['hurt']}")
+        logger.info(f"Neutral (same outcome):               {case_level['summary']['neutral']}")
+        logger.info(f"Net improvement: {case_level['summary']['helped'] - case_level['summary']['hurt']}")
+        logger.info("\n--- TTA Delta Metrics ---")
+        logger.info(f"Accuracy delta: {delta_metrics['accuracy_delta']:+.4f}")
+        logger.info(f"F1-Macro delta: {delta_metrics['f1_macro_delta']:+.4f}")
+        for cls, delta in delta_metrics['per_class_f1_delta'].items():
+            logger.info(f"  {cls} F1 delta: {delta:+.4f}")
 
     # Save predictions CSV if requested
     if predictions_csv:
