@@ -248,7 +248,7 @@ def validate_ensemble_setup(
 
     # Probabilities sum to 1.0
     prob_sum = test_probs.sum(dim=1)
-    assert torch.allclose(prob_sum, torch.ones(1), atol=1e-5), \
+    assert torch.allclose(prob_sum, torch.ones(1, device=prob_sum.device), atol=1e-5), \
         f"Probability sum = {prob_sum.item():.6f}, expected 1.0"
 
     # 5. Valid prediction range
