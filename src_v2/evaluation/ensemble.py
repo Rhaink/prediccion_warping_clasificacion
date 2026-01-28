@@ -199,6 +199,48 @@ def ensemble_inference(
     return model_preds, model_probs, np.array(all_labels)
 
 
+@torch.no_grad()
+def predict_with_tta_classifier(
+    model: nn.Module,
+    images: torch.Tensor,
+    device: torch.device
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Model-level TTA: average predictions from original + flipped images.
+
+    Unlike landmark TTA, classifier TTA does NOT need symmetry correction
+    because class labels (COVID, Normal, Viral_Pneumonia) are anatomically
+    symmetric - a flipped COVID X-ray is still COVID.
+
+    Args:
+        model: Classifier model in eval mode
+        images: Batch (B, 3, H, W)
+        device: Device
+
+    Returns:
+        Tuple of (tta_averaged_probs, probs_original, probs_flipped)
+        - tta_averaged_probs: (B, num_classes) averaged probabilities
+        - probs_original: (B, num_classes) original image probabilities
+        - probs_flipped: (B, num_classes) flipped image probabilities
+    """
+    model.eval()
+    images = images.to(device)
+
+    # Original prediction
+    logits_orig = model(images)
+    probs_orig = torch.softmax(logits_orig, dim=1)
+
+    # Flipped prediction (horizontal flip along width dimension)
+    images_flipped = torch.flip(images, dims=[3])
+    logits_flip = model(images_flipped)
+    probs_flip = torch.softmax(logits_flip, dim=1)
+
+    # Simple average (no symmetry correction needed for class labels)
+    tta_probs = (probs_orig + probs_flip) / 2
+
+    return tta_probs, probs_orig, probs_flip
+
+
 def validate_ensemble_setup(
     models: List[nn.Module],
     dataloader: DataLoader,
