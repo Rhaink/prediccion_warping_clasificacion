@@ -46,10 +46,11 @@ Plans:
   4. Individual metrics computed for all 5 CV fold models (accuracy, F1-macro, F1-weighted)
   5. Ensemble aggregated metrics computed (accuracy, F1-macro, F1-weighted)
   6. Results JSON file generated at outputs/classifier_cv/ensemble_test_results.json with complete metrics breakdown
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md - Implement ensemble module and CLI command
+- [ ] 02-02-PLAN.md - Create configuration and execute evaluation
 
 ### Phase 3: TTA Integration
 **Goal**: Add conservative test-time augmentation with horizontal flip and expand metrics
@@ -97,12 +98,12 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pre-Implementation Audit | 2/2 | ✓ Complete | 2026-01-27 |
-| 2. Ensemble Core | 0/TBD | Not started | - |
+| 1. Pre-Implementation Audit | 2/2 | Complete | 2026-01-27 |
+| 2. Ensemble Core | 0/2 | Not started | - |
 | 3. TTA Integration | 0/TBD | Not started | - |
 | 4. Analysis & Visualization | 0/TBD | Not started | - |
 | 5. Final Test Evaluation | 0/TBD | Not started | - |
