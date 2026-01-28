@@ -62,11 +62,12 @@ Plans:
   3. Per-class breakdown computed for all predictions (COVID/Normal/Viral_Pneumonia accuracy, precision, recall, F1)
   4. Case-level impact tracking categorizes each sample as helped/hurt/neutral by TTA
   5. Ensemble+TTA improves over ensemble-only baseline (measurable accuracy delta)
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 - [x] 03-01-PLAN.md - Implement TTA prediction functions and CLI integration
-- [ ] 03-02-PLAN.md - Execute evaluation with case-level tracking and update GROUND_TRUTH
+- [x] 03-02-PLAN.md - Execute evaluation with case-level tracking and update GROUND_TRUTH
+- [ ] 03-03-PLAN.md - Wire orphaned case-level impact functions into CLI (gap closure)
 
 ### Phase 4: Analysis & Visualization
 **Goal**: Generate comparison analysis and thesis-ready confusion matrix visualizations
@@ -105,6 +106,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Pre-Implementation Audit | 2/2 | Complete | 2026-01-27 |
 | 2. Ensemble Core | 2/2 | Complete | 2026-01-27 |
-| 3. TTA Integration | 1/2 | In progress | - |
+| 3. TTA Integration | 2/3 | In progress | - |
 | 4. Analysis & Visualization | 0/TBD | Not started | - |
 | 5. Final Test Evaluation | 0/TBD | Not started | - |
