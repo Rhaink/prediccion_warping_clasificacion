@@ -8,7 +8,7 @@ Provides soft voting (weighted probability averaging) and hard voting
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any, Optional
 
 import numpy as np
 import torch
@@ -375,3 +375,79 @@ def validate_ensemble_setup(
         f"Prediction {test_pred.item()} outside valid range [0, {num_classes})"
 
     print("✓ All sanity checks passed")
+
+
+def categorize_tta_impact(
+    pred_baseline: np.ndarray,
+    pred_tta: np.ndarray,
+    ground_truth: np.ndarray
+) -> Dict[str, Any]:
+    """
+    Categorize TTA impact per sample: helped, hurt, or neutral.
+
+    Categories:
+    - helped: Baseline wrong, TTA correct
+    - hurt: Baseline correct, TTA wrong
+    - neutral: Both correct OR both wrong (same outcome)
+
+    Args:
+        pred_baseline: (N,) array of baseline predictions (no TTA)
+        pred_tta: (N,) array of TTA predictions
+        ground_truth: (N,) array of true labels
+
+    Returns:
+        Dict with 'per_sample' list and 'summary' counts
+    """
+    baseline_correct = (pred_baseline == ground_truth)
+    tta_correct = (pred_tta == ground_truth)
+
+    per_sample = []
+    summary = {"helped": 0, "hurt": 0, "neutral": 0}
+
+    for i in range(len(ground_truth)):
+        if not baseline_correct[i] and tta_correct[i]:
+            impact = "helped"
+        elif baseline_correct[i] and not tta_correct[i]:
+            impact = "hurt"
+        else:
+            impact = "neutral"
+
+        per_sample.append({
+            "sample_idx": i,
+            "ground_truth": int(ground_truth[i]),
+            "baseline_pred": int(pred_baseline[i]),
+            "tta_pred": int(pred_tta[i]),
+            "impact": impact
+        })
+        summary[impact] += 1
+
+    return {
+        "per_sample": per_sample,
+        "summary": summary
+    }
+
+
+def compute_tta_delta_metrics(
+    baseline_metrics: Dict[str, float],
+    tta_metrics: Dict[str, float],
+    class_names: List[str]
+) -> Dict[str, Any]:
+    """
+    Compute delta between TTA and baseline metrics.
+
+    Args:
+        baseline_metrics: Dict with 'accuracy', 'f1_macro', 'per_class' from baseline
+        tta_metrics: Dict with same keys from TTA evaluation
+        class_names: List of class names for per-class delta
+
+    Returns:
+        Dict with overall and per-class deltas
+    """
+    return {
+        "accuracy_delta": tta_metrics["accuracy"] - baseline_metrics["accuracy"],
+        "f1_macro_delta": tta_metrics["f1_macro"] - baseline_metrics["f1_macro"],
+        "per_class_f1_delta": {
+            cls: tta_metrics["per_class"][cls]["f1-score"] - baseline_metrics["per_class"][cls]["f1-score"]
+            for cls in class_names
+        }
+    }
