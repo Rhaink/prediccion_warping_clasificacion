@@ -241,6 +241,81 @@ def predict_with_tta_classifier(
     return tta_probs, probs_orig, probs_flip
 
 
+@torch.no_grad()
+def ensemble_inference_with_tta(
+    models: List[nn.Module],
+    dataloader: DataLoader,
+    device: torch.device,
+    use_tta: bool = True
+) -> Tuple[List[torch.Tensor], List[torch.Tensor], np.ndarray, Dict]:
+    """
+    Run ensemble inference with optional TTA on entire dataset.
+
+    Implements dual-level TTA:
+    1. Model-level TTA: Each model averages its orig + flip predictions
+    2. Ensemble-level TTA: The 5 model-level TTA predictions are ensemble-averaged
+
+    Args:
+        models: List of models in eval mode
+        dataloader: DataLoader for test set
+        device: Device for inference
+        use_tta: Whether to apply TTA (default True)
+
+    Returns:
+        Tuple of (model_preds, model_probs, labels, tta_details)
+        - model_preds: List of prediction tensors [(N,), ...] per model
+        - model_probs: List of probability tensors [(N, num_classes), ...] per model
+        - labels: (N,) numpy array of true labels
+        - tta_details: Dict with original/flipped predictions per model (None if use_tta=False)
+    """
+    all_model_preds = [[] for _ in models]
+    all_model_probs = [[] for _ in models]
+    all_labels = []
+
+    # TTA details for traceability
+    tta_details = None
+    if use_tta:
+        tta_details = {
+            "model_probs_original": [[] for _ in models],
+            "model_probs_flipped": [[] for _ in models],
+        }
+
+    for inputs, labels in tqdm(dataloader, desc="Ensemble inference" + (" with TTA" if use_tta else "")):
+        inputs = inputs.to(device)
+
+        # Run inference with each model
+        for model_idx, model in enumerate(models):
+            if use_tta:
+                # TTA: average original and flipped predictions
+                tta_probs, orig_probs, flip_probs = predict_with_tta_classifier(
+                    model, inputs, device
+                )
+                probs = tta_probs
+                tta_details["model_probs_original"][model_idx].append(orig_probs.cpu())
+                tta_details["model_probs_flipped"][model_idx].append(flip_probs.cpu())
+            else:
+                # No TTA: just run model directly
+                logits = model(inputs)
+                probs = torch.softmax(logits, dim=1)
+
+            preds = probs.argmax(dim=1)
+
+            all_model_probs[model_idx].append(probs.cpu())
+            all_model_preds[model_idx].append(preds.cpu())
+
+        all_labels.extend(labels.numpy())
+
+    # Concatenate batches
+    model_preds = [torch.cat(p) for p in all_model_preds]
+    model_probs = [torch.cat(p) for p in all_model_probs]
+
+    if use_tta:
+        tta_details["model_probs_original"] = [torch.cat(p) for p in tta_details["model_probs_original"]]
+        tta_details["model_probs_flipped"] = [torch.cat(p) for p in tta_details["model_probs_flipped"]]
+
+    return model_preds, model_probs, np.array(all_labels), tta_details
+
+
 def validate_ensemble_setup(
     models: List[nn.Module],
     dataloader: DataLoader,
