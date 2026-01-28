@@ -150,26 +150,41 @@
       "note": "Metrics converted to percent from CV summary (scale 0-1)."
     },
     "classifier_ensemble_cv": {
-      "description": "5-fold CV ensemble BASELINE evaluation on test set (Phase 2)",
-      "note": "Baseline metrics - final evaluation with validation checks in Phase 5",
+      "description": "5-fold CV ensemble evaluation on test set (Phase 2 baseline, Phase 3 TTA)",
+      "note": "Baseline metrics from Phase 2, TTA metrics from Phase 3 - final validation in Phase 5",
       "baseline_individual_mean": 0.9768,
       "baseline_individual_std": 0.0016,
-      "ensemble_soft_voting": {
+      "baseline_no_tta": {
         "accuracy": 0.9810026385224274,
         "f1_macro": 0.9703237736245484,
         "f1_weighted": 0.9809286214299495,
-        "improvement_over_baseline": 0.004202638522427415
+        "improvement_over_individual": 0.004202638522427415,
+        "timestamp": "2026-01-27T20:01:02.860435",
+        "results": "outputs/classifier_cv/ensemble_test_results.json"
       },
-      "ensemble_hard_voting": {
-        "accuracy": 0.9810026385224274,
-        "f1_macro": 0.9710129370669066,
-        "improvement_over_baseline": 0.004202638522427415
+      "with_tta": {
+        "accuracy": 0.9825858312020028,
+        "f1_macro": 0.9712153409297419,
+        "f1_weighted": 0.982535723749652,
+        "improvement_over_baseline": 0.0015831926795753998,
+        "timestamp": "2026-01-28T03:01:35.342000",
+        "case_level_impact": {
+          "helped": 6,
+          "hurt": 3,
+          "neutral": 1886,
+          "net_improvement": 3
+        },
+        "per_class_f1_delta": {
+          "COVID": 0.004412436597435156,
+          "Normal": 0.0011767955856926584,
+          "Viral_Pneumonia": -0.002840159252064832
+        },
+        "results": "outputs/classifier_cv/ensemble_test_results_tta.json",
+        "predictions": "outputs/classifier_cv/ensemble_predictions_tta.csv"
       },
-      "timestamp": "2026-01-27T20:01:02.860435",
       "test_set_size": 1895,
-      "validated": "2026-01-27",
-      "config": "configs/ensemble_classifier.json",
-      "results": "outputs/classifier_cv/ensemble_test_results.json"
+      "validated": "2026-01-28",
+      "config": "configs/ensemble_classifier.json"
     }
   },
   "robustness": {
