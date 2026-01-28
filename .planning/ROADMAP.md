@@ -13,7 +13,7 @@ This roadmap delivers an ensemble classifier with Test-Time Augmentation (TTA) t
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Pre-Implementation Audit** - Validate test set integrity and document current state
-- [ ] **Phase 2: Ensemble Core** - Implement model loading and soft/hard voting with baseline metrics
+- [x] **Phase 2: Ensemble Core** - Implement model loading and soft/hard voting with baseline metrics
 - [ ] **Phase 3: TTA Integration** - Add test-time augmentation with conservative horizontal flip
 - [ ] **Phase 4: Analysis & Visualization** - Generate comparison metrics and thesis-ready confusion matrices
 - [ ] **Phase 5: Final Test Evaluation** - Evaluate complete test set with validation checks
@@ -49,8 +49,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md - Implement ensemble module and CLI command
-- [ ] 02-02-PLAN.md - Create configuration and execute evaluation
+- [x] 02-01-PLAN.md - Implement ensemble module and CLI command
+- [x] 02-02-PLAN.md - Create configuration and execute evaluation
 
 ### Phase 3: TTA Integration
 **Goal**: Add conservative test-time augmentation with horizontal flip and expand metrics
@@ -103,7 +103,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pre-Implementation Audit | 2/2 | Complete | 2026-01-27 |
-| 2. Ensemble Core | 0/2 | Not started | - |
+| 2. Ensemble Core | 2/2 | Complete | 2026-01-27 |
 | 3. TTA Integration | 0/TBD | Not started | - |
 | 4. Analysis & Visualization | 0/TBD | Not started | - |
 | 5. Final Test Evaluation | 0/TBD | Not started | - |

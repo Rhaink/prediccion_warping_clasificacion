@@ -9,9 +9,9 @@ Requirements for ensemble+TTA implementation. Each maps to roadmap phases.
 
 ### Ensemble Core
 
-- [ ] **ENSEMBLE-01**: Load 5 CV models from `outputs/classifier_cv/fold_01-05/best_classifier.pt`
-- [ ] **ENSEMBLE-02**: Implement soft voting (average probabilities from 5 models)
-- [ ] **ENSEMBLE-03**: Implement hard voting (majority vote) for baseline comparison
+- [x] **ENSEMBLE-01**: Load 5 CV models from `outputs/classifier_cv/fold_01-05/best_classifier.pt`
+- [x] **ENSEMBLE-02**: Implement soft voting (average probabilities from 5 models)
+- [x] **ENSEMBLE-03**: Implement hard voting (majority vote) for baseline comparison
 - [ ] **ENSEMBLE-04**: Evaluate on complete test set (1,895 images: COVID=452, Normal=1,274, Viral_Pneumonia=169)
 
 ### Test-Time Augmentation
@@ -21,15 +21,15 @@ Requirements for ensemble+TTA implementation. Each maps to roadmap phases.
 
 ### Metrics & Evaluation
 
-- [ ] **METRICS-01**: Compute accuracy, F1-macro, F1-weighted for ensemble
-- [ ] **METRICS-02**: Compute individual metrics per model (all 5 CV folds)
+- [x] **METRICS-01**: Compute accuracy, F1-macro, F1-weighted for ensemble
+- [x] **METRICS-02**: Compute individual metrics per model (all 5 CV folds)
 - [ ] **METRICS-03**: Per-class breakdown (COVID/Normal/Viral_Pneumonia)
 - [ ] **METRICS-04**: Generate confusion matrix for ensemble predictions
 - [ ] **METRICS-05**: Compare ensemble vs individual average vs best individual model
 
 ### Output & Visualization
 
-- [ ] **OUTPUT-01**: Generate `outputs/classifier_cv/ensemble_test_results.json` with complete metrics
+- [x] **OUTPUT-01**: Generate `outputs/classifier_cv/ensemble_test_results.json` with complete metrics
 - [ ] **OUTPUT-02**: Create confusion matrix visualization matching Chapter 5 thesis style
 - [ ] **OUTPUT-03**: Auto-locate existing visualization scripts from .tex file references
 
@@ -85,18 +85,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENSEMBLE-01 | Phase 2 | Pending |
-| ENSEMBLE-02 | Phase 2 | Pending |
-| ENSEMBLE-03 | Phase 2 | Pending |
+| ENSEMBLE-01 | Phase 2 | Complete |
+| ENSEMBLE-02 | Phase 2 | Complete |
+| ENSEMBLE-03 | Phase 2 | Complete |
 | ENSEMBLE-04 | Phase 5 | Pending |
 | TTA-01 | Phase 3 | Pending |
 | TTA-02 | Phase 3 | Pending |
-| METRICS-01 | Phase 2 | Pending |
-| METRICS-02 | Phase 2 | Pending |
+| METRICS-01 | Phase 2 | Complete |
+| METRICS-02 | Phase 2 | Complete |
 | METRICS-03 | Phase 3 | Pending |
 | METRICS-04 | Phase 3 | Pending |
 | METRICS-05 | Phase 4 | Pending |
-| OUTPUT-01 | Phase 2 | Pending |
+| OUTPUT-01 | Phase 2 | Complete |
 | OUTPUT-02 | Phase 4 | Pending |
 | OUTPUT-03 | Phase 4 | Pending |
 | VALID-01 | Phase 1 | Complete |
@@ -107,7 +107,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1 requirements: 17 total
 - Mapped to phases: 17 (100% coverage)
 - Unmapped: 0
+- Complete: 9 (53%)
+- Pending: 8 (47%)
 
 ---
 *Requirements defined: 2026-01-27*
-*Last updated: 2026-01-27 after Phase 1 completion*
+*Last updated: 2026-01-27 after Phase 2 completion*

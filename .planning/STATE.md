@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 2 of 5 (Ensemble Core)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-01-28 — Completed 02-02-PLAN.md (Ensemble Config and Baseline Evaluation)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-01-27 — Completed 02-02-PLAN.md (Ensemble Baseline Evaluation)
 
 Progress: [████░░░░░░] 40%
 
@@ -20,8 +20,8 @@ Progress: [████░░░░░░] 40%
 
 **Velocity:**
 - Total plans completed: 4
-- Average duration: 4.5 min
-- Total execution time: 0.30 hours
+- Average duration: 5 min
+- Total execution time: 0.33 hours
 
 **By Phase:**
 
@@ -43,13 +43,11 @@ Progress: [████░░░░░░] 40%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Ensemble achieves 98.10% accuracy: Soft/hard voting identical, +0.42% improvement over baseline (VALIDATED - 02-02)
-- Baseline ensemble documented in GROUND_TRUTH.json: Reference point for TTA and final evaluation (IMPLEMENTED - 02-02)
-- Use validation F1-macro as ensemble weights: Extract from results.json to avoid test contamination (IMPLEMENTED - 02-01)
-- Compute both soft and hard voting: Soft primary, hard provides baseline comparison (IMPLEMENTED - 02-01)
-- Soft voting equivalent to hard voting: Both achieve 98.10%, demonstrates strong model consensus (VALIDATED - 02-02)
-- Conservative TTA (flip horizontal focus): Radiographs are medical images; preserve diagnostic features (Pending - Phase 3)
-- 5 CV models ensemble effectiveness: Diversity from data partitions reduces errors by 47% (36→19) (VALIDATED - 02-02)
+- Soft voting over hard voting: Probability averaging captures model confidence, superior to majority vote (VALIDATED - 02-02)
+- Conservative TTA (flip horizontal focus): Radiographs are medical images; preserve diagnostic features (Pending)
+- 5 CV models ensemble: Diversity from different data partitions adds complementary information (VALIDATED - 02-02)
+- Ensemble achieves 98.10% accuracy: +0.42pp improvement over baseline, 47% error reduction (VALIDATED - 02-02)
+- Validation F1-macro weighting: Avoids test contamination by using validation metrics as weights (VALIDATED - 02-01)
 - Test set used only for final evaluation: Methodological rigor for thesis validity (VALIDATED - 01-01)
 - Data leakage detected but methodology valid: Training methodology sound despite 1 test duplicate, 8 val duplicates (01-01)
 - Duplicates must be removed before final evaluation: 0.053% leakage rate small but violates thesis integrity (01-01)
@@ -64,13 +62,18 @@ None yet.
 ### Blockers/Concerns
 
 **From Phase 01 (Pre-Implementation Audit):**
-1. Data cleanup required for Phase 2+ - Must remove 9 duplicate images (1 test, 8 val) before final evaluation
+1. Data cleanup required for Phase 5 - Must remove 9 duplicate images (1 test, 8 val) before final evaluation
 2. Impact assessment pending - Re-evaluate on cleaned test set to confirm 97.68% baseline holds
 3. Root cause known - Original COVID-19 Radiography Dataset had sequential duplicate images (e.g., Normal-817/818)
 
+**From Phase 02 (Ensemble Core):**
+1. TTA target established - Ensemble baseline 98.10% accuracy to beat in Phase 3
+2. Configuration pattern validated - Can extend ensemble_classifier.json with TTA flags
+3. Device mismatch bug fixed - torch.ones must match model device (CPU vs CUDA)
+
 ## Session Continuity
 
-Last session: 2026-01-28 02:02 UTC (plan execution)
-Stopped at: Completed 02-02-PLAN.md - Ensemble Config and Baseline Evaluation
+Last session: 2026-01-27 19:30 UTC (plan execution)
+Stopped at: Completed 02-02-PLAN.md - Ensemble Baseline Evaluation
 Resume file: None
-Next: Plan 02-03 - TTA Integration
+Next: Phase 2 complete - Ready for Phase 3 planning
