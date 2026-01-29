@@ -96,6 +96,7 @@ colorama>=0.4.0          # terminal colors (click, tqdm on Windows)
 python-dateutil>=2.8     # date utilities
 six>=1.16                # Python 2/3 compatibility
 pytz>=2023.3             # timezone handling
+tzdata>=2023.3           # timezone data (pandas 3.0+ on Windows, CRITICAL)
 
 # =============================================================================
 # Additional Gradio Dependencies
