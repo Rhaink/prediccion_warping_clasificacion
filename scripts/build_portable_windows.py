@@ -495,10 +495,15 @@ if __name__ == "__main__":
         """Create Windows batch files."""
         self.log("Step 9/11: Creating batch files...")
 
-        # RUN_DEMO.bat
+        # RUN_DEMO.bat (local-only, default)
         run_demo_bat = self.staging_dir / "RUN_DEMO.bat"
         run_demo_bat.write_text(self._get_run_demo_template(), encoding='utf-8')
         self.log("  Created RUN_DEMO.bat")
+
+        # RUN_DEMO_SHARE.bat (public sharing) - NEW in v16
+        run_demo_share_bat = self.staging_dir / "RUN_DEMO_SHARE.bat"
+        run_demo_share_bat.write_text(self._get_run_demo_share_template(), encoding='utf-8')
+        self.log("  Created RUN_DEMO_SHARE.bat")
 
         # INSTALL.bat
         install_bat = self.staging_dir / "INSTALL.bat"
@@ -523,6 +528,13 @@ if __name__ == "__main__":
             "build_date": datetime.now().isoformat(),
             "python_version": PYTHON_VERSION,
             "model_checksums": self.checksums,
+            "features": [
+                "Local-only demo (RUN_DEMO.bat)",
+                "Public sharing via Gradio tunnel (RUN_DEMO_SHARE.bat)",
+                "72-hour shareable link",
+                "Automated dependency installation",
+                "Offline-first operation",
+            ],
         }
         version_file = self.staging_dir / "VERSION.txt"
         version_file.write_text(json.dumps(version_info, indent=2), encoding='utf-8')
@@ -571,6 +583,7 @@ if __name__ == "__main__":
         critical_files = [
             f"covid19-demo-v{self.version}-portable-windows/python/python.exe",
             f"covid19-demo-v{self.version}-portable-windows/RUN_DEMO.bat",
+            f"covid19-demo-v{self.version}-portable-windows/RUN_DEMO_SHARE.bat",
             f"covid19-demo-v{self.version}-portable-windows/models/classifier/best_classifier.pt",
         ]
 
@@ -623,14 +636,14 @@ if __name__ == "__main__":
         return True
 
     def _get_run_demo_template(self) -> str:
-        """Get RUN_DEMO.bat template."""
+        """Get RUN_DEMO.bat template (local-only mode)."""
         return f"""@echo off
 title COVID-19 Detection System - Demo
 color 0A
 
 echo ================================================================
 echo   COVID-19 Detection System v{self.version}
-echo   Portable Windows Edition
+echo   Portable Windows Edition - LOCAL MODE
 echo ================================================================
 echo.
 
@@ -692,6 +705,106 @@ if errorlevel 1 (
     echo.
     echo ERROR: The application terminated with errors.
     echo See messages above for diagnostics.
+    echo.
+    pause
+)
+"""
+
+    def _get_run_demo_share_template(self) -> str:
+        """Get RUN_DEMO_SHARE.bat template for public sharing mode."""
+        return f"""@echo off
+title COVID-19 Detection System - PUBLIC SHARE MODE
+color 0E
+
+echo ================================================================
+echo   COVID-19 Detection System v{self.version}
+echo   PUBLIC SHARING MODE - 72 Hour Gradio Link
+echo ================================================================
+echo.
+echo  WARNING: This creates a PUBLIC internet link accessible to
+echo           anyone for 72 hours. Use for demonstrations only.
+echo.
+echo  Recommended for:
+echo    ^> Thesis defense remote attendees
+echo    ^> Sharing demo with colleagues
+echo    ^> Remote presentations
+echo.
+echo  For local-only access: Use RUN_DEMO.bat instead
+echo.
+echo ================================================================
+echo.
+pause
+
+REM Verify Python exists
+if not exist python\\python.exe (
+    echo ERROR: Python not found. Please extract the complete ZIP file.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Check if dependencies are installed
+if not exist python\\Lib\\site-packages\\gradio (
+    echo ================================================================
+    echo   First-time setup: Installing dependencies...
+    echo   This takes 2-3 minutes and only happens once.
+    echo ================================================================
+    echo.
+
+    echo [1/2] Installing pip...
+    python\\python.exe get-pip.py --no-index --find-links=wheels --no-warn-script-location >nul 2>&1
+
+    echo [2/2] Installing packages from wheels...
+    python\\python.exe install_deps.py
+
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Dependency installation failed.
+        echo Please run INSTALL.bat for diagnostics.
+        pause
+        exit /b 1
+    )
+
+    echo.
+    echo Installation complete!
+    echo.
+    timeout /t 2 >nul
+)
+
+REM Configure environment
+set PYTHONPATH=%cd%
+set COVID_DEMO_MODELS_DIR=%cd%\\models
+set COVID_DEMO_FROZEN=0
+
+REM Start application with public sharing enabled
+echo ================================================================
+echo   Starting Gradio with PUBLIC SHARING...
+echo   Generating shareable link (10-20 seconds)...
+echo ================================================================
+echo.
+echo  Local URL:  http://localhost:7860
+echo  Public URL: Will be displayed below when ready...
+echo.
+echo  IMPORTANT:
+echo    1. Copy the gradio.live link when it appears
+echo    2. Share this link with remote attendees
+echo    3. Link expires in 72 hours
+echo    4. Press Ctrl+C to stop server and revoke link
+echo.
+
+python\\python.exe scripts\\run_demo.py --share
+
+REM Handle errors
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to create public share link.
+    echo.
+    echo Possible causes:
+    echo   - No internet connection
+    echo   - Firewall blocking Gradio tunnel
+    echo   - Gradio service temporarily unavailable
+    echo.
+    echo Solution: Try RUN_DEMO.bat for local-only mode
     echo.
     pause
 )
@@ -801,7 +914,9 @@ QUICK START
 ===========
 1. Extract this ZIP file to a folder (e.g., C:\\covid19-demo)
 2. (Optional) Run INSTALL.bat to verify installation
-3. Double-click RUN_DEMO.bat
+3. Choose your launch mode:
+   a) RUN_DEMO.bat         - Local access only (recommended)
+   b) RUN_DEMO_SHARE.bat   - Create public shareable link (72h expiry)
 4. The web interface will open at http://localhost:7860
 
 USING THE INTERFACE
@@ -816,6 +931,58 @@ USING THE INTERFACE
    - Classification (COVID/Normal/Viral Pneumonia)
 
 4. Export: Click "Exportar PDF" to save results
+
+PUBLIC SHARING MODE (New in v{self.version})
+=============================================
+
+For remote demonstrations (thesis defense, presentations):
+
+LAUNCHING:
+1. Double-click RUN_DEMO_SHARE.bat
+2. Read security warning, press any key to continue
+3. Wait 10-20 seconds for public link generation
+4. Copy the gradio.live URL from console output
+5. Share link with remote attendees
+
+EXAMPLE OUTPUT:
+  Local URL:  http://localhost:7860
+  Public URL: https://abc123xyz456.gradio.live
+
+  Copy the Public URL and share it!
+
+SECURITY CONSIDERATIONS:
+- Anyone with the link can access your demo
+- Link is valid for 72 hours from creation
+- Do NOT upload sensitive or patient data
+- Link is automatically revoked when you press Ctrl+C
+- Powered by Gradio's built-in tunneling (no config needed)
+
+WHEN TO USE:
+✓ Thesis defense with remote committee members
+✓ Sharing demo with colleagues at other institutions
+✓ Remote presentations and webinars
+✓ Quick demos without IT department involvement
+
+WHEN NOT TO USE:
+✗ Regular testing (use RUN_DEMO.bat instead)
+✗ Production deployment (use proper server hosting)
+✗ Sensitive/patient data (HIPAA/GDPR compliance)
+
+TROUBLESHOOTING PUBLIC SHARING:
+- "Could not create share link"
+  → Check internet connection (required for tunnel)
+  → Check firewall settings
+  → Try again (Gradio service may be busy)
+  → Fallback: Use screen sharing in Zoom/Teams
+
+- "Link expired"
+  → Restart RUN_DEMO_SHARE.bat (creates new 72h link)
+  → Share the new URL
+
+- "Slow performance on public link"
+  → Normal (internet latency)
+  → Local mode is faster for presenter's view
+  → Remote attendees will experience 1-2 second delay
 
 TROUBLESHOOTING
 ===============
