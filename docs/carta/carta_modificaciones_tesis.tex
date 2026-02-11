@@ -1,0 +1,111 @@
+\documentclass[12pt,letterpaper]{article}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[letterpaper, margin=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+
+% Configuración de encabezado y pie de página
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\thepage\ de \pageref{LastPage}}
+
+% Formato de secciones
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{1.5ex plus 1ex minus .2ex}{1ex plus .2ex}
+
+% Espaciado
+\setstretch{1.15}
+
+\begin{document}
+
+\vspace{0.8cm}
+\noindent\textbf{Alumno:} Rafael Alejandro Cruz Ovando
+
+\noindent\textbf{Matrícula:} 223470443
+
+\noindent\textbf{Fecha:} Enero 2026
+
+\vspace{0.6cm}
+
+\section*{Introducción}
+
+El presente documento describe las modificaciones realizadas a la tesis en atención a las observaciones emitidas por el jurado durante el coloquio.
+\section{Estructura y Elementos Preliminares}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item Se agregaron las secciones de \textbf{Dedicatoria}, \textbf{Agradecimientos}, \textbf{Resumen} y \textbf{Abstract} en inglés.
+    \item Se corrigió la estructura del \textbf{índice general} para una organización coherente.
+    \item Se incorporó un \textbf{Glosario} y una \textbf{Lista de Acrónimos} completa para facilitar la comprensión del lector.
+\end{itemize}
+
+\section{Objetivos de la Tesis}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item Se \textbf{eliminó} la publicación de artículos como objetivo, enfocando los objetivos exclusivamente en el desarrollo técnico y la validación experimental.
+    \item Se \textbf{corrigieron} las referencias a los clasificadores utilizados (KNN y CNN) para reflejar con precisión la metodología implementada.
+    \item Se agregó la \textbf{Sección 6.1.3 ``Cumplimiento de Objetivos Específicos''}, que documenta explícitamente cómo se cumplió cada objetivo planteado junto con los resultados obtenidos.
+\end{itemize}
+
+\section{Fortalecimiento de la Validación Experimental}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item \textbf{Validación cruzada:} Los resultados ahora se reportan mediante validación cruzada de 5 pliegues en lugar de una sola ejecución, proporcionando métricas más robustas y representativas del modelo.
+
+    \item \textbf{Comparación con clasificador tradicional (Sección 5.3.4):} Se agregó un párrafo que describe el experimento comparativo con un clasificador basado en PCA, proyección discriminante de Fisher y KNN. Este clasificador muestra una mejora de +3.38 puntos porcentuales con imágenes normalizadas, validando que el beneficio de la normalización geométrica no es específico de arquitecturas de aprendizaje profundo.
+
+    \item \textbf{Incorporación del método ALP:} Se incluyó en la comparación el Algoritmo Localizador de Pulmones (ALP), un método de recorte inteligente con resultados publicados independientemente. Esto proporciona una referencia externa adicional que refuerza la validación de la hipótesis de que los modelos entrenados con imágenes sin normalización geométrica aprenden características espurias no patológicas.
+\end{itemize}
+
+\section{Eficiencia Computacional}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item Se agregó información detallada sobre las \textbf{especificaciones del hardware} utilizado en los experimentos.
+    \item Se incluyeron los \textbf{tiempos de inferencia} por módulo del sistema, permitiendo evaluar la viabilidad práctica del enfoque propuesto.
+\end{itemize}
+
+\section{Contribuciones y Posicionamiento}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item Se hizo \textbf{mayor énfasis en las contribuciones} específicas de la tesis, destacando tanto los aportes técnicos como los hallazgos experimentales.
+    \item Se enfatiza que la \textbf{normalización geométrica mediante deformación afín por partes} es un método novedoso en el área de clasificación de enfermedades pulmonares.
+    \item Se clarifica que los resultados obtenidos (98.60\% de exactitud) son \textbf{competitivos con el estado del arte}.
+\end{itemize}
+
+\section{Estado del Arte}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item Se revisó el capítulo para que \textbf{no reporte resultados propios} ni se compare directamente con nuestro trabajo, manteniendo una revisión objetiva de la literatura.
+    \item Se identifican claramente las \textbf{brechas en la literatura} que motivan y justifican la investigación.
+\end{itemize}
+
+\section{Figuras, Tablas y Diagramas}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item Se \textbf{corrigió el diagrama principal} del sistema (Figura 4.1) para que describa correctamente el proceso en sus tres fases.
+    \item Se revisaron \textbf{todas las tablas y figuras} para asegurar que no excedan los márgenes y cumplan con un formato académico apropiado.
+\end{itemize}
+
+\section{Mejoras en Redacción}
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item Se mejoró la \textbf{narración y redacción general} del documento para lograr mayor coherencia y fluidez en la presentación de ideas.
+\end{itemize}
+
+\section{Anexos}
+
+Se ampliaron los anexos para documentar todos los productos generados:
+
+\begin{itemize}[leftmargin=*, itemsep=0.3em]
+    \item \textbf{Anexo B:} Artículos publicados derivados de la investigación.
+    \item \textbf{Anexo C:} Certificados de participación en congresos.
+    \item \textbf{Anexo D:} Código fuente disponible en repositorio GitHub público para reproducibilidad.
+\end{itemize}
+
+\end{document}

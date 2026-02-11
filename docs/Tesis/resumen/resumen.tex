@@ -1,0 +1,18 @@
+% =============================================================================
+% RESUMEN / ABSTRACT
+% =============================================================================
+
+\section*{Resumen}
+\addcontentsline{toc}{section}{Resumen}
+
+La clasificaci\'on autom\'atica de enfermedades pulmonares en radiograf\'ias de t\'orax se enfrenta a un desaf\'io fundamental: la variabilidad de pose, escala y orientación entre im\'agenes. Diferencias en el posicionamiento del paciente, la distancia de proyecci\'on, la fase respiratoria y la calibraci\'on del equipo introducen variaciones que dificultan el aprendizaje de caracter\'isticas patol\'ogicas genuinas por parte de modelos de aprendizaje profundo.
+
+El presente trabajo desarrolla e implementa un sistema de normalizaci\'on geom\'etrica basado en detecci\'on autom\'atica de puntos de referencia anat\'omicos para mejorar la clasificaci\'on de COVID-19, neumon\'ia viral y casos sanos en radiograf\'ias de t\'orax. El sistema integra cuatro componentes: (1) preprocesamiento de contraste mediante CLAHE y SAHS, (2) predicci\'on de 15 puntos de referencia que definen el contorno pulmonar mediante un ensamble de cuatro modelos ResNet-18 con Coordinate Attention y aumento en tiempo de prueba, (3) normalizaci\'on geom\'etrica mediante An\'alisis Procrustes Generalizado para c\'alculo de forma est\'andar, triangulaci\'on de Delaunay y deformaci\'on af\'in por partes, y (4) clasificaci\'on mediante una red neuronal convolucional entrenada sobre las im\'agenes normalizadas geométricamente.
+
+El modelo de detecci\'on de puntos de referencia alcanza un error promedio de 3.61 p\'ixeles en im\'agenes de 224$\times$224 p\'ixeles, equivalente al 1.61\% de la diagonal de la imagen, con una mejora del 10.6\% respecto al mejor modelo individual mediante la estrategia de ensamble. El clasificador entrenado sobre im\'agenes normalizadas geom\'etricamente obtiene una exactitud de 98.60\% y un F1-Score Macro de 98.00\% mediante validaci\'on cruzada de cinco pliegues sobre un conjunto de prueba de 1,895 im\'agenes.
+
+La contribuci\'on principal es la validaci\'on experimental de que la normalizaci\'on geom\'etrica mejora la clasificaci\'on al reducir la variabilidad de pose, escala y orientación. Un experimento comparativo de cuatro configuraciones de preprocesamiento proporciona evidencia directa: al eliminar los bordes de las im\'agenes originales mediante recorte simple, la exactitud cae de 98.68\% a 95.36\% ($-$3.32 puntos porcentuales), demostrando que los modelos entrenados sin normalizaci\'on geométrica dependen de artefactos hospitalarios. El sistema propuesto recupera este rendimiento (98.60\%) utilizando exclusivamente la regi\'on pulmonar normalizada, lo que confirma que la normalizaci\'on geom\'etrica permite al clasificador aprender caracter\'isticas cl\'inicamente relevantes. Esta mejora se valida adicionalmente con un clasificador tradicional basado en PCA, proyecci\'on discriminante de Fisher y KNN, que obtiene $+$3.38 puntos porcentuales con im\'agenes normalizadas, confirmando que el beneficio de la normalizaci\'on geom\'etrica no es espec\'ifico de arquitecturas de aprendizaje profundo sino que mejora la separabilidad entre clases de forma general.
+
+\textbf{Palabras clave:} normalizaci\'on geom\'etrica, puntos de referencia anat\'omicos, radiograf\'ias de t\'orax, COVID-19, deformaci\'on af\'in por partes, An\'alisis Procrustes Generalizado, aprendizaje profundo.
+
+\vspace{1.5cm}

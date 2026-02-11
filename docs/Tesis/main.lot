@@ -1,0 +1,35 @@
+\babel@toc {spanish}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Comparación de métodos de aprendizaje profundo para detección de COVID-19 en radiografías de tórax}}{26}{table.caption.16}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Comparación de métodos de detección de puntos de referencia anatómicos en imágenes médicas}}{30}{table.caption.18}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Comparación de métodos de normalización geométrica aplicados a clasificación de imágenes médicas}}{32}{table.caption.20}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Flujo de datos a través del sistema.}}{42}{table.caption.24}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Distribución del conjunto de datos por categoría diagnóstica.}}{44}{table.caption.26}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Distribución del subconjunto anotado con puntos de referencia.}}{48}{table.caption.30}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces División del conjunto de datos en subconjuntos de entrenamiento, validación y prueba.}}{50}{table.caption.33}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Configuración del extractor de características ResNet-18. Se utilizan todas las capas convolucionales, removiendo únicamente la capa completamente conectada original.}}{52}{table.caption.35}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces Parámetros del módulo Coordinate Attention para $C=512$ canales de entrada.}}{54}{table.caption.37}%
+\contentsline {table}{\numberline {4.7}{\ignorespaces Arquitectura de la cabeza de regresión con normalización por grupos.}}{56}{table.caption.39}%
+\contentsline {table}{\numberline {4.8}{\ignorespaces Configuración de entrenamiento - Fase 1.}}{59}{table.caption.41}%
+\contentsline {table}{\numberline {4.9}{\ignorespaces Configuración de entrenamiento - Fase 2.}}{60}{table.caption.42}%
+\contentsline {table}{\numberline {4.10}{\ignorespaces Resumen completo de hiperparámetros del modelo de puntos de referencia.}}{61}{table.caption.43}%
+\contentsline {table}{\numberline {4.11}{\ignorespaces Distribución del conjunto de datos para entrenamiento del clasificador.}}{76}{table.caption.54}%
+\contentsline {table}{\numberline {4.12}{\ignorespaces Pesos asignados a cada categoría para compensar el desbalance del conjunto de datos.}}{77}{table.caption.55}%
+\contentsline {table}{\numberline {4.13}{\ignorespaces Parámetros de configuración del entrenamiento del clasificador.}}{77}{table.caption.56}%
+\contentsline {table}{\numberline {4.14}{\ignorespaces Resumen de la configuración del clasificador de enfermedades pulmonares.}}{81}{table.caption.58}%
+\contentsline {table}{\numberline {4.15}{\ignorespaces Especificaciones del sistema de pruebas.}}{84}{table.caption.60}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Precisión de detección de puntos de referencia. El error se mide en píxeles sobre imágenes de $224 \times 224$.}}{85}{table.caption.61}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Rendimiento del clasificador sobre el conjunto de prueba (1,895 imágenes).}}{92}{table.caption.67}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Rendimiento del clasificador por categoría diagnóstica.}}{92}{table.caption.68}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Matriz de confusión del clasificador. Las filas representan la categoría real y las columnas la categoría predicha por el sistema.}}{93}{table.caption.69}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Comparación de configuraciones de preprocesamiento. La diferencia se calcula respecto a las imágenes originales.}}{97}{table.caption.73}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Tiempos de inferencia por módulo (ms). Estadísticas sobre 100 imágenes.}}{99}{table.caption.75}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Cumplimiento de objetivos específicos del trabajo de investigación.}}{103}{table.caption.76}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

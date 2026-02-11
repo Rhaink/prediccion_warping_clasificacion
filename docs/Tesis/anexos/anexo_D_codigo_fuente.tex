@@ -1,0 +1,68 @@
+%----------------------------------------------------------------------------------------
+%       ANEXO D: CÓDIGO FUENTE
+%----------------------------------------------------------------------------------------
+\chapter{Código Fuente}
+\label{anexo:codigo_fuente}
+
+El código fuente completo del sistema desarrollado en esta tesis está disponible públicamente en un repositorio de GitHub, permitiendo la reproducción de los experimentos y la extensión del trabajo.
+
+\section{Repositorio GitHub}
+
+\textbf{Nombre del proyecto:} Sistema de Normalización Geométrica para Detección de COVID-19 en Radiografías de Tórax. (LungAlignment)
+
+\textbf{URL:} \url{https://github.com/Rhaink/LungAlignment}
+
+\textbf{Lenguaje:} Python 3.12
+
+\textbf{Framework principal:} PyTorch 2.4.1
+
+\textbf{Licencia:} MIT
+
+\section{Contenido del Repositorio}
+
+El repositorio incluye:
+
+\begin{itemize}
+    \item Implementación completa de los 4 módulos del sistema:
+    \begin{itemize}
+        \item Preprocesamiento (CLAHE, SAHS)
+        \item Detección de puntos de referencia (ResNet-18 + Coordinate Attention)
+        \item Normalización geométrica (GPA, Delaunay, Warping)
+        \item Clasificación (ResNet-18 transfer learning)
+    \end{itemize}
+    \item Configuraciones experimentales validadas (formato JSON)
+    \item Scripts de entrenamiento y evaluación reproducibles
+    \item Documentación técnica
+    \item Tests unitarios
+\end{itemize}
+
+\section{Instalación y Uso}
+
+Para reproducir los experimentos:
+
+\begin{verbatim}
+# 1. Clonar repositorio
+git clone https://github.com/Rhaink/LungAlignment
+cd prediccion_warping_clasificacion
+
+# 2. Instalar dependencias
+pip install -r requirements.txt
+
+# 3. Ejecutar proceso completo
+bash scripts/quickstart_warping.sh
+\end{verbatim}
+
+Instrucciones detalladas disponibles en el archivo \texttt{README.md} del repositorio.
+
+\section{Reproducibilidad}
+
+Los resultados reportados en el Capítulo 5 son completamente reproducibles.
+
+\section{Contacto}
+
+Para preguntas o reportar problemas:
+
+\begin{itemize}
+    \item \textbf{Issues:} \url{https://github.com/Rhaink/LungAlignment/issues}
+    \item \textbf{Email:} co223470443@alm.buap.mx
+\end{itemize}

@@ -51,3 +51,32 @@ Finalmente, la \textbf{matriz de confusión} presenta la distribución completa 
 El conjunto de datos se divide en tres particiones independientes: entrenamiento, validación y prueba. La partición de entrenamiento se utiliza para optimizar los pesos del modelo mediante descenso de gradiente. La partición de validación se emplea durante el entrenamiento para monitorear el rendimiento en datos no vistos y aplicar criterios de parada temprana que eviten el sobreajuste. Finalmente, la partición de prueba se reserva exclusivamente para la evaluación final del sistema y no se utiliza en ninguna decisión durante el entrenamiento.
 
 Todas las métricas reportadas en el Capítulo \ref{cap:resultados} corresponden a evaluaciones sobre el conjunto de prueba, garantizando que los resultados reflejan la capacidad del sistema para generalizar a imágenes completamente no vistas durante el desarrollo del modelo.
+
+\subsection{Especificaciones de Hardware}
+\label{subsec:hardware_specs}
+
+Las evaluaciones se realizaron en el siguiente entorno de hardware:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Especificaciones del sistema de pruebas.}
+    \label{tab:hardware_specs}
+    \small
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        \textbf{Componente} & \textbf{Especificación} \\
+        \midrule
+        CPU & AMD Ryzen 5 5600G (6 cores, 12 threads, 3.9 GHz) \\
+        GPU & AMD Radeon Graphics (integrada, ROCm 6.0) \\
+        RAM & 16 GB DDR4 \\
+        SO & Ubuntu 24.04.3 LTS \\
+        Python & 3.12.3 \\
+        PyTorch & 2.4.1+rocm6.0 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Disponibilidad del Código}
+\label{subsec:disponibilidad_codigo}
+
+La implementación completa del sistema está disponible públicamente en \url{https://github.com/Rhaink/LungAlignment}, permitiendo la reproducción de todos los experimentos reportados en esta tesis. El repositorio se presentan en el Anexo~\ref{anexo:codigo_fuente}.

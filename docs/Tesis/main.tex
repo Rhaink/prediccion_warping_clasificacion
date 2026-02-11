@@ -40,6 +40,9 @@
 \renewcommand{\tablename}{Tabla}
 \renewcommand{\figurename}{Figura}
 \renewcommand{\contentsname}{Contenido}
+\renewcommand{\bibname}{Referencias}
+\renewcommand{\listfigurename}{Lista de Figuras}
+\renewcommand{\listtablename}{Lista de Tablas}
 \renewcommand{\algorithmicforall}{\textbf{para todo}}
 \renewcommand{\algorithmicdo}{\textbf{hacer}}
 \renewcommand{\algorithmicend}{\textbf{fin}}
@@ -68,9 +71,20 @@
 \setstretch{1.15}
 
 % ============================================================================
+% NUMERACIÓN ROMANA PARA PÁGINAS PRELIMINARES
+% ============================================================================
+\pagenumbering{roman}
+
+% ============================================================================
 % PORTADA ORIGINAL (BUAP)
 % ============================================================================
 \input{portada/title-page}
+
+% ============================================================================
+% DEDICATORIA
+% ============================================================================
+\newpage
+\input{dedicatoria/dedicatoria}
 
 % ============================================================================
 % AGRADECIMIENTOS
@@ -79,22 +93,52 @@
 \input{agradecimientos/agradecimientos}
 
 % ============================================================================
+% RESUMEN
+% ============================================================================
+\newpage
+\input{resumen/resumen}
+
+% ============================================================================
+% ABSTRACT (INGLÉS)
+% ============================================================================
+\newpage
+\input{resumen/abstract}
+
+% ============================================================================
 % TABLA DE CONTENIDO
 % ============================================================================
 \newpage
 \tableofcontents
 
 % ============================================================================
-% OBJETIVOS
+% LISTA DE FIGURAS
 % ============================================================================
 \newpage
-\input{objetivos/0-Objetivos}
+\addcontentsline{toc}{section}{Lista de Figuras}
+\listoffigures
+
+% ============================================================================
+% LISTA DE TABLAS
+% ============================================================================
+\newpage
+\addcontentsline{toc}{section}{Lista de Tablas}
+\listoftables
+
+% ============================================================================
+% NUMERACIÓN ARÁBIGA PARA CAPÍTULOS
+% ============================================================================
+\newpage
+\pagenumbering{arabic}
 
 % ============================================================================
 % CAPÍTULO 1: INTRODUCCIÓN
 % ============================================================================
-\newpage
 \input{capitulo1/1_introduccion}
+
+% ============================================================================
+% OBJETIVOS (Dentro del Capítulo 1)
+% ============================================================================
+\input{objetivos/0-Objetivos}
 
 % ============================================================================
 % CAPÍTULO 2: MARCO TEÓRICO
@@ -152,6 +196,10 @@
 \newpage
 \input{capitulo5/5_3_resultados_clasificacion}
 
+% Sección 5.4: Eficiencia Computacional
+\newpage
+\input{capitulo5/5_4_eficiencia_computacional}
+
 % ============================================================================
 % CAPÍTULO 6: CONCLUSIONES Y TRABAJOS FUTUROS
 % ============================================================================
@@ -159,15 +207,10 @@
 \input{capitulo6/6_conclusiones}
 
 % ============================================================================
-% CAPÍTULOS PENDIENTES:
-% - Capítulo 3: Estado del Arte
-% ============================================================================
-
-% ============================================================================
-% GLOSARIO
+% REFERENCIAS
 % ============================================================================
 \newpage
-\input{glosario}
+\bibliography{references}
 
 % ============================================================================
 % ANEXOS
@@ -185,10 +228,13 @@
 \newpage
 \input{anexos/anexo_C_certificados}
 
+\newpage
+\input{anexos/anexo_D_codigo_fuente}
+
 % ============================================================================
-% BIBLIOGRAFÍA
+% GLOSARIO
 % ============================================================================
 \newpage
-\bibliography{references}
+\input{glosario}
 
 \end{document}

@@ -1,0 +1,369 @@
+\documentclass[12pt,a4paper]{article}
+
+% Paquetes esenciales
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{caption}
+
+% Configuración de página
+\geometry{
+    left=2.5cm,
+    right=2.5cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+% Configuración de hyperref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    urlcolor=blue!70!black,
+    citecolor=blue!70!black
+}
+
+% Configuración de encabezados
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Reporte de Estancia de Investigación}
+\fancyhead[R]{\small INAOE 2026}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Formato de secciones
+\titleformat{\section}
+    {\normalfont\Large\bfseries}{\thesection.}{1em}{}
+\titleformat{\subsection}
+    {\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+    {\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+% Comando para código inline
+\newcommand{\code}[1]{\texttt{#1}}
+
+\begin{document}
+
+% ============================================================================
+% PORTADA
+% ============================================================================
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+
+    {\Large\textbf{Instituto Nacional de Astrofísica, Óptica y Electrónica}}\\[0.3cm]
+    {\large Coordinación de Ciencias Computacionales}\\[0.3cm]
+    {\large Laboratorio de Visión por Computadora}\\[2cm]
+
+    \rule{\textwidth}{1.5pt}\\[0.5cm]
+    {\LARGE\bfseries Reporte de Estancia de Investigación}\\[0.5cm]
+    \rule{\textwidth}{1.5pt}\\[1.5cm]
+
+    {\Large\textbf{Proyecto:}}\\[0.3cm]
+    {\large Normalización y alineación automática de la forma de la región pulmonar integrada con selección de características discriminantes para detección automática de neumonía y COVID-19}\\[2cm]
+
+    \begin{tabular}{rl}
+        \textbf{Estudiante:} & Rafael Alejandro Cruz Ovando \\[0.3cm]
+        \textbf{Director:} & Dr. Leopoldo Altamirano Robles \\[0.3cm]
+        \textbf{Institución de origen:} & Benemérita Universidad Autónoma de Puebla \\[0.3cm]
+        \textbf{Período:} & 9 de octubre -- 9 de noviembre de 2025 \\
+    \end{tabular}
+
+    \vfill
+
+    {\large Enero 2026}
+\end{titlepage}
+
+% ============================================================================
+% RESUMEN EJECUTIVO
+% ============================================================================
+\section{Resumen Ejecutivo}
+
+Se desarrolló un sistema completo para la detección automática de puntos de referencia pulmonares y normalización geométrica de radiografías de tórax para clasificación de COVID-19. El sistema combina un ensemble de modelos ResNet-18 con Coordinate Attention, funciones de pérdida geométricas especializadas, y un proceso de warping afín por partes basado en triangulación de Delaunay.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lc}
+\toprule
+\textbf{Métrica} & \textbf{Valor Obtenido} \\
+\midrule
+Error de puntos de referencia (ensemble + TTA) & \textbf{3.61 px} \\
+Error de puntos de referencia (mejor individual) & 4.04 px \\
+Accuracy clasificación (validación cruzada 5-fold) & \textbf{98.60\%} \\
+F1-macro validación cruzada & 98.00\% $\pm$ 0.36\% \\
+\bottomrule
+\end{tabular}
+\caption{Métricas principales del sistema desarrollado.}
+\end{table}
+
+\textbf{Contribuciones principales:} (1) Sistema de detección de puntos de referencia mediante ensemble de 4 modelos con Test-Time Augmentation; (2) Normalización geométrica que reduce variabilidad anatómica inter-paciente; (3) Funciones de pérdida geométricas (Wing Loss con restricciones de simetría y alineación central); (4) Infraestructura reproducible basada en configuraciones JSON y documentación exhaustiva.
+
+% ============================================================================
+% INTRODUCCIÓN
+% ============================================================================
+\section{Introducción}
+
+\subsection{Contexto y Objetivos}
+
+La pandemia de COVID-19 resaltó la necesidad de herramientas de diagnóstico rápido y automatizado. Las radiografías de tórax ofrecen una alternativa accesible a las pruebas PCR, pero su interpretación requiere experiencia especializada. Este proyecto aborda dos desafíos fundamentales: (1) la detección automática de 15 puntos de referencia que definen el contorno pulmonar bilateral, y (2) la normalización geométrica mediante transformación de imágenes a una forma estándar que elimina variabilidad anatómica. La detección precisa de puntos de referencia permite normalizar variaciones debidas a diferencias individuales, posicionamiento durante adquisición, y rotaciones/escalas variables, mejorando la robustez de sistemas de clasificación downstream.
+
+\subsection{Estructura de Puntos de Referencia}
+
+El sistema utiliza 15 puntos de referencia que definen el contorno pulmonar bilateral. A diferencia de landmarks anatómicos tradicionales (como clavículas o costillas), estos puntos capturan la forma completa del campo pulmonar, permitiendo normalización geométrica posterior:
+
+\begin{itemize}[itemsep=0pt]
+    \item \textbf{Eje central vertical}: L1 (ápex) $\rightarrow$ L9 $\rightarrow$ L10 $\rightarrow$ L11 $\rightarrow$ L2 (base) en posiciones verticales $t=[0, 0.25, 0.50, 0.75, 1.0]$
+    \item \textbf{Contorno izquierdo}: L12, L3, L5, L7, L14 (distribuidos en ápex, lateral superior, lateral medio, lateral inferior, base)
+    \item \textbf{Contorno derecho}: L13, L4, L6, L8, L15 (distribución simétrica al contorno izquierdo)
+    \item \textbf{Pares simétricos}: (L3,L4), (L5,L6), (L7,L8), (L12,L13), (L14,L15) — explotados por Soft Symmetry Loss
+\end{itemize}
+
+Esta estructura balanceada permite capturar asimetrías patológicas reales mientras penaliza variabilidad no anatómica.
+
+% ============================================================================
+% METODOLOGÍA
+% ============================================================================
+\section{Metodología Implementada}
+
+\subsection{Datos y Preprocesamiento}
+
+Se utilizó el \textit{COVID-19 Radiography Dataset} con 15,153 imágenes anotadas (3 clases: COVID, Normal, Viral\_Pneumonia), divididas en 75\% entrenamiento, 15\% validación, y 10\% prueba. El preprocesamiento para detección de puntos de referencia aplica CLAHE (Contrast Limited Adaptive Histogram Equalization) con \code{clip\_limit}=2.0 y \code{tile\_size}=4 para mejorar contraste local y resaltar bordes del contorno pulmonar, seguido de redimensionamiento a $224 \times 224$ píxeles y normalización con estadísticas de ImageNet. Durante entrenamiento se aplican aumentaciones: rotación ($\pm 10°$), traslación ($\pm 5\%$), escalado (0.95--1.05), y flip horizontal con corrección de pares simétricos.
+
+\subsection{Arquitectura del Modelo}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Componente} & \textbf{Especificación} \\
+\midrule
+Backbone & ResNet-18 (pretrained ImageNet) \\
+Coordinate Attention & Sí (después de layer4) \\
+Cabeza de regresión & Deep Head (768 dim, 2 capas ocultas) \\
+Dropout & 0.3 \\
+Salida & 30 valores (15 puntos $\times$ 2 coordenadas) \\
+\bottomrule
+\end{tabular}
+\caption{Especificaciones de la arquitectura del modelo.}
+\end{table}
+
+Se utiliza ResNet-18 pre-entrenado como extractor de características. El mecanismo de \textit{Coordinate Attention} codifica información posicional en los canales y captura relaciones horizontales y verticales independientemente, mejorando la localización precisa de puntos de referencia. La cabeza de regresión profunda procesa las características del backbone a través de dos capas ocultas con ReLU y Dropout antes de predecir las 30 coordenadas normalizadas.
+
+\textbf{Implementación}: \code{src\_v2/models/resnet\_landmark.py}
+
+\subsection{Funciones de Pérdida}
+
+Se implementó un sistema de pérdidas combinadas que incorpora restricciones geométricas:
+
+\textbf{Wing Loss (pérdida principal):} Función robusta para regresión de puntos de referencia que da mayor peso a errores pequeños:
+
+\begin{equation}
+L(x) = \begin{cases}
+\omega \cdot \ln(1 + |x|/\epsilon) & \text{si } |x| < \omega \\
+|x| - C & \text{si } |x| \geq \omega
+\end{cases}
+\end{equation}
+
+donde $C = \omega - \omega \cdot \ln(1 + \omega/\epsilon)$, $\omega=10$, $\epsilon=2$.
+
+\textbf{Central Alignment Loss:} Penaliza desviaciones de puntos de referencia centrales (L9, L10, L11) respecto al eje vertical mediante MSE entre sus coordenadas $x$ y el valor objetivo 0.5 (centro normalizado).
+
+\textbf{Soft Symmetry Loss:} Penaliza asimetrías excesivas (superiores a 6 píxeles) entre pares de puntos de referencia simétricos, permitiendo asimetría natural en anatomía real. Solo se activa la penalización cuando la diferencia de distancias al eje central excede el margen.
+
+\textbf{Combined Loss:} Combinación ponderada con pesos: \code{wing\_weight}=1.0, \code{symmetry\_weight}=0.1, \code{alignment\_weight}=0.05.
+
+\textbf{Implementación}: \code{src\_v2/models/losses.py}
+
+\subsection{Estrategia de Entrenamiento}
+
+Se implementó un esquema de entrenamiento en dos fases con tasas de aprendizaje diferenciadas:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Fase} & \textbf{Fase 1} & \textbf{Fase 2} \\
+\midrule
+Épocas & 15 & 100 (early stopping) \\
+Learning rate & $1 \times 10^{-3}$ & Backbone: $2 \times 10^{-5}$ \\
+ &  & Cabeza: $2 \times 10^{-4}$ \\
+Backbone & Congelado & Descongelado \\
+Scheduler & -- & ReduceLROnPlateau \\
+Objetivo & Estabilizar regresión & Fine-tuning completo \\
+\bottomrule
+\end{tabular}
+\caption{Parámetros de las dos fases de entrenamiento.}
+\end{table}
+
+La Fase 1 entrena solo la cabeza de regresión con el backbone congelado para estabilizar la predicción inicial. La Fase 2 descongela el backbone y aplica fine-tuning con tasas de aprendizaje diferenciadas, usando un scheduler que reduce LR en plateaus y early stopping con paciencia de 20 épocas.
+
+\textbf{Implementación}: \code{src\_v2/training/trainer.py}
+
+\subsection{Ensemble y Test-Time Augmentation}
+
+El sistema final combina 4 modelos entrenados con diferentes semillas (123, 321, 111, 666):
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Modelo} & \textbf{Semilla} & \textbf{Error Individual} \\
+\midrule
+1 & seed123 & 4.15 px \\
+2 & seed321 & 4.08 px \\
+3 & seed111 & 4.12 px \\
+4 & seed666 & 4.10 px \\
+\midrule
+\textbf{Ensemble + TTA} & -- & \textbf{3.61 px} \\
+\bottomrule
+\end{tabular}
+\caption{Modelos del ensemble y sus errores individuales.}
+\end{table}
+
+Durante inferencia se aplica \textit{Test-Time Augmentation} (TTA) procesando cada imagen normal y con flip horizontal. Para la versión con flip se corrigen las coordenadas $x$ ($x' = 1.0 - x$) y se intercambian pares simétricos (L3$\leftrightarrow$L4, L5$\leftrightarrow$L6, L7$\leftrightarrow$L8, L12$\leftrightarrow$L13, L14$\leftrightarrow$L15), promediando ambas predicciones.
+
+\subsection{Normalización Geométrica}
+
+Una vez detectados los puntos de referencia, se normaliza la geometría mediante tres pasos:
+
+\textbf{(1) Generalized Procrustes Analysis (GPA):} Se calcula la forma canónica a partir de las anotaciones de entrenamiento mediante alineación iterativa. El algoritmo alinea todas las formas a una media actual usando transformaciones de similitud (traslación, rotación, escala), recalcula la nueva media, y repite hasta convergencia ($<10^{-6}$).
+
+\textbf{(2) Triangulación de Delaunay:} Se genera una malla de triángulos sobre los 15 puntos de referencia más las 4 esquinas de la imagen, obteniendo una partición de la región de interés en triángulos no superpuestos.
+
+\textbf{(3) Warping afín por partes:} Cada triángulo se transforma independientemente calculando una transformación afín desde los vértices origen (landmarks detectados) a los vértices destino (forma canónica). Se aplica \code{cv2.warpAffine} por triángulo, creando máscaras y combinando regiones transformadas.
+
+Para clasificación, las imágenes warped se procesan con SAHS (Statistical Asymmetrical Histogram Stretching) que normaliza el histograma global solo en la región pulmonar (píxeles $>10$) usando límites asimétricos ($\pm 2.5\sigma$ superior, $\pm 2.0\sigma$ inferior), preservando patrones patológicos.
+
+\textbf{Implementación}: \code{src\_v2/processing/gpa.py}, \code{src\_v2/processing/warp.py}
+
+% ============================================================================
+% RESULTADOS
+% ============================================================================
+\section{Resultados y Análisis}
+
+\subsection{Detección de Puntos de Referencia}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Configuración} & \textbf{Error Medio} & \textbf{Std} & \textbf{Mediana} \\
+\midrule
+Mejor modelo individual (seed456) & 4.04 px & -- & -- \\
+Ensemble 4 modelos & 3.71 px & 2.42 px & 3.17 px \\
+\textbf{Ensemble + TTA (mejor)} & \textbf{3.61 px} & 2.48 px & 3.07 px \\
+\bottomrule
+\end{tabular}
+\caption{Comparación de configuraciones de detección de puntos de referencia.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lc}
+\toprule
+\textbf{Categoría} & \textbf{Error (px)} \\
+\midrule
+Normal & 3.22 \\
+COVID & 3.93 \\
+Viral\_Pneumonia & 4.11 \\
+\bottomrule
+\end{tabular}
+\caption{Error de puntos de referencia por categoría diagnóstica.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lclcl}
+\toprule
+\textbf{Punto} & \textbf{Error (px)} & \textbf{Ubicación} & \textbf{Punto} & \textbf{Error (px)} \\
+\midrule
+L1 & 3.22 & Ápex central & L9 & \textbf{2.76} \\
+L2 & 3.96 & Base central & L10 & \textbf{2.44} \\
+L3 & 3.18 & Lateral izq. & L11 & 2.94 \\
+L4 & 3.65 & Lateral der. & L12 & 5.43 \\
+L5 & 2.88 & Lateral izq. & L13 & 5.35 \\
+L6 & 2.94 & Lateral der. & L14 & 4.39 \\
+L7 & 3.29 & Lateral izq. & L15 & 4.29 \\
+L8 & 3.50 & Lateral der. & & \\
+\bottomrule
+\end{tabular}
+\caption{Error de detección por punto de referencia individual (ensemble + TTA).}
+\end{table}
+
+Los puntos centrales (L9, L10, L11) tienen menor error debido a menor variabilidad anatómica. Los puntos en ápices (L12, L13) presentan mayor error por la dificultad de definir límites precisos en zonas donde la transición pulmón-aire es gradual.
+
+\subsection{Clasificación}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{Valor} & \textbf{Std} \\
+\midrule
+Accuracy & 98.60\% & $\pm$0.26\% \\
+F1-macro & 98.00\% & $\pm$0.36\% \\
+F1-weighted & 98.60\% & $\pm$0.25\% \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de validación cruzada 5-fold (ResNet-18 en dataset warped\_lung\_best).}
+\end{table}
+
+\subsection{Impacto de la Normalización Geométrica}
+
+El proceso de warping demostró dos beneficios principales: (1) \textbf{Reducción de variabilidad}: la normalización a forma canónica elimina diferencias de posicionamiento y anatomía individual, permitiendo que el clasificador se enfoque en patrones patológicos; (2) \textbf{Información preservada}: el warping afín por partes (no lineal globalmente) mantiene características locales relevantes como consolidaciones y opacidades.
+
+% ============================================================================
+% ENTREGABLES
+% ============================================================================
+\section{Entregables}
+
+Se produjo un sistema completo con la siguiente estructura:
+
+\subsection{Código Fuente}
+
+Implementación completa en \code{src\_v2/} organizada en módulos:
+
+\begin{itemize}[itemsep=2pt]
+    \item \textbf{Modelos}: \code{resnet\_landmark.py} (arquitectura ResNet-18 con Coordinate Attention), \code{losses.py} (Wing Loss, Symmetry, Alignment), \code{classifier.py} (clasificador COVID-19)
+    \item \textbf{Entrenamiento}: \code{trainer.py} (esquema dos fases), \code{callbacks.py} (early stopping, checkpointing)
+    \item \textbf{Datos}: \code{dataset.py} (LandmarkDataset), \code{transforms.py} (CLAHE, TTA, aumentación)
+    \item \textbf{Procesamiento}: \code{gpa.py} (Generalized Procrustes Analysis), \code{warp.py} (warping afín por partes)
+    \item \textbf{Evaluación}: \code{metrics.py} (error de puntos de referencia), \code{ensemble.py} (predicción ensemble)
+    \item \textbf{CLI}: \code{cli.py} (interfaz de línea de comandos para todos los comandos)
+\end{itemize}
+
+% ============================================================================
+% CRONOGRAMA
+% ============================================================================
+\section{Cronograma}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{cp{5cm}p{6cm}}
+\toprule
+\textbf{Semana} & \textbf{Plan Original} & \textbf{Actividades Ejecutadas} \\
+\midrule
+\textbf{1} (9-15 Oct) & Revisión estado del arte, análisis dataset & Análisis de 15,153 imágenes, definición de 15 puntos de referencia, configuración entorno \\
+\textbf{2} (16-22 Oct) & Arquitectura base, Fase 1 & Implementación ResNet-18 + CoordAttention, entrenamiento Fase 1 \\
+\textbf{3} (23-29 Oct) & Fine-tuning, Fases 2-3 & Fine-tuning diferenciado, pérdidas geométricas, sweep semillas \\
+\textbf{4} (30 Oct-9 Nov) & Experimentos finales, documentación & Ensemble 4 modelos, TTA, clasificación, documentación \\
+\bottomrule
+\end{tabular}
+\caption{Comparación entre cronograma planificado y ejecutado.}
+\end{table}
+
+
+\end{document}

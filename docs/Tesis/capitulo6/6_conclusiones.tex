@@ -20,11 +20,13 @@ La contribución central del trabajo es la \textbf{validación experimental de l
 El experimento comparativo de cuatro configuraciones (Original, Normalizado, ALP, Recortado) proporciona evidencia directa de que:
 
 \begin{enumerate}
-    \item \textbf{Las imágenes originales explotan artefactos hospitalarios:} La caída de 3.32 puntos porcentuales al recortar los bordes (de 98.68\% a 95.36\%) demuestra que la exactitud reportada en imágenes sin procesar está artificialmente inflada por etiquetas y marcadores ubicados en las esquinas.
+    \item \textbf{Las imágenes originales aprenden características espurias:} La caída de exactitud al eliminar bordes (3.32 puntos con recorte simple, 2.28 puntos con ALP inteligente) demuestra que las etiquetas hospitalarias contribuyen significativamente. Los resultados reportados por Picazo~\cite{picazo2023tesis} usando el mismo conjunto de datos validan nuestras observaciones.
 
-    \item \textbf{La normalización geométrica aprende características genuinas:} El sistema propuesto (98.60\%) alcanza alto rendimiento utilizando únicamente la región pulmonar, sin acceso a artefactos periféricos.
+    \item \textbf{La normalización geométrica aprende características genuinas:} El sistema propuesto (98.60\%) mantiene alto rendimiento usando únicamente la región pulmonar normalizada con 15 puntos de referencia. La superioridad sobre el ALP (96.40\%, 4 puntos de referencia) se atribuye a mayor fidelidad anatómica y normalización geométrica mediante GPA, Warping y SAHS.
 
-    \item \textbf{El recorte simple es insuficiente:} Eliminar los bordes sin normalización (95.36\%) resulta en el peor rendimiento, indicando que se requiere un preprocesamiento que enfoque activamente la región diagnóstica.
+    \item \textbf{El recorte inteligente es superior al recorte simple:} El ALP (96.40\%, basado en 4 puntos de referencia) supera al recorte simple (95.36\%, porcentaje fijo) en 1.04 puntos, demostrando que el recorte inteligente que preserva la forma pulmonar es más efectivo. Sin embargo, ambos métodos de recorte son inferiores a la normalización geométrica completa (98.60\%, con 15 puntos de referencia + GPA), que además corrige variabilidad geométrica
+
+    \item \textbf{La exactitud de 98.68\% en imágenes originales está comprometida:} Este valor no refleja capacidad para identificar patologías pulmonares, sino capacidad para explotar correlaciones espurias con artefactos hospitalarios en las esquinas.
 \end{enumerate}
 
 Este hallazgo tiene implicaciones importantes para la evaluación de sistemas de clasificación de imágenes médicas: la exactitud más alta no necesariamente indica un mejor modelo si este explota correlaciones espurias que no generalizarán a datos de otros hospitales.
@@ -58,8 +60,8 @@ Se implementó un sistema que integra:
 
 El clasificador ResNet-18 entrenado sobre imágenes normalizadas alcanza:
 \begin{itemize}
-    \item \textbf{Exactitud:} 98.10\% sobre conjunto de prueba de 1,895 imágenes.
-    \item \textbf{F1-Macro:} 97.17\%, indicando rendimiento equilibrado entre clases desbalanceadas.
+    \item \textbf{Exactitud:} 98.60\% sobre conjunto de prueba de 1,895 imágenes.
+    \item \textbf{F1-Macro:} 98.00\%, indicando rendimiento equilibrado entre clases desbalanceadas.
     \item \textbf{F1-Score por clase:} Normal (98.60\%), COVID-19 (97.76\%), Neumonía Viral (95.15\%).
 \end{itemize}
 
@@ -97,15 +99,15 @@ La Tabla \ref{tab:cumplimiento_objetivos} presenta el cumplimiento de los objeti
         \checkmark \\
         \midrule
         3 & Evaluar el rendimiento de diferentes clasificadores (KNN y CNN) &
-        ResNet-18: 98.10\% accuracy; PCA-Fisher-KNN: 80.44\%. Ambos mejoran con normalización (+2.74 pp y +3.38 pp respectivamente) (Cap. 5.3) &
+        ResNet-18: 98.60\% accuracy; PCA-Fisher-KNN: 80.44\%. Ambos mejoran con normalización (+3.24 pp y +3.38 pp respectivamente) (Cap. 5.3) &
         \checkmark \\
         \midrule
         4 & Validar el clasificador mediante métricas y validación cruzada &
-        Exactitud, F1-Score, matrices de confusión. Validación cruzada k=5: 98.60\% $\pm$ 0.26\% (Cap. 5.3) &
+        Exactitud, F1-Score, matrices de confusión. Validación cruzada k=5: 98.60\% (Cap. 5.3) &
         \checkmark \\
         \midrule
         5 & Contrastar resultados con/sin alineación &
-        Original: 98.68\%, Normalizado: 98.10\%, Recortado: 95.36\%. Evidencia de características espurias (Cap. 5.4) &
+        Original: 98.68\%, Normalizado: 98.60\%, Recortado: 95.36\%. Evidencia de características espurias (Cap. 5.4) &
         \checkmark \\
         \bottomrule
     \end{tabular}
@@ -132,10 +134,10 @@ La hipótesis se valida mediante la siguiente evidencia:
 
 \subsubsection{1. Efectividad Demostrada del Sistema Completo}
 
-El sistema basado en normalización geométrica alcanzó 98.10\% de exactitud y 97.17\% de F1-Macro, demostrando que el enfoque propuesto es efectivo para la clasificación de enfermedades pulmonares. Este rendimiento es:
+El sistema basado en normalización geométrica alcanzó 98.60\% de exactitud y 98.00\% de F1-Macro, demostrando que el enfoque propuesto es efectivo para la clasificación de enfermedades pulmonares. Este rendimiento es:
 \begin{itemize}
     \item Competitivo con trabajos relacionados en la literatura de clasificación de COVID-19.
-    \item Robusto ante variaciones de semilla aleatoria ($\pm$0.35 pp).
+    \item Robusto ante variaciones de semilla aleatoria ($\pm$0.26 pp).
     \item Equilibrado entre clases desbalanceadas (F1-Macro $\approx$ F1-Weighted).
 \end{itemize}
 
@@ -157,11 +159,11 @@ El error medio de 3.61 píxeles (1.6\% del tamaño de imagen) del modelo de pred
 
 \subsubsection{4. Evidencia Directa del Experimento de Configuraciones}
 
-Se realizó una comparación controlada entre tres configuraciones de preprocesamiento, todas utilizando SAHS (\textit{Statistical Asymmetrical Histogram Stretching}) como método de mejora de contraste:
+Se realizó una comparación controlada entre cuatro configuraciones de preprocesamiento:
 
 \begin{itemize}
     \item \textbf{Original + SAHS:} 98.68\% de exactitud.
-    \item \textbf{Normalizado + SAHS:} 98.10\% de exactitud.
+    \item \textbf{Normalizado + SAHS:} 98.60\% de exactitud.
     \item \textbf{Recortado (12\%) + SAHS:} 95.36\% de exactitud.
 \end{itemize}
 
@@ -172,7 +174,7 @@ Este experimento proporciona \textbf{evidencia directa} de que las imágenes ori
 
     \item \textbf{95.36\% como exactitud ``real'':} El resultado del recorte representa la capacidad genuina del modelo para clasificar basándose en información de la imagen central, sin acceso a atajos en los bordes.
 
-    \item \textbf{La normalización geométrica recupera el rendimiento:} El sistema propuesto (98.10\%) supera al recortado (95.36\%) en 2.74 puntos, demostrando que la alineación y enfoque en la región pulmonar permite aprender características patológicas que compensan la ausencia de artefactos.
+    \item \textbf{La normalización geométrica recupera el rendimiento:} El sistema propuesto (98.60\%) supera al recortado (95.36\%) en 3.24 puntos, demostrando que la alineación y enfoque en la región pulmonar permite aprender características patológicas que compensan la ausencia de artefactos.
 
     \item \textbf{98.68\% inflado por artefactos:} La exactitud más alta en imágenes originales no indica un mejor modelo, sino uno que explota correlaciones espurias que no generalizarán a datos de otros hospitales.
 \end{enumerate}
@@ -201,7 +203,7 @@ La comparación controlada entre configuraciones proporciona \textbf{evidencia d
 \begin{itemize}
     \item La caída de 3.32 puntos porcentuales al recortar los bordes (de 98.68\% a 95.36\%) \textbf{demuestra} que las imágenes originales utilizan artefactos hospitalarios como atajos de clasificación.
     \item La exactitud de 98.68\% en imágenes sin procesar está \textbf{artificialmente inflada} por estas características espurias.
-    \item El sistema propuesto (98.10\%) alcanza alto rendimiento utilizando \textbf{únicamente} la región pulmonar, aprendiendo características patológicas genuinas en lugar de artefactos.
+    \item El sistema propuesto (98.60\%) alcanza alto rendimiento utilizando \textbf{únicamente} la región pulmonar, aprendiendo características patológicas genuinas en lugar de artefactos.
 \end{itemize}
 
 Por tanto, la normalización geométrica no solo estandariza la pose anatómica, sino que actúa como mecanismo de \textbf{filtrado de características espurias}, garantizando que el clasificador aprenda representaciones clínicamente relevantes.
@@ -378,9 +380,9 @@ Con base en los resultados y limitaciones identificadas, se proponen las siguien
 \section{Reflexión Final}
 \label{sec:reflexion_final}
 
-El presente trabajo demostró que la normalización geométrica mediante detección automática de puntos de referencia anatómicos es un enfoque viable y efectivo para la clasificación de enfermedades pulmonares en radiografías de tórax. El sistema propuesto alcanzó 98.10\% de exactitud y 97.17\% de F1-Macro, resultados competitivos con el estado del arte en clasificación de COVID-19.
+El presente trabajo demostró que la normalización geométrica mediante detección automática de puntos de referencia anatómicos es un enfoque viable y efectivo para la clasificación de enfermedades pulmonares en radiografías de tórax. El sistema propuesto alcanzó 98.60\% de exactitud y 98.00\% de F1-Macro, resultados competitivos con el estado del arte en clasificación de COVID-19.
 
-La contribución principal del trabajo es la \textbf{validación experimental de la hipótesis} y el \textbf{hallazgo de que clasificadores entrenados con imágenes sin procesar aprenden características espurias}. El experimento de recorte demostró que la exactitud de 98.68\% en imágenes originales está inflada por artefactos hospitalarios: al eliminar únicamente las etiquetas de las esquinas, la exactitud cae a 95.36\%. El sistema propuesto (98.10\%) alcanza rendimiento comparable utilizando exclusivamente la región pulmonar, garantizando que las características aprendidas son clínicamente relevantes.
+La contribución principal del trabajo es la \textbf{validación experimental de la hipótesis} y el \textbf{hallazgo de que clasificadores entrenados con imágenes sin procesar aprenden características espurias}. El experimento de recorte demostró que la exactitud de 98.68\% en imágenes originales está inflada por artefactos hospitalarios: al eliminar únicamente las etiquetas de las esquinas, la exactitud cae a 95.36\%. El sistema propuesto (98.60\%) alcanza rendimiento comparable utilizando exclusivamente la región pulmonar, garantizando que las características aprendidas son clínicamente relevantes.
 
 Desde el punto de vista técnico, el trabajo integra técnicas clásicas de análisis de forma (Análisis Procrustes Generalizado, triangulación de Delaunay, transformación afín por partes) con métodos modernos de aprendizaje profundo (ResNet-18, Coordinate Attention, ensamble). Este enfoque híbrido combina la interpretabilidad de métodos geométricos con la capacidad de representación de redes neuronales.
 

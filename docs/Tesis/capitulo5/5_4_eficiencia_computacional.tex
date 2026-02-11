@@ -1,0 +1,36 @@
+% =============================================================================
+% CAPÍTULO 5: RESULTADOS
+% Sección 5.4: Eficiencia Computacional
+% =============================================================================
+
+\section{Eficiencia Computacional}
+\label{sec:eficiencia_computacional}
+
+Esta sección analiza los tiempos de inferencia del sistema medidos sobre 100 imágenes del conjunto de prueba en el hardware descrito en la Sección \ref{subsec:hardware_specs}.
+
+\subsection{Tiempos de Inferencia}
+\label{subsec:tiempos_inferencia}
+
+La Tabla \ref{tab:tiempos_inferencia} presenta los tiempos medidos para cada módulo del proceso.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Tiempos de inferencia por módulo (ms). Estadísticas sobre 100 imágenes.}
+    \label{tab:tiempos_inferencia}
+    \small
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Módulo} & \textbf{Media} & \textbf{Mediana} & \textbf{Desv. Std.} & \textbf{\% Total} \\
+        \midrule
+        Preprocesamiento CLAHE & 0.45 & 0.18 & 0.56 & 0.5\% \\
+        Puntos de Referencia (Ensamble + TTA) & 66.08 & 59.34 & 14.64 & 73.5\% \\
+        Normalización Geométrica & 4.86 & 4.26 & 1.22 & 5.4\% \\
+        Preprocesamiento SAHS & 0.53 & 0.51 & 0.13 & 0.6\% \\
+        Clasificación & 8.59 & 6.90 & 3.40 & 9.6\% \\
+        \midrule
+        \textbf{Proceso Completo} & \textbf{89.92} & \textbf{79.24} & \textbf{20.31} & \textbf{100\%} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+El sistema procesa una imagen completa en \textbf{89.92 ms promedio} (\textbf{11.1 imágenes/segundo}). El módulo de ensamble de puntos de referencia es el cuello de botella, representando el 73.5\% del tiempo total, mientras que el preprocesamiento ($<$1\%) y warping (5.4\%) tienen impacto mínimo.

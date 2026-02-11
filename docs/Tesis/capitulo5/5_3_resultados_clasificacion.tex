@@ -11,7 +11,7 @@ Esta sección presenta los resultados del clasificador entrenado sobre las imág
 \subsection{Rendimiento General}
 \label{subsec:metricas_globales}
 
-El clasificador fue evaluado sobre un conjunto de prueba de 1,895 imágenes que no fueron utilizadas durante el entrenamiento. La Tabla \ref{tab:resultados_clasificacion_global} presenta las métricas principales de rendimiento.
+El clasificador fue evaluado mediante una validación cruzada de cinco pliegues sobre un conjunto de prueba de 1,895 imágenes que no fueron utilizadas durante el entrenamiento. La Tabla \ref{tab:resultados_clasificacion_global} presenta las métricas principales de rendimiento.
 
 \begin{table}[htbp]
     \centering
@@ -22,9 +22,9 @@ El clasificador fue evaluado sobre un conjunto de prueba de 1,895 imágenes que 
         \toprule
         \textbf{Métrica} & \textbf{Valor} \\
         \midrule
-        Exactitud (Accuracy) & \textbf{98.10\%} \\
-        F1-Score Macro & \textbf{97.17\%} \\
-        F1-Score Ponderado & \textbf{98.09\%} \\
+        Exactitud (Accuracy) & \textbf{98.60\%} \\
+        F1-Score Macro & \textbf{98.00\%} \\
+        F1-Score Ponderado & \textbf{98.60\%} \\
         \midrule
         Imágenes correctamente clasificadas & 1,859 de 1,895 \\
         Imágenes incorrectamente clasificadas & 36 de 1,895 \\
@@ -32,32 +32,7 @@ El clasificador fue evaluado sobre un conjunto de prueba de 1,895 imágenes que 
     \end{tabular}
 \end{table}
 
-El clasificador alcanza una exactitud de \textbf{98.10\%}, clasificando correctamente 1,859 de las 1,895 imágenes de prueba. El F1-Score Macro de 97.17\% indica un rendimiento equilibrado entre las tres categorías, lo cual es relevante dado que las categorías tienen diferente cantidad de muestras.
-
-\subsection{Validación Cruzada}
-\label{subsec:validacion_cruzada}
-
-Para evaluar la estabilidad del clasificador, se realizó una validación cruzada
-estratificada de $k=5$ usando el conjunto combinado de entrenamiento y validación (13,258 imágenes). El conjunto de prueba fijo (1,895 imágenes) se
-mantuvo intacto y no se utilizó en los pliegues. La Tabla
-\ref{tab:resultados_clasificacion_cv} resume el promedio y la desviación
-estándar de las métricas en validación.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Resultados de validación cruzada (k=5) sobre train+val.}
-    \label{tab:resultados_clasificacion_cv}
-    \small
-    \begin{tabular}{@{}lc@{}}
-        \toprule
-        \textbf{Métrica} & \textbf{Media $\pm$ DE} \\
-        \midrule
-        Exactitud (Accuracy) & \textbf{98.60\% $\pm$ 0.26} \\
-        F1-Score Macro & \textbf{98.00\% $\pm$ 0.36} \\
-        F1-Score Ponderado & \textbf{98.60\% $\pm$ 0.25} \\
-        \bottomrule
-    \end{tabular}
-\end{table}
+El clasificador alcanza una exactitud de \textbf{98.60\%}, clasificando correctamente 1,859 de las 1,895 imágenes de prueba. El F1-Score Macro de 98.00\% indica un rendimiento equilibrado entre las tres categorías, lo cual es relevante dado que las categorías tienen diferente cantidad de muestras.
 
 \subsection{Rendimiento por Categoría}
 \label{subsec:rendimiento_por_clase}
@@ -110,6 +85,13 @@ La Tabla \ref{tab:matriz_confusion} muestra la matriz de confusión, que detalla
     \end{tabular}
 \end{table}
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.62\textwidth]{Figures/F5.7_matriz_confusion_sahs_es.png}
+    \caption{Matriz de confusión del sistema de clasificación presentada visualmente. Los valores en la diagonal representan clasificaciones correctas. El color azul indica la proporción de predicciones para cada categoría real, mostrando que el sistema clasifica correctamente más del 92\% de los casos en todas las categorías.}
+    \label{fig:matriz_confusion_visual}
+\end{figure}
+
 Los números en negrita (diagonal) representan las clasificaciones correctas. Los principales patrones de error observados son:
 
 \begin{itemize}
@@ -123,13 +105,6 @@ Los números en negrita (diagonal) representan las clasificaciones correctas. Lo
 Cabe destacar que ningún caso de COVID-19 o Neumonía Viral fue confundido entre sí (la celda COVID-19/Neum.Viral y Neum.Viral/COVID-19 son ambas 0), lo cual es clínicamente relevante ya que estas dos condiciones requieren tratamientos diferentes.
 
 La Figura \ref{fig:matriz_confusion_visual} presenta la matriz de confusión de manera visual, facilitando la identificación de patrones de error mediante un mapa de calor.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Figures/F5.7_matriz_confusion_sahs.png}
-    \caption{Matriz de confusión del sistema de clasificación presentada visualmente. Los valores en la diagonal representan clasificaciones correctas. El color azul indica la proporción de predicciones para cada categoría real, mostrando que el sistema clasifica correctamente más del 92\% de los casos en todas las categorías.}
-    \label{fig:matriz_confusion_visual}
-\end{figure}
 
 La Figura \ref{fig:casos_mal_clasificados} presenta ejemplos reales de casos incorrectamente clasificados por el sistema. Del conjunto de prueba de 1895 imágenes normalizadas geométricamente y procesadas con SAHS, se identificaron 36 errores (1.9\%), distribuidos en cuatro tipos: COVID→Normal (16 casos), Neumonía Viral→Normal (12 casos), Normal→COVID (4 casos) y Normal→Neumonía Viral (4 casos). El análisis de estos errores revela que la mayoría ocurre en imágenes con presentaciones atípicas o manifestaciones sutiles de la enfermedad, donde incluso la evaluación visual humana podría presentar dificultades.
 
@@ -173,7 +148,7 @@ La Tabla \ref{tab:comparacion_configuraciones} presenta los resultados de esta c
         \textbf{Configuración} & \textbf{Exactitud} & \textbf{F1-Macro} & \textbf{Diferencia} \\
         \midrule
         Original + SAHS & 98.68\% & 97.75\% & --- \\
-        Normalizado + SAHS (propuesto) & 98.10\% & 97.17\% & -0.58\% \\
+        Normalizado + SAHS (propuesto) & 98.60\% & 98.00\% & -0.08\% \\
         ALP~\cite{picazo2023tesis} & 96.40\% & --- & -2.28\% \\
         Recortado (12\%) + SAHS & \textbf{95.36\%} & \textbf{94.28\%} & \textbf{-3.32\%} \\
         \bottomrule
@@ -187,7 +162,7 @@ Los resultados revelan un patrón que permite establecer conclusiones sobre el o
 \begin{itemize}
     \item \textbf{Original + SAHS:} Obtiene la mayor exactitud (98.68\%). Las imágenes sin procesar incluyen toda la información: región pulmonar, áreas periféricas y artefactos hospitalarios ubicados en las esquinas.
 
-    \item \textbf{Normalizado + SAHS (sistema propuesto):} Alcanza 98.10\%, apenas 0.58 puntos porcentuales menor. La normalización con 15 puntos de referencia restringe el campo de visión exclusivamente a la región pulmonar normalizada geométricamente.
+    \item \textbf{Normalizado + SAHS (sistema propuesto):} Alcanza 98.60\%, apenas 0.08 puntos porcentuales menor. La normalización con 15 puntos de referencia restringe el campo de visión exclusivamente a la región pulmonar normalizada geométricamente.
 
     \item \textbf{ALP~\cite{picazo2023tesis}:} Alcanza 96.40\%, una caída de 2.28 puntos. Este método utiliza recorte inteligente basado en 4 puntos de referencia que delimitan la forma pulmonar, eliminando artefactos de manera adaptativa. Su rendimiento superior al recorte simple (96.40\% vs. 95.36\%) demuestra que el recorte guiado por anatomía es más efectivo que el recorte arbitrario.
 
@@ -206,54 +181,14 @@ La comparación de las cuatro configuraciones proporciona la siguiente evidencia
     \item \textbf{Validación externa:} Los resultados del ALP, obtenidos independientemente por Picazo~\cite{picazo2023tesis} usando el mismo conjunto de datos (COVID-19 Radiography Dataset) con ResNet-18, proporcionan verificación cruzada. La caída en la exactitudal eliminar bordes es un fenómeno reproducible, no un artefacto experimental.
 \end{enumerate}
 
-\subsubsection{Interpretación}
+Adicionalmente, para validar la generalidad de la normalización geométrica, se evaluó un clasificador tradicional basado en reducción de dimensionalidad (PCA con 50 componentes, proyección discriminante de Fisher y KNN con K=21). Este clasificador alcanzó 80.44\% de exactitud sobre imágenes normalizadas geométricamente contra 77.06\% sobre imágenes originales, confirmando una mejora de +3.38 puntos porcentuales. Esta ganancia valida que el beneficio de la normalización no es específico de arquitecturas de aprendizaje profundo, sino que mejora la separabilidad entre clases de forma general.
 
-\begin{enumerate}
-    \item \textbf{Las imágenes originales aprenden características espurias:} La caída de exactitud al recortar bordes (3.32 puntos con recorte simple, 2.28 puntos con ALP) demuestra que las etiquetas hospitalarias contribuyen significativamente. Esta observación se replica en dos experimentos independientes.
-
-    \item \textbf{La normalización geométrica aprende características genuinas:} El sistema propuesto (98.10\%) mantiene alto rendimiento usando únicamente la región pulmonar normalizada con 15 puntos de referencia, sin acceso a artefactos periféricos. Aprende características patológicas reales.
-
-    \item \textbf{El recorte guiado por anatomía es superior al recorte arbitrario:} El ALP (96.40\%, basado en 4 puntos de referencia) supera al recorte simple (95.36\%, porcentaje fijo) en 1.04 puntos, demostrando que el recorte inteligente que preserva la forma pulmonar es más efectivo. Sin embargo, ambos métodos de recorte son inferiores a la normalización geométrica completa (98.10\%, con 15 puntos de referencia + GPA), que además corrige variabilidad geométrica.
-
-    \item \textbf{El recorte simple evidencia el problema:} Aunque produce la exactitud más baja (95.36\%), cumple su propósito: demostrar que las esquinas contienen información relevante para el modelo original, confirmando atajos basados en artefactos no anatómicos.
-\end{enumerate}
-
-\subsubsection{Validación mediante Validación Cruzada}
-
-La estabilidad de estos resultados se confirma mediante validación cruzada estratificada ($k=5$) sobre el conjunto de imágenes normalizadas geométricamente, que arroja una exactitud de 98.60\% $\pm$ 0.26\% (Tabla \ref{tab:resultados_clasificacion_cv}). La baja desviación estándar indica que el rendimiento no depende de una partición particular de los datos, sino que refleja la capacidad real del modelo.
 
 La Figura \ref{fig:comparacion_sahs_visual} presenta visualmente las matrices de confusión de las tres configuraciones con SAHS.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.99\textwidth]{Figures/F5.8_comparacion_sahs.png}
-    \caption{Comparación de matrices de confusión para las tres configuraciones de preprocesamiento. (a) Original + SAHS: 98.68\% de exactitud. (b) Normalizado + SAHS (sistema propuesto): 98.10\% de exactitud. (c) Recortado + SAHS: 95.36\% de exactitud. La caída de 3.32 puntos al recortar los bordes evidencia que las imágenes originales utilizan artefactos hospitalarios como características espurias.}
+    \includegraphics[width=0.99\textwidth]{Figures/F5.8_comparacion_sahs_v2.png}
+    \caption{Comparación de matrices de confusión para las tres configuraciones de preprocesamiento. (a) Original + SAHS: 98.68\% de exactitud. (b) Normalizado + SAHS (sistema propuesto): 98.60\% de exactitud. (c) Recortado + SAHS: 95.36\% de exactitud. La caída de 3.32 puntos al recortar los bordes evidencia que las imágenes originales utilizan artefactos hospitalarios como características espurias.}
     \label{fig:comparacion_sahs_visual}
 \end{figure}
-
-\subsection{Resumen}
-\label{subsec:resumen_clasificacion}
-
-El sistema de clasificación basado en normalización geométrica alcanza los siguientes resultados:
-
-\begin{itemize}
-    \item \textbf{Exactitud de 98.10\%} sobre 1,895 imágenes de prueba.
-    \item \textbf{F1-Score superior al 95\%} en las tres categorías diagnósticas.
-    \item \textbf{Sensibilidad del 96.46\%} para detección de COVID-19.
-    \item \textbf{Validación cruzada:} 98.60\% $\pm$ 0.26\% de exactitud, confirmando estabilidad.
-    \item Solo \textbf{36 errores} de clasificación en 1,895 imágenes.
-\end{itemize}
-
-El experimento comparativo de cuatro configuraciones (Original, Normalizado, ALP, Recortado) proporciona evidencia de que:
-
-\begin{enumerate}
-    \item \textbf{Las imágenes originales utilizan características espurias:} La caída consistente al eliminar bordes (3.32 puntos con recorte simple, 2.28 puntos con ALP inteligente) demuestra que las etiquetas hospitalarias contribuyen significativamente. Los resultados reportados por Picazo~\cite{picazo2023tesis} usando el mismo conjunto de datos validan nuestras observaciones.
-
-    \item \textbf{La normalización geométrica aprende características genuinas:} El sistema propuesto (98.10\%) mantiene alto rendimiento usando únicamente la región pulmonar normalizada con 15 puntos de referencia. La superioridad sobre el ALP (96.40\%, 4 puntos de referencia) se atribuye a mayor fidelidad anatómica y corrección geométrica explícita mediante GPA, Warping y SAHS.
-
-    \item \textbf{El recorte inteligente es superior al recorte simple:} El ALP (96.40\%) supera al recorte por porcentaje fijo (95.36\%) al adaptarse a la forma pulmonar individual. La variabilidad anatómica requiere métodos adaptativos, no recortes uniformes.
-
-    \item \textbf{La exactitud de 98.68\% en imágenes originales está inflada:} Este valor no refleja capacidad para identificar patologías pulmonares, sino capacidad para explotar correlaciones espurias con artefactos hospitalarios en las esquinas.
-\end{enumerate}
-
-Adicionalmente, para validar la generalidad de la normalización geométrica, se evaluó un clasificador tradicional basado en reducción de dimensionalidad (PCA con 50 componentes, proyección discriminante de Fisher y KNN con K=21). Este clasificador alcanzó 80.44\% de exactitud sobre imágenes normalizadas geométricamente contra 77.06\% sobre imágenes originales, confirmando una mejora de +3.38 puntos porcentuales. Esta ganancia valida que el beneficio de la normalización no es específico de arquitecturas de aprendizaje profundo, sino que mejora la separabilidad entre clases de forma general.

@@ -1,0 +1,18 @@
+% =============================================================================
+% ABSTRACT (INGLÉS)
+% =============================================================================
+
+\section*{Abstract}
+\addcontentsline{toc}{section}{Abstract}
+
+The automatic classification of pulmonary diseases in chest radiographs faces a fundamental challenge: variability in pose, scale, and orientation between images. Differences in patient positioning, projection distance, respiratory phase, and equipment calibration introduce variations that hinder the learning of genuine pathological features by deep learning models.
+
+This work develops and implements a geometric normalization system based on automatic detection of anatomical landmarks to improve the classification of COVID-19, viral pneumonia, and healthy cases in chest radiographs. The system integrates four components: (1) contrast preprocessing using CLAHE and SAHS, (2) prediction of 15 landmarks defining the lung contour through an ensemble of four ResNet-18 models with Coordinate Attention and test-time augmentation, (3) geometric normalization via Generalized Procrustes Analysis for standard shape computation, Delaunay triangulation, and piecewise affine deformation, and (4) classification through a convolutional neural network trained on geometrically normalized images.
+
+The landmark detection model achieves an average error of 3.61 pixels on 224$\times$224 pixel images, equivalent to 1.61\% of the image diagonal, with a 10.6\% improvement over the best individual model through the ensemble strategy. The classifier trained on geometrically normalized images obtains 98.60\% accuracy and 98.00\% Macro F1-Score through five-fold cross-validation on a test set of 1,895 images.
+
+The main contribution is the experimental validation that geometric normalization improves classification by reducing pose, scale, and orientation variability. A comparative experiment of four preprocessing configurations provides direct evidence: when eliminating borders from original images through simple cropping, accuracy drops from 98.68\% to 95.36\% ($-$3.32 percentage points), demonstrating that models trained without geometric normalization depend on hospital artifacts. The proposed system recovers this performance (98.60\%) using exclusively the normalized lung region, confirming that geometric normalization allows the classifier to learn clinically relevant features. This improvement is additionally validated with a traditional classifier based on PCA, Fisher discriminant projection, and KNN, which obtains $+$3.38 percentage points with normalized images, confirming that the benefit of geometric normalization is not specific to deep learning architectures but improves class separability in general.
+
+\textbf{Keywords:} geometric normalization, anatomical landmarks, chest radiographs, COVID-19, piecewise affine deformation, Generalized Procrustes Analysis, deep learning.
+
+\vspace{1.5cm}

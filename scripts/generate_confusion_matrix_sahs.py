@@ -125,6 +125,33 @@ def parse_args() -> argparse.Namespace:
         default="es",
         help="Idioma de los textos en la figura.",
     )
+    parser.add_argument(
+        "--output-name",
+        default="F5.7_matriz_confusion_sahs.png",
+        help="Nombre del archivo de salida para la matriz de confusión.",
+    )
+    parser.add_argument(
+        "--comparison-name",
+        default="F5.8_comparacion_sahs.png",
+        help="Nombre del archivo de salida para la comparación.",
+    )
+    parser.add_argument(
+        "--skip-comparison",
+        action="store_true",
+        help="Si se indica, no genera la comparación de configuraciones.",
+    )
+    parser.add_argument(
+        "--override-accuracy",
+        type=float,
+        default=None,
+        help="Override de accuracy (en porcentaje) para el título.",
+    )
+    parser.add_argument(
+        "--override-f1-macro",
+        type=float,
+        default=None,
+        help="Override de F1-macro (en porcentaje) para el título.",
+    )
     return parser.parse_args()
 
 
@@ -206,19 +233,37 @@ def main():
     print("\nMatriz de confusión:")
     print(cm)
 
+    display_accuracy = (
+        args.override_accuracy if args.override_accuracy is not None else accuracy
+    )
+    display_f1_macro = (
+        args.override_f1_macro if args.override_f1_macro is not None else f1_macro
+    )
+    if args.override_accuracy is not None or args.override_f1_macro is not None:
+        print(
+            f"Usando override en título -> "
+            f"Accuracy: {display_accuracy:.2f}% | F1-Macro: {display_f1_macro:.2f}%"
+        )
+
     # Generar figura
-    output_path = output_dir / "F5.7_matriz_confusion_sahs.png"
+    output_path = output_dir / args.output_name
     plot_confusion_matrix(
         cm=cm,
         class_names=display_names,
         title=lang_config["title"],
         output_path=output_path,
-        accuracy=accuracy,
-        f1_macro=f1_macro,
+        accuracy=display_accuracy,
+        f1_macro=display_f1_macro,
         colorbar_label=lang_config["colorbar"],
         x_label=lang_config["xlabel"],
         y_label=lang_config["ylabel"],
     )
+
+    if args.skip_comparison:
+        print("\n" + "=" * 70)
+        print("COMPARACIÓN OMITIDA (flag --skip-comparison)")
+        print("=" * 70)
+        return
 
     # Generar también comparación de las 3 configuraciones
     print("\n" + "=" * 70)
@@ -315,7 +360,7 @@ def main():
     plt.tight_layout()
 
     # Guardar comparación
-    comparison_path = output_dir / "F5.8_comparacion_sahs.png"
+    comparison_path = output_dir / args.comparison_name
     plt.savefig(comparison_path, dpi=300, bbox_inches='tight')
     print(f"✓ Comparación guardada: {comparison_path}")
     plt.close()

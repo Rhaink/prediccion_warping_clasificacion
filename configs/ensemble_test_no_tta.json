@@ -1,0 +1,11 @@
+{
+  "name": "ensemble_test_no_tta",
+  "models": [
+    "checkpoints/session10/ensemble/seed123/final_model.pt",
+    "checkpoints/session13/seed321/final_model.pt",
+    "checkpoints/repro_split111/session14/seed111/final_model.pt",
+    "checkpoints/repro_split666/session16/seed666/final_model.pt"
+  ],
+  "tta": false,
+  "clahe": false
+}
