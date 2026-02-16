@@ -1,8 +1,8 @@
 {
   "_metadata": {
     "description": "Valores validados experimentalmente para verificacion de scripts",
-    "version": "2.1.0",
-    "last_updated": "2026-01-13",
+    "version": "2.2.0",
+    "last_updated": "2026-02-16",
     "reference": "docs/REFERENCIA_SESIONES_FUTURAS.md",
     "validated_sessions": [
       39,
@@ -185,6 +185,106 @@
       "test_set_size": 1895,
       "validated": "2026-01-28",
       "config": "configs/ensemble_classifier.json"
+    },
+    "final_evaluation": {
+      "description": "Final test set evaluation with ensemble+TTA (Phase 5)",
+      "timestamp": "2026-02-16T05:04:59.880129-06:00",
+      "validated": "2026-02-16",
+      "original_test_set": {
+        "test_set_size": 1895,
+        "duplicates_present": 1,
+        "accuracy": 0.9825857519788919,
+        "f1_macro": 0.9712401783053957,
+        "f1_weighted": 0.9825191709389255,
+        "confusion_matrix": [
+          [
+            441,
+            10,
+            1
+          ],
+          [
+            4,
+            1264,
+            6
+          ],
+          [
+            0,
+            12,
+            157
+          ]
+        ],
+        "per_class": {
+          "COVID": {
+            "precision": 0.9910112359550561,
+            "recall": 0.9756637168141593,
+            "f1-score": 0.9832775919732442,
+            "support": 452
+          },
+          "Normal": {
+            "precision": 0.9828926905132193,
+            "recall": 0.9921507064364207,
+            "f1-score": 0.9875,
+            "support": 1274
+          },
+          "Viral_Pneumonia": {
+            "precision": 0.9573170731707317,
+            "recall": 0.9289940828402367,
+            "f1-score": 0.9429429429429429,
+            "support": 169
+          }
+        }
+      },
+      "cleaned_test_set": {
+        "test_set_size": 1894,
+        "duplicates_removed": 1,
+        "accuracy": 0.9825765575501584,
+        "f1_macro": 0.9712369205519424,
+        "f1_weighted": 0.9825099723172259,
+        "confusion_matrix": [
+          [
+            441,
+            10,
+            1
+          ],
+          [
+            4,
+            1263,
+            6
+          ],
+          [
+            0,
+            12,
+            157
+          ]
+        ],
+        "per_class": {
+          "COVID": {
+            "precision": 0.9910112359550561,
+            "recall": 0.9756637168141593,
+            "f1-score": 0.9832775919732442,
+            "support": 452
+          },
+          "Normal": {
+            "precision": 0.9828793774319066,
+            "recall": 0.9921445404556166,
+            "f1-score": 0.9874902267396404,
+            "support": 1273
+          },
+          "Viral_Pneumonia": {
+            "precision": 0.9573170731707317,
+            "recall": 0.9289940828402367,
+            "f1-score": 0.9429429429429429,
+            "support": 169
+          }
+        }
+      },
+      "reproducibility_verified": true,
+      "baseline_improvement_pp": 0.5785751978891862,
+      "expected_range_pp": [
+        0.5,
+        1.0
+      ],
+      "note": "Both results reported equally; duplicate noted for transparency"
     }
   },
   "robustness": {

@@ -211,6 +211,9 @@ def verify_class_counts(
 
     all_match = True
     for class_name, expected in expected_counts.items():
+        # Skip "total" key - it's not a class name
+        if class_name == "total":
+            continue
         actual = class_counts.get(class_name, 0)
         match = "✓" if actual == expected else "✗"
         print(f"  {match} {class_name}: {actual} (esperado: {expected})")
