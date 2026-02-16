@@ -27,6 +27,10 @@ seaborn>=0.12.0
 # Utilities
 tqdm>=4.65.0
 
+# Data Quality & Duplicate Detection
+imagededup>=0.3.0
+image-quality>=1.2.7
+
 # CLI
 typer>=0.9.0
 
