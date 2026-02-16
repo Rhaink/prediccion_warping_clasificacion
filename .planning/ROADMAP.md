@@ -78,10 +78,11 @@ Plans:
   2. Confusion matrix visualization generated matching Chapter 5 thesis style (fonts, colors, layout consistency)
   3. Existing visualization scripts located from .tex file references or codebase patterns identified
   4. Visualizations are publication-ready with proper labels, legends, and thesis formatting
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Generate confusion matrices (baseline + ensemble+TTA) and comparison_metrics.json
+- [ ] 04-02-PLAN.md — Generate LaTeX comparison tables for thesis inclusion
 
 ### Phase 5: Final Test Evaluation
 **Goal**: Evaluate final ensemble+TTA configuration on complete test set with validation checks
@@ -107,5 +108,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Pre-Implementation Audit | 2/2 | Complete | 2026-01-27 |
 | 2. Ensemble Core | 2/2 | Complete | 2026-01-27 |
 | 3. TTA Integration | 3/3 | Complete | 2026-01-27 |
-| 4. Analysis & Visualization | 0/TBD | Not started | - |
+| 4. Analysis & Visualization | 0/2 | Not started | - |
 | 5. Final Test Evaluation | 0/TBD | Not started | - |
