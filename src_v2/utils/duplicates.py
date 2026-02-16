@@ -68,8 +68,14 @@ def detect_duplicates(
     phasher = PHash()
 
     try:
-        # Get encodings - imagededup expects string paths
-        encodings = phasher.encode_images(image_dir=str(image_dir))
+        # Get encodings - imagededup will recursively scan for images
+        encodings = phasher.encode_images(image_dir=str(image_dir), recursive=True)
+
+        # If encodings is empty, imagededup might not have found images
+        if not encodings:
+            logger.warning("No image encodings generated - check image directory structure")
+            return {"pairs": [], "total_images": total_images, "total_pairs": 0,
+                    "candidates_rejected": 0}
 
         # Find duplicates
         duplicates_dict = phasher.find_duplicates(
@@ -114,8 +120,8 @@ def detect_duplicates(
         try:
             cnn_encoder = CNN()
 
-            # Encode all images with CNN
-            cnn_encodings = cnn_encoder.encode_images(image_dir=str(image_dir))
+            # Encode all images with CNN (recursive scan)
+            cnn_encodings = cnn_encoder.encode_images(image_dir=str(image_dir), recursive=True)
 
             # Verify each PHash candidate pair
             for img1, img2, hamming_dist, _ in tqdm(phash_pairs, desc="CNN verification"):

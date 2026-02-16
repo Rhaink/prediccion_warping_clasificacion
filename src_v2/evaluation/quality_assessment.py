@@ -15,8 +15,9 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+import pyiqa
+import torch
 from PIL import Image
-from imquality import brisque
 from scipy import stats
 from tqdm import tqdm
 
@@ -67,19 +68,20 @@ def compute_quality_scores(
         logger.warning("No images found!")
         return pd.DataFrame(columns=["filename", "class", "split", "brisque_score", "path"])
 
+    # Initialize BRISQUE model using pyiqa
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    brisque_model = pyiqa.create_metric('brisque', device=device)
+
     results = []
 
     for img_path in tqdm(image_files, desc="Computing BRISQUE scores"):
         try:
-            # Load image
-            img = Image.open(img_path)
+            # Skip non-image directories (masks/, etc)
+            if 'masks' in img_path.parts:
+                continue
 
-            # Convert grayscale to RGB (BRISQUE expects 3 channels)
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-
-            # Compute BRISQUE score (using imquality library)
-            score = brisque.score(img)
+            # Compute BRISQUE score (using pyiqa - takes file path directly)
+            score = brisque_model(str(img_path)).item()
 
             # Extract metadata from path structure
             # Expected structure: .../class/image.png or .../split/class/image.png
