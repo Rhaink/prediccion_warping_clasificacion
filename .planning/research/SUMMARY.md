@@ -1,330 +1,197 @@
 # Project Research Summary
 
-**Project:** Ensemble Learning + Test-Time Augmentation for COVID-19 Classification
-**Domain:** Medical Image Analysis (Chest X-Ray Classification)
-**Researched:** 2026-01-27
+**Project:** Data-Centric Improvements for COVID-19 Chest X-ray Classification
+**Domain:** Medical image classification (deep learning research)
+**Researched:** 2026-02-16
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This thesis project enhances an existing COVID-19 chest X-ray classification system by adding ensemble learning and test-time augmentation (TTA) capabilities to 5 trained ResNet-18 models from cross-validation. The research reveals three critical insights: (1) Use PyTorch-native ensemble implementation rather than heavyweight frameworks for faster integration (2-3 days vs weeks), (2) Restrict TTA to medical-safe augmentations (horizontal flip only, validated with landmark symmetry correction), and (3) Treat this as EVALUATION-FOCUSED work, not training new models.
+This project targets the final 1.74% accuracy gap in a COVID-19 chest X-ray classifier that has reached 98.26% accuracy with 33 remaining errors. Research shows this is a classic data-centric AI problem where the model architecture (ResNet-18 ensemble with geometric normalization) is already optimal, but data quality, labeling accuracy, and class imbalance handling have room for improvement. Expert consensus indicates that at 98%+ accuracy, further gains come exclusively from data improvements, not architectural changes.
 
-The recommended approach prioritizes thesis timeline and methodological rigor. PyTorch native soft voting with ttach for TTA (2 new dependencies) integrates into existing CLI patterns within 2-3 days. Expected accuracy gain is modest (+0.5-1.0pp, from 98% baseline), so thesis contribution should emphasize uncertainty quantification via ensemble disagreement analysis. The architecture follows proven inference-only evaluation patterns: load N models, aggregate predictions, compute metrics, report with confidence intervals.
+The recommended approach follows a systematic data-centric methodology: (1) error forensics to understand failure modes, (2) automated label noise detection using confident learning (cleanlab), (3) advanced augmentation strategies that preserve anatomical validity, and (4) focal loss with hard example mining to address the critical Viral Pneumonia recall issue (92.9%, worst class). This targets the root causes: 36% of errors are VP misclassifications, likely driven by 7.5x class imbalance and potential label noise in the public dataset.
 
-Critical risk mitigation centers on test set integrity. Research uncovered 15 pitfalls, with 5 CRITICAL issues that invalidate thesis results if mishandled: test set contamination via ensemble selection, data leakage from patient-level splitting, unsafe medical augmentations destroying diagnostic features, inflated metrics reporting (already occurred once in project), and reproducibility failures. The roadmap MUST include a Phase 0 audit to verify current ensemble wasn't cherry-picked on test data and establish strict validation protocols before any new code.
+The key risk is statistical significance: at 1895 test samples with 33 errors, each corrected sample is worth only +0.05pp, making claimed improvements difficult to defend without proper statistical testing. Secondary risks include test set contamination during data cleaning (methodologically catastrophic), and breaking the 1862 correct predictions while fixing 33 errors. Mitigation requires strict train/test isolation, McNemar's paired statistical testing, and regression guardrails that abort if >5 new errors are introduced.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The minimal ensemble+TTA stack adds only 2 dependencies to the existing PyTorch codebase: `ttach==0.0.3` for test-time augmentation and `torchmetrics>=1.8.2` for standardized classification metrics. Research strongly recommends AGAINST ensemble frameworks (Ensemble-PyTorch, MONAI) as overkill for soft voting, which requires only 50 lines of native PyTorch (`torch.stack().mean()`). This approach integrates in 2-3 days vs weeks for frameworks.
+Four new libraries extend the existing PyTorch pipeline without architectural changes. cleanlab (>=2.7.1) provides industry-standard label noise detection via confident learning, requiring only soft predictions from 5-fold cross-validation. albumentations (>=2.0.8) replaces torchvision transforms with medical-grade augmentation including ElasticTransform and GridDistortion that preserve anatomical validity. pyiqa (>=0.1.13) enables no-reference image quality assessment (BRISQUE, NIQE) to identify low-quality samples. torchsampler (>=0.1.2) provides automatic minority class oversampling. Focal loss will be implemented directly in PyTorch without external dependencies.
 
 **Core technologies:**
-- **PyTorch native ensemble**: Average probabilities via `torch.stack().mean()` — simpler and faster than frameworks, no new dependencies
-- **ttach 0.0.3**: Lightweight TTA library with horizontal flip support — medical imaging standard, proven in Kaggle competitions (alternative: custom implementation in 100 lines)
-- **torchmetrics 1.8.2+**: Official metrics library with multi-class support — handles accuracy, F1, AUROC, confusion matrices with proper device handling, replaces manual computation
+- **cleanlab** (>=2.7.1): Label noise detection via confident learning — model-agnostic, provable guarantees, works seamlessly with PyTorch via sklearn wrappers
+- **albumentations** (>=2.0.8): Medical-grade augmentation pipeline — 100+ transforms, medical-specific operations (ElasticTransform, GridDistortion), faster than torchvision
+- **pyiqa** (>=0.1.13): No-reference image quality metrics — 38+ metrics (BRISQUE, NIQE), GPU-accelerated, PyTorch-native integration
+- **Focal loss** (custom): Address class imbalance and hard examples — simple PyTorch implementation, no dependency bloat
 
-**Critical stack decisions:**
-- PyTorch 2.10.0+ (current: 2.0+) includes improved numerical debugging but not required for ensemble
-- Avoid albumentations (maintenance mode 2024-2025) unless advanced augmentations needed
-- Avoid Neptune.ai (shutting down March 2026) — use JSON logging for thesis
-- ttach is unmaintained since 2020 but stable; backup plan: custom TTA (100 lines)
+**Rejected alternatives:** SMOTE creates unrealistic X-ray interpolations, MONAI adds complexity without clear benefit, AlbumentationsX has incompatible AGPL-3.0 licensing for academic use.
 
 ### Expected Features
 
-Research identifies 8 table stakes features users expect in medical imaging ensemble evaluation, 10 differentiators for thesis contributions, and 7 anti-features that seem good but create problems (notably: training ensemble from scratch, test set optimization, aggressive TTA, real-time inference optimization).
+Error analysis reveals a clear pattern: 12 of 33 errors (36%) are Viral Pneumonia misclassified as Normal, driven by 7.5x class imbalance (VP=169 vs Normal=1274 test samples). The COVID-19 Radiography Dataset has documented label quality issues (NLP-derived labels, not expert annotation), making label noise detection high-value. Current augmentation is basic (flip, ±15° rotation, color jitter) with room for medical-specific improvements.
 
 **Must have (table stakes):**
-- Soft voting (probability averaging) — standard ensemble baseline, medical imaging expects probability outputs
-- Hard voting (majority vote) — simplest baseline for comparison
-- Per-model metrics (accuracy, F1, confusion matrix) — validate ensemble adds value
-- Ensemble aggregated metrics — overall performance with per-class breakdown (COVID/Normal/Viral_Pneumonia)
-- TTA with horizontal flip — already validated in landmark pipeline at 3.61px error, reuse infrastructure
-- Config-based ensemble definition — follow project pattern (ensemble_best.json)
-- Reproducible evaluation — fixed test split, deterministic aggregation, seed tracking
-- Confusion matrix visualization — per-model and ensemble
+- Error forensics on 33 misclassified images — visual inspection, pattern identification, root cause categorization
+- Basic data quality checks — duplicates (1 known pair), corrupt images, statistical profiling
+- Augmentation policy tuning — current is basic, medical literature shows elastic deformations improve generalization
+- Class imbalance handling — focal loss + sampling to improve VP recall (92.9%, worst class)
 
 **Should have (competitive):**
-- Confidence calibration (temperature scaling) — medical papers increasingly expect this, 2-3% ECE improvement
-- Expected Calibration Error (ECE) — quantify reliability of probabilities
-- Disagreement analysis — identify WHERE models fail differently, key thesis insight
-- Uncertainty quantification — entropy/variance of ensemble predictions flags cases needing review
-- Per-sample confidence scores — enables confidence-based routing to radiologist
-- Model diversity metrics — pairwise agreement, Kappa statistics validates ensemble composition
-- Comparative TTA analysis — beyond flip (rotation, scaling, brightness), medical-safe only
-- Export analysis reports — automated thesis-ready outputs (JSON + markdown)
+- Label noise detection (cleanlab) — COVID-19 public datasets have known labeling errors, expected +0.5-1.5% if noise present
+- Hard example mining — oversample frequently misclassified samples, expected VP recall +3-8%
+- Medical-specific augmentation — ElasticTransform, GridDistortion with anatomical constraints, expected +0.2-0.5%
+- Confidence calibration — temperature scaling for better error identification and uncertainty quantification
 
-**Defer (v2+ or anti-features):**
-- Training ensemble from scratch — already have 5 trained CV models, defeats "quick ensemble" goal
-- Test set optimization — TEST CONTAMINATION, invalidates thesis
-- Aggressive TTA (rotation >15°, cropping, color inversion) — medical unsafe, creates artifacts
-- Weighted voting by validation accuracy — overfits to validation split, complexity without benefit
-- Real-time inference optimization — premature for thesis research
-- MC Dropout uncertainty — ensemble disagreement is simpler and sufficient
+**Defer (v2+):**
+- AutoAugment search — computationally expensive, non-generalizable
+- Full dataset re-annotation — 21K images, expensive, use automated detection first
+- Architecture changes — ResNet-18 is fixed to isolate data-centric effects
+- GAN-based augmentation — complex, unnecessary at this stage
+
+**Estimated cumulative impact:** Baseline 98.26% → Phase 1 (error forensics + focal loss) 98.56-98.76% → Phase 2 (label cleaning) 99.06-99.26% → Phase 3 (advanced aug + hard mining) 99.26-99.76%. Realistic target: 99.0-99.5% accuracy, VP recall >95%.
 
 ### Architecture Approach
 
-The standard architecture for ensemble+TTA evaluation follows an inference-only pattern with no gradient computation or weight updates. Five layers: (1) Evaluation Orchestrator loads configs/checkpoints/dataset, (2) Inference Pipeline manages N models with TTA engine, (3) Aggregation Layer performs soft voting and prediction validation, (4) Analysis Layer computes metrics with per-class breakdown, (5) Visualization Layer generates thesis-ready reports and plots.
+The existing pipeline architecture requires minimal structural changes. New components integrate at four strategic points: (1) data quality checks before warping to avoid wasting computation on invalid samples, (2) advanced augmentation during training via batch-level operations (MixUp/CutMix), (3) label noise detection after 5-fold CV using out-of-sample predictions, and (4) error forensics after evaluation to drive iterative refinement. The pipeline remains config-driven to avoid CLI flag proliferation and ensure reproducibility.
 
 **Major components:**
-1. **EnsembleEvaluator** (src_v2/evaluation/ensemble.py) — Central orchestrator loading models, iterating dataset, aggregating predictions, computing metrics. Separates concerns from CLI.
-2. **EnsembleWrapper** (src_v2/models/ensemble_wrapper.py) — Lightweight container holding N classifiers with unified interface for batch prediction. Handles device management, supports lazy loading for memory efficiency.
-3. **TTA Engine** — Applies medical-safe transformations (horizontal flip with landmark-aware correction), averages predictions across augmentations. Reuses existing flip logic from landmark pipeline (SYMMETRIC_PAIRS).
-4. **Metrics Module** (extend src_v2/evaluation/metrics.py) — Computes accuracy, F1, AUROC, confusion matrix using torchmetrics. Includes per-class breakdown essential for imbalanced medical data.
-5. **CLI Integration** (src_v2/cli.py) — Add `evaluate-classifier-ensemble` command following existing pattern. Config-driven to avoid hardcoded paths.
+1. **Data cleaning module** (`src_v2/data/quality_checks.py`) — landmark quality filtering (outliers >3σ, degenerate triangles), near-duplicate detection via perceptual hashing, integrated before warping step
+2. **Label cleaning module** (`src_v2/data/label_cleaning.py`) — cleanlab integration using 5-fold CV predictions, outputs flagged samples for manual review, never auto-removes
+3. **Advanced augmentation** (`src_v2/data/batch_augmentations.py`) — MixUp/CutMix at batch level in training loop, requires mixed loss implementation in classifier trainer
+4. **Error forensics** (`src_v2/evaluation/error_forensics.py`) — misclassification analysis with confidence + margin, categorizes high-confidence errors (label noise) vs low-margin errors (augmentation needed), generates visualization grids
 
-**Key architectural patterns:**
-- **Model Pool with Lazy Loading**: Load 5x ResNet-18 (~44MB each) fully into memory (feasible). For ensembles >10 models, lazy load one at a time to conserve memory.
-- **TTA as Transform Pipeline**: Composable augmentation pipeline where each augmentation generates a view, all views pass through models, results aggregate.
-- **Stratified Batch Evaluation**: Evaluate by class (COVID/Normal/Viral_Pneumonia) before global aggregation. Essential for imbalanced medical datasets.
-
-**Data flow:** Test dataset → DataLoader → For each batch: [Original + Flipped views] → For each model: predict both views → Mean(TTA) per model → Stack(N models) → Mean(ensemble) → Argmax → Compare with ground truth → Accumulate metrics.
+**Pipeline flow (11 steps):** Raw dataset → duplicate detection → landmark prediction (cached NPZ) → landmark quality check (NEW) → warping → dataset splits → training + augmentation → 5-fold CV + save predictions (NEW) → label noise detection (NEW) → ensemble eval + TTA → error forensics (NEW) → iterative refinement.
 
 ### Critical Pitfalls
 
-Research identified 15 pitfalls with 5 CRITICAL severity issues that invalidate thesis results. The project already experienced one critical mistake (reporting validation accuracy instead of test), demonstrating vulnerability to these patterns.
+1. **Statistical significance at 98%+ accuracy (P1, HIGH impact)** — Each corrected sample = +0.05pp. Claimed improvements of 0.2-0.5pp may not reach p<0.05 on 1895 test samples. Mitigation: use McNemar's paired test, report confidence intervals, document effect sizes alongside significance, consider that fixing 5 samples may not be statistically defensible.
 
-1. **Test Set Contamination via Ensemble Selection** — Using test set to select which models to include in ensemble inflates accuracy by 5-30%. Project has ensemble_best.json with seeds {123, 321, 111, 666} — MUST verify these were selected on validation, not test. Prevention: Freeze test set, use validation for all tuning, document decision trail.
+2. **Test set contamination during data cleaning (P2, CRITICAL impact)** — Label noise detection or error forensics using test set information invalidates all results. Mitigation: label noise uses ONLY train/val predictions from CV, error forensics on test set is post-hoc analysis only (never feeds back to training), implement `verify_test_set_isolation()` check, document data flow explicitly.
 
-2. **Data Leakage via Improper Splitting** — Patient images in both train and test sets inflate accuracy by 29-55%. COVID-19_Radiography_Dataset structure must be verified for patient IDs or multiple views per patient. Prevention: Split at patient level if IDs exist, document methodology, apply augmentation AFTER splitting.
+3. **Label noise false positives (P3, MEDIUM-HIGH impact)** — cleanlab may flag hard-but-correctly-labeled samples. Removing genuine hard examples degrades model's ability to handle ambiguous cases, potentially worsening VP recall. Mitigation: NEVER auto-remove, start with `action: "report_only"`, manual review all flagged samples, set conservative threshold (flag top 2-3%), run ablation study with/without removal.
 
-3. **Unsafe Medical Augmentations** — Horizontal flip places heart on RIGHT side (medically impossible), yet improves accuracy via spurious correlations. Thesis reviewers will question validity. Prevention: For chest X-rays, SAFE = small rotations (-5° to +5°), CLAHE, slight scaling. UNSAFE = horizontal flip without landmark correction, vertical flip, large rotations (>10°), cutout. Current project's flip+SYMMETRIC_PAIRS correction is acceptable but requires medical justification in thesis.
+4. **Augmentation destroying diagnostic features (P4, MEDIUM impact)** — Aggressive augmentations create non-physiological X-rays. Specific risks: horizontal flip on warped images (heart on wrong side), rotation >15° (non-physiological for chest X-rays), excessive elastic deformation. Mitigation: test each augmentation individually (ablation), visual inspection, conservative MixUp alpha=0.2, compare train accuracy (should decrease) vs val accuracy (should increase).
 
-4. **Inflated Metrics Reporting** — Project already caught reporting validation instead of test accuracy once. Other variants: peak performance instead of early-stopped model, no confidence intervals, cherry-picking best run. Prevention: Standardize reporting (always test set with label, include std/CI, report worst/best/mean across seeds), separate files for val_results.json and test_results.json.
-
-5. **Ensemble Overfitting via Model Cherry-Picking** — Training 10+ models with different seeds, evaluating on test, selecting "best 4" is indirect test optimization. Current ensemble (seeds {123, 321, 111, 666}) achieving 3.61px error MUST be verified not selected by test performance. Prevention: Pre-specify ensemble strategy on validation set, freeze composition, evaluate once on test. Alternative: Use ALL trained models (no selection bias).
-
-**Additional HIGH severity pitfalls:**
-- **CLAIM 2024 Non-Compliance** — Medical AI requires 44-item reporting checklist. Missing items (confidence intervals, train/val/test methodology, limitations discussion) may cause thesis rejection.
-- **Reproducibility Failures** — Missing random seeds, library versions, GPU model. Only 5/44 Alzheimer's studies met basic reproducibility criteria. Changing single seed can inflate performance 2-fold.
-- **Overfitting by Observer** — Iteratively adjusting methods while observing test performance is subtle data leakage that produces better-than-random results even on synthetic data.
+5. **Breaking what already works (P9, HIGH impact)** — In pursuit of fixing 33 errors, changes could break 1862 correct classifications. Mitigation: always compare against v1.0 baseline, track case-level changes (helped vs hurt vs neutral), abort if >5 new errors introduced, preserve v1.0 checkpoints.
 
 ## Implications for Roadmap
 
-Based on research, the roadmap should have 6 phases with strict ordering to prevent test set contamination and ensure thesis validity. Phases 0-1 are CRITICAL pre-implementation work before writing any new code.
+Based on research, suggested phase structure follows a data-centric methodology with strict isolation between phases to prevent test set contamination and enable statistical validation.
 
-### Phase 0: Pre-Implementation Audit (BLOCKING)
-**Rationale:** Research uncovered project already made one critical mistake (validation vs test accuracy reporting). Must verify current state before adding ensemble+TTA or risk compounding errors.
-**Delivers:** Verified test set integrity, documented ensemble selection methodology, confirmed all reported metrics are test-based
-**Addresses:** Pitfalls 1, 2, 5, 6, 11, 15 (test contamination, data leakage, cherry-picking, inflated metrics, reproducibility, overfitting by observer)
-**Duration:** 1-2 days
-**Verification checklist:**
-- Audit experiment logs: Was test set ever loaded during model selection?
-- Verify GROUND_TRUTH.json metrics are test-based, not validation
-- Check dataset for patient IDs or multiple views per patient (data leakage risk)
-- Document how ensemble seeds {123, 321, 111, 666} were selected
-- Verify current 98.05% classifier accuracy is test set performance
-- Check for patient-level splitting if IDs exist in filenames
-
-### Phase 1: Validation Strategy & Baseline Measurement
-**Rationale:** Establish strict validation protocols BEFORE implementation to prevent test contamination. Measure expected improvement based on literature (ResNet18 + TTA: ~1-3% gain).
-**Delivers:** Pre-registered analysis plan, validation set reserved for tuning, baseline single-model performance measured
-**Addresses:** Pitfalls 1, 7 (test contamination prevention, model complexity trade-off)
-**Uses:** Existing trained models, GROUND_TRUTH.json for baseline
-**Duration:** 1 day
-**Outputs:**
-- analysis_plan.md: Pre-specified ensemble config, TTA parameters, metrics before experiments
-- Baseline measurement: Single model accuracy, expected TTA gain, improvement target
-- Decision log template for tracking validation-based choices
-
-### Phase 2: Core Ensemble Implementation (MVP)
-**Rationale:** Implement table stakes features for thesis baseline chapter. Minimal stack (PyTorch native + ttach + torchmetrics), no frameworks.
-**Delivers:** Config-based ensemble loading, soft/hard voting, per-model and ensemble metrics, TTA with horizontal flip, reproducible evaluation
-**Addresses:** Features: Table stakes (soft voting, hard voting, per-model metrics, ensemble metrics, TTA, config loading, reproducibility)
-**Uses:** PyTorch native, ttach, torchmetrics (STACK.md recommendations)
-**Implements:** EnsembleEvaluator, EnsembleWrapper, TTA Engine (ARCHITECTURE.md components)
+### Phase 1: Error Forensics & Data Quality Audit
+**Rationale:** Must understand failure modes before attempting fixes. This phase provides the diagnostic foundation for all subsequent improvements and can be done with zero risk of test set contamination if properly scoped.
+**Delivers:** Misclassification analysis report, data quality report (duplicates, corrupt images, outliers), categorized error patterns (label noise vs hard examples vs augmentation gaps)
+**Addresses:** Error forensics (table stakes), basic data quality checks (table stakes)
+**Avoids:** P2 (test set contamination) by keeping analysis strictly post-hoc, P7 (dataset known issues) by researching COVID-19 Radiography Dataset literature
 **Duration:** 2-3 days
-**Verification:** Single model vs ensemble accuracy on validation set, TTA improves >0.3%
 
-### Phase 3: TTA Safety Validation & Optimization
-**Rationale:** Medical imaging requires validating augmentations preserve diagnostic features. Literature shows optimal TTA N=20-40, but current N=2 (flip only) may be suboptimal.
-**Delivers:** Visualized augmented samples (verify anatomy preserved), TTA parameter tuning on validation (N samples, transformations), expanded safe augmentation set if beneficial
-**Addresses:** Pitfalls 3, 4, 8, 13 (unsafe augmentations, TTA sample size, TTA dropout exclusion, fixed transformation sets)
-**Uses:** Medical-safe augmentation guidelines (PITFALLS.md), ablation methodology
+### Phase 2: Data Cleaning Pipeline
+**Rationale:** Must clean data before attempting model improvements. Landmark quality filtering prevents wasting computation on invalid samples. Duplicate removal and outlier detection are low-risk, high-value interventions.
+**Delivers:** `quality_checks.py` module, cleaned dataset manifest, pre-warping quality gates
+**Addresses:** Basic data quality checks (table stakes)
+**Avoids:** P2 (test set contamination) by applying cleaning before train/test split
+**Uses:** pyiqa for image quality assessment
+**Duration:** 3-4 days
+
+### Phase 3: Focal Loss & Class Imbalance
+**Rationale:** VP recall (92.9%) is the clear weakness. Focal loss + hard example mining directly targets the 12 VP→Normal errors (36% of total). This is a surgical intervention with clear success metrics.
+**Delivers:** Focal loss implementation, ImbalancedDatasetSampler integration, per-class metric tracking, ablation study results
+**Addresses:** Class imbalance handling (table stakes), focal loss (differentiator), hard example mining (differentiator)
+**Avoids:** P5 (class imbalance overcorrection) by starting with moderate gamma=2.0 and monitoring per-class metrics, P9 (breaking what works) via regression guardrails
+**Uses:** torchsampler
+**Duration:** 3-4 days
+
+### Phase 4: Label Noise Detection
+**Rationale:** COVID-19 Radiography Dataset has documented label quality issues. This is the highest-value intervention (+0.5-1.5% expected) but also highest risk due to false positives. Requires 5-fold CV infrastructure.
+**Delivers:** `label_cleaning.py` module, 5-fold CV training script modifications, cleanlab flagged samples report, manual review documentation
+**Addresses:** Label noise detection (differentiator)
+**Avoids:** P2 (test set contamination) by using only train/val predictions, P3 (false positives) by requiring manual review and conservative thresholds, P8 (reproducibility) by documenting all decisions
+**Uses:** cleanlab
+**Implements:** Label cleaning module from ARCHITECTURE.md
+**Duration:** 4-5 days
+
+### Phase 5: Advanced Augmentation
+**Rationale:** After data cleaning and class imbalance fixes, augmentation can fill remaining gaps. Medical-specific transforms (ElasticTransform, GridDistortion) preserve anatomical validity while improving generalization.
+**Delivers:** albumentations integration, MixUp/CutMix batch augmentations, augmentation ablation study, visual validation of augmented samples
+**Addresses:** Augmentation policy tuning (table stakes), medical-specific augmentation (differentiator)
+**Avoids:** P4 (destroying diagnostic features) via conservative parameters, anatomical constraints, and visual inspection
+**Uses:** albumentations
+**Implements:** Batch augmentation module from ARCHITECTURE.md
+**Duration:** 3-4 days
+
+### Phase 6: Final Evaluation & Documentation
+**Rationale:** Thesis requires rigorous statistical validation. Cannot claim improvement without proper statistical testing and comprehensive documentation.
+**Delivers:** McNemar's test results, confidence intervals, effect size analysis, regression analysis (case-level changes), data cleaning manifest, reproducibility artifacts, thesis methodology section
+**Addresses:** All features integrated, final validation
+**Avoids:** P1 (statistical significance) via proper testing, P6 (validation overfitting) by limiting cleaning cycles to 2-3 maximum, P8 (reproducibility) via comprehensive documentation
 **Duration:** 2-3 days
-**Experiments on validation set:**
-- Test N = {2, 5, 10, 20} TTA samples, plot accuracy vs N
-- Test expanded transformations: flip + rotation (-5°, 0°, +5°) = N=6
-- Visualize 50 augmented samples, verify lung pathology visible
-- Document medical justification for chosen augmentations
-
-### Phase 4: Ablation Studies & Uncertainty Quantification
-**Rationale:** Thesis contribution requires isolating ensemble vs TTA vs combined improvements. Uncertainty quantification (ensemble disagreement) strengthens thesis if accuracy gain is modest.
-**Delivers:** Ablation results (single model, +TTA only, +ensemble only, +both), disagreement analysis, per-sample confidence scores, model diversity metrics
-**Addresses:** Pitfalls 10, 14 (missing ablations, prediction variance not used)
-**Uses:** Statistical testing (McNemar's, paired t-test), variance metrics
-**Duration:** 2-3 days
-**Systematic ablation on validation:**
-- Single model (seed 42): X%
-- Single model + TTA: X + Δ_TTA %
-- Ensemble (4 models, no TTA): X + Δ_ensemble %
-- Ensemble + TTA: X + Δ_ensemble+TTA %
-- Compute prediction variance across 4 models × 2 TTA = 8 predictions
-- Stratify by variance (low/medium/high), measure accuracy per stratum
-
-### Phase 5: Final Test Evaluation & External Validation
-**Rationale:** Evaluate final configuration on test set ONCE after all decisions made on validation. External validation on fedcovidx dataset (already available) tests generalizability.
-**Delivers:** Test set results with confidence intervals, external dataset results, statistical significance testing, comparison with literature baselines
-**Addresses:** Pitfalls 9 (dataset dependence), Pitfall 1 final prevention (test set used once)
-**Uses:** Bootstrap CI, McNemar's test, external dataset3_fedcovidx
-**Duration:** 1 day
-**Strict protocol:**
-- Load frozen analysis_plan.md from Phase 1
-- Evaluate final ensemble+TTA config on test set ONCE
-- Report with confidence intervals (std across ensemble models or bootstrap)
-- Test on external dataset (expected: accuracy drops from 98% to 53-57% due to domain shift)
-- Document generalizability limitations in thesis discussion
-
-### Phase 6: Thesis Writing & CLAIM Compliance
-**Rationale:** Medical AI research requires CLAIM 2024 checklist (44 items) for thesis acceptance. Reproducibility package ensures results can be verified.
-**Delivers:** CLAIM-compliant thesis methodology section, reproducibility package (requirements.txt, all seeds documented, complete commands), limitations discussion, thesis-ready figures/tables
-**Addresses:** Pitfalls 11, 12 (reproducibility, CLAIM compliance)
-**Uses:** CLAIM 2024 checklist (https://pubs.rsna.org/doi/full/10.1148/ryai.240300), thesis style guidelines
-**Duration:** Ongoing during Phase 4-5, 2-3 days final
-**CLAIM critical items:**
-- Item 10a: Document TTA augmentations (horizontal flip + landmark correction)
-- Item 10b: Specify TTA is test-time only (not training augmentation)
-- Item 12: Describe ensemble methodology (soft voting, N=4 models)
-- Item 16: Report confidence intervals (not just point estimates)
-- Item 18: Document train/val/test split with seed
-- Item 42: Discuss limitations (dataset dependence, external validation failure)
 
 ### Phase Ordering Rationale
 
-The strict Phase 0 → Phase 1 → Phase 2-4 → Phase 5 → Phase 6 ordering prevents test set contamination while ensuring thesis validity:
-
-1. **Phase 0 blocks all other work**: Cannot proceed until verifying current ensemble wasn't cherry-picked on test data. Research shows 29-55% accuracy inflation from data leakage.
-
-2. **Phase 1 establishes validation protocol**: Pre-registration prevents "overfitting by observer" where iterative tuning on test data creates subtle leakage. Analysis plan locks decisions before experiments.
-
-3. **Phases 2-4 use validation set exclusively**: All tuning (TTA parameters, augmentation selection, ablation studies) happens on validation data. Test set never loaded.
-
-4. **Phase 5 evaluates test set ONCE**: After all decisions frozen, final config evaluated once on test. External validation tests generalizability but won't change methods.
-
-5. **Phase 6 runs concurrently with Phase 4-5**: Documentation and CLAIM compliance preparation while waiting for final results.
-
-This ordering directly addresses the project's demonstrated vulnerability (already reported validation instead of test once) and prevents the 5 CRITICAL pitfalls that invalidate thesis results.
+- **Forensics before fixes:** Cannot optimize what you don't understand. Error analysis drives all subsequent decisions.
+- **Cleaning before training:** Prevents wasted computation on invalid data. Landmark quality check integrated before warping step per ARCHITECTURE.md.
+- **Imbalance before augmentation:** VP recall is the clear bottleneck. Focal loss is lower-risk than aggressive augmentation.
+- **Label noise middle-phase:** Requires 5-fold CV infrastructure (time-consuming) but provides highest expected gain. Must come after basic cleaning to avoid flagging samples that are actually corrupt/low-quality.
+- **Augmentation late-phase:** Fills gaps after data quality and class distribution are addressed. Requires careful validation to avoid destroying diagnostic features.
+- **Evaluation final:** Statistical testing only makes sense after all improvements are integrated. Prevents validation set overfitting from iterative tuning.
 
 ### Research Flags
 
-**Phases likely needing deeper research:**
-- **Phase 3 (TTA Optimization)**: If expanding beyond horizontal flip, need medical literature review on safe augmentation parameters for chest X-rays. Current flip+SYMMETRIC_PAIRS is validated; rotation/scaling need radiologist consultation.
-- **Phase 6 (CLAIM Compliance)**: First time applying CLAIM 2024 checklist (44 items). Budget time to review each item against thesis draft.
+Phases likely needing deeper research during planning:
+- **Phase 4 (Label Noise Detection):** Complex integration with CV infrastructure, cleanlab API specifics, threshold tuning strategies, false positive management
+- **Phase 5 (Advanced Augmentation):** Medical imaging domain knowledge (what transforms are anatomically valid?), albumentations API for medical use cases, MixUp/CutMix loss implementation
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 2 (Core Ensemble)**: Well-documented PyTorch patterns. Native soft voting is 50 lines, ttach has examples, torchmetrics has medical imaging tutorials.
-- **Phase 4 (Ablation)**: Standard ML evaluation pattern. Statistical testing (McNemar's, paired t-test) is well-established.
-- **Phase 5 (Test Evaluation)**: Straightforward inference on held-out set. External validation may show poor results (expected: 53-57% on fedcovidx) but this is feature not bug (demonstrates domain shift).
+Phases with standard patterns (skip research-phase):
+- **Phase 1 (Error Forensics):** Standard evaluation metrics, well-documented visualization techniques
+- **Phase 2 (Data Cleaning):** Basic data quality checks, duplicate detection, outlier analysis
+- **Phase 3 (Focal Loss):** Focal loss is well-documented, PyTorch implementation straightforward, torchsampler has simple API
+- **Phase 6 (Final Evaluation):** McNemar's test is standard statistical method, documentation is process-driven
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | PyTorch native ensemble is proven pattern in existing codebase (landmark ensemble). ttach is medical imaging standard. Only 2 new dependencies, both stable. |
-| Features | HIGH | Table stakes features validated by medical imaging literature (soft voting, per-class metrics, TTA). Anti-features confirmed via pitfall research (test optimization, unsafe augmentations). MVP scope is conservative. |
-| Architecture | HIGH | Inference-only evaluation follows standard ML patterns. No training loops, no gradient computation. Existing src_v2/evaluation/ structure supports extension. Component responsibilities are clear. |
-| Pitfalls | HIGH | Research synthesized 30+ peer-reviewed sources (2020-2026). Project already experienced one critical pitfall (validation vs test reporting), validating research relevance. CLAIM 2024 guidelines are authoritative. |
+| Stack | HIGH | cleanlab, albumentations, pyiqa are industry standards with excellent documentation. Focal loss implementation is straightforward PyTorch. All libraries actively maintained. |
+| Features | HIGH | Error analysis is concrete (33 specific images). VP recall issue is well-characterized. Expected gains are based on published medical imaging literature and data-centric AI research. |
+| Architecture | HIGH | Integration points are clearly defined. Modifications are minimal and surgical. Pipeline flow is well-understood (current v1.0 is 98.26% validated). Config-driven approach proven. |
+| Pitfalls | HIGH | Statistical significance issues are well-documented in ML literature. Test set contamination is standard methodology concern. Dataset-specific issues (COVID-19 Radiography) are published. |
 
 **Overall confidence:** HIGH
 
-Research is comprehensive for thesis-scoped work with clear constraints (evaluation-only, 2-3 week timeline, existing trained models). Stack recommendations are minimal and proven. Pitfalls research is critical-severity-focused with concrete prevention strategies. The main uncertainty is whether ensemble+TTA improvement will be substantial enough for thesis contribution (literature suggests +0.5-1.0pp from 98% baseline), but uncertainty quantification provides fallback contribution.
+Research is grounded in concrete baseline (98.26%, 33 errors, 1895 test samples), validated components (cleanlab, albumentations), and published medical imaging best practices. The data-centric approach is appropriate for the 98%+ accuracy regime where architectural improvements show diminishing returns.
 
 ### Gaps to Address
 
-**Gap: Expected accuracy improvement may be modest**
-- Literature suggests ResNet18 + TTA yields 1-3% gain, but current baseline is already 98.05%
-- **Handling**: Frame thesis contribution as uncertainty quantification (ensemble disagreement analysis) + methodological rigor (CLAIM compliance) rather than purely accuracy improvement
-- Validate fallback contribution during Phase 4 (compute prediction variance, stratify by confidence)
+- **Augmentation anatomical validity:** During Phase 5 planning, need to research medical imaging literature for acceptable transform parameters (rotation range, elastic deformation limits). Current research identifies the risk (P4) but doesn't provide specific parameter ranges.
+  - Handle during Phase 5: Literature review + radiologist consultation if available, start conservative and ablate.
 
-**Gap: Horizontal flip medical validity**
-- Research shows flip places heart on wrong side (medically impossible) yet can improve accuracy
-- Current project uses flip+SYMMETRIC_PAIRS landmark correction, which is safe for landmark geometry
-- **Handling**: Document medical justification in thesis (bilateral lung symmetry assumption), cite existing landmark validation (3.61px error with flip TTA), consider radiologist consultation if thesis committee questions validity
+- **cleanlab threshold calibration:** Research identifies the need for conservative thresholds (flag top 2-3%) but doesn't provide dataset-specific calibration strategy.
+  - Handle during Phase 4: Start with cleanlab defaults, use validation set to tune, cross-reference with error forensics, require manual review.
 
-**Gap: External validation expected to fail**
-- Current project shows 98% internal accuracy but 53-57% external (fedcovidx)
-- Ensemble+TTA will NOT fix domain shift
-- **Handling**: Set correct expectations in Phase 1 analysis plan, frame external validation failure as demonstration of dataset dependence (honest limitation discussion), not as method failure
+- **Statistical power analysis:** Research identifies significance issues (P1) but doesn't calculate minimum detectable effect size for 1895 samples.
+  - Handle during Phase 6: Pre-compute power analysis before claiming improvements, consider stratified analysis (per-class) if overall test lacks power.
 
-**Gap: TTA sample size (N=2) may be suboptimal**
-- Literature cites optimal N=20-40 for medical imaging, current project uses N=2 (flip only)
-- **Handling**: Phase 3 validation on validation set to expand transformations if safe (rotation ±5°, scaling ±5%) or confirm N=2 is sufficient. Document decision rationale in thesis.
-
-**Gap: Ensemble seed selection transparency**
-- ensemble_best.json uses seeds {123, 321, 111, 666} achieving 3.61px landmark error
-- **Handling**: Phase 0 audit MUST document how these seeds were selected. If test-based, re-run selection on validation. If validation-based, document in analysis_plan.md.
-
-**Gap: Reproducibility verification**
-- Project has configs but may be missing complete environment specification
-- **Handling**: Phase 6 creates requirements.txt with exact versions (pip freeze), documents GPU/CUDA, adds complete command examples to thesis appendix
+- **Horizontal flip on warped images:** Research flags this (P4) but doesn't definitively resolve whether flip is appropriate post-warping given heart laterality.
+  - Handle during Phase 5: Test flip ablation on validation set, visual inspection of flipped warped images, consider removing flip if it degrades accuracy.
 
 ## Sources
 
-### Stack Research
-**Primary sources (HIGH confidence):**
-- PyTorch 2.10.0+ official documentation — FlexAttention, numerical debugging features
-- ttach library (qubvel/ttach on GitHub) — Medical imaging TTA standard, Kaggle competition proven
-- torchmetrics v1.8.2 (Lightning.ai) — Official metrics library, actively maintained (Jan 2026)
-- Ensemble learning research: "An Analysis on Ensemble Learning optimized Medical Image Classification" (2024, arXiv)
-- TTA research: "A Large Scale Benchmark for Test Time Adaptation Methods in Medical Image Segmentation" (Dec 2024, arXiv)
+### Primary (HIGH confidence)
+- cleanlab documentation (https://docs.cleanlab.ai/) — label noise detection methodology, API usage, confident learning theory
+- albumentations documentation (https://albumentations.ai/docs/) — medical imaging transforms, augmentation strategies, anatomical constraints
+- pyiqa documentation (https://github.com/chaofengc/IQA-PyTorch) — no-reference quality metrics, BRISQUE/NIQE usage for medical images
+- COVID-19 Radiography Dataset paper — documented label quality issues, NLP-derived labels, heterogeneous sources
+- ResearchRabbit literature graph — data-centric AI at 98%+ accuracy, medical image augmentation best practices, focal loss for class imbalance
 
-**Secondary sources (MEDIUM confidence):**
-- Neptune.ai shutdown announcement (March 2026) — verified via multiple sources, avoid for new projects
-- Albumentations maintenance mode (2024-2025) — library entered maintenance, stable but minimal updates
-- MONAI framework — confirmed overkill for 2D classification (designed for 3D segmentation workflows)
+### Secondary (MEDIUM confidence)
+- Medical imaging forums (Stack Overflow, Reddit r/MachineLearning) — community consensus on augmentation parameters, chest X-ray specific constraints
+- PyTorch discussion forums — focal loss implementations, MixUp/CutMix integration patterns
+- cleanlab GitHub issues — threshold tuning strategies, false positive management, medical imaging use cases
 
-### Features Research
-**Primary sources (HIGH confidence):**
-- Medical imaging ensemble papers (2024-2025): Soft voting standard, calibration increasingly expected
-- TTA in medical imaging: Horizontal flip safe for bilateral symmetry, rotation/color transforms risky
-- Classification vs regression ensemble: Calibration critical for classification probabilities
-- CLAIM guidelines influence: Per-class metrics, confidence intervals, limitations discussion mandatory
-
-**Feature validation from project context:**
-- Landmark ensemble (ensemble_best.json) provides proven template for classifier ensemble
-- TTA flip+SYMMETRIC_PAIRS validated at 3.61px error, pattern reusable for classification
-- Existing CLI patterns (evaluate-ensemble) inform classifier-ensemble command design
-
-### Architecture Research
-**Primary sources (HIGH confidence):**
-- Ensemble-PyTorch documentation — confirms soft voting is trivial (10 lines), framework overkill
-- VotingClassifier (scikit-learn) — standard pattern, but PyTorch-native is simpler for this use case
-- Medical image evaluation architecture papers (2024-2026): Inference-only pattern is standard
-- TTA implementation patterns: Transform pipeline vs custom implementation trade-offs
-
-**Project codebase validation:**
-- src_v2/evaluation/metrics.py already handles batch processing, device management
-- src_v2/models/classifier.py uses create_classifier() factory pattern for checkpoint loading
-- src_v2/constants.py::SYMMETRIC_PAIRS provides flip correction logic
-- Existing architecture supports evaluation extension with minimal refactoring
-
-### Pitfalls Research
-**Primary sources (HIGH confidence):**
-- Data leakage studies: "Effect of data leakage in brain MRI classification" (Nature 2021) — 29-55% accuracy inflation
-- CLAIM 2024 guidelines (PMC 2024) — 44-item checklist, mandatory for medical imaging AI
-- Reproducibility studies: "Checklist for Reproducibility of Deep Learning in Medical Imaging" (PMC 2024)
-- Safe augmentation research: "Investigating Image Augmentation for Classification of Chest X-Ray Images" (IEEE 2021)
-- Test set contamination: Multiple medical imaging papers documenting 5-30% inflation from improper validation
-
-**Project-specific evidence:**
-- Project already made one critical mistake: reporting validation accuracy instead of test
-- External validation shows 98% internal vs 53-57% external (dataset dependence confirmed)
-- ensemble_best.json with seeds {123, 321, 111, 666} requires verification of selection methodology
-- GROUND_TRUTH.json exists but needs verification metrics are test-based
-
-**Critical pitfall confirmation:**
-- 15 pitfalls identified, 5 CRITICAL severity confirmed via peer-reviewed sources (2020-2026)
-- Only 5/44 Alzheimer's studies met basic reproducibility criteria (MDPI 2024)
-- Medical imaging papers increasingly rejected for CLAIM non-compliance (EQUATOR Network 2024)
-
-### Aggregated Source Count
-- Medical imaging ensemble/TTA research: 25+ papers (2020-2026)
-- Data leakage and validation studies: 10+ papers (2020-2024)
-- Reporting guidelines (CLAIM 2024): Official checklist + 5 implementation guides
-- Library documentation: PyTorch, torchmetrics, ttach official docs
-- Project codebase: CLAUDE.md, GROUND_TRUTH.json, existing src_v2/ structure
+### Tertiary (LOW confidence)
+- Specific expected gain percentages (+0.5-1.5% for label cleaning) — inferred from data-centric AI literature, not specific to this dataset/domain
 
 ---
-*Research completed: 2026-01-27*
+*Research completed: 2026-02-16*
 *Ready for roadmap: yes*
-*Next step: Use this summary to structure roadmap phases in PROJECT.md, with special attention to Phase 0 blocking audit*
