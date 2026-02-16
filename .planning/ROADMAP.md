@@ -93,10 +93,11 @@ Plans:
   2. Final accuracy improvement falls within expected range (+0.5 to +1.0 points over 97.68% baseline)
   3. Final results documented with confirmation that test set was used only for final evaluation (no optimization)
   4. Results package ready for thesis inclusion (JSON metrics, confusion matrices, methodology documentation)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Final evaluation script with reproducibility checks and dual-dataset evaluation
+- [ ] 05-02-PLAN.md — Spanish methodology summary for thesis appendix
 
 ## Progress
 
@@ -109,4 +110,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Ensemble Core | 2/2 | Complete | 2026-01-27 |
 | 3. TTA Integration | 3/3 | Complete | 2026-01-27 |
 | 4. Analysis & Visualization | 0/2 | Not started | - |
-| 5. Final Test Evaluation | 0/TBD | Not started | - |
+| 5. Final Test Evaluation | 0/2 | Not started | - |
