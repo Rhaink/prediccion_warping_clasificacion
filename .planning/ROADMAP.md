@@ -50,11 +50,12 @@
   3. Duplicate and near-duplicate images are detected across the full dataset with documented pairs
   4. Image quality scores (BRISQUE/NIQE) are computed for all images to identify low-quality samples
   5. Error forensics report exists documenting root causes and recommended fixes for each error category
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md — Error analysis core and pipeline trace visualization (ERR-01, ERR-04)
+- [ ] 06-02-PLAN.md — Duplicate detection and image quality assessment (ERR-02, ERR-03)
+- [ ] 06-03-PLAN.md — Interactive notebook and Spanish forensics report
 
 ### Phase 7: Data Cleaning Pipeline
 **Goal**: Remove or correct data quality issues identified in Phase 6 before re-training models
@@ -132,11 +133,11 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 3. TTA Integration | v1.0 | 3/3 | Complete | 2026-01-27 |
 | 4. Analysis & Visualization | v1.0 | 2/2 | Complete | 2026-02-16 |
 | 5. Final Test Evaluation | v1.0 | 2/2 | Complete | 2026-02-16 |
-| 6. Error Forensics | v1.1 | 0/2 | Not started | - |
+| 6. Error Forensics | v1.1 | 0/3 | Planned | - |
 | 7. Data Cleaning | v1.1 | 0/2 | Not started | - |
 | 8. Training Improvements | v1.1 | 0/2 | Not started | - |
 | 9. Advanced Augmentation | v1.1 | 0/2 | Not started | - |
 | 10. Final Evaluation | v1.1 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-02-16 after v1.1 roadmap creation*
+*Last updated: 2026-02-16 after Phase 6 planning*
