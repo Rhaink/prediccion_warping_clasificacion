@@ -73,32 +73,39 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ERR-01 | — | Pending |
-| ERR-02 | — | Pending |
-| ERR-03 | — | Pending |
-| ERR-04 | — | Pending |
-| CLN-01 | — | Pending |
-| CLN-02 | — | Pending |
-| CLN-03 | — | Pending |
-| CLN-04 | — | Pending |
-| TRN-01 | — | Pending |
-| TRN-02 | — | Pending |
-| TRN-03 | — | Pending |
-| TRN-04 | — | Pending |
-| AUG-01 | — | Pending |
-| AUG-02 | — | Pending |
-| AUG-03 | — | Pending |
-| EVL-01 | — | Pending |
-| EVL-02 | — | Pending |
-| EVL-03 | — | Pending |
-| EVL-04 | — | Pending |
-| EVL-05 | — | Pending |
+| ERR-01 | Phase 6 | Pending |
+| ERR-02 | Phase 6 | Pending |
+| ERR-03 | Phase 6 | Pending |
+| ERR-04 | Phase 6 | Pending |
+| CLN-01 | Phase 7 | Pending |
+| CLN-02 | Phase 7 | Pending |
+| CLN-03 | Phase 7 | Pending |
+| CLN-04 | Phase 7 | Pending |
+| TRN-01 | Phase 8 | Pending |
+| TRN-02 | Phase 8 | Pending |
+| TRN-03 | Phase 8 | Pending |
+| TRN-04 | Phase 8 | Pending |
+| AUG-01 | Phase 9 | Pending |
+| AUG-02 | Phase 9 | Pending |
+| AUG-03 | Phase 9 | Pending |
+| EVL-01 | Phase 10 | Pending |
+| EVL-02 | Phase 10 | Pending |
+| EVL-03 | Phase 10 | Pending |
+| EVL-04 | Phase 10 | Pending |
+| EVL-05 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 (pending roadmap creation)
+- Mapped to phases: 20/20 (100%)
+- Unmapped: 0
+
+**Coverage by phase:**
+- Phase 6: 4 requirements (ERR-01 through ERR-04)
+- Phase 7: 4 requirements (CLN-01 through CLN-04)
+- Phase 8: 4 requirements (TRN-01 through TRN-04)
+- Phase 9: 3 requirements (AUG-01 through AUG-03)
+- Phase 10: 5 requirements (EVL-01 through EVL-05)
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after initial definition*
+*Last updated: 2026-02-16 after roadmap creation*
