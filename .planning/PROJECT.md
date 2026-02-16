@@ -4,9 +4,22 @@
 
 A thesis project that detects COVID-19 from chest X-rays using anatomical landmark detection, geometric normalization via piecewise affine warping, and an ensemble classifier with Test-Time Augmentation (TTA). The ensemble combines 5 cross-validation ResNet-18 models via weighted soft voting, achieving 98.26% test accuracy on 1,895 images — a 47% error reduction over the 97.68% individual model baseline. Results are reproducible with deterministic evaluation and full methodological integrity documentation.
 
+## Current Milestone: v1.1 Data-Centric Accuracy Improvement
+
+**Goal:** Push ensemble accuracy beyond 98.26% through data quality improvements across the full pipeline (landmarks → warping → classification), keeping ResNet-18 architecture fixed to isolate the data effect.
+
+**Target features:**
+- Error forensics on the 33 misclassified test images
+- Data quality audit and cleaning (label noise detection, outlier identification)
+- Preprocessing improvements (CLAHE tuning, normalization strategies)
+- Advanced augmentation strategies (medical-aware, class-balanced)
+- Class imbalance strategies beyond current weighted loss
+- Re-trained 5-fold CV ensemble on improved data
+- Comparative evaluation: v1.0 baseline vs data-improved models
+
 ## Core Value
 
-Maximize test set accuracy using existing cross-validation models while preserving methodological integrity (no test set contamination). The ensemble must demonstrate reproducible improvement with rigorous validation for thesis reporting.
+Maximize classification accuracy through data-centric improvements — better data quality, preprocessing, and augmentation — while preserving methodological integrity. Architecture stays fixed (ResNet-18) so improvements are attributable solely to data quality.
 
 ## Requirements
 
@@ -33,15 +46,21 @@ Maximize test set accuracy using existing cross-validation models while preservi
 
 ### Active
 
-(None — start next milestone with `/gsd:new-milestone`)
+- [ ] Error forensics on 33 misclassified images (understand why they fail)
+- [ ] Data quality audit across full dataset (label noise, outliers, duplicates)
+- [ ] Preprocessing optimization (CLAHE, normalization, warping quality)
+- [ ] Advanced augmentation strategies for medical imaging
+- [ ] Class imbalance mitigation (VP=169 vs Normal=1274)
+- [ ] Re-train 5-fold CV ensemble on improved data
+- [ ] Comparative evaluation with v1.0 baseline
 
 ### Out of Scope
 
-- Training new models — use existing 5 CV models only
-- Aggressive/destructive augmentations — preserve medical semantic integrity
+- Architecture changes — ResNet-18 fixed to isolate data effect
 - Threshold optimization using test set — methodological violation
 - Automatic LaTeX chapter updates — user updates manually after validation
 - MC Dropout uncertainty estimation — ensemble disagreement simpler and sufficient
+- External datasets — improvements must use existing COVID-19 Radiography Dataset only
 
 ## Context
 
@@ -62,14 +81,22 @@ Maximize test set accuracy using existing cross-validation models while preservi
 
 **Known Issues:**
 - 1 test duplicate (Normal-817/Normal-818) — handled via dual-dataset reporting (original and cleaned produce identical results)
-- v2 requirements deferred: disagreement analysis, uncertainty quantification, confidence calibration, extended TTA
+- v1.0 deferred: disagreement analysis, uncertainty quantification, confidence calibration, extended TTA
+
+**v1.1 Starting Point:**
+- 33 misclassified test images (11 COVID errors, 10 Normal errors, 12 VP errors)
+- VP recall worst at 92.9% (12/169 misclassified as Normal)
+- Augmentations basic (flip, rotation ±15°, brightness/contrast jitter)
+- Class weights already used in CrossEntropy loss
+- No data cleaning or label quality verification performed yet
 
 ## Constraints
 
 - **Methodological**: NEVER use test set for hyperparameter optimization — only final evaluation
 - **Medical**: Only apply augmentations that preserve diagnostic semantic content
+- **Architecture**: ResNet-18 only — isolate data quality effect from model capacity
 - **Visual**: Maintain consistency with existing thesis figures (fonts, colors, layout)
-- **Technical**: Use existing model checkpoints in `outputs/classifier_cv/fold_01-05/best_classifier.pt`
+- **Comparison**: v1.0 checkpoints preserved as baseline; new models trained separately
 
 ## Key Decisions
 
@@ -86,5 +113,7 @@ Maximize test set accuracy using existing cross-validation models while preservi
 | Two separate confusion matrix figures | Better thesis layout than side-by-side | ✓ Good — clearer visual comparison |
 | LaTeX hand-crafted over pandas.to_latex() | Precise booktabs formatting control | ✓ Good — publication-ready tables |
 
+| ResNet-18 architecture fixed for v1.1 | Isolate data quality effect from model capacity — fair comparison | — Pending |
+
 ---
-*Last updated: 2026-02-16 after v1.0 milestone*
+*Last updated: 2026-02-16 after v1.1 milestone start*
