@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 4 of 5 (Analysis & Visualization)
-Plan: 2 of 2 in current phase
+Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-02-16 — Completed 04-02-PLAN.md (LaTeX comparison tables generation)
+Last activity: 2026-02-16 — Completed 04-01-PLAN.md (Confusion matrices comparison)
 
-Progress: [████████░░] 80%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
 - Total plans completed: 8
 - Average duration: 6 min
-- Total execution time: 0.95 hours
+- Total execution time: 0.96 hours
 
 **By Phase:**
 
@@ -33,8 +33,8 @@ Progress: [████████░░] 80%
 | 04-analysis-visualization | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (15m), 03-02 (11m), 03-03 (8m), 04-02 (2m)
-- Trend: Phase 4 significantly faster - script-based table generation vs infrastructure work
+- Last 5 plans: 03-02 (11m), 03-03 (8m), 04-01 (2m)
+- Trend: Phase 4 significantly faster - script-based visualization vs infrastructure work
 
 *Updated after each plan completion*
 
@@ -59,6 +59,8 @@ Recent decisions affecting current work:
 - Baseline metrics fully verified: 97.68% accuracy confirmed with exact match (difference = 0.000000) (VALIDATED - 01-02)
 - Methodology validated through 4 independent methods: Test set properly isolated (git, logs, timestamps, configs) (VALIDATED - 01-02)
 - [Phase 04]: LaTeX table generation pattern: Hand-crafted strings over pandas.to_latex() for precise booktabs formatting control
+- [Phase 04-01]: Two separate confusion matrix figures for baseline and ensemble+TTA instead of side-by-side subplots
+- [Phase 04-01]: Baseline aggregation uses SUM of 5 fold confusion matrices (9,475 evaluations) not average
 
 ### Pending Todos
 
@@ -84,13 +86,14 @@ None yet.
 5. GROUND_TRUTH.json updated - with_tta section contains validated metrics
 
 **From Phase 04 (Analysis & Visualization) - IN PROGRESS:**
-1. LaTeX table generation complete - Two booktabs-formatted tables for thesis Chapter 5
-2. Tables show baseline 97.68% vs ensemble+TTA 98.26% with per-class breakdown
-3. Output in outputs/classifier_cv/comparison_tables.tex (gitignored, script version controlled)
+1. Confusion matrix comparison complete - Two 300 DPI PNG figures for thesis
+2. Baseline (97.68% ± 0.16%) vs ensemble+TTA (98.26%) matrices with Spanish labels
+3. Structured comparison_metrics.json captures all improvement deltas (+0.58pp total)
+4. Dual annotation pattern established (raw counts + percentages) for all thesis figures
 
 ## Session Continuity
 
 Last session: 2026-02-16 10:22 UTC (plan execution)
-Stopped at: Completed 04-02-PLAN.md (LaTeX comparison tables generation)
+Stopped at: Completed 04-01-PLAN.md (Confusion matrices comparison)
 Resume file: None
-Next: Phase 4 verification pending - Ready for verifier to validate must_haves
+Next: Plan 04-02 ready for execution
