@@ -4801,6 +4801,11 @@ def generate_dataset(
         "--use-full-coverage/--no-full-coverage",
         help="Agregar puntos de borde para cobertura completa (fill_rate ~99%)"
     ),
+    exclude_list: Optional[str] = typer.Option(
+        None,
+        "--exclude-list",
+        help="Path to cleaning manifest JSON; images with decision='excluded' are skipped during warping"
+    ),
 ):
     """
     Generar dataset warped completo con splits train/val/test.
@@ -4988,6 +4993,22 @@ def generate_dataset(
         use_clahe = override_param("use_clahe", use_clahe, "clahe", ("--clahe", "--no-clahe"))
         clahe_clip = override_param("clahe_clip", clahe_clip, "clahe_clip", ("--clahe-clip",))
         clahe_tile = override_param("clahe_tile", clahe_tile, "clahe_tile", ("--clahe-tile",))
+
+    # Load exclusion set from cleaning manifest
+    excluded_images = set()
+    if exclude_list:
+        exclude_path = Path(exclude_list)
+        if not exclude_path.exists():
+            logger.error("Exclude list not found: %s", exclude_list)
+            raise typer.Exit(code=1)
+        with open(exclude_path, "r") as f:
+            manifest_data = json.load(f)
+        excluded_images = {
+            entry["image_name"]
+            for entry in manifest_data["entries"]
+            if entry["decision"] == "excluded"
+        }
+        logger.info("Loaded cleaning manifest: excluding %d images", len(excluded_images))
 
     if isinstance(splits, (list, tuple)):
         splits = ",".join(str(x) for x in splits)
@@ -5239,6 +5260,7 @@ def generate_dataset(
 
     all_stats = {}
     all_landmarks = {}
+    skipped_excluded = 0
     start_time = time.time()
 
     for split_name, split_images in split_data.items():
@@ -5255,6 +5277,11 @@ def generate_dataset(
         pbar = tqdm(split_images, desc=f"  {split_name}", ncols=80)
 
         for image_path, class_name in pbar:
+            # Skip excluded images from cleaning manifest
+            if image_path.stem in excluded_images:
+                skipped_excluded += 1
+                continue
+
             # Definir path de salida
             output_filename = f"{image_path.stem}_warped.png"
             image_output_path = output_path / split_name / class_name / output_filename
@@ -5396,6 +5423,10 @@ def generate_dataset(
         'use_full_coverage': use_full_coverage,
         'config': config,
         'landmarks': landmarks_info,
+        'cleaning': {
+            'manifest_path': str(exclude_list) if exclude_list else None,
+            'images_excluded': skipped_excluded,
+        },
     }
 
     for split_name, stats in all_stats.items():
@@ -5456,6 +5487,8 @@ def generate_dataset(
     logger.info("-" * 40)
     logger.info("Total procesadas: %d", total_processed)
     logger.info("Total fallidas: %d", total_failed)
+    if skipped_excluded > 0:
+        logger.info("Total excluidas (cleaning manifest): %d", skipped_excluded)
     logger.info("Margin scale: %.2f", margin)
     logger.info("Tiempo: %.1f minutos (%.2fs por imagen)",
                 elapsed / 60, elapsed / max(total_processed, 1))
