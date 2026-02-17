@@ -67,11 +67,12 @@ Plans:
   3. All flagged samples undergo manual review with documented accept/reject decisions
   4. Data cleaning manifest (JSON) documents every excluded/corrected sample with reasoning
   5. Cleaned dataset is ready for re-training with full traceability to original dataset
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md — Landmark outlier detection and cross-split duplicate resolution (CLN-01)
+- [ ] 07-02-PLAN.md — OOF probability extraction and cleanlab label noise detection (CLN-02)
+- [ ] 07-03-PLAN.md — Manifest assembly, review notebook, and CLI exclude-list integration (CLN-03, CLN-04)
 
 ### Phase 8: Training Improvements
 **Goal**: Re-train 5-fold CV ensemble with focal loss, hard example mining, and curriculum learning on cleaned data
@@ -134,10 +135,10 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 4. Analysis & Visualization | v1.0 | 2/2 | Complete | 2026-02-16 |
 | 5. Final Test Evaluation | v1.0 | 2/2 | Complete | 2026-02-16 |
 | 6. Error Forensics | v1.1 | 0/3 | Planned | - |
-| 7. Data Cleaning | v1.1 | 0/2 | Not started | - |
+| 7. Data Cleaning | v1.1 | 0/3 | Planned | - |
 | 8. Training Improvements | v1.1 | 0/2 | Not started | - |
 | 9. Advanced Augmentation | v1.1 | 0/2 | Not started | - |
 | 10. Final Evaluation | v1.1 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-02-16 after Phase 6 planning*
+*Last updated: 2026-02-17 after Phase 7 planning*
