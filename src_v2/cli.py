@@ -3053,6 +3053,46 @@ def cross_validate_classifier(
         "--config",
         help="JSON con defaults para reproducir entrenamiento"
     ),
+    use_focal_loss: bool = typer.Option(
+        False,
+        "--focal-loss/--no-focal-loss",
+        help="Usar Focal Loss en lugar de CrossEntropy (TRN-01)"
+    ),
+    focal_gamma: float = typer.Option(
+        2.0,
+        "--focal-gamma",
+        help="Parametro gamma de Focal Loss (default=2.0)"
+    ),
+    use_hard_mining: bool = typer.Option(
+        False,
+        "--hard-mining/--no-hard-mining",
+        help="Activar hard example mining via WeightedRandomSampler (TRN-02)"
+    ),
+    oof_path: Optional[str] = typer.Option(
+        None,
+        "--oof-path",
+        help="Path al archivo .npz con OOF probabilities (requerido para mining y curriculum)"
+    ),
+    mining_max_ratio: float = typer.Option(
+        3.0,
+        "--mining-max-ratio",
+        help="Ratio maximo de peso entre muestra mas dificil y mas facil (default=3.0)"
+    ),
+    use_curriculum: bool = typer.Option(
+        False,
+        "--curriculum/--no-curriculum",
+        help="Activar curriculum learning por dificultad OOF (TRN-03)"
+    ),
+    curriculum_fractions: Optional[str] = typer.Option(
+        None,
+        "--curriculum-fractions",
+        help="Fracciones de datos por etapa, separadas por coma (ej: '0.60,0.80,1.0')"
+    ),
+    finetune_from: Optional[str] = typer.Option(
+        None,
+        "--finetune-from",
+        help="Path a checkpoint para fine-tuning (cargar pesos antes de cada fold)"
+    ),
 ):
     """
     Validacion cruzada (k-fold) para el clasificador CNN.
@@ -3123,6 +3163,14 @@ def cross_validate_classifier(
             "folds",
             "eval_test",
             "save_checkpoints",
+            "use_focal_loss",
+            "focal_gamma",
+            "use_hard_mining",
+            "oof_path",
+            "mining_max_ratio",
+            "use_curriculum",
+            "curriculum_fractions",
+            "finetune_from",
         }
         unknown_keys = sorted(set(normalized) - valid_keys)
         if unknown_keys:
@@ -3143,6 +3191,14 @@ def cross_validate_classifier(
             "folds": folds,
             "eval_test": eval_test,
             "save_checkpoints": save_checkpoints,
+            "use_focal_loss": use_focal_loss,
+            "focal_gamma": focal_gamma,
+            "use_hard_mining": use_hard_mining,
+            "oof_path": oof_path,
+            "mining_max_ratio": mining_max_ratio,
+            "use_curriculum": use_curriculum,
+            "curriculum_fractions": curriculum_fractions,
+            "finetune_from": finetune_from,
         }
 
         def is_default_source(source: object) -> bool:
@@ -3170,6 +3226,14 @@ def cross_validate_classifier(
         folds = param_values["folds"]
         eval_test = param_values["eval_test"]
         save_checkpoints = param_values["save_checkpoints"]
+        use_focal_loss = param_values["use_focal_loss"]
+        focal_gamma = param_values["focal_gamma"]
+        use_hard_mining = param_values["use_hard_mining"]
+        oof_path = param_values["oof_path"]
+        mining_max_ratio = param_values["mining_max_ratio"]
+        use_curriculum = param_values["use_curriculum"]
+        curriculum_fractions = param_values["curriculum_fractions"]
+        finetune_from = param_values["finetune_from"]
 
         logger.info("Config cargada: %s", config_path)
 
@@ -3258,6 +3322,59 @@ def cross_validate_classifier(
                 image = self.transform(image)
             return image, label
 
+    def load_oof_difficulty(oof_path_str: str) -> tuple:
+        """Load OOF probabilities and compute per-sample CE loss as difficulty score."""
+        oof = np.load(oof_path_str, allow_pickle=True)
+        pred_probs = torch.tensor(oof['pred_probs'], dtype=torch.float32)
+        true_labels_oof = torch.tensor(oof['true_labels'].astype(int), dtype=torch.long)
+        image_names = oof['image_names']
+        ce_loss = -torch.log(pred_probs[torch.arange(len(true_labels_oof)), true_labels_oof] + 1e-10)
+        difficulty = {}
+        for name, loss_val in zip(image_names, ce_loss.numpy()):
+            stem = Path(str(name)).stem.replace('_warped', '')
+            difficulty[stem] = float(loss_val)
+        pct_95 = float(np.percentile(list(difficulty.values()), 95))
+        logger.info("OOF difficulty loaded: %d samples, 95th pct=%.4f", len(difficulty), pct_95)
+        return difficulty, pct_95
+
+    def build_sampling_weights(samples, difficulty, pct_95, max_ratio=3.0):
+        """Build per-sample weights for WeightedRandomSampler from OOF difficulty."""
+        weights = []
+        matched = 0
+        for path, label in samples:
+            stem = Path(path).stem.replace('_warped', '')
+            loss_val = difficulty.get(stem)
+            if loss_val is not None:
+                matched += 1
+                w = 1.0 + (max_ratio - 1.0) * min(loss_val / (pct_95 + 1e-8), 1.0)
+            else:
+                w = 1.0  # default: treat as easy if not in OOF
+            weights.append(w)
+        logger.info(
+            "Mining: %d/%d samples matched OOF (%.1f%%)",
+            matched, len(samples), 100.0 * matched / max(len(samples), 1)
+        )
+        return torch.tensor(weights, dtype=torch.float32)
+
+    def build_curriculum_stages(full_samples, difficulty, fractions, n_classes):
+        """Build class-balanced curriculum stages sorted by OOF difficulty (easiest first)."""
+        class_samples = [[] for _ in range(n_classes)]
+        for path, label in full_samples:
+            stem = Path(path).stem.replace('_warped', '')
+            loss_val = difficulty.get(stem, float('inf'))
+            class_samples[label].append((path, label, loss_val))
+        for i in range(n_classes):
+            class_samples[i].sort(key=lambda x: x[2])
+        stages = []
+        for frac in fractions:
+            stage = []
+            for cls_list in class_samples:
+                n = max(1, int(len(cls_list) * frac))
+                stage.extend([(p, lbl) for p, lbl, _ in cls_list[:n]])
+            stages.append(stage)
+            logger.info("Curriculum stage %.0f%%: %d samples", frac * 100, len(stage))
+        return stages
+
     def evaluate_basic(model, loader, criterion):
         model.eval()
         total_loss = 0.0
@@ -3327,6 +3444,30 @@ def cross_validate_classifier(
             "n_samples": len(labels),
         }
 
+    # --- Technique setup (once before fold loop) ---
+    logger.info("Techniques: focal_loss=%s, hard_mining=%s, curriculum=%s",
+                use_focal_loss, use_hard_mining, use_curriculum)
+
+    oof_difficulty = None
+    oof_pct_95 = 0.0
+    curriculum_stages = None
+
+    if (use_hard_mining or use_curriculum) and oof_path:
+        oof_difficulty, oof_pct_95 = load_oof_difficulty(oof_path)
+    elif (use_hard_mining or use_curriculum) and not oof_path:
+        logger.warning("Hard mining / curriculum requested but oof_path not set — disabling.")
+        use_hard_mining = False
+        use_curriculum = False
+
+    fractions = [0.6, 0.8, 1.0]
+    if curriculum_fractions:
+        fractions = [float(x) for x in curriculum_fractions.split(",")]
+
+    if use_curriculum and oof_difficulty is not None:
+        curriculum_stages = build_curriculum_stages(
+            full_samples, oof_difficulty, fractions, len(class_names)
+        )
+
     skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
     fold_results = []
 
@@ -3363,13 +3504,29 @@ def cross_validate_classifier(
         val_dataset = ImagePathDataset(val_samples, eval_transform)
 
         use_pin_memory = torch_device.type == "cuda"
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=get_optimal_num_workers(),
-            pin_memory=use_pin_memory,
-        )
+
+        if use_hard_mining and oof_difficulty is not None:
+            sample_weights = build_sampling_weights(
+                train_samples, oof_difficulty, oof_pct_95, mining_max_ratio
+            )
+            from torch.utils.data import WeightedRandomSampler
+            sampler = WeightedRandomSampler(
+                weights=sample_weights,
+                num_samples=len(train_samples),
+                replacement=True
+            )
+            train_loader = DataLoader(
+                train_dataset, batch_size=batch_size, sampler=sampler,
+                num_workers=get_optimal_num_workers(), pin_memory=use_pin_memory
+            )
+        else:
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=get_optimal_num_workers(),
+                pin_memory=use_pin_memory,
+            )
         val_loader = DataLoader(
             val_dataset,
             batch_size=batch_size,
@@ -3396,12 +3553,25 @@ def cross_validate_classifier(
         )
         model = model.to(torch_device)
 
+        if finetune_from:
+            checkpoint_data = torch.load(finetune_from, map_location=torch_device, weights_only=True)
+            model.load_state_dict(checkpoint_data['model_state_dict'])
+            logger.info("Fine-tuning from: %s", finetune_from)
+
         class_weights_tensor = None
         if use_class_weights:
             class_weights_tensor = get_class_weights(train_labels, len(class_names)).to(torch_device)
             logger.info("Class weights: %s", class_weights_tensor.cpu().numpy())
 
-        criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
+        if use_focal_loss:
+            from src_v2.models.losses import FocalLoss
+            criterion = FocalLoss(gamma=focal_gamma, weight=class_weights_tensor)
+            logger.info("Using FocalLoss (gamma=%.1f)", focal_gamma)
+        else:
+            criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
+
+        # Always use standard CE for validation to keep metrics comparable across ablations
+        val_criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
         optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
@@ -3422,8 +3592,37 @@ def cross_validate_classifier(
         best_val_f1 = 0.0
         patience_counter = 0
         best_model_state = None
+        current_stage = 0
 
         for epoch in range(epochs):
+            # Curriculum stage transitions (rebuild loader at epoch 0, 33%, 66%)
+            if use_curriculum and curriculum_stages is not None:
+                stage_transitions = [int(epochs * 0.33), int(epochs * 0.66)]
+                if epoch == 0 or (current_stage < len(stage_transitions) and
+                                  epoch == stage_transitions[current_stage]):
+                    if epoch > 0:
+                        current_stage += 1
+                    stage_data = curriculum_stages[min(current_stage, len(curriculum_stages) - 1)]
+                    train_dataset = ImagePathDataset(stage_data, train_transform)
+                    if use_hard_mining and oof_difficulty is not None:
+                        sample_weights = build_sampling_weights(
+                            stage_data, oof_difficulty, oof_pct_95, mining_max_ratio
+                        )
+                        from torch.utils.data import WeightedRandomSampler
+                        sampler = WeightedRandomSampler(
+                            weights=sample_weights, num_samples=len(stage_data), replacement=True
+                        )
+                        train_loader = DataLoader(
+                            train_dataset, batch_size=batch_size, sampler=sampler,
+                            num_workers=get_optimal_num_workers(), pin_memory=use_pin_memory
+                        )
+                    else:
+                        train_loader = DataLoader(
+                            train_dataset, batch_size=batch_size, shuffle=True,
+                            num_workers=get_optimal_num_workers(), pin_memory=use_pin_memory
+                        )
+                    logger.info("Curriculum: stage %d, %d samples", current_stage + 1, len(stage_data))
+
             model.train()
             train_loss = 0.0
             train_correct = 0
@@ -3450,7 +3649,7 @@ def cross_validate_classifier(
             val_loss, val_acc, val_f1_macro, val_f1_weighted = evaluate_basic(
                 model,
                 val_loader,
-                criterion,
+                val_criterion,
             )
 
             scheduler.step(val_f1_macro)

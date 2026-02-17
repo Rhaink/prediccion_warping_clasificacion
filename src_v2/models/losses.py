@@ -13,6 +13,7 @@ import logging
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 from typing import Optional, Dict
 
@@ -372,6 +373,54 @@ class CombinedLandmarkLoss(nn.Module):
             'central': central,
             'symmetry': symmetry
         }
+
+
+class FocalLoss(nn.Module):
+    """
+    Multi-class Focal Loss for classifier training.
+
+    Modulates CE loss by (1 - p_t)^gamma to down-weight easy examples.
+    Compatible with class weights (alpha per class) for dual handling of imbalance.
+
+    Ref: Lin et al. 2017 "Focal Loss for Dense Object Detection"
+    """
+
+    def __init__(
+        self,
+        gamma: float = 2.0,
+        weight: Optional[torch.Tensor] = None,
+        reduction: str = 'mean'
+    ):
+        """
+        Args:
+            gamma: Focusing parameter (>= 0). Higher gamma down-weights easy examples more.
+            weight: Optional class weights tensor (C,) for alpha-balancing.
+            reduction: 'mean', 'sum', or 'none'.
+        """
+        super().__init__()
+        self.gamma = gamma
+        self.weight = weight
+        self.reduction = reduction
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Compute focal loss.
+
+        Args:
+            logits: Raw model outputs (B, C)
+            targets: Class indices (B,)
+
+        Returns:
+            Focal loss scalar (or per-sample if reduction='none')
+        """
+        ce_loss = F.cross_entropy(logits, targets, weight=self.weight, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = (1.0 - pt) ** self.gamma * ce_loss
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        return focal_loss
 
 
 def get_landmark_weights(strategy: str = 'inverse_variance') -> torch.Tensor:
