@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Maximize classification accuracy through data-centric improvements while preserving methodological integrity
-**Current focus:** Phase 7 - Data Cleaning Pipeline
+**Current focus:** Phase 8 - Training Improvements
 
 ## Current Position
 
-Phase: 7 of 10 (Data Cleaning Pipeline)
-Plan: 3 of 3 in current phase (PHASE COMPLETE)
-Status: Phase 7 complete, ready for verification
-Last activity: 2026-02-17 - Completed 07-03-PLAN.md (manifest assembly, CLI integration, checkpoint approved)
+Phase: 8 of 10 (Training Improvements)
+Plan: 1 of 3 complete
+Status: Phase 8 Plan 1 complete, ready for Plan 2 (ablation CV execution)
+Last activity: 2026-02-17 - Completed 08-01-PLAN.md (warped cleaned dataset, FocalLoss, technique CLI flags, 5 ablation configs)
 
-Progress: [███████░░░] 70% (7 of 10 phases complete)
+Progress: [████████░░] 80% (7 phases complete + Phase 8 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17 (11 from v1.0 + 6 from v1.1)
-- Average duration: 8 min (v1.1 only, tracked going forward)
-- Total execution time: 21 days (v1.0 milestone) + 55 min (v1.1 so far)
+- Total plans completed: 18 (11 from v1.0 + 7 from v1.1)
+- Average duration: 7 min (v1.1 only, tracked going forward)
+- Total execution time: 21 days (v1.0 milestone) + 59 min (v1.1 so far)
 
 **By Phase:**
 
@@ -34,6 +34,7 @@ Progress: [███████░░░] 70% (7 of 10 phases complete)
 | 5. Final Test Evaluation | 2 | v1.0 | - |
 | 6. Error Forensics & Data Quality | 3 of 3 | 34 min | 11 min |
 | 7. Data Cleaning Pipeline | 3 of 3 | 16 min | ~5 min |
+| 8. Training Improvements | 1 of 3 | 4 min | - |
 
 **Recent Trend:**
 - v1.0 shipped successfully with 98.26% accuracy achieved
@@ -45,6 +46,7 @@ Progress: [███████░░░] 70% (7 of 10 phases complete)
 - v1.1 Phase 7 Plan 2 complete: OOF extraction and cleanlab label noise detection in 3 minutes
 - v1.1 Phase 7 Plan 3 complete: Manifest assembly + CLI --exclude-list in 5 minutes
 - v1.1 Phase 7 COMPLETE: All 3 plans executed, manifest approved (432 excluded, 2.9%)
+- v1.1 Phase 8 Plan 1 complete: FocalLoss + hard mining + curriculum in CLI, cleaned dataset warped, 5 configs created in 4 minutes
 
 ## Accumulated Context
 
@@ -58,15 +60,16 @@ Recent decisions affecting current work:
 - **v1.0**: Conservative TTA (horizontal flip only) - Preserve diagnostic features in medical images (+0.16pp additional improvement)
 - **v1.0**: Test set used only for final evaluation - Methodological rigor for thesis validity (verified with 4 independent methods)
 - **06-01**: Use confidence x fold agreement matrix for error categorization - Captures both model certainty and ensemble consensus (2026-02-16)
-- **06-01**: Placeholder confidence values acceptable for v1 - Per-sample probabilities not in ensemble JSON, can refine if needed for Phase 07-08 (2026-02-16)
 - **06-02**: Use pyiqa instead of pybrisque - Modern library with scikit-learn 0.26 compatibility and GPU acceleration (2026-02-16)
-- **06-02**: Skip CNN verification for initial duplicate audit - PHash with threshold=3 sufficient for conservative detection (2026-02-16)
 - **06-03**: Accept .ipynb gitignored - Notebook is a generated artifact, scripts are tracked (2026-02-16)
 - **07-01**: Same-class duplicate resolution keeps alphabetically first image_name for determinism and reproducibility (2026-02-17)
 - **07-01**: Cross-class pairs (6,026 of 17,312) require excluding both images due to label ambiguity (2026-02-17)
-- **07-01**: 5,018 unique images excluded from 17,312 pairs — ~33% of dataset flagged for cross-split exclusion (2026-02-17)
 - **07-02**: Temperature scaling T=2.0 applied (94.2% of OOF samples had max_prob > 0.99 -> overconfident) (2026-02-17)
 - **07-02**: All 34 cleanlab label issues had self_confidence < 0.05 -> all auto_excluded, no manual_review tier needed (2026-02-17)
+- **08-01**: Use standard CE (val_criterion) for validation across all ablations to ensure comparable F1 metrics regardless of training loss (2026-02-17)
+- **08-01**: Curriculum stages sorted per-class (not globally) to preserve class balance at each stage (2026-02-17)
+- **08-01**: OOF difficulty anchored at 95th percentile for mining weight clipping to avoid extreme overweighting (2026-02-17)
+- **08-01**: All new technique flags default to False for full backward compatibility (2026-02-17)
 
 ### Pending Todos
 
@@ -74,31 +77,29 @@ None yet.
 
 ### Blockers/Concerns
 
-**Phase 7 Readiness:**
-- ~~Cross-split duplicate resolution~~ ✓ Complete in 07-01: 5,018 exclusions produced
-- ~~Landmark outlier detection~~ ✓ Complete in 07-01: 463 flagged (3.06%)
-- ~~cleanlab label noise detection~~ ✓ Complete in 07-02: 34 auto_excluded issues identified
-- **CONCERN**: 5,018 cross-split exclusions is ~33% of 15,153 images — manifest assembly (Plan 03) must handle overlap between exclusion categories carefully
-- Manifest assembly (Plan 03) ready to proceed: all three data sources (landmark outliers, cross-split duplicates, label noise) collected
+**Phase 8 Status:**
+- ~~Focal loss implementation~~ ✓ Complete in 08-01: FocalLoss class in losses.py
+- ~~Hard example mining~~ ✓ Complete in 08-01: OOF-based WeightedRandomSampler in CLI
+- ~~Curriculum learning~~ ✓ Complete in 08-01: Class-balanced stages with difficulty ordering
+- ~~Cleaned dataset warping~~ ✓ Complete in 08-01: 14,721 images at outputs/warped_cleaned/session_warping
+- ~~Ablation configs~~ ✓ Complete in 08-01: 5 configs created and validated
 
-**Phase 8 Readiness:**
-- Focal loss implementation needs testing before CV training
-- Hard example mining requires tracking misclassification history during CV
-- Curriculum learning scheduler needs validation set-based difficulty scoring
+**Phase 8 Plan 2 Ready:**
+- 5 ablation experiments ready to run: cv_cleaned_baseline, cv_focal, cv_mining, cv_curriculum, cv_combined
+- Each requires ~50 epochs x 5 folds of training (GPU time)
+- Results will determine which technique (if any) improves over baseline
 
 **Downstream Concerns:**
 - Statistical significance: At 1895 test samples, each corrected sample is worth only +0.05pp
-- Test set contamination risk during data cleaning must be prevented
 - Regression risk: Could break 1862 correct predictions while fixing 33 errors
-- **PARTIALLY RESOLVED**: Cross-split leakage: 5,018 images identified for exclusion; manifest assembly will determine final set
 
 ## Session Continuity
 
-Last session: 2026-02-17 (Phase 7 complete)
-Stopped at: Phase 7 fully executed (all 3 plans complete, manifest approved)
-Resume file: .planning/phases/07-data-cleaning-pipeline/07-03-SUMMARY.md
+Last session: 2026-02-17 (Phase 8 Plan 1 complete)
+Stopped at: Completed 08-01-PLAN.md (infrastructure for training improvements)
+Resume file: .planning/phases/08-training-improvements/08-01-SUMMARY.md
 
-Next: Verify Phase 7 work, then proceed to Phase 8 (Training Improvements)
+Next: Execute Phase 8 Plan 2 (run ablation CV experiments)
 
 ---
 *Last updated: 2026-02-17*
