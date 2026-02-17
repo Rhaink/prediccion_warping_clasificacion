@@ -84,11 +84,12 @@ Plans:
   3. Training supports curriculum learning with easy-to-hard schedule based on loss
   4. New 5-fold CV ensemble is trained on improved data with same ResNet-18 architecture
   5. Viral Pneumonia recall improves above baseline 92.9% (current worst class)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [ ] 08-01-PLAN.md — Re-warp cleaned dataset, implement FocalLoss/mining/curriculum, create ablation configs (TRN-01, TRN-02, TRN-03, TRN-04)
+- [ ] 08-02-PLAN.md — Run 4 individual ablations: cleaned baseline + focal + mining + curriculum (TRN-01, TRN-02, TRN-03, TRN-04)
+- [ ] 08-03-PLAN.md — Run combined model fine-tuned from best ablation + comparison analysis (TRN-04)
 
 ### Phase 9: Advanced Augmentation
 **Goal**: Integrate medical-specific augmentations that preserve anatomical validity and improve generalization
@@ -136,9 +137,9 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 5. Final Test Evaluation | v1.0 | 2/2 | Complete | 2026-02-16 |
 | 6. Error Forensics | v1.1 | 0/3 | Planned | - |
 | 7. Data Cleaning | v1.1 | Complete    | 2026-02-17 | - |
-| 8. Training Improvements | v1.1 | 0/2 | Not started | - |
+| 8. Training Improvements | v1.1 | 0/3 | Planned | - |
 | 9. Advanced Augmentation | v1.1 | 0/2 | Not started | - |
 | 10. Final Evaluation | v1.1 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-02-17 after Phase 7 planning*
+*Last updated: 2026-02-17 after Phase 8 planning*
