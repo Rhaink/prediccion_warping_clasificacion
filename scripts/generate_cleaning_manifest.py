@@ -51,6 +51,11 @@ def parse_args():
         default="outputs/data_cleaning/cleaning_manifest.json",
         help="Output path for cleaning manifest JSON",
     )
+    parser.add_argument(
+        "--skip-cross-split",
+        action="store_true",
+        help="Skip cross-split duplicate exclusions (false positives from warping-induced similarity)",
+    )
     return parser.parse_args()
 
 
@@ -62,8 +67,12 @@ def main():
     landmark_df = pd.read_csv(args.landmark_outliers)
     print(f"  Landmark outliers: {len(landmark_df)} rows, {landmark_df.flagged.sum()} flagged")
 
-    cross_split_df = pd.read_csv(args.cross_split_exclusions)
-    print(f"  Cross-split exclusions: {len(cross_split_df)} rows")
+    if args.skip_cross_split:
+        cross_split_df = pd.DataFrame(columns=["image_name", "reason", "duplicate_partner", "duplicate_partner_category"])
+        print("  Cross-split exclusions: SKIPPED (warping-induced false positives)")
+    else:
+        cross_split_df = pd.read_csv(args.cross_split_exclusions)
+        print(f"  Cross-split exclusions: {len(cross_split_df)} rows")
 
     cleanlab_df = pd.read_csv(args.cleanlab_issues)
     print(f"  Cleanlab issues: {len(cleanlab_df)} rows, {cleanlab_df.is_label_issue.sum()} flagged")
