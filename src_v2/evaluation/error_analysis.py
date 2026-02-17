@@ -51,16 +51,30 @@ def load_error_samples(
     errors_df = df[df['soft_correct'] == 0].copy()
     logger.info(f"Misclassified samples: {len(errors_df)}")
 
-    # Load test images CSV to map sample indices to filenames
-    test_images_csv = warped_dir / 'images.csv'
-    logger.info(f"Loading test images mapping from {test_images_csv}")
-    test_images = pd.read_csv(test_images_csv)
+    # Build ImageFolder-order mapping from disk.
+    # The classifier dataloader (torchvision.ImageFolder) iterates classes sorted
+    # alphabetically, then files sorted alphabetically within each class.
+    # sample_idx in predictions CSV corresponds to this ordering, NOT to images.csv rows.
+    logger.info("Building ImageFolder-order mapping from warped test directory")
+    imagefolder_samples = []
+    class_dirs = sorted([d for d in warped_dir.iterdir() if d.is_dir()])
+    for cls_dir in class_dirs:
+        category = cls_dir.name
+        files = sorted([f.name for f in cls_dir.iterdir() if f.suffix == '.png'])
+        for fname in files:
+            image_name = fname.replace('_warped.png', '')
+            imagefolder_samples.append({
+                'category': category,
+                'warped_filename': fname,
+                'image_name': image_name,
+            })
+    logger.info(f"ImageFolder mapping: {len(imagefolder_samples)} samples across "
+                f"{len(class_dirs)} classes")
 
     # Load landmark predictions
     logger.info(f"Loading landmark predictions from {predictions_npz}")
     landmarks_data = np.load(predictions_npz, allow_pickle=True)
     landmarks = landmarks_data['landmarks']  # Shape: (N, 15, 2)
-    landmark_image_paths = landmarks_data['image_paths']
     landmark_image_names = landmarks_data['image_names']  # Basenames without extension
     landmark_categories = landmarks_data['categories']
 
@@ -72,19 +86,13 @@ def load_error_samples(
         key = Path(img_name).stem if isinstance(img_name, str) else str(img_name)
         landmark_lookup[(key, cat)] = lm
 
-    # Load ensemble test results for per-sample probabilities
-    ensemble_results_path = Path(predictions_csv).parent / 'ensemble_test_results_tta.json'
-    ensemble_probs = None
-    if ensemble_results_path.exists():
-        logger.info(f"Loading ensemble results from {ensemble_results_path}")
-        with open(ensemble_results_path, 'r') as f:
-            ensemble_results = json.load(f)
-            # Try to extract per-sample probabilities if available
-            # The JSON structure may not have per-sample data, only aggregates
-
-    # Load per-fold predictions for fold agreement calculation
-    # For now, we'll compute a placeholder fold agreement
-    # True fold agreement would require per-sample, per-fold predictions
+    # Extract real ensemble probabilities if fold dirs are provided
+    ensemble_prob_data = None
+    if fold_dirs:
+        # warped_dir is the test split; data_dir is its parent (contains train/val/test)
+        data_dir = warped_dir.parent
+        ensemble_prob_data = extract_ensemble_probabilities(fold_dirs, data_dir)
+        logger.info(f"Extracted real probabilities for {len(ensemble_prob_data)} samples")
 
     # Enrich error samples
     enriched_rows = []
@@ -97,27 +105,23 @@ def load_error_samples(
         true_class = CATEGORIES[true_label]
         pred_class = CATEGORIES[pred_label]
 
-        # Get image info from test_images CSV
-        if sample_idx < len(test_images):
-            image_row = test_images.iloc[sample_idx]
-            image_name = image_row['image_name']
-            warped_filename = image_row['warped_filename']
-            # Use category from images.csv (matches directory structure) not true_class
-            # from labels. Warped files are organized by original dataset category, which
-            # matches the image filename prefix, not the classification label.
-            img_category = image_row['category']
+        # Map sample_idx to image via ImageFolder ordering
+        if sample_idx < len(imagefolder_samples):
+            sample_info = imagefolder_samples[sample_idx]
+            image_name = sample_info['image_name']
+            warped_filename = sample_info['warped_filename']
+            img_category = sample_info['category']
 
             # Construct paths
-            # Original: {dataset_dir}/{class with spaces}/{image_name}.png
+            # Original: {dataset_dir}/{class with spaces}/images/{image_name}.png
             original_class_dir = img_category.replace('_', ' ')
-            original_path = dataset_dir / original_class_dir / f"{image_name}.png"
+            original_path = dataset_dir / original_class_dir / 'images' / f"{image_name}.png"
             # Warped: {warped_dir}/{category}/{warped_filename}
             warped_path = warped_dir / img_category / warped_filename
 
-            # Look up landmarks using category from images.csv
+            # Look up landmarks
             landmark_coords = landmark_lookup.get((image_name, img_category))
             if landmark_coords is None:
-                # Try with true_class as fallback
                 landmark_coords = landmark_lookup.get((image_name, true_class))
         else:
             image_name = None
@@ -125,12 +129,18 @@ def load_error_samples(
             warped_path = None
             landmark_coords = None
 
-        # Compute confidence and margin (placeholder for now)
-        # True confidence would come from ensemble probabilities
-        confidence = 0.5  # Placeholder
-        margin = 0.1      # Placeholder
-        fold_agreement = 0.8  # Placeholder (5 folds, assume 4/5 agree = 0.8)
-        probs = np.array([0.33, 0.33, 0.34])  # Placeholder
+        # Use real probabilities if available, otherwise placeholders
+        if ensemble_prob_data and sample_idx in ensemble_prob_data:
+            prob_info = ensemble_prob_data[sample_idx]
+            confidence = prob_info['confidence']
+            margin = prob_info['margin']
+            fold_agreement = prob_info['fold_agreement']
+            probs = prob_info['probs']
+        else:
+            confidence = 0.5
+            margin = 0.1
+            fold_agreement = 0.8
+            probs = np.array([0.33, 0.33, 0.34])
 
         enriched_row = {
             'sample_idx': sample_idx,
@@ -154,6 +164,151 @@ def load_error_samples(
 
     logger.info(f"Enriched {len(result_df)} error samples")
     return result_df
+
+
+def extract_ensemble_probabilities(
+    fold_dirs: List[Path],
+    data_dir: Path,
+    device: str = 'auto'
+) -> Dict[int, Dict]:
+    """
+    Extract per-sample probabilities and fold agreement from ensemble models.
+
+    Loads each fold's model, runs inference on the test set, and computes:
+    - Weighted soft-voting probabilities per sample
+    - Per-fold predictions for fold agreement calculation
+
+    Args:
+        fold_dirs: List of fold directories containing best_classifier.pt
+        data_dir: Path to warped dataset (parent of train/val/test)
+        device: Device string ('cuda', 'cpu', or 'auto')
+
+    Returns:
+        Dict mapping sample_idx to {'probs': np.array(3,), 'confidence': float,
+        'margin': float, 'fold_agreement': float, 'fold_predictions': list}
+    """
+    import torch
+    from torch.utils.data import DataLoader
+    from torchvision import datasets, transforms
+
+    if device == 'auto':
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    torch_device = torch.device(device)
+
+    # Load models and validation F1 scores (for weighting)
+    models = []
+    weights = []
+    for fold_dir in fold_dirs:
+        checkpoint_path = fold_dir / 'best_classifier.pt'
+        if not checkpoint_path.exists():
+            logger.warning(f"Checkpoint not found: {checkpoint_path}, skipping")
+            continue
+
+        model = _load_classifier_from_checkpoint(checkpoint_path, torch_device)
+        models.append(model)
+
+        # Get validation F1 for weighting from checkpoint metadata or results file
+        checkpoint_data = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+        val_f1 = checkpoint_data.get('best_val_f1', None)
+        if val_f1 is None:
+            results_path = fold_dir / 'results.json'
+            if results_path.exists():
+                with open(results_path) as f:
+                    results = json.load(f)
+                val_f1 = results.get('best_val_f1_macro',
+                                     results.get('best_f1', 0.98))
+            else:
+                val_f1 = 0.98
+        weights.append(val_f1)
+
+    logger.info(f"Loaded {len(models)} fold models, weights: "
+                f"{[f'{w:.4f}' for w in weights]}")
+
+    # Create test dataloader using same transforms as training/evaluation
+    from src_v2.models.classifier import get_classifier_transforms
+    test_dir = data_dir / 'test'
+    transform = get_classifier_transforms(train=False)
+    test_dataset = datasets.ImageFolder(str(test_dir), transform=transform)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
+    logger.info(f"Test set: {len(test_dataset)} samples")
+
+    # Run inference with TTA (original + horizontal flip)
+    all_fold_probs = []  # (n_folds, N, 3)
+    all_fold_preds = []  # (n_folds, N)
+
+    with torch.no_grad():
+        for model in models:
+            model.eval()
+            fold_probs = []
+            fold_preds = []
+
+            for images, _ in test_loader:
+                images = images.to(torch_device)
+
+                # Original
+                logits_orig = model(images)
+                probs_orig = torch.softmax(logits_orig, dim=1)
+
+                # TTA: horizontal flip
+                images_flip = torch.flip(images, dims=[3])
+                logits_flip = model(images_flip)
+                probs_flip = torch.softmax(logits_flip, dim=1)
+
+                # Average TTA
+                probs_avg = (probs_orig + probs_flip) / 2.0
+                preds = probs_avg.argmax(dim=1)
+
+                fold_probs.append(probs_avg.cpu())
+                fold_preds.append(preds.cpu())
+
+            all_fold_probs.append(torch.cat(fold_probs))
+            all_fold_preds.append(torch.cat(fold_preds))
+
+    # Stack: (n_folds, N, 3)
+    probs_stacked = torch.stack(all_fold_probs, dim=0)
+    preds_stacked = torch.stack(all_fold_preds, dim=0)  # (n_folds, N)
+
+    # Weighted soft voting
+    weights_tensor = torch.tensor(weights, dtype=torch.float32)
+    weights_norm = weights_tensor / weights_tensor.sum()
+    ensemble_probs = torch.einsum('mni,m->ni', probs_stacked, weights_norm)  # (N, 3)
+
+    # Build per-sample dict
+    result = {}
+    n_folds = len(models)
+    for i in range(len(test_dataset)):
+        probs_i = ensemble_probs[i].numpy()
+        confidence = float(probs_i.max())
+        sorted_probs = np.sort(probs_i)[::-1]
+        margin = float(sorted_probs[0] - sorted_probs[1])
+
+        # Fold agreement: fraction of folds that agree with ensemble prediction
+        ensemble_pred = int(probs_i.argmax())
+        fold_preds_i = preds_stacked[:, i].numpy()
+        fold_agreement = float((fold_preds_i == ensemble_pred).sum() / n_folds)
+
+        result[i] = {
+            'probs': probs_i,
+            'confidence': confidence,
+            'margin': margin,
+            'fold_agreement': fold_agreement,
+            'fold_predictions': fold_preds_i.tolist(),
+        }
+
+    logger.info(f"Extracted probabilities for {len(result)} samples")
+    return result
+
+
+def _load_classifier_from_checkpoint(
+    checkpoint_path: Path,
+    device: 'torch.device'
+) -> 'torch.nn.Module':
+    """Load a classifier model from a checkpoint file."""
+    from src_v2.models.classifier import create_classifier
+
+    model = create_classifier(checkpoint=str(checkpoint_path), device=device)
+    model.eval()
+    return model
 
 
 def categorize_errors(error_df: pd.DataFrame) -> pd.DataFrame:

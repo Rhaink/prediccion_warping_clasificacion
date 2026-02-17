@@ -168,6 +168,9 @@ def main():
 
         if original_path and original_path.exists():
             original_img = cv2.imread(str(original_path), cv2.IMREAD_GRAYSCALE)
+            # Resize to 224x224 to match landmark coordinate space
+            if original_img.shape != (224, 224):
+                original_img = cv2.resize(original_img, (224, 224), interpolation=cv2.INTER_AREA)
         else:
             original_img = np.zeros((224, 224), dtype=np.uint8)
 
