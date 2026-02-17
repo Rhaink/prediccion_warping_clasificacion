@@ -13,8 +13,6 @@ import cv2
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
 
 from src_v2.constants import LANDMARK_NAMES, CATEGORIES
@@ -99,57 +97,52 @@ def visualize_pipeline_trace(
         output_path: Path to save figure
         triangulation: Optional Delaunay triangulation
     """
-    fig = plt.figure(figsize=(20, 5))
-    grid = ImageGrid(fig, 111, nrows_ncols=(1, 4), axes_pad=0.3)
+    fig, axes = plt.subplots(1, 4, figsize=(20, 5),
+                             gridspec_kw={'width_ratios': [1, 1, 1, 0.8]})
+    fig.subplots_adjust(wspace=0.3, top=0.85)
 
     # Panel 1: Original X-ray
-    grid[0].imshow(original_img, cmap='gray', vmin=0, vmax=255)
-    grid[0].set_title('Original X-ray', fontsize=12, fontweight='bold')
-    grid[0].axis('off')
+    axes[0].imshow(original_img, cmap='gray', vmin=0, vmax=255)
+    axes[0].set_title('Original X-ray', fontsize=12, fontweight='bold')
+    axes[0].axis('off')
 
     # Panel 2: Landmarks overlay
-    overlay_landmarks(grid[1], original_img, landmarks, triangulation)
-    grid[1].set_title('Landmarks Overlay', fontsize=12, fontweight='bold')
+    overlay_landmarks(axes[1], original_img, landmarks, triangulation)
+    axes[1].set_title('Landmarks Overlay', fontsize=12, fontweight='bold')
 
     # Panel 3: Warped image
-    grid[2].imshow(warped_img, cmap='gray', vmin=0, vmax=255)
-    grid[2].set_title('Warped Image', fontsize=12, fontweight='bold')
-    grid[2].axis('off')
+    axes[2].imshow(warped_img, cmap='gray', vmin=0, vmax=255)
+    axes[2].set_title('Warped Image', fontsize=12, fontweight='bold')
+    axes[2].axis('off')
 
-    # Panel 4: Classification result
-    grid[3].axis('off')
-    grid[3].set_xlim(0, 1)
-    grid[3].set_ylim(0, 1)
+    # Panel 4: Classification result with probability bars
+    axes[3].axis('off')
+    axes[3].set_xlim(0, 1)
+    axes[3].set_ylim(0, 1)
 
-    # Add text info
-    text_y = 0.9
-    grid[3].text(0.1, text_y, f"True: {true_class}", fontsize=14, fontweight='bold',
-                color='green')
-    text_y -= 0.1
-    grid[3].text(0.1, text_y, f"Predicted: {pred_class}", fontsize=14, fontweight='bold',
-                color='red')
-    text_y -= 0.1
-    grid[3].text(0.1, text_y, f"Category: {category}", fontsize=11)
-    text_y -= 0.08
-    grid[3].text(0.1, text_y, f"Failure: {failure_origin}", fontsize=11, style='italic')
+    # Text info
+    axes[3].text(0.05, 0.95, f"True: {true_class}", fontsize=13, fontweight='bold',
+                 color='green', va='top', transform=axes[3].transAxes)
+    axes[3].text(0.05, 0.85, f"Pred: {pred_class}", fontsize=13, fontweight='bold',
+                 color='red', va='top', transform=axes[3].transAxes)
+    axes[3].text(0.05, 0.75, f"Category: {category}", fontsize=10,
+                 va='top', transform=axes[3].transAxes)
+    axes[3].text(0.05, 0.67, f"Failure: {failure_origin}", fontsize=10, style='italic',
+                 va='top', transform=axes[3].transAxes)
 
-    # Add probability bars
-    text_y -= 0.15
-    bar_width = 0.6
+    # Horizontal probability bars
+    bar_colors = ['#1f77b4', '#2ca02c', '#ff7f0e']
+    y_positions = [0.45, 0.30, 0.15]
     for i, (cls, prob) in enumerate(zip(CATEGORIES, probs)):
-        y_pos = text_y - i * 0.12
-        # Draw bar background
-        grid[3].add_patch(plt.Rectangle((0.1, y_pos - 0.03), bar_width, 0.06,
-                                       facecolor='lightgray', edgecolor='black', linewidth=0.5))
-        # Draw probability bar
-        grid[3].add_patch(plt.Rectangle((0.1, y_pos - 0.03), bar_width * prob, 0.06,
-                                       facecolor='blue', alpha=0.7))
-        # Add label
-        grid[3].text(0.75, y_pos, f"{cls}: {prob:.2%}", fontsize=10, va='center')
+        y = y_positions[i]
+        axes[3].barh(y, prob, height=0.10, color=bar_colors[i], alpha=0.8,
+                     left=0.0, transform=axes[3].transAxes, clip_on=False)
+        axes[3].text(0.0, y + 0.06, f"{cls}: {prob:.1%}", fontsize=9,
+                     va='bottom', transform=axes[3].transAxes)
 
     # Main title
     title = f"True: {true_class} | Pred: {pred_class} | {category} | {failure_origin}"
-    fig.suptitle(title, fontsize=14, fontweight='bold')
+    fig.suptitle(title, fontsize=14, fontweight='bold', y=0.98)
 
     # Save figure
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -179,28 +172,27 @@ def create_overview_grid(
     n_errors = len(error_samples)
     nrows = (n_errors + ncols - 1) // ncols  # Ceiling division
 
-    fig = plt.figure(figsize=(ncols * 3, nrows * 3))
-    grid = ImageGrid(fig, 111, nrows_ncols=(nrows, ncols), axes_pad=0.5)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 3, nrows * 3.5))
+    fig.subplots_adjust(hspace=0.5, wspace=0.3, top=0.93)
+    axes = axes.flatten() if nrows > 1 else (axes if ncols > 1 else [axes])
 
-    # Group by confusion pair for organized layout
-    # Sort by (true_class, pred_class, confidence desc)
+    # Sort by confusion pair for organized layout
     sorted_samples = sorted(
         error_samples,
         key=lambda x: (x['true_class'], x['predicted_class'], -x['confidence'])
     )
 
     for i, sample in enumerate(sorted_samples):
-        if i >= len(grid):
+        if i >= len(axes):
             break
 
-        ax = grid[i]
+        ax = axes[i]
 
         # Load warped image
         warped_path = sample.get('warped_path')
         if warped_path and Path(warped_path).exists():
             warped_img = cv2.imread(str(warped_path), cv2.IMREAD_GRAYSCALE)
         else:
-            # Placeholder black image
             warped_img = np.zeros((224, 224), dtype=np.uint8)
 
         # Determine border color based on confidence
@@ -212,30 +204,29 @@ def create_overview_grid(
         else:
             border_color = 'gray'
 
-        # Show image
         ax.imshow(warped_img, cmap='gray', vmin=0, vmax=255)
 
-        # Add border
+        # Add colored border
         for spine in ax.spines.values():
             spine.set_edgecolor(border_color)
             spine.set_linewidth(3)
+            spine.set_visible(True)
+        ax.set_xticks([])
+        ax.set_yticks([])
 
-        # Add annotation
+        # Annotation
         true_cls = sample['true_class']
         pred_cls = sample['predicted_class']
-        title = f"{true_cls} → {pred_cls}\n{conf:.1%}"
-        ax.set_title(title, fontsize=9, fontweight='bold')
-        ax.axis('off')
+        title_text = f"{true_cls}\n-> {pred_cls}\n{conf:.1%}"
+        ax.set_title(title_text, fontsize=8, fontweight='bold')
 
     # Hide unused subplots
-    for i in range(len(sorted_samples), len(grid)):
-        grid[i].axis('off')
+    for i in range(len(sorted_samples), len(axes)):
+        axes[i].axis('off')
 
-    # Main title
-    title = f"Resumen de {n_errors} errores de clasificación - Ensemble+TTA (98.26%)"
+    title = f"Resumen de {n_errors} errores de clasificacion - Ensemble+TTA (98.26%)"
     fig.suptitle(title, fontsize=16, fontweight='bold')
 
-    # Save figure
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close(fig)

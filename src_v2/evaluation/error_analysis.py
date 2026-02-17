@@ -102,15 +102,23 @@ def load_error_samples(
             image_row = test_images.iloc[sample_idx]
             image_name = image_row['image_name']
             warped_filename = image_row['warped_filename']
+            # Use category from images.csv (matches directory structure) not true_class
+            # from labels. Warped files are organized by original dataset category, which
+            # matches the image filename prefix, not the classification label.
+            img_category = image_row['category']
 
             # Construct paths
-            # Original: {dataset_dir}/{class}/{image_name}.png
-            original_path = dataset_dir / true_class.replace('_', ' ') / f"{image_name}.png"
-            # Warped: {warped_dir}/{class}/{warped_filename}
-            warped_path = warped_dir / true_class / warped_filename
+            # Original: {dataset_dir}/{class with spaces}/{image_name}.png
+            original_class_dir = img_category.replace('_', ' ')
+            original_path = dataset_dir / original_class_dir / f"{image_name}.png"
+            # Warped: {warped_dir}/{category}/{warped_filename}
+            warped_path = warped_dir / img_category / warped_filename
 
-            # Look up landmarks
-            landmark_coords = landmark_lookup.get((image_name, true_class))
+            # Look up landmarks using category from images.csv
+            landmark_coords = landmark_lookup.get((image_name, img_category))
+            if landmark_coords is None:
+                # Try with true_class as fallback
+                landmark_coords = landmark_lookup.get((image_name, true_class))
         else:
             image_name = None
             original_path = None
