@@ -33,7 +33,7 @@
 **Milestone Goal:** Push ensemble accuracy beyond 98.26% through data quality improvements across the full pipeline (landmarks → warping → classification), keeping ResNet-18 architecture fixed to isolate the data effect.
 
 - [ ] **Phase 6: Error Forensics & Data Quality Audit** - Understand the 33 misclassified images and assess dataset quality
-- [ ] **Phase 7: Data Cleaning Pipeline** - Filter outliers, detect label noise, and document cleaning decisions
+- [x] **Phase 7: Data Cleaning Pipeline** - Filter outliers, detect label noise, and document cleaning decisions (completed 2026-02-17)
 - [ ] **Phase 8: Training Improvements** - Implement focal loss, hard example mining, and curriculum learning
 - [ ] **Phase 9: Advanced Augmentation** - Medical-specific augmentations with ablation studies
 - [ ] **Phase 10: Final Evaluation & Statistical Validation** - Comparative evaluation with statistical testing
@@ -135,7 +135,7 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 4. Analysis & Visualization | v1.0 | 2/2 | Complete | 2026-02-16 |
 | 5. Final Test Evaluation | v1.0 | 2/2 | Complete | 2026-02-16 |
 | 6. Error Forensics | v1.1 | 0/3 | Planned | - |
-| 7. Data Cleaning | v1.1 | 0/3 | Planned | - |
+| 7. Data Cleaning | v1.1 | Complete    | 2026-02-17 | - |
 | 8. Training Improvements | v1.1 | 0/2 | Not started | - |
 | 9. Advanced Augmentation | v1.1 | 0/2 | Not started | - |
 | 10. Final Evaluation | v1.1 | 0/2 | Not started | - |
