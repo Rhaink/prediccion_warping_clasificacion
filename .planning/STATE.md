@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 Phase: 7 of 10 (Data Cleaning Pipeline)
-Plan: 1 of 3 complete (07-01 done)
-Status: Phase 7 in progress — landmark outlier detection and duplicate resolution complete
-Last activity: 2026-02-17 - Completed 07-01-PLAN.md (landmark outlier detection & cross-split duplicate resolution)
+Plan: 2 of 3 complete (07-01, 07-02 done)
+Status: Phase 7 in progress — OOF extraction and cleanlab label noise detection complete
+Last activity: 2026-02-17 - Completed 07-02-PLAN.md (OOF extraction and cleanlab label noise detection)
 
-Progress: [███████░░░] 63% (6 phases + 1 plan complete)
+Progress: [███████░░░] 65% (6 phases + 2 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15 (11 from v1.0 + 4 from v1.1)
-- Average duration: 10 min (v1.1 only, tracked going forward)
-- Total execution time: 21 days (v1.0 milestone) + 42 min (v1.1 so far)
+- Total plans completed: 16 (11 from v1.0 + 5 from v1.1)
+- Average duration: 9 min (v1.1 only, tracked going forward)
+- Total execution time: 21 days (v1.0 milestone) + 45 min (v1.1 so far)
 
 **By Phase:**
 
@@ -33,7 +33,7 @@ Progress: [███████░░░] 63% (6 phases + 1 plan complete)
 | 4. Analysis & Visualization | 2 | v1.0 | - |
 | 5. Final Test Evaluation | 2 | v1.0 | - |
 | 6. Error Forensics & Data Quality | 3 of 3 | 34 min | 11 min |
-| 7. Data Cleaning Pipeline | 1 of 3 | 8 min | 8 min |
+| 7. Data Cleaning Pipeline | 2 of 3 | 11 min | 5.5 min |
 
 **Recent Trend:**
 - v1.0 shipped successfully with 98.26% accuracy achieved
@@ -42,6 +42,7 @@ Progress: [███████░░░] 63% (6 phases + 1 plan complete)
 - v1.1 Phase 6 Plan 3 complete: Interactive notebook & forensics report in 10 minutes
 - v1.1 Phase 6 COMPLETE: All 3 plans executed successfully
 - v1.1 Phase 7 Plan 1 complete: Landmark outlier detection and duplicate resolution in 8 minutes
+- v1.1 Phase 7 Plan 2 complete: OOF extraction and cleanlab label noise detection in 3 minutes
 
 ## Accumulated Context
 
@@ -62,6 +63,8 @@ Recent decisions affecting current work:
 - **07-01**: Same-class duplicate resolution keeps alphabetically first image_name for determinism and reproducibility (2026-02-17)
 - **07-01**: Cross-class pairs (6,026 of 17,312) require excluding both images due to label ambiguity (2026-02-17)
 - **07-01**: 5,018 unique images excluded from 17,312 pairs — ~33% of dataset flagged for cross-split exclusion (2026-02-17)
+- **07-02**: Temperature scaling T=2.0 applied (94.2% of OOF samples had max_prob > 0.99 -> overconfident) (2026-02-17)
+- **07-02**: All 34 cleanlab label issues had self_confidence < 0.05 -> all auto_excluded, no manual_review tier needed (2026-02-17)
 
 ### Pending Todos
 
@@ -72,9 +75,9 @@ None yet.
 **Phase 7 Readiness:**
 - ~~Cross-split duplicate resolution~~ ✓ Complete in 07-01: 5,018 exclusions produced
 - ~~Landmark outlier detection~~ ✓ Complete in 07-01: 463 flagged (3.06%)
-- Need cleanlab library for label noise detection (Plan 02)
-- Manual review process for flagged samples needs workflow definition
+- ~~cleanlab label noise detection~~ ✓ Complete in 07-02: 34 auto_excluded issues identified
 - **CONCERN**: 5,018 cross-split exclusions is ~33% of 15,153 images — manifest assembly (Plan 03) must handle overlap between exclusion categories carefully
+- Manifest assembly (Plan 03) ready to proceed: all three data sources (landmark outliers, cross-split duplicates, label noise) collected
 
 **Phase 8 Readiness:**
 - Focal loss implementation needs testing before CV training
@@ -89,11 +92,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-17 (Phase 7 Plan 1)
-Stopped at: Completed 07-01-PLAN.md (landmark outlier detection & duplicate resolution)
-Resume file: .planning/phases/07-data-cleaning-pipeline/07-01-SUMMARY.md
+Last session: 2026-02-17 (Phase 7 Plan 2)
+Stopped at: Completed 07-02-PLAN.md (OOF extraction and cleanlab label noise detection)
+Resume file: .planning/phases/07-data-cleaning-pipeline/07-02-SUMMARY.md
 
-Next: Phase 7 Plan 02 (label noise detection with cleanlab)
+Next: Phase 7 Plan 03 (data cleaning manifest assembly)
 
 ---
 *Last updated: 2026-02-17*
