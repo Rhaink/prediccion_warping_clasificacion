@@ -4993,6 +4993,7 @@ def generate_dataset(
         use_clahe = override_param("use_clahe", use_clahe, "clahe", ("--clahe", "--no-clahe"))
         clahe_clip = override_param("clahe_clip", clahe_clip, "clahe_clip", ("--clahe-clip",))
         clahe_tile = override_param("clahe_tile", clahe_tile, "clahe_tile", ("--clahe-tile",))
+        exclude_list = override_param("exclude_list", exclude_list, "exclude_list", ("--exclude-list",))
 
     # Load exclusion set from cleaning manifest
     excluded_images = set()
