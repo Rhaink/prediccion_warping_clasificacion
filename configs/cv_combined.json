@@ -16,5 +16,6 @@
   "oof_path": "outputs/data_cleaning/oof_probabilities.npz",
   "mining_max_ratio": 3.0,
   "use_curriculum": true,
-  "curriculum_fractions": "0.60,0.80,1.0"
+  "curriculum_fractions": "0.60,0.80,1.0",
+  "finetune_from": "outputs/classifier_cv_curriculum/fold_01/best_classifier.pt"
 }
