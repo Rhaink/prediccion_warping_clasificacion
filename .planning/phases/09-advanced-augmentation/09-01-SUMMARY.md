@@ -13,8 +13,8 @@ provides:
   - get_classifier_transforms() with elastic, grid distortion, pixel augmentation flags
   - MixUp/CutMix batch-level application in cross_validate_classifier training loop
   - preview_augmentations.py with SSIM-annotated visual grids for all augmentation types
-  - 8 ablation config files (standalone and curriculum-combined variants)
-  - SSIM results JSON for augmentation validation archival
+  - 8 ablation config files with user-approved parameters (elastic alpha=20, not alpha=1)
+  - User-approved augmentation list: elastic(alpha=20), grid, pixel, mixup, cutmix — alpha=1 rejected
 affects: [09-02-ablation-training, augmentation-experiments]
 
 # Tech tracking
@@ -47,7 +47,8 @@ key-decisions:
   - "MixUp takes precedence over CutMix if both flags set simultaneously (conflict resolved with warning)"
   - "F.cross_entropy accepts soft labels (B, C) in PyTorch >= 2.0 — FocalLoss is compatible without modification"
   - "SSIM FAIL status for PixelAug (0.57) is expected — SSIM measures intensity structure, but pixel brightness changes lower it artificially; visual review is the actual gate"
-  - "ElasticTransform alpha=1 is essentially a no-op (SSIM=1.0000); alpha=20 provides meaningful deformation (SSIM=0.9974)"
+  - "User REJECTED ElasticTransform alpha=1 (SSIM=1.0, essentially no-op) and APPROVED alpha=20 (SSIM=0.9974, visible smooth deformation)"
+  - "cv_aug_elastic.json and cv_aug_elastic_curriculum.json updated to elastic_alpha=20.0 after user review"
   - "All new augmentation flags default to False for full backward compatibility per Phase 8 pattern"
 
 patterns-established:
@@ -58,58 +59,59 @@ patterns-established:
 requirements-completed: [AUG-01, AUG-02, AUG-03]
 
 # Metrics
-duration: 6min
+duration: 8min
 completed: 2026-02-18
 ---
 
 # Phase 09 Plan 01: Augmentation Infrastructure Summary
 
-**Albumentations spatial/pixel augmentation pipeline with MixUp/CutMix batch mixing, SSIM-validated visual preview gate, and 8 ablation configs — awaiting user visual approval at checkpoint**
+**Albumentations augmentation pipeline (elastic/grid/pixel/MixUp/CutMix) with SSIM-validated visual gate, user-approved parameters, and 8 ablation configs ready for training**
 
 ## Performance
 
-- **Duration:** 6 min
+- **Duration:** 8 min
 - **Started:** 2026-02-18T10:33:10Z
-- **Completed:** 2026-02-18T10:39:24Z
-- **Tasks:** 2 of 3 complete (stopped at checkpoint:human-verify)
-- **Files modified:** 11
+- **Completed:** 2026-02-18T10:41:00Z
+- **Tasks:** 3 of 3 complete
+- **Files modified:** 13
 
 ## Accomplishments
 
 - Implemented `AlbumentationsWrapper` (PIL->numpy->albumentations->PIL bridge) and extended `get_classifier_transforms()` with 7 new augmentation parameters
 - Integrated MixUp/CutMix batch-level mixing in `cross_validate_classifier` training loop with soft-label accuracy handling
 - Created preview script with SSIM metrics and visual grids for all 6 augmentation types
-- Generated 8 ablation config files (5 standalone + 3 curriculum-combined)
+- Generated 8 ablation config files (5 standalone + 3 curriculum-combined), all updated with user-approved parameters
+- Visual gate checkpoint completed: user approved 5 augmentation types, rejected alpha=1 elastic (no-op)
 
-## SSIM Preview Results
+## SSIM Preview Results and User Decisions
 
-| Augmentation | Mean SSIM | Status | Notes |
+| Augmentation | Mean SSIM | Auto-Status | User Decision |
 |---|---|---|---|
-| ElasticTransform(alpha=1, sigma=30) | 1.0000 | PASS | Too conservative — nearly no-op |
-| ElasticTransform(alpha=20, sigma=30) | 0.9974 | PASS | Visible but controlled deformation |
-| GridDistortion(distort=0.1) | 0.8043 | FAIL (threshold 0.95) | Visually shows meaningful distortion — needs user review |
-| PixelAug (brightness+noise) | 0.5665 | FAIL (threshold 0.90) | SSIM drops on intensity change (expected); visual review is gate |
-| MixUp(lambda=0.6) | N/A | INFO | Cross-class blending visible |
-| CutMix(patch_fraction=0.2) | N/A | INFO | ~20% patch replacement visible |
+| ElasticTransform(alpha=1, sigma=30) | 1.0000 | PASS | **REJECTED** — no-op, invisible effect |
+| ElasticTransform(alpha=20, sigma=30) | 0.9974 | PASS | **APPROVED** — visible smooth deformation |
+| GridDistortion(distort=0.1) | 0.8043 | FAIL (threshold 0.95) | **APPROVED** — clinically acceptable distortion |
+| PixelAug (brightness+noise) | 0.5665 | FAIL (threshold 0.90) | **APPROVED** — SSIM drop expected for pixel aug |
+| MixUp(alpha=0.4) | N/A | INFO | **APPROVED** — cross-class regularization acceptable |
+| CutMix(alpha=0.2) | N/A | INFO | **APPROVED** — patch replacement acceptable |
 
 ## Task Commits
 
 1. **Task 1: Install albumentations, implement augmentation transforms, and extend CLI** - `b16dcfdb` (feat)
 2. **Task 2: Create preview script and ablation config files** - `7b0fb4b8` (feat)
-3. **Task 3: Visual validation gate** - PENDING (checkpoint:human-verify)
+3. **Task 3: Visual validation gate — record decisions and update elastic configs** - `[this commit]` (chore)
 
 ## Files Created/Modified
 
 - `requirements.txt` - Added `albumentations>=2.0.0`
 - `src_v2/models/classifier.py` - Added `AlbumentationsWrapper`, extended `get_classifier_transforms()` with 7 augmentation params
 - `src_v2/cli.py` - Added 12 new augmentation config keys, MixUp/CutMix init, batch-level mixing in training loop
-- `scripts/preview_augmentations.py` - SSIM-annotated visual validation gate script (643 lines)
-- `configs/cv_aug_elastic.json` - Elastic augmentation ablation config
+- `scripts/preview_augmentations.py` - SSIM-annotated visual validation gate script
+- `configs/cv_aug_elastic.json` - Elastic ablation config (updated to alpha=20 after user review)
 - `configs/cv_aug_grid.json` - Grid distortion ablation config
 - `configs/cv_aug_pixel.json` - Pixel augmentation ablation config
 - `configs/cv_aug_mixup.json` - MixUp ablation config
 - `configs/cv_aug_cutmix.json` - CutMix ablation config
-- `configs/cv_aug_elastic_curriculum.json` - Elastic + curriculum combined config
+- `configs/cv_aug_elastic_curriculum.json` - Elastic + curriculum config (updated to alpha=20)
 - `configs/cv_aug_grid_curriculum.json` - Grid + curriculum combined config
 - `configs/cv_aug_mixup_curriculum.json` - MixUp + curriculum combined config
 
@@ -119,7 +121,8 @@ completed: 2026-02-18
 - MixUp takes precedence over CutMix if both flags set simultaneously
 - `F.cross_entropy` in `FocalLoss` already accepts soft labels (B, C) in PyTorch >= 2.0 — no FocalLoss changes needed
 - SSIM FAIL status for PixelAug is expected: SSIM penalizes intensity changes even when structure is preserved
-- ElasticTransform alpha=1 is essentially a no-op; alpha=20 provides visible but medically safe deformation
+- User rejected ElasticTransform alpha=1 (SSIM=1.0, no-op); approved alpha=20 (SSIM=0.9974)
+- Both elastic configs updated to `elastic_alpha: 20.0` to reflect user decision
 - All new flags default to False for backward compatibility
 
 ## Deviations from Plan
@@ -129,8 +132,8 @@ completed: 2026-02-18
 **1. [Rule 1 - Bug] Fixed KeyError in print_summary_table for mixing augmentation results**
 - **Found during:** Task 2 (verification run of preview script)
 - **Issue:** `preview_mixup()` and `preview_cutmix()` returned dicts with key `ssim` but `print_summary_table()` expected `mean_ssim` — causing KeyError crash after printing spatial aug results
-- **Fix:** Standardized return dicts to use `mean_ssim` and `std_ssim` keys; removed redundant `std_ssim` post-assignment in `main()`; changed `print_summary_table` to use `.get()` for safe access
-- **Files modified:** scripts/preview_augmentations.py
+- **Fix:** Standardized return dicts to use `mean_ssim` and `std_ssim` keys; removed redundant post-assignment in `main()`; changed `print_summary_table` to use `.get()` for safe access
+- **Files modified:** `scripts/preview_augmentations.py`
 - **Verification:** Script ran to completion, all 6 rows printed in summary table
 - **Committed in:** `7b0fb4b8` (Task 2 commit)
 
@@ -142,7 +145,7 @@ completed: 2026-02-18
 ## Issues Encountered
 
 - albumentations was already installed (2.0.8) — only needed to add to requirements.txt
-- SSIM "FAIL" for GridDistortion (0.80) and PixelAug (0.57) are metric artifacts: GridDistortion visually looks clinically plausible; PixelAug SSIM drop is expected since SSIM is intensity-sensitive. User visual review at checkpoint resolves this.
+- SSIM "FAIL" for GridDistortion (0.80) and PixelAug (0.57) are metric artifacts resolved by visual review: both approved by user
 
 ## User Setup Required
 
@@ -151,11 +154,11 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 - Augmentation infrastructure complete and backward-compatible
-- 8 ablation configs ready for training in Plan 02
-- Awaiting user approval at checkpoint (Task 3): approve/reject each augmentation type
-- Preview images at: `outputs/augmentation_previews/` (6 PNGs + ssim_results.json)
-- After checkpoint approval: Plan 02 runs ablation training for approved augmentations
+- User decisions recorded: 5 augmentation types approved, alpha=1 elastic rejected
+- Both elastic configs updated to `elastic_alpha=20.0`
+- 8 ablation configs ready for Plan 02 training
+- Plan 02 should run: elastic(alpha=20), grid, pixel, mixup, cutmix — plus the 3 curriculum-combined variants for the winning standalone augmentations
 
 ---
 *Phase: 09-advanced-augmentation*
-*Completed: 2026-02-18 (partial — stopped at checkpoint:human-verify)*
+*Completed: 2026-02-18*
