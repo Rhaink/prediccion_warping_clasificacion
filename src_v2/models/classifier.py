@@ -18,8 +18,11 @@ Arquitecturas adicionales agregadas en Sesion 20.
 from collections import Counter
 from typing import Optional, Tuple, List
 
+import albumentations as A
+import numpy as np
 import torch
 import torch.nn as nn
+from PIL import Image
 from torchvision import models, transforms
 
 
@@ -37,6 +40,25 @@ class GrayscaleToRGB:
         if img.mode == "RGB":
             return img
         return img.convert("RGB")
+
+
+class AlbumentationsWrapper:
+    """Wraps albumentations Compose for use in torchvision Compose pipeline.
+
+    Converts PIL -> numpy -> albumentations -> PIL so it can be inserted
+    anywhere in a transforms.Compose chain.
+
+    Args:
+        albu_transform: An albumentations.Compose or single transform instance.
+    """
+
+    def __init__(self, albu_transform: A.Compose):
+        self.transform = albu_transform
+
+    def __call__(self, pil_img: Image.Image) -> Image.Image:
+        img_np = np.array(pil_img)
+        augmented = self.transform(image=img_np)["image"]
+        return Image.fromarray(augmented)
 
 
 class ImageClassifier(nn.Module):
@@ -290,6 +312,14 @@ def create_classifier(
 def get_classifier_transforms(
     train: bool = False,
     img_size: int = 224,
+    use_elastic: bool = False,
+    elastic_alpha: float = 1.0,
+    elastic_sigma: float = 30.0,
+    elastic_p: float = 0.5,
+    use_grid_distortion: bool = False,
+    grid_distort_limit: float = 0.1,
+    grid_distort_p: float = 0.5,
+    use_pixel_aug: bool = False,
 ) -> transforms.Compose:
     """
     Obtiene transformaciones para el clasificador.
@@ -297,6 +327,14 @@ def get_classifier_transforms(
     Args:
         train: Si True, incluye augmentaciones
         img_size: Tamano de imagen de salida
+        use_elastic: Enable albumentations ElasticTransform (train only)
+        elastic_alpha: ElasticTransform alpha parameter (deformation magnitude)
+        elastic_sigma: ElasticTransform sigma parameter (smoothness)
+        elastic_p: Probability of applying ElasticTransform
+        use_grid_distortion: Enable albumentations GridDistortion (train only)
+        grid_distort_limit: GridDistortion distort_limit parameter
+        grid_distort_p: Probability of applying GridDistortion
+        use_pixel_aug: Enable pixel-level augmentations (brightness/contrast + noise)
 
     Returns:
         transforms.Compose con las transformaciones
@@ -308,9 +346,57 @@ def get_classifier_transforms(
     )
 
     if train:
-        return transforms.Compose([
+        # Build base train transforms (before albumentations insertion point)
+        transform_list = [
             GrayscaleToRGB(),
             transforms.Resize((img_size, img_size)),
+        ]
+
+        # Insert albumentations transforms AFTER Resize, BEFORE RandomHorizontalFlip
+        # border_mode=0 (BORDER_CONSTANT) and fill=0.0 are critical for warped images
+        # which have black (zero) backgrounds.
+        albu_transforms = []
+        if use_elastic:
+            albu_transforms.append(
+                A.ElasticTransform(
+                    alpha=elastic_alpha,
+                    sigma=elastic_sigma,
+                    p=elastic_p,
+                    border_mode=0,
+                    fill=0.0,
+                )
+            )
+        if use_grid_distortion:
+            albu_transforms.append(
+                A.GridDistortion(
+                    num_steps=5,
+                    distort_limit=grid_distort_limit,
+                    p=grid_distort_p,
+                    border_mode=0,
+                    fill=0.0,
+                    normalized=True,
+                )
+            )
+        if use_pixel_aug:
+            albu_transforms.extend([
+                A.RandomBrightnessContrast(
+                    brightness_limit=0.15,
+                    contrast_limit=0.15,
+                    p=0.4,
+                ),
+                A.GaussNoise(
+                    std_range=(0.01, 0.03),
+                    mean_range=(0.0, 0.0),
+                    p=0.3,
+                ),
+            ])
+
+        if albu_transforms:
+            albu_compose = A.Compose(albu_transforms)
+            transform_list.append(AlbumentationsWrapper(albu_compose))
+
+        # Remaining train transforms
+        transform_list.extend([
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomRotation(degrees=10),
             transforms.RandomAffine(
@@ -321,6 +407,7 @@ def get_classifier_transforms(
             transforms.ToTensor(),
             normalize,
         ])
+        return transforms.Compose(transform_list)
     else:
         return transforms.Compose([
             GrayscaleToRGB(),

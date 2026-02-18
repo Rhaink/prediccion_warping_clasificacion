@@ -3093,6 +3093,66 @@ def cross_validate_classifier(
         "--finetune-from",
         help="Path a checkpoint para fine-tuning (cargar pesos antes de cada fold)"
     ),
+    use_elastic_aug: bool = typer.Option(
+        False,
+        "--elastic-aug/--no-elastic-aug",
+        help="Activar ElasticTransform de albumentations en train (AUG-01)"
+    ),
+    elastic_alpha: float = typer.Option(
+        1.0,
+        "--elastic-alpha",
+        help="ElasticTransform alpha (magnitud de deformacion, default=1.0)"
+    ),
+    elastic_sigma: float = typer.Option(
+        30.0,
+        "--elastic-sigma",
+        help="ElasticTransform sigma (suavidad de deformacion, default=30.0)"
+    ),
+    elastic_p: float = typer.Option(
+        0.5,
+        "--elastic-p",
+        help="Probabilidad de aplicar ElasticTransform (default=0.5)"
+    ),
+    use_grid_distortion_aug: bool = typer.Option(
+        False,
+        "--grid-distortion-aug/--no-grid-distortion-aug",
+        help="Activar GridDistortion de albumentations en train (AUG-01)"
+    ),
+    grid_distort_limit: float = typer.Option(
+        0.1,
+        "--grid-distort-limit",
+        help="GridDistortion distort_limit (default=0.1)"
+    ),
+    grid_distort_p: float = typer.Option(
+        0.5,
+        "--grid-distort-p",
+        help="Probabilidad de aplicar GridDistortion (default=0.5)"
+    ),
+    use_pixel_aug: bool = typer.Option(
+        False,
+        "--pixel-aug/--no-pixel-aug",
+        help="Activar augmentaciones de pixel (brillo/contraste + ruido) en train (AUG-02)"
+    ),
+    use_mixup: bool = typer.Option(
+        False,
+        "--mixup/--no-mixup",
+        help="Activar MixUp a nivel de batch en entrenamiento (AUG-03)"
+    ),
+    mixup_alpha: float = typer.Option(
+        0.4,
+        "--mixup-alpha",
+        help="Parametro alpha de MixUp Beta distribution (default=0.4)"
+    ),
+    use_cutmix: bool = typer.Option(
+        False,
+        "--cutmix/--no-cutmix",
+        help="Activar CutMix a nivel de batch en entrenamiento (AUG-03)"
+    ),
+    cutmix_alpha: float = typer.Option(
+        1.0,
+        "--cutmix-alpha",
+        help="Parametro alpha de CutMix Beta distribution (default=1.0)"
+    ),
 ):
     """
     Validacion cruzada (k-fold) para el clasificador CNN.
@@ -3171,6 +3231,18 @@ def cross_validate_classifier(
             "use_curriculum",
             "curriculum_fractions",
             "finetune_from",
+            "use_elastic_aug",
+            "elastic_alpha",
+            "elastic_sigma",
+            "elastic_p",
+            "use_grid_distortion_aug",
+            "grid_distort_limit",
+            "grid_distort_p",
+            "use_pixel_aug",
+            "use_mixup",
+            "mixup_alpha",
+            "use_cutmix",
+            "cutmix_alpha",
         }
         unknown_keys = sorted(set(normalized) - valid_keys)
         if unknown_keys:
@@ -3199,6 +3271,18 @@ def cross_validate_classifier(
             "use_curriculum": use_curriculum,
             "curriculum_fractions": curriculum_fractions,
             "finetune_from": finetune_from,
+            "use_elastic_aug": use_elastic_aug,
+            "elastic_alpha": elastic_alpha,
+            "elastic_sigma": elastic_sigma,
+            "elastic_p": elastic_p,
+            "use_grid_distortion_aug": use_grid_distortion_aug,
+            "grid_distort_limit": grid_distort_limit,
+            "grid_distort_p": grid_distort_p,
+            "use_pixel_aug": use_pixel_aug,
+            "use_mixup": use_mixup,
+            "mixup_alpha": mixup_alpha,
+            "use_cutmix": use_cutmix,
+            "cutmix_alpha": cutmix_alpha,
         }
 
         def is_default_source(source: object) -> bool:
@@ -3234,6 +3318,18 @@ def cross_validate_classifier(
         use_curriculum = param_values["use_curriculum"]
         curriculum_fractions = param_values["curriculum_fractions"]
         finetune_from = param_values["finetune_from"]
+        use_elastic_aug = param_values["use_elastic_aug"]
+        elastic_alpha = param_values["elastic_alpha"]
+        elastic_sigma = param_values["elastic_sigma"]
+        elastic_p = param_values["elastic_p"]
+        use_grid_distortion_aug = param_values["use_grid_distortion_aug"]
+        grid_distort_limit = param_values["grid_distort_limit"]
+        grid_distort_p = param_values["grid_distort_p"]
+        use_pixel_aug = param_values["use_pixel_aug"]
+        use_mixup = param_values["use_mixup"]
+        mixup_alpha = param_values["mixup_alpha"]
+        use_cutmix = param_values["use_cutmix"]
+        cutmix_alpha = param_values["cutmix_alpha"]
 
         logger.info("Config cargada: %s", config_path)
 
@@ -3295,7 +3391,22 @@ def cross_validate_classifier(
         logger.info("  %s: %d", name, class_counts.get(idx, 0))
 
     eval_transform = get_classifier_transforms(train=False, img_size=DEFAULT_IMAGE_SIZE)
-    train_transform = get_classifier_transforms(train=True, img_size=DEFAULT_IMAGE_SIZE)
+    train_transform = get_classifier_transforms(
+        train=True,
+        img_size=DEFAULT_IMAGE_SIZE,
+        use_elastic=use_elastic_aug,
+        elastic_alpha=elastic_alpha,
+        elastic_sigma=elastic_sigma,
+        elastic_p=elastic_p,
+        use_grid_distortion=use_grid_distortion_aug,
+        grid_distort_limit=grid_distort_limit,
+        grid_distort_p=grid_distort_p,
+        use_pixel_aug=use_pixel_aug,
+    )
+    logger.info(
+        "Augmentations: elastic=%s, grid_distortion=%s, pixel=%s, mixup=%s, cutmix=%s",
+        use_elastic_aug, use_grid_distortion_aug, use_pixel_aug, use_mixup, use_cutmix,
+    )
 
     test_dataset = None
     if eval_test:
@@ -3468,6 +3579,22 @@ def cross_validate_classifier(
             full_samples, oof_difficulty, fractions, len(class_names)
         )
 
+    # --- MixUp / CutMix setup (batch-level, applied in training loop only) ---
+    # NOTE: mixup_fn is NEVER applied during validation — the evaluate_basic function
+    # uses val_loader and val_criterion independently of the training loop.
+    mixup_fn = None
+    if use_mixup and use_cutmix:
+        logger.warning("Both use_mixup and use_cutmix set — using MixUp (MixUp takes precedence).")
+        use_cutmix = False
+    if use_mixup:
+        from torchvision.transforms.v2 import MixUp as TorchMixUp
+        mixup_fn = TorchMixUp(alpha=mixup_alpha, num_classes=len(class_names))
+        logger.info("MixUp enabled: alpha=%.2f", mixup_alpha)
+    elif use_cutmix:
+        from torchvision.transforms.v2 import CutMix as TorchCutMix
+        mixup_fn = TorchCutMix(alpha=cutmix_alpha, num_classes=len(class_names))
+        logger.info("CutMix enabled: alpha=%.2f", cutmix_alpha)
+
     skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
     fold_results = []
 
@@ -3632,6 +3759,12 @@ def cross_validate_classifier(
                 inputs = inputs.to(torch_device)
                 labels_batch = labels_batch.to(torch_device)
 
+                # Apply batch-level mixing (training only — NEVER during validation)
+                # MixUp/CutMix produce soft labels: (B, num_classes) float32
+                # F.cross_entropy accepts soft labels in PyTorch >= 2.0
+                if mixup_fn is not None:
+                    inputs, labels_batch = mixup_fn(inputs, labels_batch)
+
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 loss = criterion(outputs, labels_batch)
@@ -3640,8 +3773,13 @@ def cross_validate_classifier(
 
                 train_loss += loss.item() * inputs.size(0)
                 _, predicted = outputs.max(1)
-                train_total += labels_batch.size(0)
-                train_correct += predicted.eq(labels_batch).sum().item()
+                train_total += inputs.size(0)
+                # For soft labels (MixUp/CutMix): use argmax for approximate accuracy
+                if labels_batch.dim() > 1:
+                    labels_batch_hard = labels_batch.argmax(1)
+                else:
+                    labels_batch_hard = labels_batch
+                train_correct += predicted.eq(labels_batch_hard).sum().item()
 
             train_loss /= max(train_total, 1)
             train_acc = train_correct / max(train_total, 1)
