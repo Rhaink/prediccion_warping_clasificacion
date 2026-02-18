@@ -101,11 +101,12 @@ Plans:
   3. Each augmentation strategy is tested individually with ablation study results documented
   4. Visual validation confirms augmented samples preserve diagnostic features
   5. Augmentation parameters are conservative and medically appropriate (validated against literature)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md — Augmentation infrastructure, preview script, visual gate checkpoint (AUG-01, AUG-02, AUG-03)
+- [ ] 09-02-PLAN.md — Run individual and curriculum-combined augmentation ablations (AUG-01, AUG-02, AUG-03)
+- [ ] 09-03-PLAN.md — Comparison analysis script with dual baselines (AUG-03)
 
 ### Phase 10: Final Evaluation & Statistical Validation
 **Goal**: Validate that data-centric improvements produce statistically significant accuracy gains over v1.0 baseline
@@ -138,7 +139,7 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 6. Error Forensics | v1.1 | 0/3 | Planned | - |
 | 7. Data Cleaning | v1.1 | Complete    | 2026-02-17 | - |
 | 8. Training Improvements | v1.1 | 3/3 | Complete | 2026-02-17 |
-| 9. Advanced Augmentation | v1.1 | 0/2 | Not started | - |
+| 9. Advanced Augmentation | v1.1 | 0/3 | Planned | - |
 | 10. Final Evaluation | v1.1 | 0/2 | Not started | - |
 
 ---
