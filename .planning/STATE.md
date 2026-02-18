@@ -41,6 +41,7 @@ Progress: [████████░░] 80% (8 phases complete, 2 remaining)
 - v1.1 Phase 8 Plan 2 complete: 4 ablation experiments trained (~8h GPU). Curriculum learning wins (F1=0.9932)
 - v1.1 Phase 8 Plan 3 complete: Combined model (F1=0.9878) underperforms curriculum alone. Comparison script created.
 - v1.1 Phase 8 COMPLETE: All 3 plans executed. Best config: curriculum learning (F1=0.9932, VP recall=99.1%)
+| Phase 09-advanced-augmentation P01 | 6 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -55,6 +56,9 @@ Recent decisions affecting current work:
 - **08-01**: All new technique flags default to False for full backward compatibility (2026-02-17)
 - **08-02**: Curriculum learning is the best individual ablation (F1=0.9932, +0.88pp over baseline) (2026-02-17)
 - **08-03**: Combined model (focal+mining+curriculum) regresses vs curriculum alone (F1=0.9878 vs 0.9932) — techniques interfere (2026-02-17)
+- [Phase 09-01]: border_mode=0 with fill=0.0 required for all albumentations spatial transforms — warped images have black background
+- [Phase 09-01]: SSIM FAIL for PixelAug (0.57) is expected — SSIM penalizes intensity changes; visual review is the actual gate for pixel augmentations
+- [Phase 09-01]: ElasticTransform alpha=1 is essentially a no-op (SSIM=1.0); alpha=20 provides visible but medically safe deformation (SSIM=0.9974)
 
 ### Key Phase 8 Results
 
