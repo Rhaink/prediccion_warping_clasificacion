@@ -1,0 +1,20 @@
+{
+  "data_dir": "outputs/warped_cleaned/session_warping",
+  "backbone": "resnet18",
+  "epochs": 50,
+  "batch_size": 32,
+  "lr": 0.0001,
+  "patience": 10,
+  "use_class_weights": true,
+  "seed": 42,
+  "folds": 5,
+  "save_checkpoints": true,
+  "output_dir": "outputs/classifier_cv_aug_elastic_curriculum",
+  "use_elastic_aug": true,
+  "elastic_alpha": 1.0,
+  "elastic_sigma": 30.0,
+  "elastic_p": 0.5,
+  "use_curriculum": true,
+  "oof_path": "outputs/data_cleaning/oof_probabilities.npz",
+  "curriculum_fractions": "0.60,0.80,1.0"
+}

@@ -1,0 +1,15 @@
+{
+  "data_dir": "outputs/warped_cleaned/session_warping",
+  "backbone": "resnet18",
+  "epochs": 50,
+  "batch_size": 32,
+  "lr": 0.0001,
+  "patience": 10,
+  "use_class_weights": true,
+  "seed": 42,
+  "folds": 5,
+  "save_checkpoints": true,
+  "output_dir": "outputs/classifier_cv_aug_cutmix",
+  "use_cutmix": true,
+  "cutmix_alpha": 0.2
+}
