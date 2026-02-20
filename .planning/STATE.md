@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Maximize classification accuracy through data-centric improvements while preserving methodological integrity
-**Current focus:** Phase 9 Plan 2 complete — 8 augmentation ablation experiments done. New best: elastic+curriculum (F1=0.9971, VP Recall=100%)
+**Current focus:** Phase 9 complete — elastic+curriculum (F1=0.9971, VP Recall=100%) confirmed as best config. Ready for Phase 10 final test-set evaluation.
 
 ## Current Position
 
-Phase: 9 of 10 (Advanced Augmentation) — IN PROGRESS
-Plan: 2 of 3 complete
-Status: Phase 9 Plan 2 complete. All 8 ablation experiments trained (5-fold CV). elastic_curriculum is new best (F1=0.9971).
-Last activity: 2026-02-19 - Completed Phase 9 Plan 2 (augmentation ablation training, ~16h GPU)
+Phase: 9 of 10 (Advanced Augmentation) — COMPLETE
+Plan: 3 of 3 complete
+Status: Phase 9 all 3 plans complete. Comparison analysis done. Best: elastic+curriculum (F1=0.9971, VP Recall=100%).
+Last activity: 2026-02-20 - Completed Phase 9 Plan 3 (comparison script + ablation_comparison_09.json)
 
-Progress: [████████░░] 83% (8 phases complete, phase 9 plan 2 of 3 done)
+Progress: [█████████░] 90% (9 phases complete, phase 10 remaining)
 
 ## Performance Metrics
 
@@ -35,7 +35,7 @@ Progress: [████████░░] 83% (8 phases complete, phase 9 plan 
 | 6. Error Forensics & Data Quality | 3 of 3 | 34 min | 11 min |
 | 7. Data Cleaning Pipeline | 3 of 3 | 16 min | ~5 min |
 | 8. Training Improvements | 3 of 3 | ~10h | ~3.3h (GPU) |
-| 9. Advanced Augmentation | 2 of 3 | ~16h 8min | - |
+| 9. Advanced Augmentation | 3 of 3 | ~16h 13min | - |
 
 **Recent Trend:**
 - v1.1 Phase 8 Plan 1 complete: FocalLoss + hard mining + curriculum in CLI, cleaned dataset warped, 5 configs created in 4 minutes
@@ -66,6 +66,8 @@ Recent decisions affecting current work:
 - [Phase 09-02]: Individual augmentations alone do not improve over baseline on warped normalized dataset — geometric normalization reduces geometric variance, making aug less impactful without curriculum (2026-02-19)
 - [Phase 09-02]: Curriculum is the dominant technique — all 3 curriculum-combined experiments outperform standalone counterparts (2026-02-19)
 - [Phase 09-02]: Spatial augmentations (elastic, grid) combine better with curriculum than batch-mixing (mixup, cutmix) (2026-02-19)
+- [Phase 09-03]: elastic+curriculum is the final recommended config for Phase 10 (F1=0.9971, VP Recall=100%) — dual-baseline comparison confirms +0.39pp improvement over curriculum alone (2026-02-20)
+- [Phase 09-03]: Individual augmentations alone universally fail to improve over curriculum-alone; only grid marginally beats cleaned baseline (+0.07pp) (2026-02-20)
 
 ### Key Phase 8 Results
 
@@ -108,11 +110,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-19 (Phase 9 Plan 2 complete)
-Stopped at: Completed 09-02-PLAN.md (all 2 tasks: 8 ablation experiments trained)
-Resume file: .planning/phases/09-advanced-augmentation/09-02-SUMMARY.md
+Last session: 2026-02-20 (Phase 9 Plan 3 complete — Phase 9 COMPLETE)
+Stopped at: Completed 09-03-PLAN.md (1 task: comparison script + ablation_comparison_09.json)
+Resume file: .planning/phases/09-advanced-augmentation/09-03-SUMMARY.md
 
-Next: Phase 9 Plan 3 — comparison analysis and test-set evaluation of best config (elastic_curriculum)
+Next: Phase 10 — final test-set evaluation of elastic+curriculum (F1=0.9971) on held-out data
 
 ---
 *Last updated: 2026-02-19*
