@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Maximize classification accuracy through data-centric improvements while preserving methodological integrity
-**Current focus:** Phase 9 complete — elastic+curriculum (F1=0.9971, VP Recall=100%) confirmed as best config. Ready for Phase 10 final test-set evaluation.
+**Current focus:** Phase 10 Plan 2 paused at checkpoint:human-verify (Task 3). All automated tasks complete — user must verify figures, LaTeX tables, and case-level analysis before Plan 2 is marked complete.
 
 ## Current Position
 
 Phase: 10 of 10 (Final Evaluation & Statistical Validation) — IN PROGRESS
-Plan: 1 of 2 complete
-Status: Phase 10 Plan 1 complete. All 4 model ensembles evaluated. Key finding: improved models do NOT exceed v1.0 on test set. McNemar not significant after Holm-Bonferroni. Ready for Phase 10 Plan 2 (visualization/LaTeX).
-Last activity: 2026-02-20 - Completed Phase 10 Plan 1 (evaluate_final_phase10.py + statistical validation)
+Plan: 2 of 2 (paused at checkpoint:human-verify Task 3)
+Status: Phase 10 Plan 2 Tasks 1-2 complete. 8 figures, 3 LaTeX tables, and case-level image grids generated. Awaiting human verification.
+Last activity: 2026-02-20 - Completed Phase 10 Plan 2 Tasks 1-2 (generate_figures_phase10.py + generate_case_analysis_phase10.py)
 
 Progress: [█████████░] 95% (9 phases complete + 1/2 phase 10 plans done)
 
@@ -46,6 +46,7 @@ Progress: [█████████░] 95% (9 phases complete + 1/2 phase 10
 - v1.1 Phase 9 Plan 2 complete: All 8 ablation experiments trained (~16h GPU). New best: elastic+curriculum (F1=0.9971, VP Recall=100%, surpasses curriculum-alone by +0.39pp).
 - v1.1 Phase 10 Plan 1 complete: All 4 model ensembles evaluated on test set. Critical finding: validation gains did NOT transfer to test accuracy. v1.0 remains best (98.26%). McNemar not significant after Holm-Bonferroni (elastic+curriculum p=0.0339 raw, not corrected).
 | Phase 10 P01 | 9 | 1 tasks | 5 files |
+| Phase 10 P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 10-01]: Sanity check tolerance set to 0.01pp because V1_BASELINE_ACCURACY=0.9826 is rounded; actual value is 0.9825858
 - [Phase 10-01]: Critical finding: improved models do NOT exceed v1.0 on test set (val F1=0.9971 elastic+curriculum did not transfer to test accuracy)
 - [Phase 10-01]: Regression guardrail is soft report (not abort) — all 3 comparisons failed (b=8,14,14 vs threshold=5), script continues per plan
+- [Phase 10-02]: Confusion matrices reconstructed from precision/recall/support since raw CM not stored in phase10_final_report.json
+- [Phase 10-02]: Case analysis cross-reference with Phase 6 forensics: 4 improved cases were in original 33 error set, 0 regressed
 
 ### Key Phase 8 Results
 
@@ -126,11 +129,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-20 (Phase 10 Plan 1 complete)
-Stopped at: Completed 10-01-PLAN.md (1 task: ensemble evaluation + statistical validation)
-Resume file: .planning/phases/10-final-evaluation-statistical-validation/10-01-SUMMARY.md
+Last session: 2026-02-20 (Phase 10 Plan 2 Tasks 1-2 complete, paused at human-verify)
+Stopped at: Paused at checkpoint:human-verify — Task 3 of 10-02-PLAN.md
+Resume file: .planning/phases/10-final-evaluation-statistical-validation/10-02-SUMMARY.md
 
-Next: Phase 10 Plan 2 — LaTeX tables, figures (confusion matrices, waterfall, per-class bar charts), case-level analysis
+Next: User must verify outputs/phase10/figures/ and outputs/phase10/case_analysis/ then type "approved"
 
 ---
 *Last updated: 2026-02-20*
