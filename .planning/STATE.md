@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 ## Current Position
 
-Phase: 9 of 10 (Advanced Augmentation) — COMPLETE
-Plan: 3 of 3 complete
-Status: Phase 9 all 3 plans complete. Comparison analysis done. Best: elastic+curriculum (F1=0.9971, VP Recall=100%).
-Last activity: 2026-02-20 - Completed Phase 9 Plan 3 (comparison script + ablation_comparison_09.json)
+Phase: 10 of 10 (Final Evaluation & Statistical Validation) — IN PROGRESS
+Plan: 1 of 2 complete
+Status: Phase 10 Plan 1 complete. All 4 model ensembles evaluated. Key finding: improved models do NOT exceed v1.0 on test set. McNemar not significant after Holm-Bonferroni. Ready for Phase 10 Plan 2 (visualization/LaTeX).
+Last activity: 2026-02-20 - Completed Phase 10 Plan 1 (evaluate_final_phase10.py + statistical validation)
 
-Progress: [█████████░] 90% (9 phases complete, phase 10 remaining)
+Progress: [█████████░] 95% (9 phases complete + 1/2 phase 10 plans done)
 
 ## Performance Metrics
 
@@ -44,6 +44,8 @@ Progress: [█████████░] 90% (9 phases complete, phase 10 rema
 - v1.1 Phase 8 COMPLETE: All 3 plans executed. Best config: curriculum learning (F1=0.9932, VP recall=99.1%)
 - v1.1 Phase 9 Plan 1 complete: Albumentations infrastructure built. Visual gate passed. 5 augmentations approved (elastic alpha=20, grid, pixel, mixup, cutmix). 8 ablation configs ready.
 - v1.1 Phase 9 Plan 2 complete: All 8 ablation experiments trained (~16h GPU). New best: elastic+curriculum (F1=0.9971, VP Recall=100%, surpasses curriculum-alone by +0.39pp).
+- v1.1 Phase 10 Plan 1 complete: All 4 model ensembles evaluated on test set. Critical finding: validation gains did NOT transfer to test accuracy. v1.0 remains best (98.26%). McNemar not significant after Holm-Bonferroni (elastic+curriculum p=0.0339 raw, not corrected).
+| Phase 10 P01 | 9 | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -68,6 +70,9 @@ Recent decisions affecting current work:
 - [Phase 09-02]: Spatial augmentations (elastic, grid) combine better with curriculum than batch-mixing (mixup, cutmix) (2026-02-19)
 - [Phase 09-03]: elastic+curriculum is the final recommended config for Phase 10 (F1=0.9971, VP Recall=100%) — dual-baseline comparison confirms +0.39pp improvement over curriculum alone (2026-02-20)
 - [Phase 09-03]: Individual augmentations alone universally fail to improve over curriculum-alone; only grid marginally beats cleaned baseline (+0.07pp) (2026-02-20)
+- [Phase 10-01]: Sanity check tolerance set to 0.01pp because V1_BASELINE_ACCURACY=0.9826 is rounded; actual value is 0.9825858
+- [Phase 10-01]: Critical finding: improved models do NOT exceed v1.0 on test set (val F1=0.9971 elastic+curriculum did not transfer to test accuracy)
+- [Phase 10-01]: Regression guardrail is soft report (not abort) — all 3 comparisons failed (b=8,14,14 vs threshold=5), script continues per plan
 
 ### Key Phase 8 Results
 
@@ -92,6 +97,17 @@ Recent decisions affecting current work:
 | grid+curriculum | 0.9961 | 99.64% | +1.17pp |
 | mixup+curriculum | 0.9880 | 98.57% | +0.36pp |
 
+### Key Phase 10 Results (Plan 01)
+
+| Model | Acc(TTA) | F1-macro | VP Recall | Delta(pp) |
+|-------|----------|----------|-----------|-----------|
+| v1.0 Baseline | 0.9826 | 0.9712 | 0.9290 | +0.000 |
+| Cleaned Baseline | 0.9810 | 0.9703 | 0.9290 | -0.158 |
+| Curriculum | 0.9778 | 0.9660 | 0.9231 | -0.475 |
+| Elastic+Curriculum | 0.9773 | 0.9668 | 0.9290 | -0.528 |
+
+McNemar p-values: cleaned=0.5791, curriculum=0.0665, elastic_curriculum=0.0339 (none significant after Holm-Bonferroni)
+
 ### Pending Todos
 
 None.
@@ -110,11 +126,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-20 (Phase 9 Plan 3 complete — Phase 9 COMPLETE)
-Stopped at: Completed 09-03-PLAN.md (1 task: comparison script + ablation_comparison_09.json)
-Resume file: .planning/phases/09-advanced-augmentation/09-03-SUMMARY.md
+Last session: 2026-02-20 (Phase 10 Plan 1 complete)
+Stopped at: Completed 10-01-PLAN.md (1 task: ensemble evaluation + statistical validation)
+Resume file: .planning/phases/10-final-evaluation-statistical-validation/10-01-SUMMARY.md
 
-Next: Phase 10 — final test-set evaluation of elastic+curriculum (F1=0.9971) on held-out data
+Next: Phase 10 Plan 2 — LaTeX tables, figures (confusion matrices, waterfall, per-class bar charts), case-level analysis
 
 ---
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
