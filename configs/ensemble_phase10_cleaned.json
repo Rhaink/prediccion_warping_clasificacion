@@ -1,0 +1,21 @@
+{
+  "description": "Phase 10 evaluation - cleaned baseline (5-fold CV on warped_cleaned)",
+  "model_name": "cleaned_baseline",
+  "use_tta": true,
+  "checkpoint_paths": [
+    "outputs/classifier_cv_cleaned_baseline/fold_01/best_classifier.pt",
+    "outputs/classifier_cv_cleaned_baseline/fold_02/best_classifier.pt",
+    "outputs/classifier_cv_cleaned_baseline/fold_03/best_classifier.pt",
+    "outputs/classifier_cv_cleaned_baseline/fold_04/best_classifier.pt",
+    "outputs/classifier_cv_cleaned_baseline/fold_05/best_classifier.pt"
+  ],
+  "data_dir": "outputs/warped_cleaned/session_warping",
+  "split": "test",
+  "class_names": ["COVID", "Normal", "Viral_Pneumonia"],
+  "expected_samples": {
+    "total": 1895,
+    "COVID": 452,
+    "Normal": 1274,
+    "Viral_Pneumonia": 169
+  }
+}
