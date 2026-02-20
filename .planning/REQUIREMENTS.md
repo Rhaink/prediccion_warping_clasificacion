@@ -30,9 +30,9 @@ Requirements for data-centric accuracy improvement. Each maps to roadmap phases.
 
 ### Augmentation
 
-- [ ] **AUG-01**: Training uses medical-specific augmentations via albumentations (ElasticTransform, GridDistortion)
-- [ ] **AUG-02**: Training supports batch-level MixUp and CutMix augmentation
-- [ ] **AUG-03**: Each augmentation strategy tested individually (ablation study) with validation metrics
+- [x] **AUG-01**: Training uses medical-specific augmentations via albumentations (ElasticTransform, GridDistortion)
+- [x] **AUG-02**: Training supports batch-level MixUp and CutMix augmentation
+- [x] **AUG-03**: Each augmentation strategy tested individually (ablation study) with validation metrics
 
 ### Evaluation
 
@@ -85,9 +85,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | TRN-02 | Phase 8 | Pending |
 | TRN-03 | Phase 8 | Pending |
 | TRN-04 | Phase 8 | Pending |
-| AUG-01 | Phase 9 | Pending |
-| AUG-02 | Phase 9 | Pending |
-| AUG-03 | Phase 9 | Pending |
+| AUG-01 | Phase 9 | Complete |
+| AUG-02 | Phase 9 | Complete |
+| AUG-03 | Phase 9 | Complete |
 | EVL-01 | Phase 10 | Pending |
 | EVL-02 | Phase 10 | Pending |
 | EVL-03 | Phase 10 | Pending |
