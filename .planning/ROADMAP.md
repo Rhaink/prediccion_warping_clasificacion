@@ -118,11 +118,11 @@ Plans:
   3. McNemar's paired statistical test confirms improvement is statistically significant (p < 0.05)
   4. Confidence intervals are reported for all accuracy claims
   5. Regression guardrail passes: fewer than 5 new errors introduced compared to baseline
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
+- [ ] 10-01-PLAN.md -- Ensemble evaluation (4 models, TTA/no-TTA) + statistical validation (McNemar, bootstrap CI, DeLong AUC, regression guardrail) (EVL-01, EVL-03, EVL-04, EVL-05)
+- [ ] 10-02-PLAN.md -- Thesis figures (confusion matrices, bar charts, waterfall), LaTeX tables, case-level image grids (EVL-01, EVL-02, EVL-04)
 
 ## Progress
 
