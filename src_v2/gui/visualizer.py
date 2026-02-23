@@ -758,7 +758,7 @@ def export_to_pdf(
         # Metadata
         d = pdf.infodict()
         d['Title'] = 'Resultados de Detección COVID-19'
-        d['Author'] = 'Sistema de Puntos de Referencia Anatómicos'
+        d['Author'] = 'Rafael Alejandro Cruz Ovando'
         d['Subject'] = 'Análisis de radiografía de tórax'
         d['Keywords'] = 'COVID-19, Puntos de Referencia, Deep Learning, SAHS'
         d['CreationDate'] = None  # Will use current time

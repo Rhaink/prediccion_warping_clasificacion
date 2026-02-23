@@ -9,9 +9,11 @@ This is a research project for COVID-19 detection from chest X-rays using:
 2. Geometric normalization via piecewise affine warping
 3. CNN classification on normalized images
 
-Current validated results:
+Current validated results (GROUND_TRUTH.json v2.2.0):
 - Landmark ensemble error: 3.61 px (on 224x224 images)
-- Classification accuracy: 99.10% (warped_96 configuration)
+- Classifier ensemble+TTA accuracy: 98.26% (5-fold CV weighted soft voting, 47% error reduction over individual baseline)
+- Single best classifier (warped_lung_best): 98.05%
+- Test set: 1,895 images (COVID=452, Normal=1,274, Viral_Pneumonia=169)
 
 ## Development Commands
 
@@ -77,6 +79,20 @@ python -m pytest tests/test_processing.py -v
 python -m pytest tests/ -k "test_warp" -v
 ```
 
+### GUI Demo
+```bash
+# Launch Gradio demo (checks dependencies and models before launching)
+python scripts/run_demo.py
+python scripts/run_demo.py --share  # Public link
+python scripts/run_demo.py --port 8080  # Custom port
+```
+
+The GUI (`src_v2/gui/`) provides a Gradio-based interactive demo with:
+- Full pipeline visualization (original → landmarks → warped → GradCAM)
+- Quick classification mode
+- PDF export of results
+- Supports both development mode and PyInstaller standalone
+
 ### Quick Start Scripts
 ```bash
 # Automated warping pipeline (canonical + predictions + warping)
@@ -90,9 +106,9 @@ bash scripts/quickstart_landmarks.sh
 
 ### Pipeline Flow
 1. **Canonical Shape (GPA)**: `src_v2/processing/gpa.py::gpa_iterative()` aligns training landmarks to compute consensus shape via Generalized Procrustes Analysis
-2. **Landmark Prediction**: Ensemble of ResNet-18 models predicts 15 (x,y) coordinates per image
+2. **Landmark Prediction**: Ensemble of 4 ResNet-18 models predicts 15 (x,y) coordinates per image
 3. **Warping**: `src_v2/processing/warp.py::piecewise_affine_warp()` normalizes geometry using Delaunay triangulation
-4. **Classification**: ResNet-18 classifier trained on warped images
+4. **Classification**: 5-fold CV ensemble of ResNet-18 classifiers trained on warped images, combined via weighted soft voting with dual-level TTA
 
 ### Key Modules
 
@@ -122,6 +138,17 @@ bash scripts/quickstart_landmarks.sh
 
 **src_v2/evaluation/**
 - `metrics.py`: Pixel error computation, classification metrics
+- `ensemble.py`: Classifier ensemble soft/hard voting, TTA, case-level impact analysis
+- `quality_assessment.py`: Image quality scoring (BRISQUE/NIQE)
+- `error_analysis.py`: Misclassification forensics and error pattern categorization
+
+**src_v2/gui/**
+- `app.py`: Gradio interface (3 tabs: full demo, quick classify, about)
+- `config.py`: Centralized GUI config (paths, validated metrics, colors, UI text)
+- `inference_pipeline.py`: Orchestrates landmark → warp → classify pipeline
+- `model_manager.py`: Singleton lazy-loading model manager (GPU/CPU auto-detection)
+- `gradcam_utils.py`: GradCAM visualization for model explainability
+- `visualizer.py`: Rendering functions for pipeline stage images
 
 ### Landmark Structure
 15 landmarks define lung contours (NOT specific anatomical points):
@@ -133,11 +160,15 @@ bash scripts/quickstart_landmarks.sh
 Defined in `src_v2/constants.py::SYMMETRIC_PAIRS`, `CENTRAL_LANDMARKS`.
 
 ### Configuration System
-JSON configs in `configs/`:
+JSON configs in `configs/`. Key ones:
 - `ensemble_best.json`: Best landmark ensemble (3.61 px error)
 - `warping_best.json`: Optimal warping parameters (margin=1.05, use_full_coverage=false)
 - `classifier_warped_base.json`: Classifier training defaults
 - `landmarks_train_base.json`: Landmark model training defaults
+- `ensemble_classifier.json`: Classifier ensemble config (5-fold CV weighted soft voting)
+- `warping_cleaned.json`: Warping config for cleaned dataset (v1.1)
+- `cv_*.json`: Cross-validation training configs for ablation experiments (focal, mining, curriculum, augmentation variants)
+- `ensemble_phase10_*.json`: Phase 10 ensemble evaluation configs
 
 Configs avoid CLI flag proliferation and enable reproducibility.
 
@@ -157,14 +188,18 @@ Configs avoid CLI flag proliferation and enable reproducibility.
 
 ## Ground Truth & Validation
 
-`GROUND_TRUTH.json` is the source of truth for validated metrics. When modifying experiments or creating visualizations, reference values from this file, not hardcoded numbers.
+`GROUND_TRUTH.json` (v2.2.0) is the source of truth for validated metrics. When modifying experiments or creating visualizations, reference values from this file, not hardcoded numbers.
 
-Key validated values (v2.1.0):
-- Ensemble best (seed666 combo): 3.61 px
-- Best individual model (seed456): 4.04 px
-- Classifier warped_96 accuracy: 99.10%
+Key validated values:
+- Landmark ensemble best (seeds 123,321,111,666): 3.61 px
+- Best individual landmark model (seed456): 4.04 px
+- **Classifier ensemble+TTA accuracy: 98.26%** (current best, final_evaluation in GROUND_TRUTH.json)
+- Single classifier (warped_lung_best): 98.05%
+- 5-fold CV mean accuracy: 98.60% ± 0.26%
 - Optimal margin_scale: 1.05
 - CLAHE tile_size: 4
+
+Note: `warped_96` (99.10%) is marked **obsolete** in GROUND_TRUTH.json — it used full_coverage warping which is no longer the current approach. The current method is `warped_lung_best`.
 
 ## Important Data Flow
 
@@ -196,8 +231,23 @@ This avoids re-running inference during warping experiments. The `.npz` file con
 - `outputs/`: Generated artifacts (not in repo)
   - `shape_analysis/`: Canonical shape and triangulation
   - `landmark_predictions/`: Cached predictions
-  - `warped_lung_best/`: Warped dataset
+  - `warped_lung_best/`: Warped dataset (current)
   - `classifier_warped_lung_best/`: Trained classifier
+  - `classifier_cv/`: 5-fold CV ensemble models and results
+  - `data_cleaning/`: Cleaning manifests and reports (v1.1)
+  - `ablation_results/`: Training improvement ablation outputs (v1.1)
+
+## Milestone Context
+
+The project uses GSD (Get Stuff Done) workflow with planning in `.planning/`:
+- **v1.0** (shipped 2026-02-16): Ensemble+TTA classifier (Phases 1-5)
+- **v1.1** (in progress): Data-centric accuracy improvement (Phases 6-10)
+  - Phase 7: Data cleaning pipeline (landmark outliers, label noise via cleanlab)
+  - Phase 8: Training improvements (focal loss, hard example mining, curriculum learning)
+  - Phase 9: Advanced augmentation (medical-specific, MixUp, CutMix, ElasticTransform)
+  - Phase 10: Final evaluation with statistical validation (McNemar, bootstrap CI, DeLong AUC)
+
+Constraint: v1.1 keeps ResNet-18 architecture fixed to isolate data quality effects.
 
 ## Legacy/Archived Code
 

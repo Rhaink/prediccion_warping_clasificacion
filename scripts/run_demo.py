@@ -143,6 +143,8 @@ def print_header():
     """Print welcome header."""
     print("=" * 70)
     print("  Sistema de Detección de COVID-19 mediante Landmarks Anatómicos")
+    print("  Autor: Rafael Alejandro Cruz Ovando")
+    print("  Asesores: Dr. S.E. Ayala Raggi, Dr. A. Barreto Flores")
     if is_frozen():
         print("  COVID-19 Detection System - Standalone Demo")
     print("=" * 70)

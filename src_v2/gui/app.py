@@ -17,6 +17,7 @@ from .inference_pipeline import (
 from .config import (
     TITLE,
     SUBTITLE,
+    AUTHOR_FOOTER,
     ABOUT_TEXT,
     THEME,
     populate_examples,
@@ -150,6 +151,7 @@ def create_demo() -> gr.Blocks:
         # Header
         gr.Markdown(f"# {TITLE}")
         gr.Markdown(SUBTITLE)
+        gr.HTML(AUTHOR_FOOTER)
 
         with gr.Tabs():
             # ================================================================
@@ -451,11 +453,8 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # TAB 3: ABOUT (OCULTO TEMPORALMENTE)
+            # TAB 3: ABOUT (oculto por ahora)
             # ================================================================
-            # Nota: Tab "Acerca del Sistema" comentado para v1.0.8
-            # Documentación disponible en README.md y GROUND_TRUTH.json
-
             # with gr.TabItem("ℹ️ Acerca del Sistema"):
             #     gr.Markdown(ABOUT_TEXT)
             #

@@ -37,7 +37,7 @@ Requirements for data-centric accuracy improvement. Each maps to roadmap phases.
 ### Evaluation
 
 - [x] **EVL-01**: Comparative evaluation: v1.0 baseline vs data-improved ensemble on same test set
-- [ ] **EVL-02**: Case-level impact analysis (helped vs hurt vs neutral per sample)
+- [x] **EVL-02**: Case-level impact analysis (helped vs hurt vs neutral per sample)
 - [x] **EVL-03**: McNemar's paired statistical test validates improvement significance
 - [x] **EVL-04**: Confidence intervals reported for all accuracy claims
 - [x] **EVL-05**: Regression guardrail: abort if >5 new errors introduced vs baseline
@@ -89,7 +89,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | AUG-02 | Phase 9 | Complete |
 | AUG-03 | Phase 9 | Complete |
 | EVL-01 | Phase 10 | Complete |
-| EVL-02 | Phase 10 | Pending |
+| EVL-02 | Phase 10 | Complete |
 | EVL-03 | Phase 10 | Complete |
 | EVL-04 | Phase 10 | Complete |
 | EVL-05 | Phase 10 | Complete |

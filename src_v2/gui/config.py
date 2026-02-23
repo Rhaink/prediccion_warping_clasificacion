@@ -192,11 +192,20 @@ def get_class_color_es(class_name_es: str) -> str:
 # INTERFACE TEXT (Spanish)
 # ============================================================================
 
-TITLE = "Sistema de Detección de COVID-19 mediante Puntos de Referencia Anatómicos"
+TITLE = "Sistema de Detección Automática de COVID-19 y Neumonía mediante Puntos de Referencia"
 
 SUBTITLE = f"""
-**Sistema Validado**: Ensemble de Detección de Landmarks (15 puntos) |
+**Sistema Validado**: Ensamble de Detección de Puntos de Referencia (15 puntos) |
 Accuracy Clasificación: {VALIDATED_METRICS['classification_cv_accuracy_mean']:.2f}% ± {VALIDATED_METRICS['classification_cv_accuracy_std']:.2f}% (5-fold CV)
+"""
+
+AUTHOR_FOOTER = """
+<div style="text-align: center; padding: 6px 0; margin-top: -8px; border-top: 1px solid #e0e0e0;">
+    <span style="font-size: 16px; color: #666;">
+        <b>Algoritmos y Software:</b> Rafael Alejandro Cruz Ovando &nbsp;&bull;&nbsp;
+        <b>Dirección y Metodología:</b> Dr. Salvador Eugenio Ayala Raggi, Dr. Aldrin Barreto Flores
+    </span>
+</div>
 """
 
 ABOUT_TEXT = f"""
@@ -315,17 +324,28 @@ Los 15 puntos de referencia se distribuyen estratégicamente para capturar la ge
 3. **Fill Rate**: ~{VALIDATED_METRICS['fill_rate']}% de la imagen warped contiene información
    (resto es fondo negro por la transformación geométrica).
 
-## Autor
+## Autoría
 
-[Agregar información del investigador/tesista]
+**Trabajo de Tesis de Maestría**
 
-## Contacto
+*Normalización y alineación automática de la forma de la región pulmonar integrada con selección de características discriminantes para detección de neumonía y COVID-19*
 
-[Agregar email o información de contacto]
+**Autor**
+Rafael Alejandro Cruz Ovando
+
+**Director de Tesis**
+Dr. Salvador Eugenio Ayala Raggi
+
+**Co-Director de Tesis**
+Dr. Aldrin Barreto Flores
+
+**Institución**
+Benemérita Universidad Autónoma de Puebla (BUAP)
+Facultad de Ciencias de la Electrónica
 
 ---
 
-**Versión**: 1.0.13
+**Versión**: 1.0.17
 **Última actualización**: Enero 2026
 **Framework**: Gradio {4}
 **Python**: 3.8+
